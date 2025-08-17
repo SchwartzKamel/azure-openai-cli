@@ -31,9 +31,9 @@ ENTRYPOINT ["./AzureOpenAI_CLI"]
 # Install runtime dependencies first so these layers are cached unless deps change
 RUN apk add --no-cache \
     icu-libs \
-    perl \
+ && apk upgrade --no-cache \
  && rm -rf /var/cache/apk/*
-# Reduced package footprint & attack surface by using apk with no-cache
+# GOOD... GOOD... let the upgrades flow through you. Eliminate all known vulnerabilities.
 
 # Copy published app in one step
 COPY --from=build /app/AzureOpenAI_CLI /app/AzureOpenAI_CLI
