@@ -5,7 +5,7 @@ BUILD_CTX := azureopenai-cli
 
 DOCKER_CMD := docker run --rm $(IMAGE_NAME):$(IMAGE_TAG)
 
-.PHONY: all build run clean alias
+.PHONY: all build run clean alias scan
 
 all: build
 
@@ -41,3 +41,7 @@ alias:
 	esac; \
     echo "alias az-ai='$(DOCKER_CMD)'" >> $$RCFILE; \
 	echo "Alias 'az-ai' added to $$RCFILE"
+
+## Run a vulnerability assessment of the compiled image
+scan:
+	grype $(IMAGE_NAME):$(IMAGE_TAG)
