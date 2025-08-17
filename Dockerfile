@@ -34,7 +34,10 @@ ENTRYPOINT ["./AzureOpenAI_CLI"]
 
 # Install runtime dependencies first so these layers are cached unless deps change
 RUN apt-get update \
- && apt-get install -y --no-install-recommends libicu72 \
+ && apt-get dist-upgrade -y \
+ && apt-get upgrade -y \
+ && apt-get install -y --no-install-recommends libicu72 perl-base \
+ && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
 # Copy published app in one step
