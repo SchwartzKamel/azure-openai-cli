@@ -1,0 +1,68 @@
+# roo
+.roo
+.roomodes
+.ruru
+scripts
+
+# env
+azureopenai-cli/.env
+
+# .NET build artifacts
+bin/
+obj/
+[Bb]uild[Ll]og.*
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.userprefs
+
+# Visual Studio
+.vs/
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/*
+# except build/, which is used as an MSBuild target.
+!**/[Pp]ackages/build/
+# Uncomment if necessary however generally you should not ignore the props/targets
+#!**/[Pp]ackages/*.props
+#!**/[Pp]ackages/*.targets
+
+# Publish output
+**/[Pp]ublish/
+*.pubxml
+*.publishproj
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Resharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# DotCover
+*.dotCover
+
+# Backup & report files from converting an old project file
+Backup*/
+UpgradeLog*.XML
+UpgradeLog*.htm
+
+# Others
+*.dbmdl
+*.jfm
+*.pdb
+*.cache
+*.config
+*.lock.json

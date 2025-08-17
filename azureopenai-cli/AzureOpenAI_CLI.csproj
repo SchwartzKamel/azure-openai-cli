@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include=".env" />
+    <None Include="generate_config.sh" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.3.0-beta.1" />
+    <PackageReference Include="Azure.Core" Version="1.47.2" />
+    <PackageReference Include="dotenv.net" Version="3.1.2" />
+  </ItemGroup>
+
+</Project>
