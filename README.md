@@ -52,8 +52,8 @@ SYSTEMPROMPT=You are a helpful AI assistant
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/SchwartzKamel/ai_chat.git
-cd ai_chat
+git clone https://github.com/SchwartzKamel/azure-openai-cli/.git
+cd azure-openai-cli
 
 # 2. Configure environment
 cp azureopenai-cli/.env.example azureopenai-cli/.env
