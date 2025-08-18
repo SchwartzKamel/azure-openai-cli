@@ -52,7 +52,7 @@ SYSTEMPROMPT=You are a helpful AI assistant
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/SchwartzKamel/azure-openai-cli/.git
+git clone https://github.com/SchwartzKamel/azure-openai-cli.git
 cd azure-openai-cli
 
 # 2. Configure environment
