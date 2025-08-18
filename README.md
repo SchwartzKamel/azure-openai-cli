@@ -10,6 +10,9 @@ This CLI was created to make it easy for developers, data scientists, and hobbyi
 
 A secure, containerized command-line interface for interacting with Azure OpenAI services
 
+### Testing
+![It's alive!](img/its_alive_too.gif)
+
 ```mermaid
 %% Architecture Diagram
 flowchart TB

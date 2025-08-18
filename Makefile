@@ -11,7 +11,7 @@ DOCKER_CMD := docker run --rm $(FULL_IMAGE)
 all: build
 
 ## Build: standard docker build
-build: clean
+build:
 	@echo ">> Building $(FULL_IMAGE)"
 	@docker buildx build \
 -t $(FULL_IMAGE) \
@@ -55,5 +55,5 @@ scan:
 
 
 ## Test with a question about cats
-test: build
+test: clean build
 	make run ARGS="Tell me some unusual facts about cats"
