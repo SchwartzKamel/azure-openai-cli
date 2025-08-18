@@ -12,10 +12,9 @@ all: build
 ## Build: standard docker build
 build:
 	@echo ">> Building $(IMAGE_NAME):$(IMAGE_TAG)"
-	@docker build \
-		-t $(IMAGE_NAME):$(IMAGE_TAG) \
+	@docker buildx build \
+        -t $(IMAGE_NAME):$(IMAGE_TAG) \
 		-f $(DOCKERFILE) .
-
 
 ## Run: make run ARGS="your prompt here"
 run:
@@ -28,9 +27,16 @@ run:
 
 ## Clean dangling images
 clean:
-	@docker image prune -f
+	@echo ">> Removing old build artifacts..."
+	@find $(BUILD_CTX) -type d \( -name 'bin' -o -name 'obj' \) -exec rm -rf {} +
+	@echo ">> Cleaning up old Docker images/containers except required .NET SDK/runtime-deps..."
+	@docker container prune -f
+	@docker image prune -a -f --filter "dangling=true"
+	@docker images -q | xargs -r docker inspect --format '{{.Id}} {{.RepoTags}}' | \
+		grep -v 'mcr.microsoft.com/dotnet/sdk:9.0-preview' | \
+		grep -v 'mcr.microsoft.com/dotnet/runtime-deps:9.0-preview-alpine' | \
+		awk '{print $$1}' | xargs -r docker rmi -f
 	@docker builder prune -f
-
 
 ## Install alias permanently in shell profile
 alias:
@@ -44,4 +50,4 @@ alias:
 
 ## Run a vulnerability assessment of the compiled image
 scan:
-	grype $(IMAGE_NAME):$(IMAGE_TAG)
+grype $(IMAGE_NAME): $(IMAGE_TAG)

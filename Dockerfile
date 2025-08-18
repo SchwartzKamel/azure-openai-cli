@@ -33,7 +33,6 @@ RUN apk add --no-cache \
     icu-libs \
  && apk upgrade --no-cache \
  && rm -rf /var/cache/apk/*
-# GOOD... GOOD... let the upgrades flow through you. Eliminate all known vulnerabilities.
 
 # Copy published app in one step
 COPY --from=build /app/AzureOpenAI_CLI /app/AzureOpenAI_CLI
