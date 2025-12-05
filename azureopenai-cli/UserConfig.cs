@@ -30,7 +30,7 @@ public class UserConfig
                 return JsonSerializer.Deserialize<UserConfig>(json) ?? new UserConfig();
             }
         }
-        catch
+        catch (Exception)
         {
             // If there's any error reading the config, return a new instance
         }

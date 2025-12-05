@@ -58,7 +58,7 @@ class Program
             // Use the active model from user config, falling back to the first model in the list
             var deploymentName = config.ActiveModel 
                 ?? config.AvailableModels.FirstOrDefault() 
-                ?? throw new ArgumentNullException(nameof(azureOpenAiModel), "Azure OpenAI model is not set.");
+                ?? throw new InvalidOperationException("Azure OpenAI model is not set. Configure AZUREOPENAIMODEL in your .env file.");
             var apiKey = azureOpenAiApiKey;
 
             AzureOpenAIClient azureClient = new(
