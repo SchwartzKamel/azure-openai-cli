@@ -58,7 +58,7 @@ public static class SlashCommandParser
         result.IsSlashCommand = true;
 
         // Remove the leading '/'
-        string commandPart = trimmed.Substring(1);
+        string commandPart = trimmed[1..];
 
         if (string.IsNullOrWhiteSpace(commandPart))
         {
@@ -76,8 +76,8 @@ public static class SlashCommandParser
         }
         else
         {
-            result.CommandName = commandPart.Substring(0, spaceIndex).ToLowerInvariant();
-            result.Arguments = commandPart.Substring(spaceIndex + 1).Trim();
+            result.CommandName = commandPart[..spaceIndex].ToLowerInvariant();
+            result.Arguments = commandPart[(spaceIndex + 1)..].Trim();
         }
 
         // Validate the command

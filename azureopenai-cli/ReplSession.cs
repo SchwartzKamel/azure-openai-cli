@@ -25,10 +25,14 @@ public class SessionExitResult
 /// </summary>
 public class ReplSession
 {
+    private const int DefaultMaxTurns = 100;
+    private const int MessagesPerTurn = 2;  // user + assistant messages per turn
+    private const int NearLimitThreshold = 5;
+
     private readonly List<SessionMessage> _messages = new();
     private bool _isActive = false;
     private string? _systemPrompt;
-    private int _maxTurns = 100;
+    private int _maxTurns = DefaultMaxTurns;
 
     public IReadOnlyList<SessionMessage> Messages => _messages.AsReadOnly();
     public bool IsActive => _isActive;
@@ -123,7 +127,7 @@ public class ReplSession
     {
         // Count turns (user + assistant pairs)
         var nonSystemMessages = _messages.Where(m => m.Role != "system").ToList();
-        int messagesToTake = Math.Min(lastNTurns * 2, nonSystemMessages.Count);
+        int messagesToTake = Math.Min(lastNTurns * MessagesPerTurn, nonSystemMessages.Count);
         
         return nonSystemMessages.TakeLast(messagesToTake).ToList().AsReadOnly();
     }
@@ -198,6 +202,6 @@ public class ReplSession
     /// </summary>
     public bool IsNearLimit()
     {
-        return GetTurnCount() >= MaxTurns - 5;
+        return GetTurnCount() >= MaxTurns - NearLimitThreshold;
     }
 }
