@@ -93,7 +93,8 @@ MAKEFILE="${BATS_TEST_DIRNAME}/../Makefile"
 
 @test "Dockerfile cleans package cache in runtime stage" {
     # Should clean apk cache in the same layer as install
-    grep "apk" "$DOCKERFILE" | grep -q "rm -rf /var/cache/apk"
+    # Check for rm -rf /var/cache/apk in any line (multi-line RUN commands)
+    grep -q "rm -rf /var/cache/apk" "$DOCKERFILE"
 }
 
 @test "Dockerfile uses apk --no-cache flag" {
@@ -131,7 +132,8 @@ MAKEFILE="${BATS_TEST_DIRNAME}/../Makefile"
     # If apt-get is used, it should be cleaned in same layer
     # This test passes if apt-get is not used OR if it cleans properly
     if grep -q "apt-get install" "$DOCKERFILE"; then
-        grep "apt-get install" "$DOCKERFILE" | grep -q "apt-get clean\|rm -rf /var/lib/apt/lists"
+        # Check that apt-get clean or rm -rf /var/lib/apt/lists exists somewhere in the Dockerfile
+        grep -q "apt-get clean\|rm -rf /var/lib/apt/lists" "$DOCKERFILE"
     fi
 }
 

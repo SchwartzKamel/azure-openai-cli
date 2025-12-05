@@ -157,7 +157,7 @@ else
 fi
 
 # Test: apk cache cleaned
-if grep "apk" "$DOCKERFILE" | grep -q "rm -rf /var/cache/apk"; then
+if grep -q "rm -rf /var/cache/apk" "$DOCKERFILE"; then
     pass "Dockerfile cleans package cache in runtime stage"
 else
     fail "Dockerfile cleans package cache in runtime stage"
@@ -214,7 +214,8 @@ fi
 
 # Test: No uncleaned apt-get
 if grep -q "apt-get install" "$DOCKERFILE"; then
-    if grep "apt-get install" "$DOCKERFILE" | grep -q "apt-get clean\|rm -rf /var/lib/apt/lists"; then
+    # Check that apt-get clean or rm -rf /var/lib/apt/lists exists somewhere in the Dockerfile
+    if grep -q "apt-get clean\|rm -rf /var/lib/apt/lists" "$DOCKERFILE"; then
         pass "Dockerfile does NOT run apt-get without cleaning"
     else
         fail "Dockerfile does NOT run apt-get without cleaning"
