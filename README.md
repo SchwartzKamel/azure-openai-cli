@@ -48,7 +48,8 @@ Follow Microsoft’s official documentation to set up Azure OpenAI and obtain:
 **Sample `.env` file with placeholders:**
 ```ini
 AZUREOPENAIENDPOINT=https://your-resource.openai.azure.com/
-AZUREOPENAIMODEL=your-model-deployment
+# Single model or comma-separated list of models
+AZUREOPENAIMODEL=gpt-4,gpt-35-turbo,gpt-4o
 AZUREOPENAIAPI=your-api-key
 SYSTEMPROMPT=You are a helpful AI assistant
 ```
@@ -72,10 +73,44 @@ make run ARGS="Explain quantum computing in simple terms"
 Edit `.env` file:
 ```ini
 AZUREOPENAIENDPOINT=https://your-resource.openai.azure.com/
-AZUREOPENAIMODEL=your-deployment-name
+# Single model or comma-separated list for model switching
+AZUREOPENAIMODEL=gpt-4,gpt-35-turbo,gpt-4o
 AZUREOPENAIAPI=your-api-key
 SYSTEMPROMPT=You are a helpful AI assistant
 ```
+
+## :repeat: Model Selection
+
+If you have multiple Azure OpenAI model deployments, you can configure and switch between them:
+
+**Configure multiple models** in your `.env` file (comma-separated):
+```ini
+AZUREOPENAIMODEL=gpt-4,gpt-35-turbo,gpt-4o
+```
+
+**Available commands:**
+```bash
+# List all available models (* marks the active one)
+make run ARGS="--models"
+
+# Show the currently active model
+make run ARGS="--current-model"
+
+# Switch to a different model
+make run ARGS="--set-model gpt-4o"
+```
+
+**Example output:**
+```
+Available models:
+  gpt-4
+→ gpt-35-turbo *
+  gpt-4o
+
+Config file: ~/.azureopenai-cli.json
+```
+
+Your model selection is persisted in `~/.azureopenai-cli.json` and will be remembered across sessions.
 
 ## Glossary
 
