@@ -6,7 +6,7 @@ BUILD_CTX := azureopenai-cli
 
 DOCKER_CMD := docker run --rm $(FULL_IMAGE)
 
-.PHONY: all build run clean alias scan test
+.PHONY: all build run clean alias scan test test-docker-optimization
 
 all: build
 
@@ -57,3 +57,12 @@ scan:
 ## Test with a question about cats
 test: clean build
 	make run ARGS="Tell me some unusual facts about cats"
+
+## Run Docker image optimization tests
+test-docker-optimization:
+	@echo ">> Running Docker image optimization tests..."
+	@if command -v bats >/dev/null 2>&1; then \
+		bats tests/docker-image-optimization.bats; \
+	else \
+		./tests/docker-image-optimization.sh; \
+	fi
