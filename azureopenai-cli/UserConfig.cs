@@ -27,7 +27,7 @@ public class UserConfig
             if (File.Exists(ConfigFilePath))
             {
                 string json = File.ReadAllText(ConfigFilePath);
-                return JsonSerializer.Deserialize<UserConfig>(json) ?? new UserConfig();
+                return JsonSerializer.Deserialize<UserConfig>(json, UserConfigJsonContext.Default.UserConfig) ?? new UserConfig();
             }
         }
         catch (Exception)
@@ -44,8 +44,9 @@ public class UserConfig
     {
         try
         {
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            string json = JsonSerializer.Serialize(this, options);
+            // Use the source-generated context to avoid trimming issues when publishing
+            // as a single-file/trimmed app.
+            string json = JsonSerializer.Serialize(this, UserConfigJsonContext.Default.UserConfig);
             File.WriteAllText(ConfigFilePath, json);
         }
         catch (Exception ex)

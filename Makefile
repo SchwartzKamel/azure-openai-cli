@@ -1,5 +1,8 @@
 IMAGE_NAME := azureopenai-cli
-IMAGE_TAG := sealed
+# Use the current git branch as the default image tag (sanitized)
+BUILD_TAG := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null | sed 's/[^a-zA-Z0-9._-]/_/g')
+# Allow overriding IMAGE_TAG externally but default to current branch name
+IMAGE_TAG ?= $(BUILD_TAG)
 FULL_IMAGE := $(IMAGE_NAME):$(IMAGE_TAG)
 DOCKERFILE := Dockerfile
 BUILD_CTX := azureopenai-cli
@@ -11,11 +14,10 @@ DOCKER_CMD := docker run --rm $(FULL_IMAGE)
 all: build
 
 ## Build: standard docker build
+## Build: standard docker build
 build:
 	@echo ">> Building $(FULL_IMAGE)"
-	@docker buildx build \
--t $(FULL_IMAGE) \
-		-f $(DOCKERFILE) .
+	@docker buildx build -t $(FULL_IMAGE) -f $(DOCKERFILE) $(BUILD_CTX)
 
 ## Run: make run ARGS="your prompt here"
 run:
@@ -23,8 +25,21 @@ run:
 		echo "Error: Container image $(FULL_IMAGE) not found. Run 'make build' first."; \
 		exit 1; \
 	fi
-	@docker run --rm \
-		$(FULL_IMAGE) $(ARGS)
+	@ENVFILE="$(PWD)/$(BUILD_CTX)/.env"; \
+	if [ -f "$$ENVFILE" ]; then \
+		DOCKENV="--env-file=$$ENVFILE"; \
+	else \
+		DOCKENV=""; \
+	fi; \
+	@docker run --rm $$DOCKENV $(FULL_IMAGE) $(ARGS)
+
+## Run natively (local dev)
+run-local:
+	@dotnet run --project $(BUILD_CTX) -- $(ARGS)
+
+## Publish locally (single-file)
+build-local:
+	@dotnet publish $(BUILD_CTX) -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true /p:PublishTrimmed=true -o ./publish
 
 ## Clean dangling images
 clean:
@@ -66,3 +81,6 @@ test-docker-optimization:
 	else \
 		./tests/docker-image-optimization.sh; \
 	fi
+
+help:
+	@echo "Targets: build, run, run-local, build-local, test, clean, alias, scan, test-docker-optimization"
