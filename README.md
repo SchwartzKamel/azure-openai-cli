@@ -1,5 +1,14 @@
 # Azure OpenAI CLI :robot:
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
+[![Docker](https://img.shields.io/badge/Docker-Alpine-2496ED?logo=docker)](Dockerfile)
+
+## Documentation
+
+- [Architecture](ARCHITECTURE.md) — system design and component details
+- [Security](SECURITY.md) — security model, credential management, hardening
+
 ## Introduction
 
 Azure OpenAI is a cloud-based service from Microsoft that provides secure access to powerful OpenAI language models through Azure’s infrastructure.
@@ -39,45 +48,45 @@ flowchart TB
 
 > **Note:** All `make` commands shown in this README **must** be run from the repository root directory.
 
-You will also need to create a `.env` file **before** building the CLI.
+You will need Azure OpenAI credentials before running the CLI.
 Follow Microsoft’s official documentation to set up Azure OpenAI and obtain:
 - **Endpoint URL** – [Azure OpenAI endpoint setup guide](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource)
 - **Model Deployment Name** – [Model deployment guide](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/deploy-models)
 - **API Key** – [Get your API key](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource#retrieve-key-and-endpoint)
 
-**Sample `.env` file with placeholders:**
-```ini
-AZUREOPENAIENDPOINT=https://your-resource.openai.azure.com/
-# Single model or comma-separated list of models
-AZUREOPENAIMODEL=gpt-4,gpt-35-turbo,gpt-4o
-AZUREOPENAIAPI=your-api-key
-SYSTEMPROMPT=You are a helpful AI assistant
-```
+> **Security:** Credentials are **never baked into the Docker image**. They are injected at runtime via `--env-file`. See [Security](SECURITY.md) for details.
 
 ```bash
 # 1. Clone repository
 git clone https://github.com/SchwartzKamel/azure-openai-cli.git
 cd azure-openai-cli
 
-# 2. Configure environment
-cp azureopenai-cli/.env.example azureopenai-cli/.env
-nano azureopenai-cli/.env  # Add your Azure credentials
+# 2. Create your .env file from the template
+cp azureopenai-cli/.env.example .env
+nano .env  # Add your Azure credentials
 
-# 3. Build & Run
+# 3. Build the image (no credentials needed at build time)
 make build
+
+# 4. Run (credentials injected at runtime via --env-file)
 make run ARGS="Explain quantum computing in simple terms"
 ```
 
 ## :wrench: Configuration
 
-Edit `.env` file:
-```ini
-AZUREOPENAIENDPOINT=https://your-resource.openai.azure.com/
-# Single model or comma-separated list for model switching
-AZUREOPENAIMODEL=gpt-4,gpt-35-turbo,gpt-4o
-AZUREOPENAIAPI=your-api-key
-SYSTEMPROMPT=You are a helpful AI assistant
-```
+Edit the `.env` file you created during setup. See `azureopenai-cli/.env.example` for the template.
+
+### Configuration Reference
+
+| Variable | Source | Default | Description |
+|----------|--------|---------|-------------|
+| `AZUREOPENAIENDPOINT` | `.env` | *(required)* | Azure OpenAI endpoint URL |
+| `AZUREOPENAIAPI` | `.env` | *(required)* | Azure OpenAI API key |
+| `AZUREOPENAIMODEL` | `.env` | *(required)* | Model deployment name(s), comma-separated |
+| `SYSTEMPROMPT` | `.env` | *(built-in)* | System prompt for the AI |
+| `AZURE_MAX_TOKENS` | `.env` | `10000` | Maximum output tokens |
+| `AZURE_TEMPERATURE` | `.env` | `0.55` | Response temperature (0.0–1.0) |
+| `AZURE_TIMEOUT` | `.env` | `120` | Streaming timeout in seconds |
 
 ## :repeat: Model Selection
 
@@ -221,11 +230,14 @@ make --version
 
 ## :beginner: Tips for New Users
  1. **Test your setup** with `make run ARGS="Hello world!"`
- 2. Use `make alias` to create shortcut: `az-ai "your prompt"`
- 3. Check Docker logs if you get timeout errors
- 4. Keep your `.env` file secure - never commit it!
+ 2. Run `make help` to see all available targets
+ 3. Use `make alias` to create shortcut: `az-ai "your prompt"`
+ 4. Check Docker logs if you get timeout errors
+ 5. Keep your `.env` file secure - never commit it!
 
 ## :octopus: Architecture Overview
+
+For full details, see [Architecture](ARCHITECTURE.md).
 
 ```mermaid
 graph TD
@@ -246,11 +258,34 @@ graph TD
 
 Your `.env` file contains sensitive information such as API keys and endpoints.
 This file is intentionally listed in `.gitignore` so it will not be committed to version control.
+Credentials are injected at runtime via `--env-file` and are never embedded in the Docker image.
+
+For comprehensive security guidance, see [Security](SECURITY.md).
 
 **Best Practices:**
 - Never share your `.env` file publicly.
 - If you suspect your API key has been exposed, regenerate it immediately in the Azure Portal.
 - Keep backups of `.env` files in secure, encrypted storage if needed.
+
+---
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0`  | Success |
+| `1`  | Validation / usage error |
+| `2`  | Azure API error |
+| `3`  | Timeout |
+| `99` | Unhandled error |
+
+---
+
+## SDK Dependency Note
+
+This project uses `Azure.AI.OpenAI` version **2.3.0-beta.1** (pre-release).
+The package will be updated to a stable release once Microsoft publishes one.
+See [Dependency Security](SECURITY.md#7-dependency-security) for scanning and update guidance.
 
 ---
 
