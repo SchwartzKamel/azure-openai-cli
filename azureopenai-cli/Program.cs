@@ -136,9 +136,17 @@ class Program
             string argsPrompt = args.Length > 0 ? string.Join(' ', args) : "";
             string? stdinContent = null;
 
-            if (Console.IsInputRedirected)
+            if (Console.IsInputRedirected && Console.In.Peek() != -1)
             {
-                stdinContent = Console.In.ReadToEnd();
+                const int maxStdinBytes = 1_048_576; // 1 MB cap to prevent DoS
+                char[] buffer = new char[maxStdinBytes];
+                int charsRead = Console.In.ReadBlock(buffer, 0, maxStdinBytes);
+                if (Console.In.Peek() != -1)
+                {
+                    Console.Error.WriteLine("Error: stdin input exceeds 1 MB limit.");
+                    return 1;
+                }
+                stdinContent = new string(buffer, 0, charsRead);
                 if (string.IsNullOrWhiteSpace(stdinContent))
                     stdinContent = null;
             }
@@ -188,9 +196,9 @@ class Program
             if (string.IsNullOrWhiteSpace(azureOpenAiEndpoint))
                 throw new ArgumentNullException(nameof(azureOpenAiEndpoint), "Azure OpenAI endpoint is not set.");
             if (!Uri.TryCreate(azureOpenAiEndpoint, UriKind.Absolute, out var endpoint)
-                || (endpoint.Scheme != "https" && endpoint.Scheme != "http"))
+                || endpoint.Scheme != "https")
             {
-                var msg = $"Invalid endpoint URL: '{azureOpenAiEndpoint}'. Must be a valid HTTP/HTTPS URL.";
+                var msg = $"Invalid endpoint URL: '{azureOpenAiEndpoint}'. Must be a valid HTTPS URL.";
                 if (jsonMode)
                 {
                     OutputJsonError(msg, 1);

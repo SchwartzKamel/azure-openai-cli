@@ -7,7 +7,7 @@ BUILD_CTX := azureopenai-cli
 
 DOCKER_CMD := docker run --rm --env-file .env $(FULL_IMAGE)
 
-.PHONY: all build run clean alias scan test smoke-test check help lint
+.PHONY: all build run clean alias scan test integration-test smoke-test check help lint
 
 ## Help: list available make targets (default target)
 help:
@@ -18,6 +18,7 @@ help:
 	@echo "  make alias       - Install 'az-ai' shell alias"
 	@echo "  make scan        - Run vulnerability scan with grype"
 	@echo "  make test        - Run unit tests (xUnit)"
+	@echo "  make integration-test - Run end-to-end integration tests"
 	@echo "  make lint        - Check code formatting (for CI)"
 	@echo "  make smoke-test  - Clean, build, and run a test prompt via Docker"
 	@echo "  make check       - Verify the project builds successfully"
@@ -76,6 +77,10 @@ scan:
 ## Run unit tests
 test: ## Run unit tests
 	dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity minimal
+
+## Run integration tests (end-to-end, uses dotnet run + Docker)
+integration-test: ## Run integration tests
+	bash tests/integration_tests.sh
 
 ## Smoke test: clean, build, and run a test prompt via Docker
 smoke-test: clean build
