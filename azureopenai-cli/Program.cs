@@ -1,4 +1,7 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
 using Azure;
 using Azure.AI.OpenAI;
 using Azure.AI.OpenAI.Chat;
@@ -13,6 +16,13 @@ class Program
 
     static async Task<int> Main(string[] args)
     {
+        // Detect --json flag before any processing
+        bool jsonMode = args.Length > 0 && args[0] == "--json";
+        if (jsonMode)
+        {
+            args = args.Skip(1).ToArray();
+        }
+
         try
         {
             // Always load from the baked‑in .env file
@@ -70,6 +80,11 @@ class Program
             }
             else
             {
+                if (jsonMode)
+                {
+                    OutputJsonError("No prompt provided. Pass a prompt as arguments or pipe via stdin.", 1);
+                    return 1;
+                }
                 ShowUsage();
                 return 1;
             }
@@ -77,7 +92,13 @@ class Program
             // Validate prompt length to prevent abuse and excessive API costs
             if (userPrompt.Length > MAX_PROMPT_LENGTH)
             {
-                Console.Error.WriteLine($"[ERROR] Prompt too long ({userPrompt.Length} chars). Maximum allowed is {MAX_PROMPT_LENGTH} chars.");
+                var msg = $"Prompt too long ({userPrompt.Length} chars). Maximum allowed is {MAX_PROMPT_LENGTH} chars.";
+                if (jsonMode)
+                {
+                    OutputJsonError(msg, 1);
+                    return 1;
+                }
+                Console.Error.WriteLine($"[ERROR] {msg}");
                 return 1;
             }
 
@@ -91,7 +112,13 @@ class Program
             if (!Uri.TryCreate(azureOpenAiEndpoint, UriKind.Absolute, out var endpoint)
                 || (endpoint.Scheme != "https" && endpoint.Scheme != "http"))
             {
-                Console.Error.WriteLine($"[ERROR] Invalid endpoint URL: '{azureOpenAiEndpoint}'. Must be a valid HTTP/HTTPS URL.");
+                var msg = $"Invalid endpoint URL: '{azureOpenAiEndpoint}'. Must be a valid HTTP/HTTPS URL.";
+                if (jsonMode)
+                {
+                    OutputJsonError(msg, 1);
+                    return 1;
+                }
+                Console.Error.WriteLine($"[ERROR] {msg}");
                 return 1;
             }
             
@@ -134,9 +161,13 @@ class Program
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
             var response = chatClient.CompleteChatStreaming(messages, requestOptions, cts.Token);
 
-            // Start spinner on stderr while waiting for first token
+            // JSON mode: collect tokens and measure duration instead of streaming to stdout
+            var stopwatch = jsonMode ? Stopwatch.StartNew() : null;
+            var responseBuilder = jsonMode ? new StringBuilder() : null;
+
+            // Start spinner on stderr while waiting for first token (not in JSON mode)
             using var spinnerCts = new CancellationTokenSource();
-            bool showSpinner = !Console.IsErrorRedirected;
+            bool showSpinner = !jsonMode && !Console.IsErrorRedirected;
             Task? spinnerTask = null;
 
             if (showSpinner)
@@ -172,7 +203,14 @@ class Program
                                 Console.Error.Write("\r              \r"); // clear spinner line
                             }
                         }
-                        System.Console.Write(updatePart.Text);
+                        if (jsonMode)
+                        {
+                            responseBuilder!.Append(updatePart.Text);
+                        }
+                        else
+                        {
+                            System.Console.Write(updatePart.Text);
+                        }
                     }
                 }
             }
@@ -198,7 +236,22 @@ class Program
                 Console.Error.Write("\r              \r");
             }
 
-            System.Console.WriteLine("");
+            if (jsonMode)
+            {
+                stopwatch!.Stop();
+                var jsonOutput = new
+                {
+                    model = deploymentName,
+                    response = responseBuilder!.ToString(),
+                    duration_ms = stopwatch.ElapsedMilliseconds
+                };
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                Console.WriteLine(JsonSerializer.Serialize(jsonOutput, options));
+            }
+            else
+            {
+                System.Console.WriteLine("");
+            }
 
             return 0;
         }
@@ -213,16 +266,31 @@ class Program
                 429 => "Rate limited — too many requests. Wait and retry.",
                 _ => ex.Message,
             };
+            if (jsonMode)
+            {
+                OutputJsonError($"HTTP {status}: {detail}", 2);
+                return 2;
+            }
             Console.Error.WriteLine($"[AZURE ERROR] HTTP {status}: {detail}");
             return 2;
         }
         catch (OperationCanceledException)
         {
+            if (jsonMode)
+            {
+                OutputJsonError("Request timed out. Increase AZURE_TIMEOUT (seconds) if needed.", 3);
+                return 3;
+            }
             Console.Error.WriteLine("[ERROR] Request timed out. Increase AZURE_TIMEOUT (seconds) if needed.");
             return 3;
         }
         catch (Exception ex)
         {
+            if (jsonMode)
+            {
+                OutputJsonError($"{ex.GetType().Name}: {ex.Message}", 99);
+                return 99;
+            }
             Console.Error.WriteLine($"[UNHANDLED ERROR] {ex.GetType().Name}: {ex.Message}");
             return 99;
         }
@@ -355,6 +423,9 @@ class Program
         Console.WriteLine("  --version, -v         Show version information");
         Console.WriteLine("  --help, -h            Show this help message");
         Console.WriteLine();
+        Console.WriteLine("Options:");
+        Console.WriteLine("  --json                Output response as JSON (for scripting)");
+        Console.WriteLine();
         Console.WriteLine("Piping:");
         Console.WriteLine("  echo \"question\" | azureopenai-cli");
         Console.WriteLine("  git diff | azureopenai-cli \"review this code\"");
@@ -364,6 +435,8 @@ class Program
         Console.WriteLine("  azureopenai-cli \"Explain quantum computing\"");
         Console.WriteLine("  azureopenai-cli --models");
         Console.WriteLine("  azureopenai-cli --set-model gpt-4o");
+        Console.WriteLine("  azureopenai-cli --json \"What is Docker?\"");
+        Console.WriteLine("  echo \"code\" | azureopenai-cli --json \"review this\"");
     }
 
     /// <summary>
@@ -383,5 +456,20 @@ class Program
         string? value = Environment.GetEnvironmentVariable(envVar);
         return float.TryParse(value, System.Globalization.NumberStyles.Float,
             System.Globalization.CultureInfo.InvariantCulture, out float result) ? result : defaultValue;
+    }
+
+    /// <summary>
+    /// Outputs a JSON-formatted error to stdout for --json mode.
+    /// </summary>
+    static void OutputJsonError(string message, int exitCode)
+    {
+        var errorObj = new
+        {
+            error = true,
+            message = message,
+            exit_code = exitCode
+        };
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        Console.WriteLine(JsonSerializer.Serialize(errorObj, options));
     }
 }
