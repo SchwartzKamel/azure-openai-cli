@@ -16,7 +16,7 @@ Azure OpenAI CLI is a secure, containerized command-line interface for interacti
 
 ```mermaid
 flowchart LR
-    User[User / Terminal]
+    User[User / Terminal / Pipe]
     subgraph Docker Container
         CLI[CLI Binary<br/>AzureOpenAI_CLI]
         ENV[.env File]
@@ -24,12 +24,12 @@ flowchart LR
     end
     API[Azure OpenAI API]
 
-    User -->|prompt / flags| CLI
+    User -->|prompt / flags / stdin| CLI
     ENV -.->|credentials & defaults| CLI
     CFG -.->|model preferences| CLI
     CLI -->|HTTPS streaming request| API
     API -->|chunked SSE response| CLI
-    CLI -->|streamed text| User
+    CLI -->|streamed text or JSON| User
 ```
 
 | Component | Responsibility |
@@ -55,6 +55,52 @@ flowchart LR
 2. **Load UserConfig** — Deserializes `~/.azureopenai-cli.json` (if it exists) to retrieve saved model preferences.
 3. **Initialize models** — Parses the `AZUREOPENAIMODEL` environment variable (comma-separated) and reconciles it with the persisted config.
 
+#### `--json` output mode
+
+When the first argument is `--json`, the flag is consumed and the CLI switches to machine-readable output:
+
+- A `StringBuilder` collects all streamed tokens instead of printing them to stdout.
+- A `Stopwatch` records wall-clock duration from the first API call.
+- On success, a JSON object is written to stdout: `{ "model", "response", "duration_ms" }`.
+- On error, the `OutputJsonError(message, exitCode)` helper emits `{ "error": true, "message", "exit_code" }`.
+
+#### `--version` command
+
+`--version` / `-v` reads the assembly version via `Assembly.GetEntryAssembly()?.GetName().Version` and prints `Azure OpenAI CLI v<major.minor.patch>`.
+
+#### Stdin pipe support
+
+The CLI detects piped input with `Console.IsInputRedirected` and reads it via `Console.In.ReadToEnd()`.
+
+| Scenario | Resulting prompt |
+|---|---|
+| Args only | `string.Join(' ', args)` |
+| Stdin only | Raw stdin content |
+| Stdin + args | `"{stdin}\n\n{args}"` — piped content first, then the user instruction |
+| Neither | Show usage / JSON error; exit `1` |
+
+The combined prompt is validated against `MAX_PROMPT_LENGTH` (32 000 chars) before being sent to the API.
+
+#### Spinner
+
+While waiting for the first token from Azure, a braille spinner (`⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏`) animates on stderr:
+
+- Launched as a background `Task.Run` with its own `CancellationTokenSource`.
+- Writes exclusively to `Console.Error` so stdout remains clean for piping.
+- Suppressed when stderr is redirected (`Console.IsErrorRedirected`) or in `--json` mode.
+- Cancelled and cleared (with a carriage-return overwrite) as soon as the first token arrives.
+
+#### CLI flags
+
+| Flag | Description |
+|---|---|
+| `--help`, `-h` | Show usage information |
+| `--version`, `-v` | Show assembly version |
+| `--json` | Output response as JSON (for scripting) |
+| `--models`, `--list-models` | List available models (`→` / `*` marks active) |
+| `--current-model` | Show the currently active model |
+| `--set-model <name>` | Switch the active model |
+
 #### Command routing
 
 | Argument | Action | Exit Code |
@@ -62,21 +108,33 @@ flowchart LR
 | `--models` / `--list-models` | Print available models; mark the active one with `→` and `*`. | `0` |
 | `--current-model` | Print the active model name. | `0` (set) / `1` (unset) |
 | `--set-model <name>` | Validate the name against available models, persist the choice. | `0` (success) / `1` (error) |
+| `--version` / `-v` | Print assembly version. | `0` |
 | `--help` / `-h` | Print usage information. | `0` |
-| _(any other text)_ | Treated as a prompt — all args are joined with spaces. | `0` (success) / `99` (unhandled error) |
-| _(no args)_ | Print usage information. | `1` |
+| _(any other text)_ | Treated as a prompt — all args are joined with spaces. | `0` (success) / non-zero on error |
+| _(no args)_ | Print usage information (or JSON error in `--json` mode). | `1` |
 
 #### Chat completion flow
 
 1. Build an `AzureOpenAIClient` with the endpoint URI and API key credential.
 2. Obtain a `ChatClient` scoped to the active deployment name.
-3. Construct a `ChatCompletionOptions` with hardcoded defaults (`MaxOutputTokenCount=10000`, `Temperature=0.55`, `TopP=1.0`).
-4. Send a two-message conversation (`SystemChatMessage` + `UserChatMessage`) via `CompleteChatStreaming`.
-5. Iterate `StreamingChatCompletionUpdate` chunks, writing each content part to stdout in real time.
+3. Read `AZURE_MAX_TOKENS`, `AZURE_TEMPERATURE`, and `AZURE_TIMEOUT` from environment variables (with fallback defaults).
+4. Construct a `ChatCompletionOptions` with those values (`TopP=1.0`, `FrequencyPenalty=0.0`, `PresencePenalty=0.0`).
+5. Send a two-message conversation (`SystemChatMessage` + `UserChatMessage`) via `CompleteChatStreaming`, wrapped in a `CancellationTokenSource` with the configured timeout.
+6. Start the spinner on stderr (if TTY and not `--json` mode).
+7. Iterate `StreamingChatCompletionUpdate` chunks, writing each content part to stdout in real time — or collecting them in a `StringBuilder` when `--json` is active.
+8. On completion in `--json` mode, emit the JSON result with model name, full response text, and elapsed milliseconds.
 
-#### Error handling
+#### Error handling & exit codes
 
-All exceptions are caught at the top level and written to stderr in the format `[UNHANDLED ERROR] <Type>: <Message>`. The process exits with code `99` on any unhandled error.
+Errors are caught at the top level and routed through `--json`-aware paths:
+
+| Exit Code | Condition | Output |
+|---|---|---|
+| `0` | Success | Streamed text or JSON result |
+| `1` | Validation / usage error (missing prompt, bad endpoint, prompt too long, unknown model) | `[ERROR]` on stderr or JSON error |
+| `2` | Azure API error (`RequestFailedException`) — includes HTTP status and human-readable detail for 401/403/404/429 | `[AZURE ERROR]` on stderr or JSON error |
+| `3` | Timeout (`OperationCanceledException`) — streaming exceeded `AZURE_TIMEOUT` seconds | `[ERROR]` on stderr or JSON error |
+| `99` | Unhandled exception | `[UNHANDLED ERROR]` on stderr or JSON error |
 
 ---
 
@@ -154,31 +212,54 @@ flowchart TD
 
 ## 5. Data Flow
 
-### Prompt → Response
+### Prompt → Response (with stdin support)
 
 ```mermaid
 sequenceDiagram
-    participant U as User
+    participant P as User / Pipe
     participant D as Docker
     participant CLI as CLI Binary
     participant Env as .env
     participant Cfg as UserConfig JSON
     participant API as Azure OpenAI
 
-    U->>D: make run ARGS="Explain quantum computing"
-    D->>CLI: ./AzureOpenAI_CLI Explain quantum computing
+    P->>D: make run ARGS="..." or pipe via stdin
+    D->>CLI: ./AzureOpenAI_CLI [--json] [args...]
+
+    CLI->>CLI: Detect --json flag
     CLI->>Env: DotEnv.Load()
     Env-->>CLI: endpoint, key, model(s), system prompt
     CLI->>Cfg: UserConfig.Load()
     Cfg-->>CLI: active model, available models
-    CLI->>CLI: Join args → user prompt
+
+    alt Console.IsInputRedirected
+        P-->>CLI: stdin content (Console.In.ReadToEnd)
+    end
+
+    CLI->>CLI: Combine stdin + args → user prompt
+    CLI->>CLI: Validate prompt length (≤ 32 000 chars)
+
     CLI->>CLI: Build AzureOpenAIClient + ChatClient
-    CLI->>API: CompleteChatStreaming([system, user])
+    CLI->>API: CompleteChatStreaming([system, user], timeout)
+
+    alt Not --json and TTY stderr
+        CLI->>CLI: Start spinner on stderr (Task.Run)
+    end
+
     loop Streaming chunks
         API-->>CLI: StreamingChatCompletionUpdate
-        CLI-->>U: Console.Write(chunk.Text)
+        alt --json mode
+            CLI->>CLI: StringBuilder.Append(chunk)
+        else text mode
+            CLI-->>P: Console.Write(chunk.Text)
+        end
     end
-    CLI-->>U: newline + exit code 0
+
+    alt --json mode
+        CLI-->>P: JSON { model, response, duration_ms }
+    else text mode
+        CLI-->>P: newline + exit code 0
+    end
 ```
 
 ### Configuration flow
@@ -206,15 +287,28 @@ UserConfig.ActiveModel ───────────────────
 | UserConfig JSON | `ActiveModel` | Currently selected model deployment |
 | | `AvailableModels` | Full list of configured models |
 
+### Environment variable overrides
+
+These environment variables tune API request parameters. They are read via helper methods (`TryParseEnvInt`, `TryParseEnvFloat`) and fall back to sensible defaults when absent or unparseable.
+
+| Variable | Default | Description |
+|---|---|---|
+| `AZURE_MAX_TOKENS` | `10000` | Maximum output tokens (`MaxOutputTokenCount`) |
+| `AZURE_TEMPERATURE` | `0.55` | Response temperature (0.0 – 2.0) |
+| `AZURE_TIMEOUT` | `120` | Streaming timeout in seconds (`CancellationTokenSource`) |
+
 ### Hardcoded defaults (in `Program.cs`)
 
-| Parameter | Value |
-|---|---|
-| `MaxOutputTokenCount` | `10000` |
-| `Temperature` | `0.55` |
-| `TopP` | `1.0` |
-| `FrequencyPenalty` | `0.0` |
-| `PresencePenalty` | `0.0` |
+These values are used when no environment variable override is set, or for parameters that have no environment variable:
+
+| Parameter | Value | Overridable via |
+|---|---|---|
+| `MaxOutputTokenCount` | `10000` | `AZURE_MAX_TOKENS` |
+| `Temperature` | `0.55` | `AZURE_TEMPERATURE` |
+| `TopP` | `1.0` | — |
+| `FrequencyPenalty` | `0.0` | — |
+| `PresencePenalty` | `0.0` | — |
+| `MAX_PROMPT_LENGTH` | `32000` | — (compile-time constant) |
 
 ### Precedence rules
 
@@ -226,7 +320,7 @@ UserConfig.ActiveModel ───────────────────
 
 ## 7. Security Architecture
 
-> **Note:** No `SECURITY.md` file exists yet. The security posture is documented here.
+> See also [`SECURITY.md`](SECURITY.md) for the vulnerability reporting policy.
 
 ### Containerization boundary
 
@@ -257,22 +351,38 @@ UserConfig.ActiveModel ───────────────────
 
 ```
 azure-openai-cli/
-├── ARCHITECTURE.md              # This file
-├── Dockerfile                   # Multi-stage build (SDK → Alpine runtime)
-├── IMPLEMENTATION_PLAN.md       # Development roadmap
-├── LICENSE                      # Project license
-├── Makefile                     # Build, run, clean, scan, alias targets
-├── README.md                    # User-facing documentation
-├── azure-openai-cli.sln         # .NET solution file
-├── azureopenai-cli/             # Application source
-│   ├── .env.example             # Template for Azure credentials
-│   ├── .env                     # Actual credentials (git-ignored)
-│   ├── AzureOpenAI_CLI.csproj   # Project file (net10.0, package refs)
-│   ├── Program.cs               # Entry point, command routing, chat flow
-│   └── UserConfig.cs            # JSON-based model config manager
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.md            # Bug report template
+│   │   └── feature_request.md       # Feature request template
+│   ├── agents/                      # Copilot agent configuration
+│   ├── pull_request_template.md     # PR template
+│   └── workflows/
+│       └── ci.yml                   # CI pipeline (build + test)
+├── ARCHITECTURE.md                  # This file
+├── CODE_OF_CONDUCT.md               # Community code of conduct
+├── CONTRIBUTING.md                  # Contribution guidelines
+├── Dockerfile                       # Multi-stage build (SDK → Alpine runtime)
+├── IMPLEMENTATION_PLAN.md           # Development roadmap
+├── LICENSE                          # Project license
+├── Makefile                         # Build, run, clean, scan, alias targets
+├── README.md                        # User-facing documentation
+├── SECURITY.md                      # Vulnerability reporting policy
+├── azure-openai-cli.sln             # .NET solution file
+├── azureopenai-cli/                 # Application source
+│   ├── .env.example                 # Template for Azure credentials
+│   ├── .env                         # Actual credentials (git-ignored)
+│   ├── AzureOpenAI_CLI.csproj       # Project file (net10.0, package refs)
+│   ├── Program.cs                   # Entry point, command routing, chat flow
+│   └── UserConfig.cs                # JSON-based model config manager
+├── tests/
+│   └── AzureOpenAI_CLI.Tests/
+│       ├── AzureOpenAI_CLI.Tests.csproj  # Test project (xUnit)
+│       ├── ProgramTests.cs               # Program integration tests
+│       └── UserConfigTests.cs            # UserConfig unit tests
 ├── docs/
-│   └── proposals/               # Design proposals
-└── img/                         # Screenshots and demo GIFs
+│   └── proposals/                   # Design proposals
+└── img/                             # Screenshots and demo GIFs
 ```
 
 ---
