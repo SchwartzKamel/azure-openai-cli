@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace AzureOpenAI_CLI;
@@ -30,9 +31,17 @@ public class UserConfig
                 return JsonSerializer.Deserialize<UserConfig>(json) ?? new UserConfig();
             }
         }
-        catch (Exception)
+        catch (JsonException ex)
         {
-            // If there's any error reading the config, return a new instance
+            Console.Error.WriteLine($"[WARNING] Config file has invalid JSON, using defaults: {ex.Message}");
+        }
+        catch (IOException ex)
+        {
+            Console.Error.WriteLine($"[WARNING] Could not read config file: {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Console.Error.WriteLine($"[WARNING] Permission denied reading config: {ex.Message}");
         }
         return new UserConfig();
     }
@@ -47,10 +56,34 @@ public class UserConfig
             var options = new JsonSerializerOptions { WriteIndented = true };
             string json = JsonSerializer.Serialize(this, options);
             File.WriteAllText(ConfigFilePath, json);
+            SetRestrictivePermissions(ConfigFilePath);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
             Console.Error.WriteLine($"[WARNING] Could not save config: {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Console.Error.WriteLine($"[WARNING] Permission denied saving config: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Sets owner-only (600) permissions on Unix to protect config file.
+    /// </summary>
+    private static void SetRestrictivePermissions(string filePath)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                File.SetUnixFileMode(filePath,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
+            catch (Exception)
+            {
+                // Best-effort; not all filesystems support Unix permissions
+            }
         }
     }
 

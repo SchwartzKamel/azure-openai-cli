@@ -7,6 +7,9 @@ using AzureOpenAI_CLI;
 
 class Program
 {
+    // Security: Cap prompt size to prevent abuse and excessive API costs
+    private const int MAX_PROMPT_LENGTH = 32000;
+
     static int Main(string[] args)
     {
         try
@@ -48,12 +51,26 @@ class Program
 
             string userPrompt = string.Join(' ', args);
 
-            if (string.IsNullOrEmpty(azureOpenAiEndpoint))
-                throw new ArgumentNullException(nameof(azureOpenAiEndpoint), "Azure OpenAI endpoint is not set.");
-            if (string.IsNullOrEmpty(azureOpenAiApiKey))
+            // Validate prompt length to prevent abuse and excessive API costs
+            if (userPrompt.Length > MAX_PROMPT_LENGTH)
+            {
+                Console.Error.WriteLine($"[ERROR] Prompt too long ({userPrompt.Length} chars). Maximum allowed is {MAX_PROMPT_LENGTH} chars.");
+                return 1;
+            }
+
+            // Early validation: API key must not be empty/whitespace
+            if (string.IsNullOrWhiteSpace(azureOpenAiApiKey))
                 throw new ArgumentNullException(nameof(azureOpenAiApiKey), "Azure OpenAI API key is not set.");
 
-            var endpoint = new Uri(azureOpenAiEndpoint);
+            // Early validation: endpoint must be a valid URL
+            if (string.IsNullOrWhiteSpace(azureOpenAiEndpoint))
+                throw new ArgumentNullException(nameof(azureOpenAiEndpoint), "Azure OpenAI endpoint is not set.");
+            if (!Uri.TryCreate(azureOpenAiEndpoint, UriKind.Absolute, out var endpoint)
+                || (endpoint.Scheme != "https" && endpoint.Scheme != "http"))
+            {
+                Console.Error.WriteLine($"[ERROR] Invalid endpoint URL: '{azureOpenAiEndpoint}'. Must be a valid HTTP/HTTPS URL.");
+                return 1;
+            }
             
             // Use the active model from user config, falling back to the first model in the list
             var deploymentName = config.ActiveModel 
@@ -66,10 +83,15 @@ class Program
                 new AzureKeyCredential(apiKey));
             ChatClient chatClient = azureClient.GetChatClient(deploymentName);
 
+            // Read configurable parameters from environment, with sensible defaults
+            int maxTokens = TryParseEnvInt("AZURE_MAX_TOKENS", 10000);
+            float temperature = TryParseEnvFloat("AZURE_TEMPERATURE", 0.55f);
+            int timeoutSeconds = TryParseEnvInt("AZURE_TIMEOUT", 120);
+
             var requestOptions = new ChatCompletionOptions()
             {
-                MaxOutputTokenCount = 10000,
-                Temperature = 0.55f,
+                MaxOutputTokenCount = maxTokens,
+                Temperature = temperature,
                 TopP = 1.0f,
                 FrequencyPenalty = 0.0f,
                 PresencePenalty = 0.0f,
@@ -85,7 +107,9 @@ class Program
                 new UserChatMessage(userPrompt),
             };
 
-            var response = chatClient.CompleteChatStreaming(messages);
+            // Use a timeout to prevent indefinite hangs during streaming
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+            var response = chatClient.CompleteChatStreaming(messages, requestOptions, cts.Token);
 
             foreach (StreamingChatCompletionUpdate update in response)
             {
@@ -97,6 +121,25 @@ class Program
             System.Console.WriteLine("");
 
             return 0;
+        }
+        catch (RequestFailedException ex)
+        {
+            int status = ex.Status;
+            string detail = status switch
+            {
+                401 => "Authentication failed — check your AZUREOPENAIAPI key.",
+                403 => "Access denied — your key may lack permissions for this resource.",
+                404 => "Resource not found — verify your AZUREOPENAIENDPOINT and model deployment name.",
+                429 => "Rate limited — too many requests. Wait and retry.",
+                _ => ex.Message,
+            };
+            Console.Error.WriteLine($"[AZURE ERROR] HTTP {status}: {detail}");
+            return 2;
+        }
+        catch (OperationCanceledException)
+        {
+            Console.Error.WriteLine("[ERROR] Request timed out. Increase AZURE_TIMEOUT (seconds) if needed.");
+            return 3;
         }
         catch (Exception ex)
         {
@@ -229,5 +272,24 @@ class Program
         Console.WriteLine("  azureopenai-cli \"Explain quantum computing\"");
         Console.WriteLine("  azureopenai-cli --models");
         Console.WriteLine("  azureopenai-cli --set-model gpt-4o");
+    }
+
+    /// <summary>
+    /// Parses an environment variable as int, returning default if missing or invalid.
+    /// </summary>
+    static int TryParseEnvInt(string envVar, int defaultValue)
+    {
+        string? value = Environment.GetEnvironmentVariable(envVar);
+        return int.TryParse(value, out int result) ? result : defaultValue;
+    }
+
+    /// <summary>
+    /// Parses an environment variable as float, returning default if missing or invalid.
+    /// </summary>
+    static float TryParseEnvFloat(string envVar, float defaultValue)
+    {
+        string? value = Environment.GetEnvironmentVariable(envVar);
+        return float.TryParse(value, System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out float result) ? result : defaultValue;
     }
 }
