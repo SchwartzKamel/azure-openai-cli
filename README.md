@@ -1,7 +1,7 @@
 # Azure OpenAI CLI :robot:
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Docker](https://img.shields.io/badge/Docker-Alpine-2496ED?logo=docker)](Dockerfile)
 
 ## Documentation

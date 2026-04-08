@@ -112,7 +112,7 @@ All exceptions are caught at the top level and written to stderr in the format `
 
 ```mermaid
 flowchart TD
-    subgraph "Stage 1 — Build (dotnet/sdk:9.0-preview)"
+    subgraph "Stage 1 — Build (dotnet/sdk:10.0)"
         A[Copy .sln + project files] --> B[dotnet restore]
         B --> C["dotnet publish<br/>-r linux-musl-x64<br/>--self-contained<br/>PublishSingleFile<br/>PublishTrimmed"]
         C --> D["/app/AzureOpenAI_CLI<br/>(single binary)"]
@@ -267,7 +267,7 @@ azure-openai-cli/
 ├── azureopenai-cli/             # Application source
 │   ├── .env.example             # Template for Azure credentials
 │   ├── .env                     # Actual credentials (git-ignored)
-│   ├── AzureOpenAI_CLI.csproj   # Project file (net9.0, package refs)
+│   ├── AzureOpenAI_CLI.csproj   # Project file (net10.0, package refs)
 │   ├── Program.cs               # Entry point, command routing, chat flow
 │   └── UserConfig.cs            # JSON-based model config manager
 ├── docs/

@@ -1,7 +1,7 @@
 # ---------- Stage 1: Build ----------
 # For production deployments, pin images to specific SHA256 digests
 # e.g. mcr.microsoft.com/dotnet/sdk:9.0@sha256:<digest>
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy only .NET project files for restore caching
@@ -24,7 +24,7 @@ RUN dotnet publish ./AzureOpenAI_CLI.csproj \
 
 # ---------- Stage 2: Runtime ----------
 # For production deployments, pin images to specific SHA256 digests
-FROM mcr.microsoft.com/dotnet/runtime-deps:9.0-alpine AS runtime
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine AS runtime
 # Switched to Alpine variant to drastically reduce attack surface
 
 WORKDIR /app

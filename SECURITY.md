@@ -135,7 +135,7 @@ compromise is suspected.
 
 ### Alpine-Based Minimal Image
 
-The runtime stage uses `mcr.microsoft.com/dotnet/runtime-deps:9.0-preview-alpine`,
+The runtime stage uses `mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine`,
 which provides:
 
 - A minimal Linux user-space (~5 MB base).
@@ -178,17 +178,16 @@ attacks via tag mutation:
 
 ```dockerfile
 # Instead of:
-FROM mcr.microsoft.com/dotnet/runtime-deps:9.0-preview-alpine
-
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine
 # Use:
-FROM mcr.microsoft.com/dotnet/runtime-deps:9.0-preview-alpine@sha256:<digest>
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine@sha256:<digest>
 ```
 
 Retrieve the current digest:
 
 ```bash
 docker inspect --format='{{index .RepoDigests 0}}' \
-  mcr.microsoft.com/dotnet/runtime-deps:9.0-preview-alpine
+  mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine
 ```
 
 ### Regular Base Image Updates
