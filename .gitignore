@@ -66,3 +66,11 @@ UpgradeLog*.htm
 *.cache
 *.config
 *.lock.json
+
+# Smith workspace (auto-added by smith init)
+.smith/runs/
+.smith/inbox/
+.smith/processed/
+.smith/heartbeat.json
+.smith/config.yaml
+.smith/config.yml

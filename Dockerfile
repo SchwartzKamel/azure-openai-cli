@@ -1,5 +1,7 @@
 # ---------- Stage 1: Build ----------
-FROM mcr.microsoft.com/dotnet/sdk:9.0-preview AS build
+# For production deployments, pin images to specific SHA256 digests
+# e.g. mcr.microsoft.com/dotnet/sdk:9.0@sha256:<digest>
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # Copy only .NET project files for restore caching
@@ -21,11 +23,18 @@ RUN dotnet publish ./AzureOpenAI_CLI.csproj \
 # Changed runtime identifier to linux-musl-x64 for Alpine compatibility
 
 # ---------- Stage 2: Runtime ----------
-FROM mcr.microsoft.com/dotnet/runtime-deps:9.0-preview-alpine AS runtime
+# For production deployments, pin images to specific SHA256 digests
+FROM mcr.microsoft.com/dotnet/runtime-deps:9.0-alpine AS runtime
 # Switched to Alpine variant to drastically reduce attack surface
-# Pin digest in production for supply chain integrity
 
 WORKDIR /app
+
+# HEALTHCHECK is not applicable for CLI tools that run and exit.
+# This container is intended to be invoked via `docker run`, not kept running.
+
+# Credentials should be injected at runtime, never baked into the image:
+#   docker run --rm --env-file .env azureopenai-cli "your prompt"
+#   docker run --rm -v /path/to/.env:/app/.env:ro azureopenai-cli "your prompt"
 ENTRYPOINT ["./AzureOpenAI_CLI"]
 
 # Install runtime dependencies first so these layers are cached unless deps change
@@ -38,14 +47,12 @@ RUN apk add --no-cache \
 COPY --from=build /app/AzureOpenAI_CLI /app/AzureOpenAI_CLI
 COPY --from=build /app ./
 
-# Create config dir, copy .env, and set permissions in one layer
+# Create non-root user and set permissions in one layer
 RUN addgroup --system appgroup \
  && adduser --system --ingroup appgroup appuser \
  && mkdir -p /opt/config \
  && chown -R appuser:appgroup /app /opt/config \
  && chmod +x /app/AzureOpenAI_CLI
-
-COPY --from=build /src/.env .env
 
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 # Drop privileges for runtime
