@@ -7,7 +7,21 @@ BUILD_CTX := azureopenai-cli
 
 DOCKER_CMD := docker run --rm --env-file .env $(FULL_IMAGE)
 
-.PHONY: all build run clean alias scan test smoke-test check help
+.PHONY: all build run clean alias scan test smoke-test check help lint
+
+## Help: list available make targets (default target)
+help:
+	@echo "Available targets:"
+	@echo "  make build       - Build the Docker image"
+	@echo "  make run         - Run the CLI (requires .env file). Use ARGS=\"your prompt\""
+	@echo "  make clean       - Remove build artifacts and dangling images"
+	@echo "  make alias       - Install 'az-ai' shell alias"
+	@echo "  make scan        - Run vulnerability scan with grype"
+	@echo "  make test        - Run unit tests (xUnit)"
+	@echo "  make lint        - Check code formatting (for CI)"
+	@echo "  make smoke-test  - Clean, build, and run a test prompt via Docker"
+	@echo "  make check       - Verify the project builds successfully"
+	@echo "  make help        - Show this help message"
 
 all: build
 
@@ -67,18 +81,9 @@ test: ## Run unit tests
 smoke-test: clean build
 	make run ARGS="Tell me some unusual facts about cats"
 
-## Help: list available make targets
-help:
-	@echo "Available targets:"
-	@echo "  make build   - Build the Docker image"
-	@echo "  make run     - Run the CLI (requires .env file). Use ARGS=\"your prompt\""
-	@echo "  make clean   - Remove build artifacts and dangling images"
-	@echo "  make alias   - Install 'az-ai' shell alias"
-	@echo "  make scan    - Run vulnerability scan with grype"
-	@echo "  make test    - Run unit tests (xUnit)"
-	@echo "  make smoke-test - Clean, build, and run a test prompt via Docker"
-	@echo "  make check   - Verify the project builds successfully"
-	@echo "  make help    - Show this help message"
+## Lint: check code formatting (for CI)
+lint:
+	dotnet format --verify-no-changes azure-openai-cli.sln
 
 ## Check: compile and verify the project builds successfully
 check:

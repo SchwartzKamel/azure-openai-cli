@@ -53,10 +53,17 @@ pip-log.txt
 docker-compose.override.yml
 docker-compose.override.*.yml
 
+# Tests (not needed in Docker image)
+tests/
+
 # Documentation & assets (not needed in build context)
 *.md
 docs/
 img/
+
+# Credentials must never enter build context
+.env
+.env.*
 
 # GitHub metadata
 .github/

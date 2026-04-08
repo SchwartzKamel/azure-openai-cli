@@ -23,6 +23,77 @@ class Program
             args = args.Skip(1).ToArray();
         }
 
+        // Parse preference and config flags (removed from args before prompt building)
+        float? cliTemperature = null;
+        int? cliMaxTokens = null;
+        string? cliSystemPrompt = null;
+        bool showConfig = false;
+        var cleanedArgs = new List<string>();
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            var arg = args[i].ToLowerInvariant();
+            if (arg == "--temperature" || arg == "-t")
+            {
+                if (i + 1 < args.Length && float.TryParse(args[i + 1],
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out float temp))
+                {
+                    cliTemperature = temp;
+                    i++;
+                }
+                else
+                {
+                    Console.Error.WriteLine("[ERROR] --temperature requires a numeric value (e.g., --temperature 0.7)");
+                    return 1;
+                }
+            }
+            else if (arg == "--max-tokens")
+            {
+                if (i + 1 < args.Length && int.TryParse(args[i + 1], out int tokens))
+                {
+                    cliMaxTokens = tokens;
+                    i++;
+                }
+                else
+                {
+                    Console.Error.WriteLine("[ERROR] --max-tokens requires an integer value (e.g., --max-tokens 5000)");
+                    return 1;
+                }
+            }
+            else if (arg == "--system")
+            {
+                if (i + 1 < args.Length)
+                {
+                    cliSystemPrompt = args[i + 1];
+                    i++;
+                }
+                else
+                {
+                    Console.Error.WriteLine("[ERROR] --system requires a value (e.g., --system \"You are a pirate\")");
+                    return 1;
+                }
+            }
+            else if (arg == "--config")
+            {
+                if (i + 1 < args.Length && args[i + 1].ToLowerInvariant() == "show")
+                {
+                    showConfig = true;
+                    i++;
+                }
+                else
+                {
+                    Console.Error.WriteLine("[ERROR] Unknown --config subcommand. Usage: --config show");
+                    return 1;
+                }
+            }
+            else
+            {
+                cleanedArgs.Add(args[i]);
+            }
+        }
+        args = cleanedArgs.ToArray();
+
         try
         {
             // Always load from the baked‑in .env file
@@ -39,10 +110,17 @@ class Program
             string? azureOpenAiEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
             string? azureOpenAiModel = Environment.GetEnvironmentVariable("AZUREOPENAIMODEL");
             string? azureOpenAiApiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
-            string? systemPrompt = Environment.GetEnvironmentVariable("SYSTEMPROMPT");
+            string? envSystemPrompt = Environment.GetEnvironmentVariable("SYSTEMPROMPT");
 
             // Initialize available models from environment (supports comma-separated list)
             config.InitializeFromEnvironment(azureOpenAiModel);
+
+            // Handle --config show (does not require Azure credentials)
+            if (showConfig)
+            {
+                return ShowEffectiveConfig(config, cliTemperature, cliMaxTokens, cliSystemPrompt,
+                    azureOpenAiEndpoint, config.ActiveModel ?? config.AvailableModels.FirstOrDefault());
+            }
 
             // Handle model management commands
             if (args.Length > 0)
@@ -133,10 +211,12 @@ class Program
                 new AzureKeyCredential(apiKey));
             ChatClient chatClient = azureClient.GetChatClient(deploymentName);
 
-            // Read configurable parameters from environment, with sensible defaults
-            int maxTokens = TryParseEnvInt("AZURE_MAX_TOKENS", 10000);
-            float temperature = TryParseEnvFloat("AZURE_TEMPERATURE", 0.55f);
-            int timeoutSeconds = TryParseEnvInt("AZURE_TIMEOUT", 120);
+            // Apply precedence: CLI flags > UserConfig > Env vars > Defaults
+            int maxTokens = cliMaxTokens ?? config.MaxTokens ?? TryParseEnvInt("AZURE_MAX_TOKENS", 10000);
+            float temperature = cliTemperature ?? config.Temperature ?? TryParseEnvFloat("AZURE_TEMPERATURE", 0.55f);
+            int timeoutSeconds = config.TimeoutSeconds ?? TryParseEnvInt("AZURE_TIMEOUT", 120);
+            string effectiveSystemPrompt = cliSystemPrompt ?? config.SystemPrompt ?? envSystemPrompt
+                ?? "You are a secure, concise CLI assistant. Keep answers factual, no fluff.";
 
             var requestOptions = new ChatCompletionOptions()
             {
@@ -153,7 +233,7 @@ class Program
 
             List<ChatMessage> messages = new List<ChatMessage>()
             {
-                new SystemChatMessage(systemPrompt),
+                new SystemChatMessage(effectiveSystemPrompt),
                 new UserChatMessage(userPrompt),
             };
 
@@ -425,6 +505,10 @@ class Program
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --json                Output response as JSON (for scripting)");
+        Console.WriteLine("  -t, --temperature <v> Override temperature (0.0-2.0)");
+        Console.WriteLine("  --max-tokens <n>      Override max output tokens");
+        Console.WriteLine("  --system <prompt>     Override system prompt for this invocation");
+        Console.WriteLine("  --config show         Display effective configuration and exit");
         Console.WriteLine();
         Console.WriteLine("Piping:");
         Console.WriteLine("  echo \"question\" | azureopenai-cli");
@@ -437,6 +521,82 @@ class Program
         Console.WriteLine("  azureopenai-cli --set-model gpt-4o");
         Console.WriteLine("  azureopenai-cli --json \"What is Docker?\"");
         Console.WriteLine("  echo \"code\" | azureopenai-cli --json \"review this\"");
+    }
+
+    /// <summary>
+    /// Displays the effective configuration with source attribution for each value.
+    /// Precedence: CLI flags > UserConfig > Env vars > Defaults.
+    /// </summary>
+    static int ShowEffectiveConfig(UserConfig config, float? cliTemperature, int? cliMaxTokens,
+        string? cliSystemPrompt, string? endpoint, string? activeModel)
+    {
+        const float defaultTemperature = 0.55f;
+        const int defaultMaxTokens = 10000;
+        const int defaultTimeout = 120;
+
+        // Determine temperature and source
+        string? envTempStr = Environment.GetEnvironmentVariable("AZURE_TEMPERATURE");
+        float? envTemp = envTempStr != null && float.TryParse(envTempStr,
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out float et) ? et : null;
+
+        float effectiveTemp;
+        string tempSource;
+        if (cliTemperature.HasValue) { effectiveTemp = cliTemperature.Value; tempSource = "cli flag"; }
+        else if (config.Temperature.HasValue) { effectiveTemp = config.Temperature.Value; tempSource = "config"; }
+        else if (envTemp.HasValue) { effectiveTemp = envTemp.Value; tempSource = "env"; }
+        else { effectiveTemp = defaultTemperature; tempSource = "default"; }
+
+        // Determine max tokens and source
+        string? envMaxStr = Environment.GetEnvironmentVariable("AZURE_MAX_TOKENS");
+        int? envMax = envMaxStr != null && int.TryParse(envMaxStr, out int em) ? em : null;
+
+        int effectiveMaxTokens;
+        string maxSource;
+        if (cliMaxTokens.HasValue) { effectiveMaxTokens = cliMaxTokens.Value; maxSource = "cli flag"; }
+        else if (config.MaxTokens.HasValue) { effectiveMaxTokens = config.MaxTokens.Value; maxSource = "config"; }
+        else if (envMax.HasValue) { effectiveMaxTokens = envMax.Value; maxSource = "env"; }
+        else { effectiveMaxTokens = defaultMaxTokens; maxSource = "default"; }
+
+        // Determine timeout and source (no CLI flag for timeout)
+        string? envTimeoutStr = Environment.GetEnvironmentVariable("AZURE_TIMEOUT");
+        int? envTimeout = envTimeoutStr != null && int.TryParse(envTimeoutStr, out int eto) ? eto : null;
+
+        int effectiveTimeout;
+        string timeoutSource;
+        if (config.TimeoutSeconds.HasValue) { effectiveTimeout = config.TimeoutSeconds.Value; timeoutSource = "config"; }
+        else if (envTimeout.HasValue) { effectiveTimeout = envTimeout.Value; timeoutSource = "env"; }
+        else { effectiveTimeout = defaultTimeout; timeoutSource = "default"; }
+
+        // Determine system prompt and source
+        string? envSysPrompt = Environment.GetEnvironmentVariable("SYSTEMPROMPT");
+
+        string effectiveSysPrompt;
+        string sysSource;
+        if (cliSystemPrompt != null) { effectiveSysPrompt = cliSystemPrompt; sysSource = "cli flag"; }
+        else if (config.SystemPrompt != null) { effectiveSysPrompt = config.SystemPrompt; sysSource = "config"; }
+        else if (envSysPrompt != null) { effectiveSysPrompt = envSysPrompt; sysSource = "env"; }
+        else { effectiveSysPrompt = "You are a secure, concise CLI assistant. Keep answers factual, no fluff."; sysSource = "default"; }
+
+        // Truncate long prompts for display
+        string displayPrompt = effectiveSysPrompt.Length > 60
+            ? effectiveSysPrompt[..60] + "..."
+            : effectiveSysPrompt;
+
+        string endpointSource = endpoint != null ? "env" : "missing";
+        string modelSource = activeModel != null ? "config/env" : "missing";
+
+        Console.WriteLine("Azure OpenAI CLI Configuration");
+        Console.WriteLine("===============================");
+        Console.WriteLine($"  Endpoint:      {endpoint ?? "(not set)"} ({endpointSource})");
+        Console.WriteLine($"  Model:         {activeModel ?? "(not set)"} ({modelSource})");
+        Console.WriteLine($"  Temperature:   {effectiveTemp} ({tempSource})");
+        Console.WriteLine($"  Max Tokens:    {effectiveMaxTokens} ({maxSource})");
+        Console.WriteLine($"  Timeout:       {effectiveTimeout}s ({timeoutSource})");
+        Console.WriteLine($"  System Prompt: {displayPrompt} ({sysSource})");
+        Console.WriteLine($"  Config File:   {UserConfig.GetConfigPath()}");
+
+        return 0;
     }
 
     /// <summary>

@@ -130,4 +130,60 @@ public class ProgramTests
         // Assert — should not succeed (exact code depends on env state)
         Assert.NotEqual(0, exitCode);
     }
+
+    // ── Version flags ──────────────────────────────────────────────
+
+    [Fact]
+    public void Main_VersionFlag_ReturnsExitCode0()
+    {
+        // Arrange
+        var args = new[] { "--version" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — version info printed, exits successfully
+        Assert.Equal(0, exitCode);
+    }
+
+    [Fact]
+    public void Main_ShortVersionFlag_ReturnsExitCode0()
+    {
+        // Arrange
+        var args = new[] { "-v" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — short-form version also succeeds
+        Assert.Equal(0, exitCode);
+    }
+
+    // ── JSON mode ──────────────────────────────────────────────────
+
+    [Fact]
+    public void Main_JsonFlagNoPrompt_ReturnsNonZero()
+    {
+        // Arrange — --json with no prompt should error
+        var args = new[] { "--json" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — no prompt provided is an error even in JSON mode
+        Assert.NotEqual(0, exitCode);
+    }
+
+    [Fact]
+    public void Main_JsonFlagOversizedPrompt_ReturnsNonZero()
+    {
+        // Arrange — --json with a prompt exceeding 32 000 chars
+        var args = new[] { "--json", new string('x', 33_000) };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — oversized prompt is rejected (exact code depends on env state)
+        Assert.NotEqual(0, exitCode);
+    }
 }

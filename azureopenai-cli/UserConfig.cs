@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AzureOpenAI_CLI;
 
@@ -17,6 +18,12 @@ public class UserConfig
 
     public string? ActiveModel { get; set; }
     public List<string> AvailableModels { get; set; } = new();
+
+    // FR-003: User preference overrides (nullable = only override when explicitly set)
+    public float? Temperature { get; set; }
+    public int? MaxTokens { get; set; }
+    public int? TimeoutSeconds { get; set; }
+    public string? SystemPrompt { get; set; }
 
     /// <summary>
     /// Loads the user configuration from the config file, or creates a new one if it doesn't exist.
@@ -53,7 +60,11 @@ public class UserConfig
     {
         try
         {
-            var options = new JsonSerializerOptions { WriteIndented = true };
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
             string json = JsonSerializer.Serialize(this, options);
             File.WriteAllText(ConfigFilePath, json);
             SetRestrictivePermissions(ConfigFilePath);
