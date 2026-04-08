@@ -32,32 +32,32 @@ WORKDIR /app
 # HEALTHCHECK is not applicable for CLI tools that run and exit.
 # This container is intended to be invoked via `docker run`, not kept running.
 
-# Credentials should be injected at runtime, never baked into the image:
-#   docker run --rm --env-file .env azureopenai-cli "your prompt"
-#   docker run --rm -v /path/to/.env:/app/.env:ro azureopenai-cli "your prompt"
-ENTRYPOINT ["./AzureOpenAI_CLI"]
-
 # Install runtime dependencies first so these layers are cached unless deps change
 RUN apk add --no-cache \
     icu-libs \
  && apk upgrade --no-cache \
  && rm -rf /var/cache/apk/*
 
-# Copy published app in one step
-COPY --from=build /app/AzureOpenAI_CLI /app/AzureOpenAI_CLI
-COPY --from=build /app ./
-
 # Create non-root user and set permissions in one layer
 RUN addgroup --system appgroup \
  && adduser --system --ingroup appgroup appuser \
  && mkdir -p /opt/config \
- && chown -R appuser:appgroup /app /opt/config \
- && chmod +x /app/AzureOpenAI_CLI
+ && chown -R appuser:appgroup /app /opt/config
 
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
-# Drop privileges for runtime
 # Set DOTNET_BUNDLE_EXTRACT_BASE_DIR to a writable location for non-root user
 ENV DOTNET_BUNDLE_EXTRACT_BASE_DIR=/tmp/dotnet_bundle
 RUN mkdir -p /tmp/dotnet_bundle && chown -R appuser:appgroup /tmp/dotnet_bundle
+
+# Copy published self-contained single-file binary last (changes most often)
+COPY --from=build /app/AzureOpenAI_CLI /app/AzureOpenAI_CLI
+RUN chmod +x /app/AzureOpenAI_CLI
+
+# Drop privileges for runtime
 USER appuser
+
+# Credentials should be injected at runtime, never baked into the image:
+#   docker run --rm --env-file .env azureopenai-cli "your prompt"
+#   docker run --rm -v /path/to/.env:/app/.env:ro azureopenai-cli "your prompt"
+ENTRYPOINT ["./AzureOpenAI_CLI"]
 

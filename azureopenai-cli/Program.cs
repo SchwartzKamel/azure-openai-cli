@@ -1,4 +1,5 @@
-﻿using Azure;
+﻿using System.Reflection;
+using Azure;
 using Azure.AI.OpenAI;
 using Azure.AI.OpenAI.Chat;
 using OpenAI.Chat;
@@ -10,7 +11,7 @@ class Program
     // Security: Cap prompt size to prevent abuse and excessive API costs
     private const int MAX_PROMPT_LENGTH = 32000;
 
-    static int Main(string[] args)
+    static async Task<int> Main(string[] args)
     {
         try
         {
@@ -43,13 +44,35 @@ class Program
                 }
             }
 
-            if (args.Length == 0)
+            // Build prompt from args and/or stdin
+            string argsPrompt = args.Length > 0 ? string.Join(' ', args) : "";
+            string? stdinContent = null;
+
+            if (Console.IsInputRedirected)
+            {
+                stdinContent = Console.In.ReadToEnd();
+                if (string.IsNullOrWhiteSpace(stdinContent))
+                    stdinContent = null;
+            }
+
+            string userPrompt;
+            if (!string.IsNullOrEmpty(argsPrompt) && stdinContent != null)
+            {
+                userPrompt = $"{stdinContent}\n\n{argsPrompt}";
+            }
+            else if (stdinContent != null)
+            {
+                userPrompt = stdinContent;
+            }
+            else if (!string.IsNullOrEmpty(argsPrompt))
+            {
+                userPrompt = argsPrompt;
+            }
+            else
             {
                 ShowUsage();
                 return 1;
             }
-
-            string userPrompt = string.Join(' ', args);
 
             // Validate prompt length to prevent abuse and excessive API costs
             if (userPrompt.Length > MAX_PROMPT_LENGTH)
@@ -111,13 +134,70 @@ class Program
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
             var response = chatClient.CompleteChatStreaming(messages, requestOptions, cts.Token);
 
-            foreach (StreamingChatCompletionUpdate update in response)
+            // Start spinner on stderr while waiting for first token
+            using var spinnerCts = new CancellationTokenSource();
+            bool showSpinner = !Console.IsErrorRedirected;
+            Task? spinnerTask = null;
+
+            if (showSpinner)
             {
-                foreach (ChatMessageContentPart updatePart in update.ContentUpdate)
+                var spinnerChars = new[] { '⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏' };
+                spinnerTask = Task.Run(async () =>
                 {
-                    System.Console.Write(updatePart.Text);
+                    int i = 0;
+                    while (!spinnerCts.Token.IsCancellationRequested)
+                    {
+                        Console.Error.Write($"\r{spinnerChars[i % spinnerChars.Length]} Thinking...");
+                        i++;
+                        try { await Task.Delay(80, spinnerCts.Token); }
+                        catch (OperationCanceledException) { break; }
+                    }
+                });
+            }
+
+            bool firstToken = true;
+            try
+            {
+                foreach (StreamingChatCompletionUpdate update in response)
+                {
+                    foreach (ChatMessageContentPart updatePart in update.ContentUpdate)
+                    {
+                        if (firstToken)
+                        {
+                            firstToken = false;
+                            if (showSpinner)
+                            {
+                                spinnerCts.Cancel();
+                                if (spinnerTask != null) await spinnerTask;
+                                Console.Error.Write("\r              \r"); // clear spinner line
+                            }
+                        }
+                        System.Console.Write(updatePart.Text);
+                    }
                 }
             }
+            finally
+            {
+                // Always clean up spinner, even on exception
+                if (showSpinner && spinnerTask != null && !spinnerCts.IsCancellationRequested)
+                {
+                    spinnerCts.Cancel();
+                    try { await spinnerTask; } catch { }
+                    Console.Error.Write("\r              \r");
+                }
+            }
+
+            // If no tokens arrived, still clean up the spinner
+            if (firstToken && showSpinner)
+            {
+                if (!spinnerCts.IsCancellationRequested)
+                {
+                    spinnerCts.Cancel();
+                    if (spinnerTask != null) await spinnerTask;
+                }
+                Console.Error.Write("\r              \r");
+            }
+
             System.Console.WriteLine("");
 
             return 0;
@@ -171,6 +251,12 @@ class Program
                     return 1;
                 }
                 return SetModel(args[1], config);
+
+            case "--version":
+            case "-v":
+                var version = Assembly.GetEntryAssembly()?.GetName().Version;
+                Console.WriteLine($"Azure OpenAI CLI v{version?.ToString(3) ?? "unknown"}");
+                return 0;
 
             case "--help":
             case "-h":
@@ -266,7 +352,13 @@ class Program
         Console.WriteLine("  --models              List available models (* marks active)");
         Console.WriteLine("  --current-model       Show the currently active model");
         Console.WriteLine("  --set-model <name>    Set the active model");
+        Console.WriteLine("  --version, -v         Show version information");
         Console.WriteLine("  --help, -h            Show this help message");
+        Console.WriteLine();
+        Console.WriteLine("Piping:");
+        Console.WriteLine("  echo \"question\" | azureopenai-cli");
+        Console.WriteLine("  git diff | azureopenai-cli \"review this code\"");
+        Console.WriteLine("  cat file.md | azureopenai-cli \"summarize this\"");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  azureopenai-cli \"Explain quantum computing\"");

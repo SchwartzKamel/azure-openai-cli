@@ -52,3 +52,11 @@ pip-log.txt
 # Docker-specific
 docker-compose.override.yml
 docker-compose.override.*.yml
+
+# Documentation & assets (not needed in build context)
+*.md
+docs/
+img/
+
+# GitHub metadata
+.github/

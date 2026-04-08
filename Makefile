@@ -7,7 +7,7 @@ BUILD_CTX := azureopenai-cli
 
 DOCKER_CMD := docker run --rm --env-file .env $(FULL_IMAGE)
 
-.PHONY: all build run clean alias scan test check help
+.PHONY: all build run clean alias scan test smoke-test check help
 
 all: build
 
@@ -59,8 +59,12 @@ alias:
 scan:
 	grype $(FULL_IMAGE)
 
-## Test with a question about cats
-test: clean build
+## Run unit tests
+test: ## Run unit tests
+	dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity minimal
+
+## Smoke test: clean, build, and run a test prompt via Docker
+smoke-test: clean build
 	make run ARGS="Tell me some unusual facts about cats"
 
 ## Help: list available make targets
@@ -71,7 +75,8 @@ help:
 	@echo "  make clean   - Remove build artifacts and dangling images"
 	@echo "  make alias   - Install 'az-ai' shell alias"
 	@echo "  make scan    - Run vulnerability scan with grype"
-	@echo "  make test    - Clean, build, and run a test prompt"
+	@echo "  make test    - Run unit tests (xUnit)"
+	@echo "  make smoke-test - Clean, build, and run a test prompt via Docker"
 	@echo "  make check   - Verify the project builds successfully"
 	@echo "  make help    - Show this help message"
 
