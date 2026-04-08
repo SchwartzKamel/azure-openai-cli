@@ -5,6 +5,31 @@ All notable changes to Azure OpenAI CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-04-08
+
+### Added
+- **Agentic mode** (`--agent`): model can call built-in tools before responding
+- 5 built-in tools: `shell_exec`, `read_file`, `web_fetch`, `get_clipboard`, `get_datetime`
+- `--tools <list>` flag to restrict which tools are available (comma-separated)
+- `--max-rounds N` flag to limit tool-calling iterations (default: 5)
+- Agent-aware system prompt injection with available tool names
+- JSON output includes agent metadata (rounds, tools_called) when `--agent --json` combined
+- Tool safety: shell command blocklist, HTTPS-only web fetch, file size caps, path blocking
+- Unit tests for tool registry and built-in tools
+- Integration tests for agent mode CLI flags
+
+### Changed
+- Upgraded Azure.AI.OpenAI from 2.1.0 to 2.9.0-beta.1 (required for tool calling)
+- Upgraded Azure.Core from 1.47.2 to 1.51.1
+- `--json` flag now detected anywhere in args (previously required first position)
+- Removed experimental `SetNewMaxCompletionTokensPropertyEnabled` call (incompatible across SDK versions)
+
+### Security
+- Shell tool blocks dangerous commands (rm, kill, mkfs, dd, etc.) and pipe chains containing them
+- Shell command timeout (10s) and output size cap (64KB)
+- File read tool blocks sensitive paths (/etc/shadow, /etc/passwd, etc.)
+- Web fetch enforces HTTPS-only with timeout and response size cap
+
 ## [1.1.0] — 2026-04-08
 
 ### Added

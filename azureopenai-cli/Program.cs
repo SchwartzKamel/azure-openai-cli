@@ -8,6 +8,7 @@ using Azure.AI.OpenAI.Chat;
 using OpenAI.Chat;
 using dotenv.net;
 using AzureOpenAI_CLI;
+using AzureOpenAI_CLI.Tools;
 
 class Program
 {
@@ -16,11 +17,11 @@ class Program
 
     static async Task<int> Main(string[] args)
     {
-        // Detect --json flag before any processing
-        bool jsonMode = args.Length > 0 && args[0] == "--json";
+        // Detect --json flag anywhere in args
+        bool jsonMode = args.Contains("--json");
         if (jsonMode)
         {
-            args = args.Skip(1).ToArray();
+            args = args.Where(a => a != "--json").ToArray();
         }
 
         // Parse preference and config flags (removed from args before prompt building)
@@ -28,6 +29,9 @@ class Program
         int? cliMaxTokens = null;
         string? cliSystemPrompt = null;
         bool showConfig = false;
+        bool agentMode = false;
+        int maxAgentRounds = 5;
+        HashSet<string>? enabledTools = null;
         var cleanedArgs = new List<string>();
 
         for (int i = 0; i < args.Length; i++)
@@ -84,6 +88,37 @@ class Program
                 else
                 {
                     Console.Error.WriteLine("[ERROR] Unknown --config subcommand. Usage: --config show");
+                    return 1;
+                }
+            }
+            else if (arg == "--agent")
+            {
+                agentMode = true;
+            }
+            else if (arg == "--max-rounds")
+            {
+                if (i + 1 < args.Length && int.TryParse(args[i + 1], out int rounds) && rounds > 0 && rounds <= 20)
+                {
+                    maxAgentRounds = rounds;
+                    i++;
+                }
+                else
+                {
+                    Console.Error.WriteLine("[ERROR] --max-rounds requires an integer 1-20");
+                    return 1;
+                }
+            }
+            else if (arg == "--tools")
+            {
+                if (i + 1 < args.Length)
+                {
+                    enabledTools = new HashSet<string>(
+                        args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                        StringComparer.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    Console.Error.WriteLine("[ERROR] --tools requires comma-separated tool names (e.g., --tools shell,file,web)");
                     return 1;
                 }
             }
@@ -235,17 +270,20 @@ class Program
                 PresencePenalty = 0.0f,
             };
 
-            #pragma warning disable AOAI001
-            requestOptions.SetNewMaxCompletionTokensPropertyEnabled(true);
-            #pragma warning restore AOAI001
-
             List<ChatMessage> messages = new List<ChatMessage>()
             {
                 new SystemChatMessage(effectiveSystemPrompt),
                 new UserChatMessage(userPrompt),
             };
 
-            // Use a timeout to prevent indefinite hangs during streaming
+            // === AGENTIC MODE ===
+            if (agentMode)
+            {
+                return await RunAgentLoop(chatClient, messages, requestOptions,
+                    deploymentName, enabledTools, maxAgentRounds, jsonMode, timeoutSeconds);
+            }
+
+            // === STANDARD MODE (single-shot streaming) ===
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
             var response = chatClient.CompleteChatStreaming(messages, requestOptions, cts.Token);
 
@@ -518,6 +556,12 @@ class Program
         Console.WriteLine("  --system <prompt>     Override system prompt for this invocation");
         Console.WriteLine("  --config show         Display effective configuration and exit");
         Console.WriteLine();
+        Console.WriteLine("Agent Mode:");
+        Console.WriteLine("  --agent               Enable agentic mode (model can call tools)");
+        Console.WriteLine("  --tools <list>        Comma-separated tool names to enable (default: all)");
+        Console.WriteLine("                        Available: shell,file,web,clipboard,datetime");
+        Console.WriteLine("  --max-rounds <n>      Max tool-calling rounds (default: 5, max: 20)");
+        Console.WriteLine();
         Console.WriteLine("Piping:");
         Console.WriteLine("  echo \"question\" | azureopenai-cli");
         Console.WriteLine("  git diff | azureopenai-cli \"review this code\"");
@@ -529,6 +573,9 @@ class Program
         Console.WriteLine("  azureopenai-cli --set-model gpt-4o");
         Console.WriteLine("  azureopenai-cli --json \"What is Docker?\"");
         Console.WriteLine("  echo \"code\" | azureopenai-cli --json \"review this\"");
+        Console.WriteLine("  azureopenai-cli --agent \"what time is it in Tokyo?\"");
+        Console.WriteLine("  azureopenai-cli --agent \"summarize ~/notes.md\"");
+        Console.WriteLine("  azureopenai-cli --agent --tools shell \"run git log -5 and summarize\"");
     }
 
     /// <summary>
@@ -639,5 +686,121 @@ class Program
         };
         var options = new JsonSerializerOptions { WriteIndented = true };
         Console.WriteLine(JsonSerializer.Serialize(errorObj, options));
+    }
+
+    /// <summary>
+    /// Agentic mode: tool-calling loop where the model can invoke built-in tools
+    /// to gather context before generating a final response.
+    /// </summary>
+    static async Task<int> RunAgentLoop(
+        ChatClient chatClient,
+        List<ChatMessage> messages,
+        ChatCompletionOptions options,
+        string deploymentName,
+        HashSet<string>? enabledToolNames,
+        int maxRounds,
+        bool jsonMode,
+        int timeoutSeconds)
+    {
+        var registry = ToolRegistry.Create(enabledToolNames);
+
+        // Add tool definitions directly to the options (already configured with temp/tokens/etc)
+        var chatTools = registry.ToChatTools();
+        foreach (var tool in chatTools)
+            options.Tools.Add(tool);
+
+        if (chatTools.Count > 0)
+            options.ToolChoice = ChatToolChoice.CreateAutoChoice();
+
+        // Prepend agent-aware system instruction to existing messages
+        var systemMsg = messages.OfType<SystemChatMessage>().FirstOrDefault();
+        if (systemMsg is not null)
+        {
+            int idx = messages.IndexOf(systemMsg);
+            string toolNames = string.Join(", ", registry.All.Select(t => t.Name));
+            messages[idx] = new SystemChatMessage(
+                systemMsg.Content[0].Text +
+                $"\n\nYou have tools available: [{toolNames}]. Use them when the user's request requires real-time data, file access, or system interaction. Call tools rather than guessing.");
+        }
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+        var stopwatch = Stopwatch.StartNew();
+        bool showStatus = !jsonMode && !Console.IsErrorRedirected;
+        int round = 0;
+
+        if (showStatus)
+            Console.Error.Write("⚡ Agent mode");
+
+        while (round < maxRounds)
+        {
+            round++;
+
+            // Non-streaming call for tool rounds (need full response to check FinishReason)
+            ChatCompletion completion = await chatClient.CompleteChatAsync(messages, options, cts.Token);
+
+            if (completion.FinishReason == ChatFinishReason.ToolCalls)
+            {
+                // Add assistant message with tool calls to conversation
+                messages.Add(new AssistantChatMessage(completion));
+
+                if (showStatus)
+                    Console.Error.Write($"\r🔧 Round {round}: ");
+
+                foreach (var toolCall in completion.ToolCalls)
+                {
+                    if (showStatus)
+                        Console.Error.Write($"{toolCall.FunctionName} ");
+
+                    var result = await registry.ExecuteAsync(
+                        toolCall.FunctionName,
+                        toolCall.FunctionArguments?.ToString() ?? "{}",
+                        cts.Token);
+
+                    messages.Add(new ToolChatMessage(toolCall.Id, result));
+                }
+
+                if (showStatus)
+                    Console.Error.WriteLine();
+
+                continue;
+            }
+
+            // FinishReason == Stop (or other terminal reason): output final response
+            if (showStatus)
+                Console.Error.Write($"\r                              \r");
+
+            stopwatch.Stop();
+            var responseText = completion.Content?.FirstOrDefault()?.Text ?? "";
+
+            if (jsonMode)
+            {
+                var jsonOutput = new
+                {
+                    model = deploymentName,
+                    response = responseText,
+                    duration_ms = stopwatch.ElapsedMilliseconds,
+                    agent = new { rounds = round, tools_called = round - 1 }
+                };
+                var jsonOpts = new JsonSerializerOptions { WriteIndented = true };
+                Console.WriteLine(JsonSerializer.Serialize(jsonOutput, jsonOpts));
+            }
+            else
+            {
+                Console.Write(responseText);
+                Console.WriteLine();
+            }
+
+            return 0;
+        }
+
+        // Hit max rounds without a final response
+        var msg = $"Agent exhausted {maxRounds} tool-calling rounds without completing.";
+        if (jsonMode)
+        {
+            OutputJsonError(msg, 1);
+            return 1;
+        }
+        Console.Error.WriteLine($"\r[WARN] {msg}");
+        return 1;
     }
 }

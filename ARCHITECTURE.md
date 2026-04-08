@@ -2,13 +2,15 @@
 
 ## 1. Overview
 
-Azure OpenAI CLI is a secure, containerized command-line interface for interacting with Azure OpenAI services. It is built with .NET 9, packaged as a self-contained single-file binary, and distributed exclusively through Docker.
+Azure OpenAI CLI is a secure, containerized command-line interface for interacting with Azure OpenAI services. It is built with .NET 10, packaged as a self-contained single-file binary, and distributed through Docker or native `dotnet run`.
 
 ### Design Philosophy
 
 - **Simplicity** — A single binary with no external runtime dependencies. Arguments are the prompt; the response streams to stdout.
-- **Security** — Runs as a non-root user inside a minimal Alpine container. Credentials live in a `.env` file that is baked into the image at build time and never committed to version control.
-- **Containerization** — Docker is the only supported distribution mechanism, ensuring reproducible builds and isolated execution across Windows, macOS, and Linux.
+- **Speed** — Primary use case is AHK/Espanso text injection where latency matters. Without `--agent`, zero tool overhead.
+- **Security** — Runs as a non-root user inside a minimal Alpine container. Credentials injected at runtime via `--env-file`, never baked into images.
+- **Opt-in Complexity** — `--agent` activates tool-calling; without it, the CLI behaves identically to v1.0.
+- **Containerization** — Docker is the primary distribution mechanism, ensuring reproducible builds and isolated execution across Windows, macOS, and Linux.
 
 ---
 
@@ -274,6 +276,63 @@ UserConfig.ActiveModel ───────────────────
 
 ---
 
+### Agent Mode Data Flow
+
+When `--agent` is used, the CLI enters an agentic loop where the model can call built-in tools:
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant CLI as CLI Binary
+    participant R as ToolRegistry
+    participant API as Azure OpenAI
+
+    U->>CLI: --agent "prompt"
+    CLI->>R: Create(enabledToolNames)
+    R-->>CLI: ChatTool definitions
+    CLI->>CLI: Add tools to ChatCompletionOptions
+    CLI->>CLI: Inject tool names into system prompt
+
+    loop Tool-calling rounds (max 5)
+        CLI->>API: CompleteChatAsync (non-streaming)
+        API-->>CLI: ChatCompletion
+
+        alt FinishReason == ToolCalls
+            CLI->>CLI: Add AssistantMessage with tool calls
+            loop Each tool call
+                CLI->>R: ExecuteAsync(toolName, args)
+                R-->>CLI: Tool result string
+                CLI->>CLI: Add ToolChatMessage(result)
+            end
+        else FinishReason == Stop
+            CLI-->>U: Output final text (or JSON)
+        end
+    end
+```
+
+#### Tool Architecture
+
+```
+IBuiltInTool (interface)
+├── Name, Description, ParametersSchema
+└── ExecuteAsync(JsonElement args, CancellationToken)
+
+ToolRegistry
+├── Register(IBuiltInTool)
+├── Create(enabledTools?) → factory
+├── ToChatTools() → List<ChatTool>
+└── ExecuteAsync(name, json, ct)
+
+Built-in tools:
+├── ShellExecTool — /bin/sh -c, blocklist, 10s timeout, 64KB cap
+├── ReadFileTool — File.ReadAllTextAsync, 1MB cap, blocked paths
+├── WebFetchTool — HttpClient GET, HTTPS-only, 5s timeout
+├── GetClipboardTool — xclip/xsel/pbpaste/PowerShell
+└── GetDateTimeTool — DateTimeOffset, IANA timezone support
+```
+
+---
+
 ## 6. Configuration Model
 
 ### Configuration sources
@@ -374,12 +433,22 @@ azure-openai-cli/
 │   ├── .env                         # Actual credentials (git-ignored)
 │   ├── AzureOpenAI_CLI.csproj       # Project file (net10.0, package refs)
 │   ├── Program.cs                   # Entry point, command routing, chat flow
-│   └── UserConfig.cs                # JSON-based model config manager
+│   ├── UserConfig.cs                # JSON-based model config manager
+│   └── Tools/                       # Agentic tool implementations
+│       ├── IBuiltInTool.cs          # Tool interface
+│       ├── ToolRegistry.cs          # Tool registry + factory + executor
+│       ├── ShellExecTool.cs         # Shell command execution (sandboxed)
+│       ├── ReadFileTool.cs          # File reading (size-capped)
+│       ├── WebFetchTool.cs          # HTTP GET (HTTPS-only)
+│       ├── GetClipboardTool.cs      # Cross-platform clipboard
+│       └── GetDateTimeTool.cs       # Date/time with timezone
 ├── tests/
+│   ├── integration_tests.sh             # Bash end-to-end tests
 │   └── AzureOpenAI_CLI.Tests/
 │       ├── AzureOpenAI_CLI.Tests.csproj  # Test project (xUnit)
 │       ├── ProgramTests.cs               # Program integration tests
-│       └── UserConfigTests.cs            # UserConfig unit tests
+│       ├── UserConfigTests.cs            # UserConfig unit tests
+│       └── ToolTests.cs                  # Tool unit tests
 ├── docs/
 │   └── proposals/                   # Design proposals
 └── img/                             # Screenshots and demo GIFs
@@ -402,6 +471,14 @@ azure-openai-cli/
 2. If the option should be sourced from the environment, read it via `Environment.GetEnvironmentVariable()` in `Program.cs` and add a corresponding entry to `.env.example`.
 3. Persist changes by calling `config.Save()`.
 
+### Adding a new tool
+
+1. Create a new class in `azureopenai-cli/Tools/` implementing `IBuiltInTool`.
+2. Set `Name` (snake_case, used in API), `Description` (for the model), and `ParametersSchema` (JSON Schema as `BinaryData`).
+3. Implement `ExecuteAsync(JsonElement arguments, CancellationToken ct)`.
+4. Register it in `ToolRegistry.Create()` by adding to the `allTools` array.
+5. Add a short name mapping in the `--tools` help text in `ShowUsage()`.
+
 ### Modifying the Docker build
 
 - **Add a system package** — Append to the `apk add` command in Stage 2.
@@ -421,3 +498,7 @@ azure-openai-cli/
 | **Self-contained runtime** | Bundles the .NET runtime so the runtime stage only needs `runtime-deps` (native libraries) instead of the full `runtime` image. Further reduces image size. |
 | **Streaming responses** | Uses `CompleteChatStreaming` so the user sees tokens as they arrive, rather than waiting for the entire completion. This dramatically improves perceived latency for long responses. |
 | **JSON config in home directory** | Familiar convention (`~/.<app>.json`). Survives container restarts if a volume is mounted. Keeps credentials separate from user preferences. |
+| **Opt-in agent mode** | `--agent` is a clear boundary. Without it, zero tool loading, zero prompt injection surface, identical latency to v1.0. |
+| **Azure.AI.OpenAI 2.9.0-beta.1** | Required for tool calling support. Stable 2.1.0 doesn't serialize tool definitions correctly. Same version used by Microsoft's Agent Framework samples. |
+| **Raw ChatTool over Agent Framework** | Microsoft.Agents.AI is designed for multi-agent orchestration — overkill for a single-shot CLI. Raw `ChatTool.CreateFunctionTool()` keeps the dependency tree small. |
+| **Non-streaming tool rounds** | Tool-calling rounds use `CompleteChatAsync` (non-streaming) because the full response is needed to check `FinishReason` and extract tool calls. Only the final text response could be streamed. |

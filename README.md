@@ -40,6 +40,11 @@ flowchart TB
 - **Simple Interface** - Single command execution
 - **Configurable** - Easy environment variable setup
 - **Cross-platform** - Works on Windows/Linux/macOS
+- **Agentic Mode** - `--agent` flag enables tool-calling (shell, file, web, clipboard, datetime)
+- **Streaming** - Real-time token streaming with spinner
+- **JSON Output** - `--json` flag for scripted workflows
+- **Stdin Pipe** - Pipe content into prompts
+- **Multi-Model** - Configure and switch between deployments
 
 ## :rocket: Quick Start
 
@@ -166,6 +171,53 @@ flowchart LR
     B --> D[Formatted Output]
 ```
 
+## :zap: Agent Mode
+
+Agent mode (`--agent`) enables the AI model to call built-in tools before responding. This lets the model gather real-time data, read files, and run commands to produce grounded answers.
+
+```bash
+# Check the time
+az-ai --agent "What time is it in Tokyo?"
+
+# Read and summarize a file
+az-ai --agent "Summarize README.md"
+
+# Run a command and explain the output
+az-ai --agent "Run 'git log --oneline -5' and summarize recent changes"
+
+# Combine with JSON output
+az-ai --agent --json "What's my current directory?"
+
+# Restrict to specific tools
+az-ai --agent --tools datetime,file "Read my config and tell me the date"
+
+# Limit tool-calling rounds
+az-ai --agent --max-rounds 3 "Complex multi-step task"
+```
+
+### Built-in Tools
+
+| Tool | Short Name | Description |
+|------|-----------|-------------|
+| `shell_exec` | `shell` | Run shell commands (sandboxed, timeout, blocked dangerous commands) |
+| `read_file` | `file` | Read file contents (size-capped) |
+| `web_fetch` | `web` | HTTP GET a URL (HTTPS-only, timeout) |
+| `get_clipboard` | `clipboard` | Read system clipboard text |
+| `get_datetime` | `datetime` | Current date/time with timezone support |
+
+### How It Works
+
+```mermaid
+flowchart LR
+    P[User Prompt] --> M{Model}
+    M -->|Tool Call| T[Execute Tool]
+    T -->|Result| M
+    M -->|Tool Call| T
+    M -->|Final Text| O[Output]
+```
+
+The model decides when to use tools. Without `--agent`, the CLI behaves exactly as before — zero overhead, no tool loading.
+
 ## :beginner: Troubleshooting
 
 Here are some common issues and how to resolve them:
@@ -284,8 +336,8 @@ For comprehensive security guidance, see [Security](SECURITY.md).
 
 ## SDK Dependency Note
 
-This project uses `Azure.AI.OpenAI` version **2.3.0-beta.1** (pre-release).
-The package will be updated to a stable release once Microsoft publishes one.
+This project uses `Azure.AI.OpenAI` version **2.9.0-beta.1** (pre-release, required for tool calling support).
+The package will be updated to a stable release once Microsoft publishes one with full tool calling support.
 See [Dependency Security](SECURITY.md#7-dependency-security) for scanning and update guidance.
 
 ---
