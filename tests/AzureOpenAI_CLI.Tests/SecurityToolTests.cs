@@ -495,7 +495,7 @@ public class SecurityToolTests : IDisposable
     {
         var registry = ToolRegistry.Create(null);
 
-        Assert.Equal(5, registry.All.Count);
+        Assert.Equal(6, registry.All.Count);
     }
 
     [Fact]

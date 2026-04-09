@@ -102,6 +102,13 @@ While waiting for the first token from Azure, a braille spinner (`⠋⠙⠹⠸�
 | `--models`, `--list-models` | List available models (`→` / `*` marks active) |
 | `--current-model` | Show the currently active model |
 | `--set-model <name>` | Switch the active model |
+| `--agent` | Enable agentic mode with tool-calling |
+| `--tools <list>` | Restrict available tools (comma-separated) |
+| `--max-rounds <n>` | Limit tool-calling iterations (default: 5) |
+| `--ralph` | Enable autonomous Wiggum loop (implies `--agent`) |
+| `--validate <cmd>` | Validation command for Ralph loop iterations |
+| `--task-file <path>` | Read task prompt from file |
+| `--max-iterations <n>` | Ralph loop iteration limit (default: 10, max: 50) |
 
 #### Command routing
 
@@ -328,8 +335,111 @@ Built-in tools:
 ├── ReadFileTool — File.ReadAllTextAsync, 1MB cap, blocked paths
 ├── WebFetchTool — HttpClient GET, HTTPS-only, 5s timeout
 ├── GetClipboardTool — xclip/xsel/pbpaste/PowerShell
-└── GetDateTimeTool — DateTimeOffset, IANA timezone support
+├── GetDateTimeTool — DateTimeOffset, IANA timezone support
+└── DelegateTaskTool — Spawn child CLI agent, depth-capped, 60s timeout
 ```
+
+### Ralph Mode Data Flow (Wiggum Loop)
+
+When `--ralph` is used, the CLI enters an autonomous self-correcting loop. Each iteration runs a full agent cycle, then optionally validates the result with an external command. If validation fails, errors are fed back as new context and the loop repeats.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Ralph Loop (Wiggum)                   │
+│                                                         │
+│   ┌──────────┐    ┌────────────┐    ┌──────────────┐    │
+│   │ Read Task │───▶│ Agent Loop │───▶│  Validation  │    │
+│   │ (file or  │    │ (--agent   │    │ (--validate) │    │
+│   │  args)    │    │  + tools)  │    │              │    │
+│   └──────────┘    └────────────┘    └──────┬───────┘    │
+│        ▲                                    │            │
+│        │              ┌─────────┐     ┌─────▼─────┐     │
+│        │              │  Error  │     │   Pass?   │     │
+│        │              │ Context │◀────│ exit == 0 │     │
+│        │              └────┬────┘     └─────┬─────┘     │
+│        │                   │          (yes)  │           │
+│        └───────────────────┘          ┌─────▼─────┐     │
+│         (fail: loop again)            │  Output   │     │
+│                                       │  Result   │     │
+│                                       └───────────┘     │
+└─────────────────────────────────────────────────────────┘
+```
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant R as Ralph Loop
+    participant A as Agent Loop
+    participant V as Validator
+    participant F as Filesystem
+
+    U->>R: --ralph --validate "dotnet test" --task-file TASK.md
+    R->>F: Read task from TASK.md
+
+    loop Iterations (max --max-iterations)
+        R->>A: Run agent with task + error context
+        A->>A: Tool-calling rounds (shell, file, etc.)
+        A->>F: Write/modify files
+        A-->>R: Agent response
+
+        alt --validate set
+            R->>V: Run validation command
+            V-->>R: exit code + stdout/stderr
+            alt exit code == 0
+                R-->>U: Success — output result
+            else exit code != 0
+                R->>R: Append errors as context
+                R->>F: Append to .ralph-log
+            end
+        else no validation
+            R-->>U: Output result (single iteration)
+        end
+    end
+
+    R-->>U: Max iterations reached — output final state
+```
+
+#### Ralph Loop Invariants
+
+| Property | Value |
+|---|---|
+| **State persistence** | Via filesystem — each iteration reads/writes files directly |
+| **Message history** | Stateless per iteration — fresh `[system, user]` messages each round |
+| **Error feedback** | Validation stderr/stdout appended to user prompt as context |
+| **Iteration log** | `.ralph-log` — JSON-lines file with iteration number, task, result, validation output |
+| **Default iterations** | 10 (configurable via `--max-iterations`, hard cap at 50) |
+| **Implies** | `--agent` (Ralph mode always enables agent mode) |
+
+### DelegateTaskTool Architecture
+
+The `delegate_task` tool enables subagent calling — the parent agent can spawn a child CLI instance to handle a subtask in isolation.
+
+```
+Parent Agent (depth 0)
+│
+├── delegate_task("write unit tests for auth.cs")
+│   └── Child CLI (depth 1, RALPH_DEPTH=1)
+│       ├── shell_exec, read_file, web_fetch, ...
+│       └── delegate_task → Child CLI (depth 2, RALPH_DEPTH=2)
+│           ├── shell_exec, read_file, ...
+│           └── delegate_task → BLOCKED (depth 3, max reached)
+│
+└── shell_exec("dotnet test")
+```
+
+#### Delegation Mechanics
+
+| Property | Value |
+|---|---|
+| **Tool name** | `delegate_task` (alias: `delegate`) |
+| **Parameters** | `task` (required string), `tools` (optional comma-separated) |
+| **Spawns** | `dotnet <dll> --agent --tools <tools> "<task>"` |
+| **Depth tracking** | `RALPH_DEPTH` env var, incremented per level |
+| **Max depth** | 3 (child at depth 3 has `delegate` removed from available tools) |
+| **Timeout** | 60 seconds per child invocation |
+| **Output cap** | 64 KB (consistent with ShellExecTool) |
+| **Credential passthrough** | Azure env vars (`AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`) forwarded to child |
+| **Default child tools** | All tools except `delegate` (prevents naive infinite recursion) |
 
 ---
 
@@ -441,7 +551,8 @@ azure-openai-cli/
 │       ├── ReadFileTool.cs          # File reading (size-capped)
 │       ├── WebFetchTool.cs          # HTTP GET (HTTPS-only)
 │       ├── GetClipboardTool.cs      # Cross-platform clipboard
-│       └── GetDateTimeTool.cs       # Date/time with timezone
+│       ├── GetDateTimeTool.cs       # Date/time with timezone
+│       └── DelegateTaskTool.cs      # Subagent delegation (depth-capped)
 ├── tests/
 │   ├── integration_tests.sh             # Bash end-to-end tests
 │   └── AzureOpenAI_CLI.Tests/
@@ -502,3 +613,6 @@ azure-openai-cli/
 | **Azure.AI.OpenAI 2.9.0-beta.1** | Required for tool calling support. Stable 2.1.0 doesn't serialize tool definitions correctly. Same version used by Microsoft's Agent Framework samples. |
 | **Raw ChatTool over Agent Framework** | Microsoft.Agents.AI is designed for multi-agent orchestration — overkill for a single-shot CLI. Raw `ChatTool.CreateFunctionTool()` keeps the dependency tree small. |
 | **Non-streaming tool rounds** | Tool-calling rounds use `CompleteChatAsync` (non-streaming) because the full response is needed to check `FinishReason` and extract tool calls. Only the final text response could be streamed. |
+| **Ralph mode (Wiggum loop)** | Deterministic validation (tests, linters) catches errors that the LLM cannot self-detect. File-based state means each iteration starts with a clean context window while retaining all prior work on disk. Inspired by ghuntley's Ralph Wiggum technique. |
+| **Stateless iterations** | Each Ralph iteration gets fresh messages instead of an ever-growing conversation. This prevents context window exhaustion on long-running tasks and ensures the model reads the current state of files rather than relying on stale memory. |
+| **DelegateTaskTool depth cap** | Subagent recursion is capped at 3 levels via `RALPH_DEPTH` env var. This balances task decomposition power against runaway process spawning. Children default to all tools except `delegate` as a secondary safeguard. |

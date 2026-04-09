@@ -59,6 +59,7 @@ internal sealed class ToolRegistry
         ["web"] = "web_fetch",
         ["clipboard"] = "get_clipboard",
         ["datetime"] = "get_datetime",
+        ["delegate"] = "delegate_task",
     };
 
     /// <summary>
@@ -75,6 +76,7 @@ internal sealed class ToolRegistry
             new WebFetchTool(),
             new GetClipboardTool(),
             new GetDateTimeTool(),
+            new DelegateTaskTool(),
         };
 
         var enabled = enabledTools?.ToHashSet(StringComparer.OrdinalIgnoreCase);

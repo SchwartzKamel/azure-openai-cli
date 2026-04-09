@@ -5,6 +5,19 @@ All notable changes to Azure OpenAI CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] — 2025-07-13
+
+### Added
+- **Ralph Mode** (`--ralph`): Autonomous Wiggum loop for self-correcting agent workflows
+- `--validate <cmd>`: External validation command for Ralph loop iterations
+- `--task-file <path>`: Read task prompt from file
+- `--max-iterations <n>`: Control Ralph loop iteration limit (default: 10, max: 50)
+- **DelegateTaskTool**: New built-in tool for subagent calling (`delegate_task`)
+- Subagent recursion depth control via `RALPH_DEPTH` env var
+- `.ralph-log` iteration history file
+- 44 new tests (28 Ralph mode unit tests + 16 delegate tool tests)
+- 20 new integration tests for Ralph mode flags
+
 ## [1.3.0] — 2025-04-09
 
 ### Security

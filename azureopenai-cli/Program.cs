@@ -36,6 +36,10 @@ class Program
         int MaxAgentRounds,
         HashSet<string>? EnabledTools,
         string? JsonSchema,
+        bool RalphMode,
+        string? ValidateCommand,
+        string? TaskFile,
+        int MaxIterations,
         string[] RemainingArgs);
 
     /// <summary>
@@ -58,6 +62,10 @@ class Program
         int maxAgentRounds = DEFAULT_MAX_AGENT_ROUNDS;
         HashSet<string>? enabledTools = null;
         string? jsonSchema = null;
+        bool ralphMode = false;
+        string? validateCommand = null;
+        string? taskFile = null;
+        int maxIterations = 10;
         var cleanedArgs = new List<string>();
 
         for (int i = 0; i < args.Length; i++)
@@ -163,6 +171,47 @@ class Program
                     return (null, new CliParseError("[ERROR] --schema requires a JSON schema string", 1));
                 }
             }
+            else if (arg == "--ralph")
+            {
+                ralphMode = true;
+                agentMode = true; // Ralph mode implies agent mode
+            }
+            else if (arg == "--validate")
+            {
+                if (i + 1 < args.Length)
+                {
+                    validateCommand = args[i + 1];
+                    i++;
+                }
+                else
+                {
+                    return (null, new CliParseError("[ERROR] --validate requires a command (e.g., --validate \"dotnet test\")", 1));
+                }
+            }
+            else if (arg == "--task-file")
+            {
+                if (i + 1 < args.Length)
+                {
+                    taskFile = args[i + 1];
+                    i++;
+                }
+                else
+                {
+                    return (null, new CliParseError("[ERROR] --task-file requires a file path", 1));
+                }
+            }
+            else if (arg == "--max-iterations")
+            {
+                if (i + 1 < args.Length && int.TryParse(args[i + 1], out int iters) && iters >= 1 && iters <= 50)
+                {
+                    maxIterations = iters;
+                    i++;
+                }
+                else
+                {
+                    return (null, new CliParseError("[ERROR] --max-iterations requires a value between 1 and 50", 1));
+                }
+            }
             else
             {
                 cleanedArgs.Add(args[i]);
@@ -170,7 +219,8 @@ class Program
         }
 
         return (new CliOptions(cliTemperature, cliMaxTokens, cliSystemPrompt, showConfig,
-            agentMode, maxAgentRounds, enabledTools, jsonSchema, cleanedArgs.ToArray()), null);
+            agentMode, maxAgentRounds, enabledTools, jsonSchema, ralphMode, validateCommand,
+            taskFile, maxIterations, cleanedArgs.ToArray()), null);
     }
 
     /// <summary>
@@ -314,6 +364,19 @@ class Program
                 return 1;
             }
 
+            // Handle --task-file: read task prompt from file
+            if (opts.TaskFile != null)
+            {
+                if (!File.Exists(opts.TaskFile))
+                {
+                    var msg = $"Task file not found: {opts.TaskFile}";
+                    if (jsonMode) { OutputJsonError(msg, 1); return 1; }
+                    Console.Error.WriteLine($"[ERROR] {msg}");
+                    return 1;
+                }
+                userPrompt = File.ReadAllText(opts.TaskFile);
+            }
+
             // Validate prompt length to prevent abuse and excessive API costs
             if (userPrompt.Length > MAX_PROMPT_LENGTH)
             {
@@ -373,6 +436,15 @@ class Program
                 new SystemChatMessage(effectiveSystemPrompt),
                 new UserChatMessage(userPrompt),
             };
+
+            // === RALPH MODE (Wiggum Loop) ===
+            if (opts.RalphMode)
+            {
+                return await RunRalphLoop(
+                    chatClient, deploymentName, userPrompt, opts.ValidateCommand,
+                    opts.MaxIterations, requestOptions, opts.EnabledTools,
+                    opts.MaxAgentRounds, jsonMode, timeoutSeconds, effectiveSystemPrompt);
+            }
 
             // === AGENTIC MODE ===
             if (opts.AgentMode)
@@ -692,6 +764,12 @@ class Program
         Console.WriteLine("  azureopenai-cli --agent \"what time is it in Tokyo?\"");
         Console.WriteLine("  azureopenai-cli --agent \"summarize ~/notes.md\"");
         Console.WriteLine("  azureopenai-cli --agent --tools shell \"run git log -5 and summarize\"");
+        Console.WriteLine();
+        Console.WriteLine("Ralph Mode:");
+        Console.WriteLine("  --ralph              Enable Ralph mode (autonomous Wiggum loop)");
+        Console.WriteLine("  --validate <cmd>     Validation command to run after each iteration");
+        Console.WriteLine("  --task-file <path>   Read task prompt from file instead of args");
+        Console.WriteLine("  --max-iterations <n> Maximum Ralph loop iterations (default: 10, max: 50)");
     }
 
     /// <summary>
@@ -1007,5 +1085,215 @@ class Program
         }
         Console.Error.WriteLine($"\r[WARN] {msg}");
         return 1;
+    }
+
+    /// <summary>
+    /// Ralph mode: Wiggum loop pattern. Runs the agent in a loop with external validation,
+    /// feeding failures back as new context until validation passes or max iterations hit.
+    /// Inspired by ghuntley's Ralph Wiggum technique.
+    /// </summary>
+    static async Task<int> RunRalphLoop(
+        ChatClient chatClient,
+        string deploymentName,
+        string taskPrompt,
+        string? validateCommand,
+        int maxIterations,
+        ChatCompletionOptions baseOptions,
+        HashSet<string>? enabledToolNames,
+        int maxAgentRounds,
+        bool jsonMode,
+        int timeoutSeconds,
+        string effectiveSystemPrompt)
+    {
+        bool showStatus = !jsonMode && !Console.IsErrorRedirected;
+        var iterationLog = new StringBuilder();
+
+        if (showStatus)
+        {
+            Console.Error.WriteLine("🔁 Ralph mode — Wiggum loop active");
+            if (validateCommand != null)
+                Console.Error.WriteLine($"   Validate: {validateCommand}");
+            Console.Error.WriteLine($"   Max iterations: {maxIterations}");
+            Console.Error.WriteLine();
+        }
+
+        string currentPrompt = taskPrompt;
+        int iteration = 0;
+
+        while (iteration < maxIterations)
+        {
+            iteration++;
+            if (showStatus)
+                Console.Error.WriteLine($"━━━ Iteration {iteration}/{maxIterations} ━━━");
+
+            // Build fresh messages for each iteration (stateless — the Ralph way)
+            var messages = new List<ChatMessage>
+            {
+                new SystemChatMessage(effectiveSystemPrompt +
+                    "\n\nYou are in Ralph mode (autonomous loop). Complete the task. " +
+                    "If there were previous errors, fix them. " +
+                    "Use tools to read files, run commands, and verify your work."),
+                new UserChatMessage(currentPrompt),
+            };
+
+            // Clone options for this iteration
+            var iterOptions = new ChatCompletionOptions()
+            {
+                MaxOutputTokenCount = baseOptions.MaxOutputTokenCount,
+                Temperature = baseOptions.Temperature,
+                TopP = 1.0f,
+                FrequencyPenalty = 0.0f,
+                PresencePenalty = 0.0f,
+            };
+
+            // Apply schema if present
+            if (baseOptions.ResponseFormat is not null)
+                iterOptions.ResponseFormat = baseOptions.ResponseFormat;
+
+            // Capture agent output (redirect to StringWriter for Ralph loop)
+            var originalOut = Console.Out;
+            var agentOutput = new System.IO.StringWriter();
+
+            if (!jsonMode)
+                Console.SetOut(agentOutput);
+
+            int agentResult;
+            try
+            {
+                agentResult = await RunAgentLoop(
+                    chatClient, messages, iterOptions,
+                    deploymentName, enabledToolNames, maxAgentRounds,
+                    jsonMode, timeoutSeconds);
+            }
+            finally
+            {
+                if (!jsonMode)
+                    Console.SetOut(originalOut);
+            }
+
+            var agentResponse = agentOutput.ToString().Trim();
+
+            iterationLog.AppendLine($"## Iteration {iteration}");
+            iterationLog.AppendLine($"**Prompt:** {(currentPrompt.Length > 200 ? currentPrompt[..200] + "..." : currentPrompt)}");
+            iterationLog.AppendLine($"**Agent exit:** {agentResult}");
+            iterationLog.AppendLine($"**Response:** {(agentResponse.Length > 500 ? agentResponse[..500] + "..." : agentResponse)}");
+            iterationLog.AppendLine();
+
+            if (showStatus && !string.IsNullOrEmpty(agentResponse))
+            {
+                Console.Error.WriteLine($"📝 Agent response ({agentResponse.Length} chars)");
+            }
+
+            // If no validation command, check for agent success
+            if (validateCommand == null)
+            {
+                if (agentResult == 0)
+                {
+                    if (showStatus)
+                        Console.Error.WriteLine($"\n✅ Ralph complete after {iteration} iteration(s)");
+                    Console.Write(agentResponse);
+                    if (!string.IsNullOrEmpty(agentResponse) && !agentResponse.EndsWith('\n'))
+                        Console.WriteLine();
+                    WriteRalphLog(iterationLog.ToString());
+                    return 0;
+                }
+                // Agent failed — retry with error context
+                currentPrompt = $"{taskPrompt}\n\n[Previous attempt failed with exit code {agentResult}]\n[Agent response]: {agentResponse}\n\nPlease fix the issues and try again.";
+                continue;
+            }
+
+            // Run validation command
+            if (showStatus)
+                Console.Error.Write($"🔍 Validating: {validateCommand}... ");
+
+            var (validationExitCode, validationOutput) = await RunValidation(validateCommand, timeoutSeconds);
+
+            if (validationExitCode == 0)
+            {
+                if (showStatus)
+                {
+                    Console.Error.WriteLine($"✅ PASSED");
+                    Console.Error.WriteLine($"\n✅ Ralph complete after {iteration} iteration(s)");
+                }
+                Console.Write(agentResponse);
+                if (!string.IsNullOrEmpty(agentResponse) && !agentResponse.EndsWith('\n'))
+                    Console.WriteLine();
+                WriteRalphLog(iterationLog.ToString());
+                return 0;
+            }
+
+            // Validation failed — feed error back
+            if (showStatus)
+                Console.Error.WriteLine($"❌ FAILED (exit {validationExitCode})");
+
+            iterationLog.AppendLine($"**Validation:** FAILED (exit {validationExitCode})");
+            iterationLog.AppendLine($"```\n{(validationOutput.Length > 2000 ? validationOutput[..2000] + "..." : validationOutput)}\n```");
+            iterationLog.AppendLine();
+
+            currentPrompt = $"{taskPrompt}\n\n" +
+                $"[Iteration {iteration} — validation FAILED]\n" +
+                $"[Validation command: {validateCommand}]\n" +
+                $"[Exit code: {validationExitCode}]\n" +
+                $"[Validation output]:\n{(validationOutput.Length > 4000 ? validationOutput[..4000] + "..." : validationOutput)}\n\n" +
+                $"[Previous agent response]:\n{(agentResponse.Length > 2000 ? agentResponse[..2000] + "..." : agentResponse)}\n\n" +
+                "Fix the issues shown in the validation output. Use tools to read and modify files as needed.";
+        }
+
+        // Exhausted iterations
+        var exhaustedMsg = $"Ralph loop exhausted {maxIterations} iterations without passing validation.";
+        if (showStatus)
+            Console.Error.WriteLine($"\n❌ {exhaustedMsg}");
+        WriteRalphLog(iterationLog.ToString());
+
+        if (jsonMode)
+        {
+            OutputJsonError(exhaustedMsg, 1);
+        }
+        return 1;
+    }
+
+    static async Task<(int exitCode, string output)> RunValidation(string command, int timeoutSeconds)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+        var psi = new ProcessStartInfo
+        {
+            FileName = "/bin/sh",
+            Arguments = $"-c \"{command.Replace("\"", "\\\"")}\"",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            RedirectStandardInput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        using var process = Process.Start(psi)
+            ?? throw new InvalidOperationException("Failed to start validation process");
+
+        process.StandardInput.Close();
+
+        var stdout = await process.StandardOutput.ReadToEndAsync(cts.Token);
+        var stderr = await process.StandardError.ReadToEndAsync(cts.Token);
+
+        try { await process.WaitForExitAsync(cts.Token); }
+        catch (OperationCanceledException)
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+            return (1, "Validation timed out");
+        }
+
+        var output = stdout;
+        if (!string.IsNullOrEmpty(stderr))
+            output += $"\n[stderr]\n{stderr}";
+
+        return (process.ExitCode, output);
+    }
+
+    static void WriteRalphLog(string content)
+    {
+        try
+        {
+            File.WriteAllText(".ralph-log", $"# Ralph Loop Log\n\n{content}");
+        }
+        catch { /* best-effort logging */ }
     }
 }

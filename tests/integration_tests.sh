@@ -181,6 +181,44 @@ assert_output_contains "--schema missing value shows error" "requires a JSON sch
 assert_exit "--schema with invalid JSON exits non-zero" 1 "$CLI --schema '{invalid}' 'test'"
 assert_output_contains "--schema invalid JSON shows error" "Invalid JSON schema" "$CLI --schema '{invalid}' 'test'"
 
+# ── Ralph Mode ──────────────────────────────────
+echo ""
+echo "=== Ralph Mode Tests ==="
+
+echo ""
+echo "▸ Ralph Help & Flag Presence"
+assert_output_contains "--help shows Ralph Mode section" "Ralph Mode" "$CLI --help"
+assert_output_contains "--help shows --ralph flag" "[-]-ralph" "$CLI --help"
+assert_output_contains "--help shows --validate flag" "[-]-validate" "$CLI --help"
+assert_output_contains "--help shows --task-file flag" "[-]-task-file" "$CLI --help"
+assert_output_contains "--help shows --max-iterations flag" "[-]-max-iterations" "$CLI --help"
+
+echo ""
+echo "▸ Ralph Argument Validation"
+assert_exit "--ralph without prompt exits 1" 1 "$CLI --ralph"
+assert_exit "--validate without value exits 1" 1 "$CLI --ralph --validate"
+assert_exit "--task-file missing file exits 1" 1 "$CLI --ralph --task-file /nonexistent/file.md 'test'"
+assert_exit "--max-iterations 0 exits 1" 1 "$CLI --ralph --max-iterations 0 'test'"
+assert_exit "--max-iterations 51 exits 1" 1 "$CLI --ralph --max-iterations 51 'test'"
+assert_exit "--max-iterations negative exits 1" 1 "$CLI --ralph --max-iterations -1 'test'"
+assert_exit "--max-iterations non-integer exits 1" 1 "$CLI --ralph --max-iterations abc 'test'"
+assert_exit "--max-iterations without value exits 1" 1 "$CLI --ralph --max-iterations"
+assert_exit "--task-file without value exits 1" 1 "$CLI --ralph --task-file"
+assert_output_contains "--validate missing value shows error" "requires a command" "$CLI --ralph --validate"
+assert_output_contains "--max-iterations 0 shows error message" "between 1 and 50" "$CLI --ralph --max-iterations 0 'test'"
+assert_output_contains "--task-file missing shows error" "requires a file" "$CLI --ralph --task-file"
+
+echo ""
+echo "▸ Ralph JSON Validation (no prompt)"
+assert_exit "--json --ralph without prompt exits 1" 1 "$CLI --json --ralph"
+assert_json_field "--json --ralph no prompt has error field" "error" "$CLI --json --ralph"
+assert_json_field "--json --ralph no prompt has message field" "message" "$CLI --json --ralph"
+
+echo ""
+echo "▸ Ralph + Version Coexistence"
+assert_exit "--version still exits 0 after ralph tests" 0 "$CLI --version"
+assert_output_contains "--version still shows v1 after ralph tests" "v1" "$CLI --version"
+
 # ── Docker ────────────────────────────────────
 echo ""
 echo "▸ Docker"

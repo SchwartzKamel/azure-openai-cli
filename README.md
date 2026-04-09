@@ -40,7 +40,8 @@ flowchart TB
 - **Simple Interface** - Single command execution
 - **Configurable** - Easy environment variable setup
 - **Cross-platform** - Works on Windows/Linux/macOS
-- **Agentic Mode** - `--agent` flag enables tool-calling (shell, file, web, clipboard, datetime)
+- **Agentic Mode** - `--agent` flag enables tool-calling (shell, file, web, clipboard, datetime, delegate)
+- **Ralph Mode** - `--ralph` flag enables autonomous self-correcting agent loops with external validation
 - **Streaming** - Real-time token streaming with spinner
 - **JSON Output** - `--json` flag for scripted workflows
 - **Stdin Pipe** - Pipe content into prompts
@@ -204,6 +205,7 @@ az-ai --agent --max-rounds 3 "Complex multi-step task"
 | `web_fetch` | `web` | HTTP GET a URL (HTTPS-only, timeout) |
 | `get_clipboard` | `clipboard` | Read system clipboard text |
 | `get_datetime` | `datetime` | Current date/time with timezone support |
+| `delegate_task` | `delegate` | Spawn a child agent to handle a subtask (depth-capped) |
 
 ### How It Works
 
@@ -217,6 +219,56 @@ flowchart LR
 ```
 
 The model decides when to use tools. Without `--agent`, the CLI behaves exactly as before — zero overhead, no tool loading.
+
+## :brain: Ralph Mode — Autonomous Wiggum Loop
+
+Ralph mode (`--ralph`) takes agent mode to the next level: a fully autonomous, self-correcting loop inspired by [ghuntley's "Ralph Wiggum" technique](https://ghuntley.com/specs). The idea is deceptively simple — give the agent a task, let it try, validate the result with a deterministic command, and if it fails, feed the errors back as context and try again. State persists through files, not conversation history. Each iteration starts fresh.
+
+```
+Task → Agent Loop → [Validation] → Pass? → Done ✓
+                ↑        ↓ (fail)
+                └── Error Context ──┘
+```
+
+### Ralph Mode Flags
+
+| Flag | Description |
+|------|-------------|
+| `--ralph` | Enable autonomous loop mode (implies `--agent`) |
+| `--validate <cmd>` | External validation command (tests, linter, build) run after each iteration |
+| `--task-file <path>` | Read the task prompt from a file instead of CLI args |
+| `--max-iterations <n>` | Maximum loop iterations before giving up (default: 10, max: 50) |
+
+### How It Works
+
+1. **Read task** — from `--task-file` or remaining CLI arguments
+2. **Run agent loop** — full agentic mode with all available tools
+3. **Validate** — if `--validate` is set, run the command (e.g. `dotnet test`, `npm run lint`)
+4. **Pass?** — if validation exits `0`, stop and output the result
+5. **Fail?** — capture stderr/stdout, feed it back as new prompt context, loop again
+6. **Exhausted?** — if `--max-iterations` is reached, stop and report the final state
+7. Each iteration is **stateless** — fresh message history. State persists via **files on disk**
+8. A `.ralph-log` file records iteration history for debugging
+
+### Usage Examples
+
+```bash
+# Autonomous code fix — keeps trying until all tests pass
+az-ai --ralph --validate "dotnet test" --task-file TASK.md
+
+# Self-correcting refactor without external validation
+az-ai --ralph "refactor the auth module to use JWT tokens"
+
+# Capped iterations with restricted tools
+az-ai --ralph --max-iterations 5 --tools shell,file "fix all compiler warnings in src/"
+
+# Lint-driven cleanup — loop until the linter is happy
+az-ai --ralph --validate "npm run lint" "fix all ESLint errors in the project"
+```
+
+### Why It Works
+
+The Wiggum method exploits a key insight: LLMs are bad at knowing when they're wrong, but **compilers and test suites are great at it**. By pairing an LLM's ability to write code with a deterministic validator, you get a loop that converges on correct solutions. File-based state means the agent can read its own previous output, see what changed, and course-correct — without needing to fit an entire conversation history into the context window.
 
 ## :beginner: Troubleshooting
 

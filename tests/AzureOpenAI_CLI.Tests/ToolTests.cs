@@ -32,7 +32,7 @@ public class ToolTests : IDisposable
     {
         var registry = ToolRegistry.Create(null);
 
-        Assert.Equal(5, registry.All.Count);
+        Assert.Equal(6, registry.All.Count);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class ToolTests : IDisposable
         var registry = ToolRegistry.Create(null);
         var chatTools = registry.ToChatTools();
 
-        Assert.Equal(5, chatTools.Count);
+        Assert.Equal(6, chatTools.Count);
     }
 
     [Fact]
