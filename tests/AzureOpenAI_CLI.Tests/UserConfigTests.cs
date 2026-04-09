@@ -32,15 +32,25 @@ public class UserConfigTests : IDisposable
 
     public void Dispose()
     {
-        // Remove any config file the test may have created
-        if (File.Exists(_configPath))
-            File.Delete(_configPath);
-
-        // Restore the original config if one existed before the test
-        if (_hadExistingConfig && File.Exists(_backupPath))
+        // Retry with short delay to handle transient file locks from parallel tests
+        for (int i = 0; i < 3; i++)
         {
-            File.Copy(_backupPath, _configPath, overwrite: true);
-            File.Delete(_backupPath);
+            try
+            {
+                if (File.Exists(_configPath))
+                    File.Delete(_configPath);
+
+                if (_hadExistingConfig && File.Exists(_backupPath))
+                {
+                    File.Copy(_backupPath, _configPath, overwrite: true);
+                    File.Delete(_backupPath);
+                }
+                return;
+            }
+            catch (IOException) when (i < 2)
+            {
+                Thread.Sleep(100);
+            }
         }
     }
 

@@ -83,6 +83,10 @@ class Program
                     System.Globalization.NumberStyles.Float,
                     System.Globalization.CultureInfo.InvariantCulture, out float temp))
                 {
+                    if (temp < 0.0f || temp > 2.0f)
+                    {
+                        return (null, new CliParseError("[ERROR] Temperature must be between 0.0 and 2.0", 1));
+                    }
                     cliTemperature = temp;
                     i++;
                 }
@@ -95,6 +99,10 @@ class Program
             {
                 if (i + 1 < args.Length && int.TryParse(args[i + 1], out int tokens))
                 {
+                    if (tokens <= 0 || tokens > 128000)
+                    {
+                        return (null, new CliParseError("[ERROR] Max tokens must be between 1 and 128000", 1));
+                    }
                     cliMaxTokens = tokens;
                     i++;
                 }
@@ -640,6 +648,19 @@ class Program
                     {
                         streamAttempt++;
                         var delay = TimeSpan.FromSeconds(Math.Pow(2, streamAttempt - 1));
+
+                        // Check for Retry-After header on rate-limit responses
+                        if (ex.Status == 429)
+                        {
+                            var rawResponse = ex.GetRawResponse();
+                            if (rawResponse != null
+                                && rawResponse.Headers.TryGetValue("Retry-After", out string? retryAfter)
+                                && int.TryParse(retryAfter, out int retrySeconds))
+                            {
+                                delay = TimeSpan.FromSeconds(Math.Min(retrySeconds, 60));
+                            }
+                        }
+
                         if (!Console.IsErrorRedirected)
                             Console.Error.Write($"\r⏳ Retry {streamAttempt}/{maxStreamRetries} in {delay.TotalSeconds:F0}s...");
                         await Task.Delay(delay, cts.Token);
@@ -1289,12 +1310,13 @@ class Program
             var originalOut = Console.Out;
             var agentOutput = new System.IO.StringWriter();
 
-            if (!jsonMode)
-                Console.SetOut(agentOutput);
-
             int agentResult;
             try
             {
+                // SetOut inside try to guarantee restoration via finally, even on exception
+                if (!jsonMode)
+                    Console.SetOut(agentOutput);
+
                 agentResult = await RunAgentLoop(
                     chatClient, messages, iterOptions,
                     deploymentName, enabledToolNames, maxAgentRounds,

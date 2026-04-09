@@ -57,26 +57,28 @@ public class DelegateTaskToolTests
     // ═══════════════════════════════════════════════════════════════════
 
     [Fact]
-    public async Task ExecuteAsync_MissingTaskProperty_ThrowsArgumentException()
+    public async Task ExecuteAsync_MissingTaskProperty_ReturnsErrorMessage()
     {
         var tool = new DelegateTaskTool();
         var args = JsonDocument.Parse("""{"tools": "shell"}""").RootElement;
 
-        // The tool accesses arguments.GetProperty("task") which throws KeyNotFoundException,
-        // but since ToolRegistry wraps calls in try/catch, we verify the raw tool throws
-        await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => tool.ExecuteAsync(args, CancellationToken.None));
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.StartsWith("Error:", result);
+        Assert.Contains("task", result);
     }
 
     [Fact]
-    public async Task ExecuteAsync_NullTaskValue_ThrowsArgumentException()
+    public async Task ExecuteAsync_NullTaskValue_ReturnsErrorMessage()
     {
         var tool = new DelegateTaskTool();
         // JSON null for the task value
         var args = JsonDocument.Parse("""{"task": null}""").RootElement;
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => tool.ExecuteAsync(args, CancellationToken.None));
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.StartsWith("Error:", result);
+        Assert.Contains("task", result);
     }
 
     // ═══════════════════════════════════════════════════════════════════

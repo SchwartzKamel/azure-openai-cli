@@ -30,8 +30,13 @@ internal sealed class DelegateTaskTool : IBuiltInTool
 
     public async Task<string> ExecuteAsync(JsonElement arguments, CancellationToken ct)
     {
-        var task = arguments.GetProperty("task").GetString()
-            ?? throw new ArgumentException("Missing 'task' parameter");
+        if (arguments.ValueKind != JsonValueKind.Object ||
+            !arguments.TryGetProperty("task", out var taskProp))
+            return "Error: missing required parameter 'task'.";
+
+        var task = taskProp.GetString();
+        if (string.IsNullOrEmpty(task))
+            return "Error: parameter 'task' must not be empty.";
 
         // Check recursion depth
         var depthStr = Environment.GetEnvironmentVariable("RALPH_DEPTH") ?? "0";

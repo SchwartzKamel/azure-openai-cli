@@ -62,8 +62,8 @@ clean:
 	@docker container prune -f
 	@docker image prune -f --filter "dangling=true" --filter "label!=preserve=true"
 	@docker images --format '{{.ID}} {{.Repository}}:{{.Tag}}' | \
-		grep -v 'mcr.microsoft.com/dotnet/sdk:9.0' | \
-		grep -v 'mcr.microsoft.com/dotnet/runtime-deps:9.0-alpine' | \
+		grep -v 'mcr.microsoft.com/dotnet/sdk:10.0' | \
+		grep -v 'mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine' | \
 		grep -Ev "$(IMAGE_NAME):(gpt-5-chat|4.1-mini)" | \
 		awk '{print $$1}' | xargs -r docker rmi -f || true
 	@docker builder prune -f

@@ -92,6 +92,13 @@ assert_exit "--set-model no arg exits 1" 1 "$CLI --set-model"
 assert_exit "--temperature no value exits 1" 1 "$CLI --temperature"
 assert_exit "--max-tokens no value exits 1" 1 "$CLI --max-tokens"
 assert_exit "--temperature bad value exits 1" 1 "$CLI --temperature notanumber 'test'"
+assert_exit "--temperature 3.0 exits 1 (above range)" 1 "$CLI --temperature 3.0 'test'"
+assert_exit "--temperature -1 exits 1 (below range)" 1 "$CLI --temperature -- -1 'test'"
+assert_exit "--max-tokens -1 exits 1 (below range)" 1 "$CLI --max-tokens -1 'test'"
+assert_exit "--max-tokens 0 exits 1 (below range)" 1 "$CLI --max-tokens 0 'test'"
+assert_exit "--max-tokens 200000 exits 1 (above range)" 1 "$CLI --max-tokens 200000 'test'"
+assert_output_contains "--temperature 3.0 shows range error" "between 0.0 and 2.0" "$CLI --temperature 3.0 'test'"
+assert_output_contains "--max-tokens 0 shows range error" "between 1 and 128000" "$CLI --max-tokens 0 'test'"
 
 # ── Stdin Piping ──────────────────────────────
 echo ""

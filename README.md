@@ -93,8 +93,8 @@ Edit the `.env` file you created during setup. See `azureopenai-cli/.env.example
 | `AZUREOPENAIAPI` | `.env` | *(required)* | Azure OpenAI API key |
 | `AZUREOPENAIMODEL` | `.env` | *(required)* | Model deployment name(s), comma-separated |
 | `SYSTEMPROMPT` | `.env` | *(built-in)* | System prompt for the AI |
-| `AZURE_MAX_TOKENS` | `.env` | `10000` | Maximum output tokens |
-| `AZURE_TEMPERATURE` | `.env` | `0.55` | Response temperature (0.0–1.0) |
+| `AZURE_MAX_TOKENS` | `.env` | `10000` | Maximum output tokens (CLI-validated: 1–128000) |
+| `AZURE_TEMPERATURE` | `.env` | `0.55` | Response temperature (CLI-validated: 0.0–2.0) |
 | `AZURE_TIMEOUT` | `.env` | `120` | Streaming timeout in seconds |
 
 ## :repeat: Model Selection
@@ -418,8 +418,8 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 ### Creating a Release
 
 ```bash
-git tag v1.5.0
-git push origin v1.5.0
+git tag v1.6.0
+git push origin v1.6.0
 # → CI runs → binaries built → Docker pushed to GHCR → GitHub Release created
 ```
 
@@ -536,6 +536,14 @@ For comprehensive security guidance, see [Security](SECURITY.md).
 | `2`  | Azure API error |
 | `3`  | Timeout |
 | `99` | Unhandled error |
+
+---
+
+## Native AOT Status
+
+This project includes **source-generated JSON serialization** (`AppJsonContext` in `JsonGenerationContext.cs`) for all configuration types (`UserConfig`, `SquadConfig`, `PersonaConfig`, and related Squad types). This eliminates reflection-based `System.Text.Json` usage in the serialization layer and is a key prerequisite for Native AOT compilation.
+
+AOT publishing is available experimentally via `make publish-aot`. The `make publish-fast` target uses ReadyToRun compilation for a stable ~50% startup improvement without full AOT constraints.
 
 ---
 

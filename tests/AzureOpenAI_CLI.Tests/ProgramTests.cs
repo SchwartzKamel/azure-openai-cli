@@ -412,4 +412,154 @@ public class ProgramTests
             try { Directory.Delete(tempDir, recursive: true); } catch { }
         }
     }
+
+    // ── Temperature range validation ───────────────────────────────
+
+    [Fact]
+    public void Main_TemperatureBelowRange_ReturnsExitCode1()
+    {
+        // Arrange — temperature -0.1 is below the valid range 0.0–2.0
+        var args = new[] { "--temperature", "-0.1", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — out-of-range temperature is rejected
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_TemperatureAboveRange_ReturnsExitCode1()
+    {
+        // Arrange — temperature 2.1 exceeds the valid range 0.0–2.0
+        var args = new[] { "--temperature", "2.1", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — out-of-range temperature is rejected
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_TemperatureValidValue_DoesNotReturnExitCode1ForRange()
+    {
+        // Arrange — temperature 0.5 is within the valid range;
+        // Without Azure creds, it will fail later (exit 99), but NOT exit 1 for range
+        var args = new[] { "--temperature", "0.5", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — should pass range validation (exit code is NOT 1 from parse error;
+        // it may be 99 due to missing credentials, which proves range check passed)
+        Assert.NotEqual(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_TemperatureLowerBound_Accepted()
+    {
+        // Arrange — temperature 0.0 is the lower bound, should be accepted
+        var args = new[] { "--temperature", "0.0", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — boundary value passes range validation
+        Assert.NotEqual(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_TemperatureUpperBound_Accepted()
+    {
+        // Arrange — temperature 2.0 is the upper bound, should be accepted
+        var args = new[] { "--temperature", "2.0", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — boundary value passes range validation
+        Assert.NotEqual(1, exitCode);
+    }
+
+    // ── Max-tokens range validation ────────────────────────────────
+
+    [Fact]
+    public void Main_MaxTokensZero_ReturnsExitCode1()
+    {
+        // Arrange — max-tokens 0 is below the valid range 1–128000
+        var args = new[] { "--max-tokens", "0", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — out-of-range max-tokens is rejected
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_MaxTokensNegative_ReturnsExitCode1()
+    {
+        // Arrange — max-tokens -1 is below the valid range
+        var args = new[] { "--max-tokens", "-1", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — negative max-tokens is rejected
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_MaxTokensAboveRange_ReturnsExitCode1()
+    {
+        // Arrange — max-tokens 200000 exceeds the valid range 1–128000
+        var args = new[] { "--max-tokens", "200000", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — out-of-range max-tokens is rejected
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_MaxTokensValidValue_DoesNotReturnExitCode1ForRange()
+    {
+        // Arrange — max-tokens 4096 is within the valid range;
+        // Without Azure creds, it will fail later (exit 99), but NOT exit 1 for range
+        var args = new[] { "--max-tokens", "4096", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — should pass range validation (exit code is NOT 1 from parse error)
+        Assert.NotEqual(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_MaxTokensLowerBound_Accepted()
+    {
+        // Arrange — max-tokens 1 is the lower bound, should be accepted
+        var args = new[] { "--max-tokens", "1", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — boundary value passes range validation
+        Assert.NotEqual(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_MaxTokensUpperBound_Accepted()
+    {
+        // Arrange — max-tokens 128000 is the upper bound, should be accepted
+        var args = new[] { "--max-tokens", "128000", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — boundary value passes range validation
+        Assert.NotEqual(1, exitCode);
+    }
 }

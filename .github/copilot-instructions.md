@@ -4,7 +4,7 @@
 - Azure OpenAI CLI tool written in C# targeting .NET 10
 - Docker-first deployment, Alpine-based multi-stage builds
 - Primary use case: text injection for AHK/Espanso workflows
-- Version: 1.5.0
+- Version: 1.6.0
 
 ## Architecture
 - Single-file CLI entry point: `azureopenai-cli/Program.cs` (~1300 lines)
@@ -12,6 +12,7 @@
 - 6 built-in tools: shell_exec, read_file, web_fetch, get_clipboard, get_datetime, delegate_task
 - Tool registry: `azureopenai-cli/Tools/ToolRegistry.cs`
 - User config: `azureopenai-cli/UserConfig.cs` (persists to `~/.azureopenai-cli.json`)
+- JSON source generators: `azureopenai-cli/JsonGenerationContext.cs` (`AppJsonContext` — AOT-compatible serialization)
 - Squad persona system: `azureopenai-cli/Squad/` (SquadConfig, SquadCoordinator, SquadInitializer, PersonaMemory)
 - Four modes: standard (single response), agent (tool-calling loop), ralph (Wiggum autonomous loop), persona (squad member with persistent memory)
 
@@ -28,7 +29,9 @@
 ## Key Conventions
 - All tool classes are `internal sealed class` implementing `IBuiltInTool`
 - Tools define their own JSON schema via `BinaryData ParametersSchema`
+- Tools use `TryGetProperty()` (not `GetProperty()`) for parameter access — graceful handling of missing fields
 - Security-first: all tools validate inputs, block dangerous operations
+- Use `AppJsonContext` (in `JsonGenerationContext.cs`) for all new JSON serialization — required for AOT compatibility
 - Use `Azure.AI.OpenAI 2.9.0-beta.1` — required for tool calling (stable 2.1.0 doesn't work)
 - Streaming via `CompleteChatStreamingAsync` — tool calls arrive as indexed fragments
 - `ChatToolCall.CreateFunctionToolCall(id, name, BinaryData.FromString(args))` for tool call construction
@@ -59,7 +62,7 @@
 - Tool inputs must be validated before execution
 - Shell commands have a blocklist (rm -rf, sudo, etc.)
 - File reads are restricted from sensitive paths (/etc/shadow, ~/.ssh, etc.)
-- Web fetches block private/internal IP ranges (SSRF protection)
+- Web fetches block private/internal IP ranges (SSRF protection) and validate final URL after redirects
 - Subagent delegation depth is capped at 3 (`MaxDepth` in DelegateTaskTool)
 
 ## Code Style

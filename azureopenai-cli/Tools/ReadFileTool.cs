@@ -35,8 +35,13 @@ internal sealed class ReadFileTool : IBuiltInTool
 
     public Task<string> ExecuteAsync(JsonElement arguments, CancellationToken ct)
     {
-        var path = arguments.GetProperty("path").GetString()
-            ?? throw new ArgumentException("Missing 'path' parameter");
+        if (arguments.ValueKind != JsonValueKind.Object ||
+            !arguments.TryGetProperty("path", out var pathProp))
+            return Task.FromResult("Error: missing required parameter 'path'.");
+
+        var path = pathProp.GetString();
+        if (string.IsNullOrEmpty(path))
+            return Task.FromResult("Error: parameter 'path' must not be empty.");
 
         // Expand ~ to home directory
         if (path.StartsWith('~'))

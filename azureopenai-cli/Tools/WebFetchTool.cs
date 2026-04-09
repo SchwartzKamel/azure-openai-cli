@@ -13,6 +13,15 @@ internal sealed class WebFetchTool : IBuiltInTool
     private const int TimeoutSeconds = 10;
     private const int MaxRedirects = 3;
 
+    private readonly HttpMessageHandler? _handlerOverride;
+
+    public WebFetchTool() { }
+
+    /// <summary>
+    /// Test-only constructor for injecting a custom HTTP message handler.
+    /// </summary>
+    internal WebFetchTool(HttpMessageHandler handler) { _handlerOverride = handler; }
+
     public string Name => "web_fetch";
     public string Description => "Fetch the text content of a web URL via HTTP GET. HTTPS only. Returns the response body as text.";
     public BinaryData ParametersSchema => BinaryData.FromString("""
@@ -27,8 +36,13 @@ internal sealed class WebFetchTool : IBuiltInTool
 
     public async Task<string> ExecuteAsync(JsonElement arguments, CancellationToken ct)
     {
-        var url = arguments.GetProperty("url").GetString()
-            ?? throw new ArgumentException("Missing 'url' parameter");
+        if (arguments.ValueKind != JsonValueKind.Object ||
+            !arguments.TryGetProperty("url", out var urlProp))
+            return "Error: missing required parameter 'url'.";
+
+        var url = urlProp.GetString();
+        if (string.IsNullOrEmpty(url))
+            return "Error: parameter 'url' must not be empty.";
 
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != "https")
             return "Error: only HTTPS URLs are allowed.";
@@ -56,11 +70,14 @@ internal sealed class WebFetchTool : IBuiltInTool
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(TimeoutSeconds));
 
-        var handler = new HttpClientHandler
+        var handler = _handlerOverride ?? new HttpClientHandler
         {
             MaxAutomaticRedirections = MaxRedirects,
         };
-        using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(TimeoutSeconds) };
+        using var http = new HttpClient(handler, disposeHandler: _handlerOverride == null)
+        {
+            Timeout = TimeSpan.FromSeconds(TimeoutSeconds)
+        };
 
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         var versionString = version is not null ? $"{version.Major}.{version.Minor}" : "0.0";
@@ -68,6 +85,11 @@ internal sealed class WebFetchTool : IBuiltInTool
 
         var response = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cts.Token);
         response.EnsureSuccessStatusCode();
+
+        // Post-redirect SSRF protection: validate the final URL after any redirects
+        var redirectError = await ValidateRedirectedUriAsync(response.RequestMessage?.RequestUri, ct);
+        if (redirectError is not null)
+            return redirectError;
 
         await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
         var buffer = new byte[MaxResponseBytes];
@@ -84,6 +106,36 @@ internal sealed class WebFetchTool : IBuiltInTool
             text += "\n... (response truncated)";
 
         return text;
+    }
+
+    /// <summary>
+    /// Validate the final URI after HTTP redirects. Returns null if safe, or an error message if blocked.
+    /// </summary>
+    internal static async Task<string?> ValidateRedirectedUriAsync(Uri? finalUri, CancellationToken ct)
+    {
+        if (finalUri is null)
+            return "Error: could not determine final URL after redirects.";
+
+        if (finalUri.Scheme != "https")
+            return "Error: redirect to non-HTTPS URL is blocked for security.";
+
+        IPAddress[] addresses;
+        try
+        {
+            addresses = await Dns.GetHostAddressesAsync(finalUri.Host, ct);
+        }
+        catch (Exception ex)
+        {
+            return $"Error: failed to resolve redirected hostname '{finalUri.Host}': {ex.Message}";
+        }
+
+        foreach (var addr in addresses)
+        {
+            if (IsPrivateAddress(addr))
+                return "Error: redirect to private/loopback address is blocked for security.";
+        }
+
+        return null;
     }
 
     /// <summary>

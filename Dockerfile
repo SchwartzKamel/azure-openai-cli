@@ -4,10 +4,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy only .NET project files for restore caching
-COPY *.sln ./
-COPY azureopenai-cli/ ./
+# Copy only .csproj first for restore-layer caching
+COPY azureopenai-cli/AzureOpenAI_CLI.csproj ./
 RUN dotnet restore ./AzureOpenAI_CLI.csproj
+
+# Then copy source (changes here don't invalidate the restore cache)
+COPY azureopenai-cli/ ./
 
 ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8
@@ -18,6 +20,7 @@ RUN dotnet publish ./AzureOpenAI_CLI.csproj \
         --self-contained true \
         /p:PublishSingleFile=true \
         /p:PublishTrimmed=true \
+        /p:PublishReadyToRun=true \
         /p:IncludeAllContentForSelfExtract=true \
         -o /app
 # Changed runtime identifier to linux-musl-x64 for Alpine compatibility

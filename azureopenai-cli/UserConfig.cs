@@ -35,7 +35,7 @@ public class UserConfig
             if (File.Exists(ConfigFilePath))
             {
                 string json = File.ReadAllText(ConfigFilePath);
-                return JsonSerializer.Deserialize<UserConfig>(json) ?? new UserConfig();
+                return JsonSerializer.Deserialize(json, AppJsonContext.Default.UserConfig) ?? new UserConfig();
             }
         }
         catch (JsonException ex)
@@ -60,12 +60,7 @@ public class UserConfig
     {
         try
         {
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            };
-            string json = JsonSerializer.Serialize(this, options);
+            string json = JsonSerializer.Serialize(this, AppJsonContext.Default.UserConfig);
             File.WriteAllText(ConfigFilePath, json);
             SetRestrictivePermissions(ConfigFilePath);
         }

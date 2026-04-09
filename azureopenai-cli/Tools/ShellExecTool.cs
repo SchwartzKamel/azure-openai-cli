@@ -33,8 +33,13 @@ internal sealed class ShellExecTool : IBuiltInTool
 
     public async Task<string> ExecuteAsync(JsonElement arguments, CancellationToken ct)
     {
-        var command = arguments.GetProperty("command").GetString()
-            ?? throw new ArgumentException("Missing 'command' parameter");
+        if (arguments.ValueKind != JsonValueKind.Object ||
+            !arguments.TryGetProperty("command", out var commandProp))
+            return "Error: missing required parameter 'command'.";
+
+        var command = commandProp.GetString();
+        if (string.IsNullOrEmpty(command))
+            return "Error: parameter 'command' must not be empty.";
 
         // Block dangerous commands
         var firstToken = command.TrimStart().Split(' ', 2)[0].Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";

@@ -1,6 +1,6 @@
 # Tests
 
-This directory contains **301 unit tests** and **78 integration tests** for the Azure OpenAI CLI.
+This directory contains **423+ unit tests** and **101+ integration tests** for the Azure OpenAI CLI.
 
 ---
 
@@ -8,11 +8,11 @@ This directory contains **301 unit tests** and **78 integration tests** for the 
 
 | Suite | Type | Count | Description |
 |-------|------|------:|-------------|
-| [`AzureOpenAI_CLI.Tests/`](AzureOpenAI_CLI.Tests/) | xUnit | 301 | Unit tests — run via `dotnet test` |
-| [`integration_tests.sh`](integration_tests.sh) | Bash | 78 | End-to-end CLI tests — no Azure credentials needed |
+| [`AzureOpenAI_CLI.Tests/`](AzureOpenAI_CLI.Tests/) | xUnit | 423+ | Unit tests — run via `dotnet test` |
+| [`integration_tests.sh`](integration_tests.sh) | Bash | 101+ | End-to-end CLI tests — no Azure credentials needed |
 | [`docker-image-optimization.sh`](docker-image-optimization.sh) | Bash | — | Dockerfile validation — checks build best practices |
 
-**Total: 379 tests**
+**Total: 524+ tests**
 
 ---
 
@@ -31,6 +31,8 @@ This directory contains **301 unit tests** and **78 integration tests** for the 
 | [`DelegateTaskToolTests.cs`](AzureOpenAI_CLI.Tests/DelegateTaskToolTests.cs) | 16 | Subagent delegation, recursion depth, input validation |
 | [`RalphModeTests.cs`](AzureOpenAI_CLI.Tests/RalphModeTests.cs) | 28 | Ralph (Wiggum) mode: validation loop, iteration limits, error feedback |
 | [`SecurityDocValidationTests.cs`](AzureOpenAI_CLI.Tests/SecurityDocValidationTests.cs) | 36 | Security documentation claims validation: constants, boundaries, defense-in-depth |
+| [`JsonSourceGeneratorTests.cs`](AzureOpenAI_CLI.Tests/JsonSourceGeneratorTests.cs) | 16 | Source-generated JSON serialization: `AppJsonContext` round-trip, type coverage |
+| [`ToolHardeningTests.cs`](AzureOpenAI_CLI.Tests/ToolHardeningTests.cs) | 33 | `TryGetProperty` hardening, SSRF redirect protection, missing parameter handling |
 
 ---
 

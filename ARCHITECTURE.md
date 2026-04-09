@@ -602,6 +602,49 @@ These values are used when no environment variable override is set, or for param
 - The `.env` file is listed in `.gitignore` and never committed to version control.
 - No credentials are stored in the `UserConfig` JSON file — it only holds model names.
 
+### Tool security
+
+All built-in tools enforce defense-in-depth input validation:
+
+- **Parameter access hardening** — All tools use `TryGetProperty()` instead of `GetProperty()` for graceful handling of missing or malformed JSON parameters. This prevents `KeyNotFoundException` crashes when the model omits required fields.
+- **SSRF redirect protection** — `WebFetchTool` validates the final URL after following HTTP redirects. If the redirect target resolves to a private IP range or uses a non-HTTPS scheme, the request is blocked. This defends against SSRF attacks where the initial URL passes validation but redirects to an internal resource.
+- Shell commands have a blocklist, 10-second timeout, and 64 KB output cap.
+- File reads are restricted from sensitive paths and enforce a 1 MB size cap.
+- Web fetches enforce HTTPS-only, DNS rebinding protection, and response size caps.
+- Clipboard reads have size caps and use PATH-based command detection.
+- Subagent delegation is depth-capped at 3 levels via `RALPH_DEPTH`.
+
+---
+
+## 8.5. Source-Generated JSON (AOT Strategy)
+
+`JsonGenerationContext.cs` defines `AppJsonContext`, a `System.Text.Json` source generator context annotated with `[JsonSerializable]` for all serialized types:
+
+- `UserConfig` — user preferences (`~/.azureopenai-cli.json`)
+- `SquadConfig` — squad team configuration (`.squad.json`)
+- `PersonaConfig` — individual persona definitions
+- All supporting Squad types (routing rules, team metadata)
+
+### Why source generators?
+
+Reflection-based `System.Text.Json` is incompatible with Native AOT — the trimmer removes the metadata that the serializer needs at runtime. Source generators emit serialization code at compile time, eliminating the reflection dependency entirely.
+
+### Usage convention
+
+All new JSON serialization **must** use `AppJsonContext` instead of default `JsonSerializer.Serialize<T>()` / `Deserialize<T>()` overloads. Use the typed context methods:
+
+```csharp
+// ✅ Correct — uses source-generated serializer
+JsonSerializer.Serialize(config, AppJsonContext.Default.UserConfig);
+JsonSerializer.Deserialize<UserConfig>(json, AppJsonContext.Default.UserConfig);
+
+// ❌ Wrong — falls back to reflection (breaks AOT)
+JsonSerializer.Serialize(config);
+JsonSerializer.Deserialize<UserConfig>(json);
+```
+
+`UserConfig.cs` has already been migrated to use `AppJsonContext` for both `Load()` and `Save()`. The Dockerfile uses `PublishReadyToRun=true` for ~50% startup improvement as a stepping stone toward full AOT.
+
 ### Vulnerability scanning
 
 - `make scan` runs [Grype](https://github.com/anchore/grype) against the built image.
@@ -638,6 +681,7 @@ azure-openai-cli/
 │   ├── AzureOpenAI_CLI.csproj       # Project file (net10.0, package refs)
 │   ├── Program.cs                   # Entry point, command routing, chat flow
 │   ├── UserConfig.cs                # JSON-based model config manager
+│   ├── JsonGenerationContext.cs     # Source-generated JSON (AppJsonContext for AOT)
 │   ├── Tools/                       # Agentic tool implementations
 │   │   ├── IBuiltInTool.cs          # Tool interface
 │   │   ├── ToolRegistry.cs          # Tool registry + factory + executor
@@ -658,7 +702,9 @@ azure-openai-cli/
 │       ├── AzureOpenAI_CLI.Tests.csproj  # Test project (xUnit)
 │       ├── ProgramTests.cs               # Program integration tests
 │       ├── UserConfigTests.cs            # UserConfig unit tests
-│       └── ToolTests.cs                  # Tool unit tests
+│       ├── ToolTests.cs                  # Tool unit tests
+│       ├── JsonSourceGeneratorTests.cs   # Source-gen JSON serialization tests
+│       └── ToolHardeningTests.cs         # TryGetProperty + SSRF hardening tests
 ├── docs/
 │   └── proposals/                   # Design proposals
 └── img/                             # Screenshots and demo GIFs
