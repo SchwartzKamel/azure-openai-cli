@@ -268,7 +268,7 @@ public class ParallelToolExecutionTests : IDisposable
         var files = new Dictionary<string, string>
         {
             [Path.Combine(_tempDir, "alpha.txt")] = "ALPHA_CONTENT",
-            [Path.Combine(_tempDir, "beta.txt")]  = "BETA_CONTENT",
+            [Path.Combine(_tempDir, "beta.txt")] = "BETA_CONTENT",
             [Path.Combine(_tempDir, "gamma.txt")] = "GAMMA_CONTENT",
         };
 
