@@ -7,7 +7,7 @@ BUILD_CTX := azureopenai-cli
 
 DOCKER_CMD := docker run --rm --env-file .env $(FULL_IMAGE)
 
-.PHONY: all build run clean alias scan test integration-test docker-test smoke-test check help lint
+.PHONY: all build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests
 
 ## Help: list available make targets (default target)
 help:
@@ -22,6 +22,10 @@ help:
 	@echo "  make docker-test - Validate Dockerfile best practices"
 	@echo "  make lint        - Check code formatting (for CI)"
 	@echo "  make smoke-test  - Clean, build, and run a test prompt via Docker"
+	@echo "  make format      - Auto-format code"
+	@echo "  make format-check - Check formatting without changes"
+	@echo "  make audit       - Check for vulnerable NuGet packages"
+	@echo "  make all-tests   - Run unit + integration + docker tests"
 	@echo "  make check       - Verify the project builds successfully"
 	@echo "  make help        - Show this help message"
 
@@ -108,3 +112,18 @@ check:
 		rm azureopenai-cli/.env; \
 	fi; \
 	exit $$BUILD_RC
+
+## Format: auto-format code
+format:
+	dotnet format azure-openai-cli.sln
+
+## Format-check: check formatting without changing files
+format-check:
+	dotnet format --verify-no-changes azure-openai-cli.sln
+
+## Audit: check for vulnerable NuGet packages
+audit:
+	dotnet list package --vulnerable --include-transitive
+
+## All-tests: run unit tests + integration tests + docker tests sequentially
+all-tests: test integration-test docker-test

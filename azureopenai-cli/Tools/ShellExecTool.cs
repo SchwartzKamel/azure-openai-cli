@@ -15,6 +15,8 @@ internal sealed class ShellExecTool : IBuiltInTool
     {
         "rm", "rmdir", "mkfs", "dd", "shutdown", "reboot", "halt", "poweroff",
         "kill", "killall", "pkill", "format", "del", "fdisk", "passwd",
+        "sudo", "su", "crontab", "vi", "vim", "nano",
+        "nc", "ncat", "netcat", "wget",
     };
 
     public string Name => "shell_exec";
@@ -56,6 +58,7 @@ internal sealed class ShellExecTool : IBuiltInTool
             Arguments = $"-c \"{command.Replace("\"", "\\\"")}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            RedirectStandardInput = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
@@ -63,11 +66,19 @@ internal sealed class ShellExecTool : IBuiltInTool
         using var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start shell process");
 
+        // Close stdin immediately to prevent interactive commands from hanging
+        process.StandardInput.Close();
+
         var stdout = await ReadCappedAsync(process.StandardOutput, MaxOutputBytes, cts.Token);
         var stderr = await ReadCappedAsync(process.StandardError, MaxOutputBytes / 4, cts.Token);
 
         try { await process.WaitForExitAsync(cts.Token); }
-        catch (OperationCanceledException) { process.Kill(entireProcessTree: true); throw; }
+        catch (OperationCanceledException)
+        {
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
+            throw;
+        }
 
         var result = stdout;
         if (process.ExitCode != 0 && !string.IsNullOrEmpty(stderr))

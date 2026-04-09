@@ -9,9 +9,16 @@ internal sealed class ReadFileTool : IBuiltInTool
 {
     private const int MaxFileSizeBytes = 262_144; // 256 KB
 
-    private static readonly HashSet<string> BlockedPaths = new(StringComparer.OrdinalIgnoreCase)
+    // Blocked path prefixes — any resolved path starting with these is denied.
+    private static readonly string[] BlockedPathPrefixes = new[]
     {
-        "/etc/shadow", "/etc/passwd", "/etc/sudoers",
+        "/etc/shadow",
+        "/etc/passwd",
+        "/etc/sudoers",
+        "/etc/hosts",
+        "/root/.ssh",
+        "/proc/self/environ",
+        "/proc/self/cmdline",
     };
 
     public string Name => "read_file";
@@ -37,11 +44,17 @@ internal sealed class ReadFileTool : IBuiltInTool
 
         path = Path.GetFullPath(path);
 
-        if (BlockedPaths.Any(bp => path.Equals(bp, StringComparison.OrdinalIgnoreCase)))
+        // Check the logical path against blocked prefixes first
+        if (IsBlockedPath(path))
             return Task.FromResult($"Error: access to '{path}' is blocked for security.");
 
         if (!File.Exists(path))
             return Task.FromResult($"Error: file not found: {path}");
+
+        // Resolve symlinks: the real target path must also be checked
+        var resolvedPath = ResolveSymlinks(path);
+        if (resolvedPath != path && IsBlockedPath(resolvedPath))
+            return Task.FromResult($"Error: access to '{path}' is blocked for security (symlink target is restricted).");
 
         var info = new FileInfo(path);
         if (info.Length > MaxFileSizeBytes)
@@ -50,5 +63,38 @@ internal sealed class ReadFileTool : IBuiltInTool
         ct.ThrowIfCancellationRequested();
         var content = File.ReadAllText(path);
         return Task.FromResult(content);
+    }
+
+    /// <summary>
+    /// Check if a path matches or falls under any blocked path prefix.
+    /// </summary>
+    internal static bool IsBlockedPath(string fullPath)
+    {
+        foreach (var prefix in BlockedPathPrefixes)
+        {
+            if (fullPath.Equals(prefix, StringComparison.OrdinalIgnoreCase)
+                || fullPath.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Resolve symlinks to the final real path. Returns the original path if not a symlink
+    /// or if resolution fails.
+    /// </summary>
+    private static string ResolveSymlinks(string path)
+    {
+        try
+        {
+            var target = File.ResolveLinkTarget(path, returnFinalTarget: true);
+            if (target is not null)
+                return Path.GetFullPath(target.FullName);
+        }
+        catch
+        {
+            // If we can't resolve, fall through and use the original path
+        }
+        return path;
     }
 }

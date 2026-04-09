@@ -51,9 +51,19 @@ internal sealed class ToolRegistry
         }
     }
 
+    // Short alias → full tool name mapping for --tools CLI flag
+    private static readonly Dictionary<string, string> ShortAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["shell"] = "shell_exec",
+        ["file"] = "read_file",
+        ["web"] = "web_fetch",
+        ["clipboard"] = "get_clipboard",
+        ["datetime"] = "get_datetime",
+    };
+
     /// <summary>
     /// Create a registry with the specified tool names enabled.
-    /// Pass null to enable all tools.
+    /// Pass null to enable all tools. Accepts full tool names or short aliases.
     /// </summary>
     public static ToolRegistry Create(IEnumerable<string>? enabledTools = null)
     {
@@ -72,7 +82,8 @@ internal sealed class ToolRegistry
         {
             if (enabled is null
                 || enabled.Contains(tool.Name)
-                || enabled.Any(e => tool.Name.Contains(e, StringComparison.OrdinalIgnoreCase)))
+                || enabled.Any(e => ShortAliases.TryGetValue(e, out var fullName)
+                                    && fullName.Equals(tool.Name, StringComparison.OrdinalIgnoreCase)))
                 registry.Register(tool);
         }
 

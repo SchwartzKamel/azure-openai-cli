@@ -28,8 +28,9 @@ internal sealed class GetClipboardTool : IBuiltInTool
 
         if (OperatingSystem.IsLinux())
         {
-            // Try xclip first, fall back to xsel
-            command = File.Exists("/usr/bin/xclip") ? "xclip" : "xsel";
+            // Use 'which' to find clipboard tools instead of hardcoded paths
+            var xclipPath = FindCommand("xclip");
+            command = xclipPath is not null ? "xclip" : "xsel";
             args = command == "xclip" ? "-selection clipboard -o" : "--clipboard --output";
         }
         else if (OperatingSystem.IsMacOS())
@@ -76,11 +77,50 @@ internal sealed class GetClipboardTool : IBuiltInTool
             }
 
             var content = new string(buffer, 0, read);
-            return string.IsNullOrEmpty(content) ? "(clipboard is empty)" : content;
+            if (string.IsNullOrEmpty(content))
+                return "(clipboard is empty)";
+
+            if (read == MaxClipboardBytes)
+                content += "\n... (clipboard content truncated)";
+
+            return content;
         }
         catch (System.ComponentModel.Win32Exception)
         {
             return $"Error: '{command}' not found. Install xclip or xsel for clipboard support.";
+        }
+    }
+
+    /// <summary>
+    /// Use 'which' (or 'where' on Windows) to locate a command on the PATH.
+    /// Returns the full path if found, null otherwise.
+    /// </summary>
+    private static string? FindCommand(string commandName)
+    {
+        try
+        {
+            var whichCommand = OperatingSystem.IsWindows() ? "where" : "which";
+            var psi = new ProcessStartInfo
+            {
+                FileName = whichCommand,
+                Arguments = commandName,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            using var process = Process.Start(psi);
+            if (process is null) return null;
+
+            var output = process.StandardOutput.ReadToEnd().Trim();
+            process.WaitForExit(2000);
+
+            return process.ExitCode == 0 && !string.IsNullOrEmpty(output) ? output : null;
+        }
+        catch
+        {
+            return null;
         }
     }
 }

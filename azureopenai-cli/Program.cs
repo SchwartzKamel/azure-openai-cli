@@ -727,6 +727,7 @@ class Program
         var stopwatch = Stopwatch.StartNew();
         bool showStatus = !jsonMode && !Console.IsErrorRedirected;
         int round = 0;
+        int totalToolCalls = 0;
 
         if (showStatus)
             Console.Error.Write("⚡ Agent mode");
@@ -746,18 +747,23 @@ class Program
                 if (showStatus)
                     Console.Error.Write($"\r🔧 Round {round}: ");
 
-                foreach (var toolCall in completion.ToolCalls)
-                {
-                    if (showStatus)
-                        Console.Error.Write($"{toolCall.FunctionName} ");
+                // Execute tool calls in parallel
+                var toolCalls = completion.ToolCalls.ToList();
+                totalToolCalls += toolCalls.Count;
 
-                    var result = await registry.ExecuteAsync(
-                        toolCall.FunctionName,
-                        toolCall.FunctionArguments?.ToString() ?? "{}",
-                        cts.Token);
+                if (showStatus)
+                    Console.Error.Write(string.Join(" ", toolCalls.Select(tc => tc.FunctionName)));
 
-                    messages.Add(new ToolChatMessage(toolCall.Id, result));
-                }
+                var toolTasks = toolCalls.Select(tc => registry.ExecuteAsync(
+                    tc.FunctionName,
+                    tc.FunctionArguments?.ToString() ?? "{}",
+                    cts.Token)).ToList();
+
+                var results = await Task.WhenAll(toolTasks);
+
+                // Add results in order matching tool call IDs
+                for (int i = 0; i < toolCalls.Count; i++)
+                    messages.Add(new ToolChatMessage(toolCalls[i].Id, results[i]));
 
                 if (showStatus)
                     Console.Error.WriteLine();
@@ -779,7 +785,7 @@ class Program
                     model = deploymentName,
                     response = responseText,
                     duration_ms = stopwatch.ElapsedMilliseconds,
-                    agent = new { rounds = round, tools_called = round - 1 }
+                    agent = new { rounds = round, tools_called = totalToolCalls }
                 };
                 var jsonOpts = new JsonSerializerOptions { WriteIndented = true };
                 Console.WriteLine(JsonSerializer.Serialize(jsonOutput, jsonOpts));
