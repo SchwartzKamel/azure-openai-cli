@@ -219,6 +219,51 @@ echo "▸ Ralph + Version Coexistence"
 assert_exit "--version still exits 0 after ralph tests" 0 "$CLI --version"
 assert_output_contains "--version still shows v1 after ralph tests" "v1" "$CLI --version"
 
+# ── Squad / Persona Mode ───────────────────────
+echo ""
+echo "=== Squad / Persona Mode Tests ==="
+
+# Help flag tests run from repo root (no cd needed)
+echo ""
+echo "▸ Persona Help Flags"
+assert_output_contains "--help shows --persona flag" "[-]-persona" "$CLI --help"
+assert_output_contains "--help shows --personas flag" "[-]-personas" "$CLI --help"
+assert_output_contains "--help shows --squad-init flag" "[-]-squad-init" "$CLI --help"
+assert_output_contains "--help shows Persona Mode section" "Persona Mode" "$CLI --help"
+
+echo ""
+echo "▸ Persona Argument Validation"
+assert_exit "--persona without value exits 1" 1 "$CLI --persona"
+assert_output_contains "--persona missing shows error" "requires a name" "$CLI --persona"
+
+# Work in a temp directory so we don't pollute the repo root
+_squad_test_dir=$(mktemp -d)
+_orig_dir=$(pwd)
+_abs_proj="$(cd azureopenai-cli && pwd)"
+_CLI_ABS="dotnet run --project $_abs_proj --"
+cd "$_squad_test_dir"
+
+echo ""
+echo "▸ Squad Init & Persona Listing"
+assert_exit "--squad-init exits 0" 0 "$_CLI_ABS --squad-init"
+assert_exit "--squad-init idempotent exits 0" 0 "$_CLI_ABS --squad-init"
+assert_exit "--personas exits 0 after init" 0 "$_CLI_ABS --personas"
+assert_output_contains "--personas lists coder" "coder" "$_CLI_ABS --personas"
+assert_output_contains "--personas lists reviewer" "reviewer" "$_CLI_ABS --personas"
+assert_output_contains "--personas lists architect" "architect" "$_CLI_ABS --personas"
+assert_output_contains "--personas lists writer" "writer" "$_CLI_ABS --personas"
+assert_output_contains "--personas lists security" "security" "$_CLI_ABS --personas"
+assert_exit "--persona unknown exits non-zero" 0 "! $_CLI_ABS --persona nonexistent 'test'"
+
+# Cleanup squad test dir
+cd "$_orig_dir"
+rm -rf "$_squad_test_dir"
+
+echo ""
+echo "▸ Persona No-Squad-Json"
+# In repo root there's no .squad.json, so --personas should fail
+assert_exit "--personas with no .squad.json exits 1" 1 "$CLI --personas"
+
 # ── Docker ────────────────────────────────────
 echo ""
 echo "▸ Docker"

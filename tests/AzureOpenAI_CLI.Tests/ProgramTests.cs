@@ -240,4 +240,176 @@ public class ProgramTests
         // Assert — invalid JSON schema is rejected
         Assert.NotEqual(0, exitCode);
     }
+
+    // ── Persona / Squad flags ──────────────────────────────────────
+
+    [Fact]
+    public void Main_SquadInit_ReturnsExitCode0()
+    {
+        // Arrange — run --squad-init in an isolated temp directory
+        var tempDir = Path.Combine(Path.GetTempPath(), "squad-prog-test-" + Guid.NewGuid());
+        Directory.CreateDirectory(tempDir);
+        var originalDir = Directory.GetCurrentDirectory();
+        try
+        {
+            Directory.SetCurrentDirectory(tempDir);
+            var args = new[] { "--squad-init" };
+
+            // Act
+            int exitCode = InvokeMain(args);
+
+            // Assert — init succeeds and creates .squad.json
+            Assert.Equal(0, exitCode);
+            Assert.True(File.Exists(Path.Combine(tempDir, ".squad.json")));
+            Assert.True(Directory.Exists(Path.Combine(tempDir, ".squad")));
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void Main_SquadInit_SecondCall_ReturnsExitCode0()
+    {
+        // Arrange — run --squad-init twice: second call should also exit 0 (already exists)
+        var tempDir = Path.Combine(Path.GetTempPath(), "squad-prog-test2-" + Guid.NewGuid());
+        Directory.CreateDirectory(tempDir);
+        var originalDir = Directory.GetCurrentDirectory();
+        try
+        {
+            Directory.SetCurrentDirectory(tempDir);
+
+            // Act — first init
+            int exitCode1 = InvokeMain(new[] { "--squad-init" });
+            Assert.Equal(0, exitCode1);
+
+            // Act — second init (already exists)
+            int exitCode2 = InvokeMain(new[] { "--squad-init" });
+
+            // Assert — still exits 0, not an error
+            Assert.Equal(0, exitCode2);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void Main_PersonasFlag_NoSquadJson_ReturnsExitCode1()
+    {
+        // Arrange — --personas with no .squad.json should fail
+        var tempDir = Path.Combine(Path.GetTempPath(), "squad-prog-test3-" + Guid.NewGuid());
+        Directory.CreateDirectory(tempDir);
+        var originalDir = Directory.GetCurrentDirectory();
+        try
+        {
+            Directory.SetCurrentDirectory(tempDir);
+            var args = new[] { "--personas" };
+
+            // Act
+            int exitCode = InvokeMain(args);
+
+            // Assert — no .squad.json means error
+            Assert.Equal(1, exitCode);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void Main_PersonasFlag_AfterInit_ReturnsExitCode0()
+    {
+        // Arrange — init, then list personas
+        var tempDir = Path.Combine(Path.GetTempPath(), "squad-prog-test4-" + Guid.NewGuid());
+        Directory.CreateDirectory(tempDir);
+        var originalDir = Directory.GetCurrentDirectory();
+        try
+        {
+            Directory.SetCurrentDirectory(tempDir);
+            InvokeMain(new[] { "--squad-init" });
+
+            // Act
+            int exitCode = InvokeMain(new[] { "--personas" });
+
+            // Assert — listing personas succeeds after init
+            Assert.Equal(0, exitCode);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void Main_PersonaFlagWithoutValue_ReturnsExitCode1()
+    {
+        // Arrange — --persona with no name is a parse error
+        var args = new[] { "--persona" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — missing persona name is an error
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_PersonaUnknownName_NoSquadJson_ReturnsNonZero()
+    {
+        // Arrange — --persona with unknown name and no .squad.json
+        var tempDir = Path.Combine(Path.GetTempPath(), "squad-prog-test5-" + Guid.NewGuid());
+        Directory.CreateDirectory(tempDir);
+        var originalDir = Directory.GetCurrentDirectory();
+        try
+        {
+            Directory.SetCurrentDirectory(tempDir);
+            var args = new[] { "--persona", "nonexistent", "test prompt" };
+
+            // Act
+            int exitCode = InvokeMain(args);
+
+            // Assert — should fail (no .squad.json or unknown persona)
+            Assert.NotEqual(0, exitCode);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void Main_PersonaUnknownName_WithSquadJson_ReturnsNonZero()
+    {
+        // Arrange — --persona nonexistent after init should fail
+        // Note: exits with non-zero (may be 99 if creds missing, or 1 if persona check runs first)
+        var tempDir = Path.Combine(Path.GetTempPath(), "squad-prog-test6-" + Guid.NewGuid());
+        Directory.CreateDirectory(tempDir);
+        var originalDir = Directory.GetCurrentDirectory();
+        try
+        {
+            Directory.SetCurrentDirectory(tempDir);
+            InvokeMain(new[] { "--squad-init" });
+            var args = new[] { "--persona", "nonexistent", "test prompt" };
+
+            // Act
+            int exitCode = InvokeMain(args);
+
+            // Assert — unknown persona name is an error (exact code depends on env state)
+            Assert.NotEqual(0, exitCode);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
 }

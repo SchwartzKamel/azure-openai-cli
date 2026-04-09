@@ -109,6 +109,9 @@ While waiting for the first token from Azure, a braille spinner (`⠋⠙⠹⠸�
 | `--validate <cmd>` | Validation command for Ralph loop iterations |
 | `--task-file <path>` | Read task prompt from file |
 | `--max-iterations <n>` | Ralph loop iteration limit (default: 10, max: 50) |
+| `--squad-init` | Scaffold `.squad.json` and `.squad/` directory with default team |
+| `--persona <name>` | Select a named persona (or `auto` for keyword routing) |
+| `--personas` | List available personas from `.squad.json` |
 
 #### Command routing
 
@@ -441,6 +444,96 @@ Parent Agent (depth 0)
 | **Credential passthrough** | Azure env vars (`AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`) forwarded to child |
 | **Default child tools** | All tools except `delegate` (prevents naive infinite recursion) |
 
+### Persona System Data Flow (Squad)
+
+When `--persona` is used, the CLI loads persona configuration and injects persona-specific context into the conversation:
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant CLI as CLI Binary
+    participant SC as SquadConfig
+    participant SR as SquadCoordinator
+    participant PM as PersonaMemory
+    participant API as Azure OpenAI
+
+    U->>CLI: --persona coder "implement login"
+    CLI->>SC: Load(.squad.json)
+    SC-->>CLI: SquadConfig (team, personas, routing)
+
+    alt --persona auto
+        CLI->>SR: Route(taskPrompt)
+        SR->>SR: Score keyword matches per routing rule
+        SR-->>CLI: Best matching PersonaConfig
+    else --persona <name>
+        CLI->>SC: GetPersona(name)
+        SC-->>CLI: PersonaConfig
+    end
+
+    CLI->>PM: ReadHistory(persona.name)
+    PM-->>CLI: Accumulated session history (≤32 KB)
+    CLI->>PM: ReadDecisions()
+    PM-->>CLI: Shared decision log
+
+    CLI->>CLI: Build system prompt = persona.system_prompt + history + decisions
+    CLI->>CLI: Filter tools to persona.tools
+    CLI->>API: Chat completion (persona context + user prompt)
+    API-->>CLI: Response
+
+    CLI->>PM: AppendHistory(persona.name, task, summary)
+    CLI->>PM: LogDecision(persona.name, decision) [if applicable]
+    CLI-->>U: Output response
+```
+
+#### Persona System Components
+
+```
+Squad/ (namespace: AzureOpenAI_CLI.Squad)
+├── SquadConfig.cs         # .squad.json model (team, personas, routing rules)
+├── SquadCoordinator.cs    # Keyword-based task routing (score + select)
+├── SquadInitializer.cs    # Scaffold .squad.json + .squad/ directory
+└── PersonaMemory.cs       # Per-persona history read/write, decision log
+```
+
+#### `.squad.json` Config Schema
+
+```json
+{
+  "team": {
+    "name": "string — team display name",
+    "description": "string — team description"
+  },
+  "personas": [
+    {
+      "name": "string — unique identifier (lowercase)",
+      "role": "string — human-readable role title",
+      "description": "string — what this persona does",
+      "system_prompt": "string — injected as system message",
+      "tools": ["string — tool short names (shell, file, web, etc.)"],
+      "model": "string? — optional model override per persona"
+    }
+  ],
+  "routing": [
+    {
+      "pattern": "string — comma-separated keywords",
+      "persona": "string — persona name to route to",
+      "description": "string — human-readable rule description"
+    }
+  ]
+}
+```
+
+#### Persona Memory Invariants
+
+| Property | Value |
+|---|---|
+| **Storage** | `.squad/history/<name>.md` — one file per persona |
+| **Max size** | 32 KB per persona (tail-truncated, most recent kept) |
+| **Session entry** | Timestamp + task summary + result summary |
+| **Shared log** | `.squad/decisions.md` — cross-persona decision record |
+| **Initialization** | `--squad-init` creates `.squad/`, `history/`, and `decisions.md` |
+| **Won't overwrite** | `--squad-init` is idempotent — returns false if `.squad.json` already exists |
+
 ---
 
 ## 6. Configuration Model
@@ -527,7 +620,8 @@ azure-openai-cli/
 │   ├── agents/                      # Copilot agent configuration
 │   ├── pull_request_template.md     # PR template
 │   └── workflows/
-│       └── ci.yml                   # CI pipeline (build + test)
+│       ├── ci.yml                   # CI pipeline (build + test)
+│       └── release.yml              # Release pipeline (binaries + Docker + GitHub Release)
 ├── ARCHITECTURE.md                  # This file
 ├── CODE_OF_CONDUCT.md               # Community code of conduct
 ├── CONTRIBUTING.md                  # Contribution guidelines
@@ -544,15 +638,20 @@ azure-openai-cli/
 │   ├── AzureOpenAI_CLI.csproj       # Project file (net10.0, package refs)
 │   ├── Program.cs                   # Entry point, command routing, chat flow
 │   ├── UserConfig.cs                # JSON-based model config manager
-│   └── Tools/                       # Agentic tool implementations
-│       ├── IBuiltInTool.cs          # Tool interface
-│       ├── ToolRegistry.cs          # Tool registry + factory + executor
-│       ├── ShellExecTool.cs         # Shell command execution (sandboxed)
-│       ├── ReadFileTool.cs          # File reading (size-capped)
-│       ├── WebFetchTool.cs          # HTTP GET (HTTPS-only)
-│       ├── GetClipboardTool.cs      # Cross-platform clipboard
-│       ├── GetDateTimeTool.cs       # Date/time with timezone
-│       └── DelegateTaskTool.cs      # Subagent delegation (depth-capped)
+│   ├── Tools/                       # Agentic tool implementations
+│   │   ├── IBuiltInTool.cs          # Tool interface
+│   │   ├── ToolRegistry.cs          # Tool registry + factory + executor
+│   │   ├── ShellExecTool.cs         # Shell command execution (sandboxed)
+│   │   ├── ReadFileTool.cs          # File reading (size-capped)
+│   │   ├── WebFetchTool.cs          # HTTP GET (HTTPS-only)
+│   │   ├── GetClipboardTool.cs      # Cross-platform clipboard
+│   │   ├── GetDateTimeTool.cs       # Date/time with timezone
+│   │   └── DelegateTaskTool.cs      # Subagent delegation (depth-capped)
+│   └── Squad/                       # Persona system (inspired by bradygaster/squad)
+│       ├── SquadConfig.cs           # .squad.json model + load/save
+│       ├── SquadCoordinator.cs      # Keyword-based task routing
+│       ├── SquadInitializer.cs      # Scaffold .squad.json + .squad/ directory
+│       └── PersonaMemory.cs         # Per-persona history + decision log
 ├── tests/
 │   ├── integration_tests.sh             # Bash end-to-end tests
 │   └── AzureOpenAI_CLI.Tests/
@@ -616,3 +715,6 @@ azure-openai-cli/
 | **Ralph mode (Wiggum loop)** | Deterministic validation (tests, linters) catches errors that the LLM cannot self-detect. File-based state means each iteration starts with a clean context window while retaining all prior work on disk. Inspired by ghuntley's Ralph Wiggum technique. |
 | **Stateless iterations** | Each Ralph iteration gets fresh messages instead of an ever-growing conversation. This prevents context window exhaustion on long-running tasks and ensures the model reads the current state of files rather than relying on stale memory. |
 | **DelegateTaskTool depth cap** | Subagent recursion is capped at 3 levels via `RALPH_DEPTH` env var. This balances task decomposition power against runaway process spawning. Children default to all tools except `delegate` as a secondary safeguard. |
+| **Persona system (Squad)** | Inspired by bradygaster/squad, but built with zero new dependencies. JSON config (`.squad.json`) is simpler to generate, parse, and validate than Markdown-based configs. Per-persona history files compound knowledge across sessions without requiring a database. |
+| **Keyword-based routing** | `--persona auto` uses comma-separated keyword patterns instead of an LLM classifier. This keeps routing deterministic, zero-latency, and debuggable — users can read `.squad.json` and predict which persona will be selected. |
+| **32 KB history cap** | Persona history is truncated from the head (keeping the tail / most recent learnings) to prevent unbounded context growth. 32 KB fits comfortably within any model's context window. |

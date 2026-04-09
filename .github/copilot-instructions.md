@@ -4,7 +4,7 @@
 - Azure OpenAI CLI tool written in C# targeting .NET 10
 - Docker-first deployment, Alpine-based multi-stage builds
 - Primary use case: text injection for AHK/Espanso workflows
-- Version: 1.4.0
+- Version: 1.5.0
 
 ## Architecture
 - Single-file CLI entry point: `azureopenai-cli/Program.cs` (~1300 lines)
@@ -12,7 +12,18 @@
 - 6 built-in tools: shell_exec, read_file, web_fetch, get_clipboard, get_datetime, delegate_task
 - Tool registry: `azureopenai-cli/Tools/ToolRegistry.cs`
 - User config: `azureopenai-cli/UserConfig.cs` (persists to `~/.azureopenai-cli.json`)
-- Three modes: standard (single response), agent (tool-calling loop), ralph (Wiggum autonomous loop)
+- Squad persona system: `azureopenai-cli/Squad/` (SquadConfig, SquadCoordinator, SquadInitializer, PersonaMemory)
+- Four modes: standard (single response), agent (tool-calling loop), ralph (Wiggum autonomous loop), persona (squad member with persistent memory)
+
+## Persona System (Squad)
+- Inspired by bradygaster/squad — AI team members with persistent memory
+- Config: `.squad.json` in project root (team, personas, routing rules)
+- Memory: `.squad/history/<name>.md` — per-persona, auto-managed, 32 KB cap
+- Decisions: `.squad/decisions.md` — shared log across all personas
+- 5 default personas: coder, reviewer, architect, writer, security
+- Routing: keyword-based scoring via SquadCoordinator (deterministic, zero-latency)
+- Flags: `--squad-init`, `--persona <name|auto>`, `--personas`
+- Zero new dependencies — built entirely with System.Text.Json
 
 ## Key Conventions
 - All tool classes are `internal sealed class` implementing `IBuiltInTool`
@@ -38,6 +49,7 @@
 
 ## File Structure Rules
 - New tools go in `azureopenai-cli/Tools/` and must be registered in `ToolRegistry.Create()`
+- Squad system files go in `azureopenai-cli/Squad/` — persona config, routing, memory, initialization
 - Tests go in `tests/AzureOpenAI_CLI.Tests/` using xUnit
 - Integration tests go in `tests/integration_tests.sh` using bash assertions
 - Feature proposals go in `docs/proposals/FR-NNN-*.md`

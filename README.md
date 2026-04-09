@@ -1,6 +1,7 @@
 # Azure OpenAI CLI :robot:
 
 [![CI](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/ci.yml)
+[![Release](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/release.yml/badge.svg)](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Docker](https://img.shields.io/badge/Docker-Alpine-2496ED?logo=docker)](Dockerfile)
@@ -42,6 +43,7 @@ flowchart TB
 - **Cross-platform** - Works on Windows/Linux/macOS
 - **Agentic Mode** - `--agent` flag enables tool-calling (shell, file, web, clipboard, datetime, delegate)
 - **Ralph Mode** - `--ralph` flag enables autonomous self-correcting agent loops with external validation
+- **Persona System** - `--persona` flag selects AI team members with persistent memory (inspired by Squad)
 - **Streaming** - Real-time token streaming with spinner
 - **JSON Output** - `--json` flag for scripted workflows
 - **Stdin Pipe** - Pipe content into prompts
@@ -269,6 +271,157 @@ az-ai --ralph --validate "npm run lint" "fix all ESLint errors in the project"
 ### Why It Works
 
 The Wiggum method exploits a key insight: LLMs are bad at knowing when they're wrong, but **compilers and test suites are great at it**. By pairing an LLM's ability to write code with a deterministic validator, you get a loop that converges on correct solutions. File-based state means the agent can read its own previous output, see what changed, and course-correct — without needing to fit an entire conversation history into the context window.
+
+## :performing_arts: Persona System — AI Team Members
+
+Inspired by [bradygaster/squad](https://github.com/bradygaster/squad), the persona system gives you a team of specialized AI agents — each with its own role, system prompt, tools, and **persistent memory**. Knowledge compounds across sessions: the more you use a persona, the better it knows your project.
+
+### Quick Start
+
+```bash
+# 1. Scaffold your squad (creates .squad.json + .squad/ directory)
+az-ai --squad-init
+
+# 2. Use a specific persona
+az-ai --persona coder "implement the login page"
+
+# 3. Auto-route to the best persona based on your task
+az-ai --persona auto "review the auth module for security issues"
+
+# 4. List available personas
+az-ai --personas
+```
+
+### Default Personas
+
+| Persona | Role | Tools | Focus |
+|---------|------|-------|-------|
+| `coder` | Software Engineer | shell, file, web, datetime | Clean, tested, production-ready code |
+| `reviewer` | Code Reviewer | file, shell | Bugs, security issues, code quality |
+| `architect` | System Architect | file, web, datetime | Design, trade-offs, structural decisions |
+| `writer` | Technical Writer | file, shell | Clear, accurate documentation |
+| `security` | Security Auditor | file, shell, web | Vulnerabilities, hardening, compliance |
+
+### Auto-Routing
+
+With `--persona auto`, the CLI matches keywords in your prompt against routing rules defined in `.squad.json` and selects the best persona automatically:
+
+```bash
+# Routes to "coder" (matches: implement, build, fix, refactor, feature, bug)
+az-ai --persona auto "implement JWT authentication"
+
+# Routes to "security" (matches: security, vulnerability, cve, owasp, harden)
+az-ai --persona auto "check for OWASP Top 10 vulnerabilities"
+
+# Routes to "writer" (matches: document, readme, docs, guide, tutorial)
+az-ai --persona auto "write a getting started guide"
+```
+
+### Custom Personas
+
+Edit `.squad.json` to add, remove, or customize personas:
+
+```json
+{
+  "team": { "name": "My Team", "description": "Custom AI squad" },
+  "personas": [
+    {
+      "name": "devops",
+      "role": "DevOps Engineer",
+      "description": "CI/CD, infrastructure, and deployment",
+      "system_prompt": "You are a DevOps engineer. Focus on CI/CD pipelines, infrastructure as code, and deployment automation.",
+      "tools": ["shell", "file", "web"],
+      "model": "gpt-4o"
+    }
+  ],
+  "routing": [
+    {
+      "pattern": "deploy,pipeline,ci,cd,infrastructure,terraform,docker",
+      "persona": "devops",
+      "description": "DevOps and infrastructure tasks"
+    }
+  ]
+}
+```
+
+Each persona can optionally specify a `model` override — use a cheaper model for simple tasks or a more capable one for complex analysis.
+
+### Persistent Memory
+
+Each persona accumulates knowledge across sessions in `.squad/history/<name>.md`. When you invoke a persona, its history is loaded as additional context — it remembers what it learned about your project.
+
+```
+.squad/
+├── history/          # Per-persona memory (auto-managed)
+│   ├── coder.md      # What the coder learned about your project
+│   ├── reviewer.md   # Patterns the reviewer has noted
+│   └── ...
+├── decisions.md      # Shared decision log across all personas
+└── README.md         # How the squad works
+```
+
+**Commit the `.squad/` directory.** Anyone who clones your repo inherits the full team — with all their accumulated project knowledge.
+
+### How It Differs from Squad
+
+This system is inspired by [bradygaster/squad](https://github.com/bradygaster/squad) but built as native C# — no npm, no Copilot SDK, no new dependencies:
+
+| Feature | Squad (Node.js) | This CLI (C#) |
+|---------|-----------------|---------------|
+| Runtime | Node.js / npm | .NET 10, Docker-first |
+| AI Backend | GitHub Copilot | Azure OpenAI (direct) |
+| Config format | Markdown + TypeScript SDK | JSON (`.squad.json`) |
+| Dependencies | npm packages, Copilot SDK | Zero new deps (`System.Text.Json` only) |
+| Agent execution | Copilot agent sessions | Native tool-calling loop |
+| Memory | `.squad/` markdown files | `.squad/history/` markdown files |
+| Team size | 20 agents (themed) | 5 focused personas (extensible) |
+
+### Persona Flags
+
+| Flag | Description |
+|------|-------------|
+| `--squad-init` | Scaffold `.squad.json` and `.squad/` directory with default team |
+| `--persona <name>` | Select a specific persona by name |
+| `--persona auto` | Auto-route to the best persona based on task keywords |
+| `--personas` | List all available personas from `.squad.json` |
+
+## :package: Releases
+
+Pre-built binaries and Docker images are published automatically when a version tag is pushed.
+
+### Install from GitHub Releases
+
+Download the binary for your platform from [Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases):
+
+| Platform | File |
+|----------|------|
+| Linux (glibc) | `azure-openai-cli-linux-x64.tar.gz` |
+| Linux (musl/Alpine) | `azure-openai-cli-linux-musl-x64.tar.gz` |
+| Windows | `azure-openai-cli-win-x64.zip` |
+| macOS (Intel) | `azure-openai-cli-osx-x64.tar.gz` |
+| macOS (Apple Silicon) | `azure-openai-cli-osx-arm64.tar.gz` |
+
+```bash
+# Example: Linux x64
+tar xzf azure-openai-cli-linux-x64.tar.gz
+chmod +x AzureOpenAI_CLI
+./AzureOpenAI_CLI "Hello world"
+```
+
+### Install from Docker (GHCR)
+
+```bash
+docker pull ghcr.io/schwartzkamel/azure-openai-cli:latest
+docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "Hello world"
+```
+
+### Creating a Release
+
+```bash
+git tag v1.5.0
+git push origin v1.5.0
+# → CI runs → binaries built → Docker pushed to GHCR → GitHub Release created
+```
 
 ## :beginner: Troubleshooting
 

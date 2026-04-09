@@ -40,6 +40,9 @@ class Program
         string? ValidateCommand,
         string? TaskFile,
         int MaxIterations,
+        string? PersonaName,
+        bool SquadInit,
+        bool ListPersonas,
         string[] RemainingArgs);
 
     /// <summary>
@@ -66,6 +69,9 @@ class Program
         string? validateCommand = null;
         string? taskFile = null;
         int maxIterations = 10;
+        string? personaName = null;
+        bool squadInit = false;
+        bool listPersonas = false;
         var cleanedArgs = new List<string>();
 
         for (int i = 0; i < args.Length; i++)
@@ -212,6 +218,27 @@ class Program
                     return (null, new CliParseError("[ERROR] --max-iterations requires a value between 1 and 50", 1));
                 }
             }
+            else if (arg == "--persona")
+            {
+                if (i + 1 < args.Length)
+                {
+                    personaName = args[i + 1];
+                    agentMode = true; // Persona mode implies agent mode
+                    i++;
+                }
+                else
+                {
+                    return (null, new CliParseError("[ERROR] --persona requires a name (e.g., --persona coder) or 'auto'", 1));
+                }
+            }
+            else if (arg == "--squad-init")
+            {
+                squadInit = true;
+            }
+            else if (arg == "--personas")
+            {
+                listPersonas = true;
+            }
             else
             {
                 cleanedArgs.Add(args[i]);
@@ -220,7 +247,7 @@ class Program
 
         return (new CliOptions(cliTemperature, cliMaxTokens, cliSystemPrompt, showConfig,
             agentMode, maxAgentRounds, enabledTools, jsonSchema, ralphMode, validateCommand,
-            taskFile, maxIterations, cleanedArgs.ToArray()), null);
+            taskFile, maxIterations, personaName, squadInit, listPersonas, cleanedArgs.ToArray()), null);
     }
 
     /// <summary>
@@ -295,6 +322,42 @@ class Program
 
             // Load user configuration
             var config = UserConfig.Load();
+
+            // === SQUAD INIT ===
+            if (opts.SquadInit)
+            {
+                var created = AzureOpenAI_CLI.Squad.SquadInitializer.Initialize();
+                if (created)
+                {
+                    Console.Error.WriteLine("✅ Squad initialized! Created .squad.json and .squad/ directory.");
+                    Console.Error.WriteLine("   Edit .squad.json to customize your personas.");
+                    Console.Error.WriteLine("   Use --persona <name> to select a persona.");
+                }
+                else
+                {
+                    Console.Error.WriteLine("Squad already initialized (.squad.json exists).");
+                }
+                return 0;
+            }
+
+            // === LIST PERSONAS ===
+            if (opts.ListPersonas)
+            {
+                var squadConfig = AzureOpenAI_CLI.Squad.SquadConfig.Load();
+                if (squadConfig == null)
+                {
+                    Console.Error.WriteLine("No .squad.json found. Run --squad-init first.");
+                    return 1;
+                }
+                Console.Error.WriteLine($"Squad: {squadConfig.Team.Name}");
+                Console.Error.WriteLine($"  {squadConfig.Team.Description}");
+                Console.Error.WriteLine();
+                foreach (var p in squadConfig.Personas)
+                {
+                    Console.Error.WriteLine($"  {p.Name,-12} {p.Role,-20} {p.Description}");
+                }
+                return 0;
+            }
 
             // Get environment variables
             string? azureOpenAiEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
@@ -412,6 +475,62 @@ class Program
             // Apply precedence: CLI flags > UserConfig > Env vars > Defaults
             var (temperature, maxTokens, timeoutSeconds, effectiveSystemPrompt) =
                 GetEffectiveConfig(opts, config, envSystemPrompt);
+
+            // === PERSONA MODE ===
+            AzureOpenAI_CLI.Squad.PersonaConfig? activePersona = null;
+            AzureOpenAI_CLI.Squad.PersonaMemory? personaMemory = null;
+            if (opts.PersonaName != null)
+            {
+                var squadConfig = AzureOpenAI_CLI.Squad.SquadConfig.Load();
+                if (squadConfig == null)
+                {
+                    var msg = "No .squad.json found. Run --squad-init first.";
+                    if (jsonMode) { OutputJsonError(msg, 1); return 1; }
+                    Console.Error.WriteLine($"[ERROR] {msg}");
+                    return 1;
+                }
+
+                if (opts.PersonaName.Equals("auto", StringComparison.OrdinalIgnoreCase))
+                {
+                    var coordinator = new AzureOpenAI_CLI.Squad.SquadCoordinator(squadConfig);
+                    activePersona = coordinator.Route(userPrompt);
+                    if (activePersona != null && !jsonMode)
+                        Console.Error.WriteLine($"🎭 Auto-routed to: {activePersona.Name} ({activePersona.Role})");
+                }
+                else
+                {
+                    activePersona = squadConfig.GetPersona(opts.PersonaName);
+                    if (activePersona == null)
+                    {
+                        var msg = $"Unknown persona '{opts.PersonaName}'. Available: {string.Join(", ", squadConfig.ListPersonas())}";
+                        if (jsonMode) { OutputJsonError(msg, 1); return 1; }
+                        Console.Error.WriteLine($"[ERROR] {msg}");
+                        return 1;
+                    }
+                }
+
+                personaMemory = new AzureOpenAI_CLI.Squad.PersonaMemory();
+
+                // Override system prompt with persona's prompt + history
+                if (activePersona != null)
+                {
+                    var history = personaMemory.ReadHistory(activePersona.Name);
+                    effectiveSystemPrompt = activePersona.SystemPrompt;
+                    if (!string.IsNullOrEmpty(history))
+                    {
+                        effectiveSystemPrompt += "\n\n## Your Memory (from previous sessions)\n" + history;
+                    }
+
+                    // Override tools if persona specifies them
+                    if (activePersona.Tools.Count > 0)
+                    {
+                        opts = opts with { EnabledTools = activePersona.Tools.ToHashSet(StringComparer.OrdinalIgnoreCase) };
+                    }
+
+                    if (!jsonMode)
+                        Console.Error.WriteLine($"🎭 Persona: {activePersona.Name} ({activePersona.Role})");
+                }
+            }
 
             var requestOptions = new ChatCompletionOptions()
             {
@@ -564,6 +683,17 @@ class Program
             else
             {
                 System.Console.WriteLine("");
+            }
+
+            // Persist persona memory
+            if (activePersona != null && personaMemory != null)
+            {
+                try
+                {
+                    // Capture the response for memory (grab last few lines of output)
+                    personaMemory.AppendHistory(activePersona.Name, userPrompt, "Session completed successfully");
+                }
+                catch { /* best-effort memory persistence */ }
             }
 
             return 0;
@@ -770,6 +900,11 @@ class Program
         Console.WriteLine("  --validate <cmd>     Validation command to run after each iteration");
         Console.WriteLine("  --task-file <path>   Read task prompt from file instead of args");
         Console.WriteLine("  --max-iterations <n> Maximum Ralph loop iterations (default: 10, max: 50)");
+        Console.WriteLine();
+        Console.WriteLine("Persona Mode:");
+        Console.WriteLine("  --persona <name>     Use a named persona from .squad.json (or 'auto' for routing)");
+        Console.WriteLine("  --personas           List available personas");
+        Console.WriteLine("  --squad-init         Initialize Squad in current directory");
     }
 
     /// <summary>

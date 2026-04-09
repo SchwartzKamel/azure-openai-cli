@@ -5,6 +5,24 @@ All notable changes to Azure OpenAI CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] — 2026-04-09
+
+### Added
+- **Persona System** inspired by [bradygaster/squad](https://github.com/bradygaster/squad) — AI team members with persistent memory
+- `--persona <name>` flag: select named persona (coder, reviewer, architect, writer, security)
+- `--persona auto`: auto-route to best persona via keyword-based routing
+- `--personas`: list available personas from `.squad.json`
+- `--squad-init`: scaffold `.squad.json` and `.squad/` directory with default team
+- Persistent persona memory in `.squad/history/` — knowledge compounds across sessions
+- Shared decision log in `.squad/decisions.md`
+- `SquadCoordinator` for intelligent task routing with keyword scoring
+- `SquadConfig` for JSON-based team configuration (`.squad.json`)
+- `PersonaMemory` for per-persona history management with 32 KB cap and tail truncation
+- `SquadInitializer` for scaffolding default squad with 5 personas and routing rules
+- 5 default personas with specialized system prompts and tool selections
+- ~46 new unit tests for Squad system
+- Zero new dependencies — built entirely with `System.Text.Json`
+
 ## [1.4.0] — 2025-07-13
 
 ### Added
