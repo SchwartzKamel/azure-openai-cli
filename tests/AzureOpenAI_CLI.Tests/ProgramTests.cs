@@ -413,6 +413,88 @@ public class ProgramTests
         }
     }
 
+    // ── Raw flag ─────────────────────────────────────────────────
+
+    [Fact]
+    public void Main_RawFlagNoPrompt_ReturnsNonZero()
+    {
+        // Arrange — --raw with no prompt should error (no prompt provided)
+        var args = new[] { "--raw" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — no prompt provided is an error even in raw mode
+        Assert.NotEqual(0, exitCode);
+    }
+
+    [Fact]
+    public void Main_RawFlagWithPrompt_DoesNotReturnExitCode1ForParse()
+    {
+        // Arrange — --raw with a prompt should pass flag parsing
+        // Without Azure creds, it will fail later (exit 99), but NOT exit 1 for parse
+        var args = new[] { "--raw", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — should pass flag parsing (exit code is NOT 1 from parse error;
+        // it may be 99 due to missing credentials, which proves parse check passed)
+        Assert.NotEqual(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_RawFlagCombinedWithOtherFlags_DoesNotReturnExitCode1()
+    {
+        // Arrange — --raw combined with --temperature should both parse correctly
+        var args = new[] { "--raw", "--temperature", "0.5", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — both flags parsed; failure is from missing credentials, not parsing
+        Assert.NotEqual(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_HelpFlag_OutputContainsRaw()
+    {
+        // Arrange — capture stdout to verify --raw appears in usage output
+        var originalOut = Console.Out;
+        var writer = new System.IO.StringWriter();
+        Console.SetOut(writer);
+        try
+        {
+            // Act
+            int exitCode = InvokeMain(new[] { "--help" });
+
+            // Assert — usage text includes --raw documentation
+            Assert.Equal(0, exitCode);
+            var output = writer.ToString();
+            Assert.Contains("--raw", output);
+            Assert.Contains("Espanso", output);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
+
+    [Fact]
+    public void Main_RawFlagNotRecognizedAsPrompt()
+    {
+        // Arrange — --raw alone should not be treated as a prompt text
+        // It should be consumed as a flag, leaving no prompt
+        var args = new[] { "--raw" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — exits non-zero (shows usage since no prompt remaining)
+        // The key thing: it should NOT try to use "--raw" as a prompt
+        Assert.NotEqual(0, exitCode);
+    }
+
     // ── Temperature range validation ───────────────────────────────
 
     [Fact]
@@ -561,5 +643,210 @@ public class ProgramTests
 
         // Assert — boundary value passes range validation
         Assert.NotEqual(1, exitCode);
+    }
+
+    // ── ErrorAndExit helper (DRY error handling) ───────────────────
+
+    [Fact]
+    public void ErrorAndExit_NonJsonMode_WritesErrorPrefixToStderr()
+    {
+        // Arrange — call the internal helper directly in non-JSON mode
+        var originalErr = Console.Error;
+        var errWriter = new System.IO.StringWriter();
+        Console.SetError(errWriter);
+        try
+        {
+            // Act
+            int exitCode = Program.ErrorAndExit("something went wrong", 1, jsonMode: false);
+
+            // Assert — produces [ERROR] prefix on stderr and returns correct exit code
+            Assert.Equal(1, exitCode);
+            var stderrOutput = errWriter.ToString();
+            Assert.Contains("[ERROR]", stderrOutput);
+            Assert.Contains("something went wrong", stderrOutput);
+            // Negative: must NOT contain JSON tokens
+            Assert.DoesNotContain("\"error\"", stderrOutput);
+            Assert.DoesNotContain("\"exit_code\"", stderrOutput);
+        }
+        finally
+        {
+            Console.SetError(originalErr);
+        }
+    }
+
+    [Fact]
+    public void ErrorAndExit_JsonMode_WritesJsonToStdout()
+    {
+        // Arrange — call the internal helper in JSON mode
+        var originalOut = Console.Out;
+        var originalErr = Console.Error;
+        var outWriter = new System.IO.StringWriter();
+        var errWriter = new System.IO.StringWriter();
+        Console.SetOut(outWriter);
+        Console.SetError(errWriter);
+        try
+        {
+            // Act
+            int exitCode = Program.ErrorAndExit("bad request", 2, jsonMode: true);
+
+            // Assert — returns correct exit code, outputs JSON to stdout
+            Assert.Equal(2, exitCode);
+            var stdoutOutput = outWriter.ToString();
+            Assert.Contains("\"error\"", stdoutOutput);
+            Assert.Contains("bad request", stdoutOutput);
+            Assert.Contains("\"exit_code\": 2", stdoutOutput);
+            // Negative: stderr should NOT get the [ERROR] prefix in JSON mode
+            var stderrOutput = errWriter.ToString();
+            Assert.DoesNotContain("[ERROR]", stderrOutput);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalErr);
+        }
+    }
+
+    [Fact]
+    public void ErrorAndExit_PreservesExitCode99()
+    {
+        // Arrange — verify non-standard exit codes are preserved
+        var originalErr = Console.Error;
+        var errWriter = new System.IO.StringWriter();
+        Console.SetError(errWriter);
+        try
+        {
+            // Act
+            int exitCode = Program.ErrorAndExit("unhandled crash", 99, jsonMode: false);
+
+            // Assert — exit code 99 is returned faithfully
+            Assert.Equal(99, exitCode);
+            var stderrOutput = errWriter.ToString();
+            Assert.Contains("[ERROR] unhandled crash", stderrOutput);
+        }
+        finally
+        {
+            Console.SetError(originalErr);
+        }
+    }
+
+    [Fact]
+    public void ErrorAndExit_PreservesExitCode3()
+    {
+        // Arrange — verify timeout exit code is preserved
+        var originalErr = Console.Error;
+        var errWriter = new System.IO.StringWriter();
+        Console.SetError(errWriter);
+        try
+        {
+            // Act
+            int exitCode = Program.ErrorAndExit("timed out", 3, jsonMode: false);
+
+            // Assert — exit code 3 is returned faithfully
+            Assert.Equal(3, exitCode);
+        }
+        finally
+        {
+            Console.SetError(originalErr);
+        }
+    }
+
+    // ── Integration: ErrorAndExit through Main paths ───────────────
+
+    [Fact]
+    public void Main_TaskFileNotFound_StderrContainsErrorPrefix()
+    {
+        // Arrange — --task-file with a nonexistent path triggers ErrorAndExit
+        var originalErr = Console.Error;
+        var errWriter = new System.IO.StringWriter();
+        Console.SetError(errWriter);
+        try
+        {
+            var args = new[] { "--task-file", "/nonexistent/path/task.md", "dummy" };
+
+            // Act
+            int exitCode = InvokeMain(args);
+
+            // Assert — exit code 1, stderr contains [ERROR] and the file path
+            Assert.Equal(1, exitCode);
+            var stderrOutput = errWriter.ToString();
+            Assert.Contains("[ERROR]", stderrOutput);
+            Assert.Contains("Task file not found", stderrOutput);
+            Assert.Contains("/nonexistent/path/task.md", stderrOutput);
+            // Negative: should NOT contain JSON structure in stderr
+            Assert.DoesNotContain("\"error\"", stderrOutput);
+        }
+        finally
+        {
+            Console.SetError(originalErr);
+        }
+    }
+
+    [Fact]
+    public void Main_TaskFileNotFound_JsonMode_StdoutContainsJson()
+    {
+        // Arrange — --json --task-file with nonexistent path triggers JSON error output
+        var originalOut = Console.Out;
+        var originalErr = Console.Error;
+        var outWriter = new System.IO.StringWriter();
+        var errWriter = new System.IO.StringWriter();
+        Console.SetOut(outWriter);
+        Console.SetError(errWriter);
+        try
+        {
+            var args = new[] { "--json", "--task-file", "/nonexistent/path/task.md", "dummy" };
+
+            // Act
+            int exitCode = InvokeMain(args);
+
+            // Assert — exit code 1, JSON error on stdout
+            Assert.Equal(1, exitCode);
+            var stdoutOutput = outWriter.ToString();
+            Assert.Contains("\"error\": true", stdoutOutput);
+            Assert.Contains("Task file not found", stdoutOutput);
+            // Negative: stderr should NOT get [ERROR] prefix in JSON mode
+            var stderrOutput = errWriter.ToString();
+            Assert.DoesNotContain("[ERROR]", stderrOutput);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalErr);
+        }
+    }
+
+    [Fact]
+    public void Main_OversizedPrompt_StderrContainsErrorPrefix()
+    {
+        // Arrange — prompt exceeding 32K chars routed through ErrorAndExit
+        // Need valid env vars so we get past the creds check to the prompt length check
+        var prevKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
+        var prevEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+        var prevModel = Environment.GetEnvironmentVariable("AZUREOPENAIMODEL");
+        Environment.SetEnvironmentVariable("AZUREOPENAIAPI", "test-key-for-unit-test");
+        Environment.SetEnvironmentVariable("AZUREOPENAIENDPOINT", "https://fake.openai.azure.com");
+        Environment.SetEnvironmentVariable("AZUREOPENAIMODEL", "gpt-4");
+        var originalErr = Console.Error;
+        var errWriter = new System.IO.StringWriter();
+        Console.SetError(errWriter);
+        try
+        {
+            var args = new[] { new string('x', 33_000) };
+
+            // Act
+            int exitCode = InvokeMain(args);
+
+            // Assert — oversized prompt caught, [ERROR] on stderr with prompt length detail
+            Assert.Equal(1, exitCode);
+            var stderrOutput = errWriter.ToString();
+            Assert.Contains("[ERROR]", stderrOutput);
+            Assert.Contains("Prompt too long", stderrOutput);
+        }
+        finally
+        {
+            Console.SetError(originalErr);
+            Environment.SetEnvironmentVariable("AZUREOPENAIAPI", prevKey);
+            Environment.SetEnvironmentVariable("AZUREOPENAIENDPOINT", prevEndpoint);
+            Environment.SetEnvironmentVariable("AZUREOPENAIMODEL", prevModel);
+        }
     }
 }

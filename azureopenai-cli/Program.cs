@@ -43,6 +43,7 @@ class Program
         string? PersonaName,
         bool SquadInit,
         bool ListPersonas,
+        bool Raw,
         string[] RemainingArgs);
 
     /// <summary>
@@ -72,6 +73,7 @@ class Program
         string? personaName = null;
         bool squadInit = false;
         bool listPersonas = false;
+        bool raw = false;
         var cleanedArgs = new List<string>();
 
         for (int i = 0; i < args.Length; i++)
@@ -247,6 +249,10 @@ class Program
             {
                 listPersonas = true;
             }
+            else if (arg == "--raw")
+            {
+                raw = true;
+            }
             else
             {
                 cleanedArgs.Add(args[i]);
@@ -255,7 +261,7 @@ class Program
 
         return (new CliOptions(cliTemperature, cliMaxTokens, cliSystemPrompt, showConfig,
             agentMode, maxAgentRounds, enabledTools, jsonSchema, ralphMode, validateCommand,
-            taskFile, maxIterations, personaName, squadInit, listPersonas, cleanedArgs.ToArray()), null);
+            taskFile, maxIterations, personaName, squadInit, listPersonas, raw, cleanedArgs.ToArray()), null);
     }
 
     /// <summary>
@@ -321,12 +327,19 @@ class Program
 
         try
         {
-            // Always load from the baked‑in .env file
-            DotEnv.Load(new DotEnvOptions(
-                envFilePaths: new[] { ".env" },
-                overwriteExistingVars: true,
-                trimValues: true
-            ));
+            try
+            {
+                // Always load from the baked‑in .env file
+                DotEnv.Load(new DotEnvOptions(
+                    envFilePaths: new[] { ".env" },
+                    overwriteExistingVars: true,
+                    trimValues: true
+                ));
+            }
+            catch (Exception)
+            {
+                // .env file is optional — silently continue if missing or malformed
+            }
 
             // Load user configuration
             var config = UserConfig.Load();
@@ -440,10 +453,7 @@ class Program
             {
                 if (!File.Exists(opts.TaskFile))
                 {
-                    var msg = $"Task file not found: {opts.TaskFile}";
-                    if (jsonMode) { OutputJsonError(msg, 1); return 1; }
-                    Console.Error.WriteLine($"[ERROR] {msg}");
-                    return 1;
+                    return ErrorAndExit($"Task file not found: {opts.TaskFile}", 1, jsonMode);
                 }
                 userPrompt = File.ReadAllText(opts.TaskFile);
             }
@@ -451,14 +461,7 @@ class Program
             // Validate prompt length to prevent abuse and excessive API costs
             if (userPrompt.Length > MAX_PROMPT_LENGTH)
             {
-                var msg = $"Prompt too long ({userPrompt.Length} chars). Maximum allowed is {MAX_PROMPT_LENGTH} chars.";
-                if (jsonMode)
-                {
-                    OutputJsonError(msg, 1);
-                    return 1;
-                }
-                Console.Error.WriteLine($"[ERROR] {msg}");
-                return 1;
+                return ErrorAndExit($"Prompt too long ({userPrompt.Length} chars). Maximum allowed is {MAX_PROMPT_LENGTH} chars.", 1, jsonMode);
             }
 
             // Validate Azure credentials and endpoint
@@ -466,13 +469,7 @@ class Program
                 azureOpenAiEndpoint, azureOpenAiApiKey, config);
             if (validationError != null)
             {
-                if (jsonMode)
-                {
-                    OutputJsonError(validationError, 1);
-                    return 1;
-                }
-                Console.Error.WriteLine($"[ERROR] {validationError}");
-                return 1;
+                return ErrorAndExit(validationError, 1, jsonMode);
             }
 
             AzureOpenAIClient azureClient = new(
@@ -492,10 +489,7 @@ class Program
                 var squadConfig = AzureOpenAI_CLI.Squad.SquadConfig.Load();
                 if (squadConfig == null)
                 {
-                    var msg = "No .squad.json found. Run --squad-init first.";
-                    if (jsonMode) { OutputJsonError(msg, 1); return 1; }
-                    Console.Error.WriteLine($"[ERROR] {msg}");
-                    return 1;
+                    return ErrorAndExit("No .squad.json found. Run --squad-init first.", 1, jsonMode);
                 }
 
                 if (opts.PersonaName.Equals("auto", StringComparison.OrdinalIgnoreCase))
@@ -510,10 +504,7 @@ class Program
                     activePersona = squadConfig.GetPersona(opts.PersonaName);
                     if (activePersona == null)
                     {
-                        var msg = $"Unknown persona '{opts.PersonaName}'. Available: {string.Join(", ", squadConfig.ListPersonas())}";
-                        if (jsonMode) { OutputJsonError(msg, 1); return 1; }
-                        Console.Error.WriteLine($"[ERROR] {msg}");
-                        return 1;
+                        return ErrorAndExit($"Unknown persona '{opts.PersonaName}'. Available: {string.Join(", ", squadConfig.ListPersonas())}", 1, jsonMode);
                     }
                 }
 
@@ -611,6 +602,8 @@ class Program
             // Retry loop for transient API errors in streaming mode
             int streamAttempt = 0;
             const int maxStreamRetries = 3;
+            int? promptTokens = null;
+            int? completionTokens = null;
             try
             {
                 while (true)
@@ -640,6 +633,11 @@ class Program
                                 {
                                     System.Console.Write(updatePart.Text);
                                 }
+                            }
+                            if (update.Usage != null)
+                            {
+                                promptTokens = update.Usage.InputTokenCount;
+                                completionTokens = update.Usage.OutputTokenCount;
                             }
                         }
                         break; // Success — exit retry loop
@@ -692,18 +690,28 @@ class Program
             if (jsonMode)
             {
                 stopwatch!.Stop();
-                var jsonOutput = new
-                {
-                    model = deploymentName,
-                    response = responseBuilder!.ToString(),
-                    duration_ms = stopwatch.ElapsedMilliseconds
-                };
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                Console.WriteLine(JsonSerializer.Serialize(jsonOutput, options));
+                var jsonOutput = new ChatJsonResponse(
+                    deploymentName,
+                    responseBuilder!.ToString(),
+                    stopwatch.ElapsedMilliseconds,
+                    promptTokens,
+                    completionTokens
+                );
+                Console.WriteLine(JsonSerializer.Serialize(jsonOutput, AppJsonContext.Default.ChatJsonResponse));
             }
             else
             {
-                System.Console.WriteLine("");
+                // Display token usage on stderr (not in raw mode, not when piped)
+                if (!opts.Raw && !Console.IsErrorRedirected && promptTokens.HasValue)
+                {
+                    var total = promptTokens.Value + completionTokens.GetValueOrDefault();
+                    Console.Error.WriteLine($"  [tokens: {promptTokens}→{completionTokens}, {total} total]");
+                }
+                // In raw mode, skip the trailing newline
+                if (!opts.Raw)
+                {
+                    System.Console.WriteLine("");
+                }
             }
 
             // Persist persona memory
@@ -730,33 +738,15 @@ class Program
                 429 => "Rate limited — too many requests. Wait and retry.",
                 _ => ex.Message,
             };
-            if (jsonMode)
-            {
-                OutputJsonError($"HTTP {status}: {detail}", 2);
-                return 2;
-            }
-            Console.Error.WriteLine($"[AZURE ERROR] HTTP {status}: {detail}");
-            return 2;
+            return ErrorAndExit($"HTTP {status}: {detail}", 2, jsonMode);
         }
         catch (OperationCanceledException)
         {
-            if (jsonMode)
-            {
-                OutputJsonError("Request timed out. Increase AZURE_TIMEOUT (seconds) if needed.", 3);
-                return 3;
-            }
-            Console.Error.WriteLine("[ERROR] Request timed out. Increase AZURE_TIMEOUT (seconds) if needed.");
-            return 3;
+            return ErrorAndExit("Request timed out. Increase AZURE_TIMEOUT (seconds) if needed.", 3, jsonMode);
         }
         catch (Exception ex)
         {
-            if (jsonMode)
-            {
-                OutputJsonError($"{ex.GetType().Name}: {ex.Message}", 99);
-                return 99;
-            }
-            Console.Error.WriteLine($"[UNHANDLED ERROR] {ex.GetType().Name}: {ex.Message}");
-            return 99;
+            return ErrorAndExit($"{ex.GetType().Name}: {ex.Message}", 99, jsonMode);
         }
     }
 
@@ -893,6 +883,7 @@ class Program
         Console.WriteLine("  --max-tokens <n>      Override max output tokens");
         Console.WriteLine("  --system <prompt>     Override system prompt for this invocation");
         Console.WriteLine("  --schema <json>      Enforce structured output with JSON schema (strict mode)");
+        Console.WriteLine("  --raw               Output raw text only (no spinner, no formatting). For Espanso/AHK.");
         Console.WriteLine("  --config show         Display effective configuration and exit");
         Console.WriteLine();
         Console.WriteLine("Agent Mode:");
@@ -1060,6 +1051,18 @@ class Program
     }
 
     /// <summary>
+    /// Outputs an error message (JSON or stderr) and returns the specified exit code.
+    /// </summary>
+    internal static int ErrorAndExit(string message, int exitCode, bool jsonMode)
+    {
+        if (jsonMode)
+            OutputJsonError(message, exitCode);
+        else
+            Console.Error.WriteLine($"[ERROR] {message}");
+        return exitCode;
+    }
+
+    /// <summary>
     /// Outputs a JSON-formatted error to stdout for --json mode.
     /// </summary>
     static void OutputJsonError(string message, int exitCode)
@@ -1114,6 +1117,8 @@ class Program
         bool showStatus = !jsonMode && !Console.IsErrorRedirected;
         int round = 0;
         int totalToolCalls = 0;
+        int? promptTokens = null;
+        int? completionTokens = null;
 
         if (showStatus)
             Console.Error.Write("⚡ Agent mode");
@@ -1167,6 +1172,13 @@ class Program
                 // Finish reason appears on the last streaming update
                 if (update.FinishReason == ChatFinishReason.ToolCalls)
                     isToolCallRound = true;
+
+                // Capture token usage from the final chunk
+                if (update.Usage != null)
+                {
+                    promptTokens = update.Usage.InputTokenCount;
+                    completionTokens = update.Usage.OutputTokenCount;
+                }
             }
 
             if (isToolCallRound && toolCallsById.Count > 0)
@@ -1214,18 +1226,24 @@ class Program
 
             if (jsonMode)
             {
-                var jsonOutput = new
-                {
-                    model = deploymentName,
-                    response = responseText,
-                    duration_ms = stopwatch.ElapsedMilliseconds,
-                    agent = new { rounds = round, tools_called = totalToolCalls }
-                };
-                var jsonOpts = new JsonSerializerOptions { WriteIndented = true };
-                Console.WriteLine(JsonSerializer.Serialize(jsonOutput, jsonOpts));
+                var jsonOutput = new AgentJsonResponse(
+                    deploymentName,
+                    responseText,
+                    stopwatch.ElapsedMilliseconds,
+                    new AgentInfo(round, totalToolCalls),
+                    promptTokens,
+                    completionTokens
+                );
+                Console.WriteLine(JsonSerializer.Serialize(jsonOutput, AppJsonContext.Default.AgentJsonResponse));
             }
             else
             {
+                // Display token usage on stderr (not when piped)
+                if (!Console.IsErrorRedirected && promptTokens.HasValue)
+                {
+                    var total = promptTokens.Value + completionTokens.GetValueOrDefault();
+                    Console.Error.WriteLine($"  [tokens: {promptTokens}→{completionTokens}, {total} total]");
+                }
                 Console.WriteLine();
             }
 

@@ -376,6 +376,132 @@ public class ToolHardeningTests
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    // 2b. ShellExecTool — shell injection hardening
+    // ═══════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task ShellExec_BlocksCommandSubstitution()
+    {
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"echo $(whoami)"}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("blocked", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShellExec_BlocksBacktickSubstitution()
+    {
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"echo `whoami`"}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("blocked", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShellExec_BlocksProcessSubstitution()
+    {
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"cat <(echo secret)"}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("blocked", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShellExec_BlocksOutputProcessSubstitution()
+    {
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"tee >(cat) <<< test"}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("blocked", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShellExec_BlocksEval()
+    {
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"eval rm -rf /"}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("blocked", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShellExec_BlocksEvalInPipeChain()
+    {
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"echo test; eval whoami"}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("blocked", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShellExec_BlocksExec()
+    {
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"exec /bin/bash"}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("blocked", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShellExec_BlocksExecInPipeChain()
+    {
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"echo test; exec /bin/bash"}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("blocked", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShellExec_AllowsNormalCommands()
+    {
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"echo hello world"}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("hello world", result);
+    }
+
+    [Fact]
+    public async Task ShellExec_ArgumentListPreventsQuoteInjection()
+    {
+        // This would have been dangerous with the old string interpolation approach
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"echo \"test with quotes\""}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("test with quotes", result);
+    }
+
+    [Fact]
+    public async Task ShellExec_PipeChainStillWorks()
+    {
+        var tool = new ShellExecTool();
+        var args = JsonDocument.Parse("""{"command":"echo piped | cat"}""").RootElement;
+
+        var result = await tool.ExecuteAsync(args, CancellationToken.None);
+
+        Assert.Contains("piped", result);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     // 3. GetClipboardTool — process disposal verification
     // ═══════════════════════════════════════════════════════════════════
 

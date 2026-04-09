@@ -258,4 +258,137 @@ public class JsonSourceGeneratorTests
         Assert.Empty(config.Personas);
         Assert.Empty(config.Routing);
     }
+
+    // ── ChatJsonResponse ────────────────────────────────────────────
+
+    [Fact]
+    public void ChatJsonResponse_RoundTrip_MatchesExpectedJson()
+    {
+        // Arrange
+        var original = new ChatJsonResponse("gpt-4o", "Hello world", 1234);
+
+        // Act
+        string json = JsonSerializer.Serialize(original, AppJsonContext.Default.ChatJsonResponse);
+        var deserialized = JsonSerializer.Deserialize(json, AppJsonContext.Default.ChatJsonResponse);
+
+        // Assert — round-trip preserves all fields
+        Assert.NotNull(deserialized);
+        Assert.Equal(original.Model, deserialized.Model);
+        Assert.Equal(original.Response, deserialized.Response);
+        Assert.Equal(original.DurationMs, deserialized.DurationMs);
+
+        // Assert — snake_case property names in JSON output
+        Assert.Contains("\"model\"", json);
+        Assert.Contains("\"response\"", json);
+        Assert.Contains("\"duration_ms\"", json);
+
+        // Negative — PascalCase should NOT appear
+        Assert.DoesNotContain("\"Model\"", json);
+        Assert.DoesNotContain("\"Response\"", json);
+        Assert.DoesNotContain("\"DurationMs\"", json);
+    }
+
+    [Fact]
+    public void ChatJsonResponse_NullTokens_OmittedInJson()
+    {
+        // Arrange — default null optional token fields
+        var response = new ChatJsonResponse("gpt-4o", "Hi", 500);
+
+        // Act
+        string json = JsonSerializer.Serialize(response, AppJsonContext.Default.ChatJsonResponse);
+
+        // Assert — null tokens are omitted (WhenWritingNull)
+        Assert.DoesNotContain("input_tokens", json);
+        Assert.DoesNotContain("output_tokens", json);
+
+        // Positive — required fields still present
+        Assert.Contains("\"model\"", json);
+        Assert.Contains("\"response\"", json);
+        Assert.Contains("\"duration_ms\"", json);
+    }
+
+    [Fact]
+    public void ChatJsonResponse_WithTokens_IncludesInJson()
+    {
+        // Arrange — explicitly set token counts
+        var response = new ChatJsonResponse("gpt-4o", "Hi", 500, InputTokens: 100, OutputTokens: 42);
+
+        // Act
+        string json = JsonSerializer.Serialize(response, AppJsonContext.Default.ChatJsonResponse);
+        var deserialized = JsonSerializer.Deserialize(json, AppJsonContext.Default.ChatJsonResponse);
+
+        // Assert — token fields are present in JSON
+        Assert.Contains("\"input_tokens\"", json);
+        Assert.Contains("\"output_tokens\"", json);
+
+        // Assert — values survive round-trip
+        Assert.NotNull(deserialized);
+        Assert.Equal(100, deserialized.InputTokens);
+        Assert.Equal(42, deserialized.OutputTokens);
+    }
+
+    // ── AgentJsonResponse ───────────────────────────────────────────
+
+    [Fact]
+    public void AgentJsonResponse_RoundTrip_IncludesAgentInfo()
+    {
+        // Arrange
+        var agent = new AgentInfo(3, 7);
+        var original = new AgentJsonResponse("gpt-4o", "Done", 2500, agent);
+
+        // Act
+        string json = JsonSerializer.Serialize(original, AppJsonContext.Default.AgentJsonResponse);
+        var deserialized = JsonSerializer.Deserialize(json, AppJsonContext.Default.AgentJsonResponse);
+
+        // Assert — top-level fields
+        Assert.NotNull(deserialized);
+        Assert.Equal("gpt-4o", deserialized.Model);
+        Assert.Equal("Done", deserialized.Response);
+        Assert.Equal(2500, deserialized.DurationMs);
+
+        // Assert — nested agent object
+        Assert.NotNull(deserialized.Agent);
+        Assert.Equal(3, deserialized.Agent.Rounds);
+        Assert.Equal(7, deserialized.Agent.ToolsCalled);
+
+        // Assert — snake_case keys in JSON
+        Assert.Contains("\"agent\"", json);
+        Assert.Contains("\"rounds\"", json);
+        Assert.Contains("\"tools_called\"", json);
+
+        // Negative — PascalCase should NOT appear
+        Assert.DoesNotContain("\"Rounds\"", json);
+        Assert.DoesNotContain("\"ToolsCalled\"", json);
+    }
+
+    [Fact]
+    public void AgentJsonResponse_NullTokens_OmittedInJson()
+    {
+        // Arrange
+        var response = new AgentJsonResponse("gpt-4o", "OK", 100, new AgentInfo(1, 0));
+
+        // Act
+        string json = JsonSerializer.Serialize(response, AppJsonContext.Default.AgentJsonResponse);
+
+        // Assert — null tokens omitted, agent info preserved
+        Assert.DoesNotContain("input_tokens", json);
+        Assert.DoesNotContain("output_tokens", json);
+        Assert.Contains("\"agent\"", json);
+        Assert.Contains("\"rounds\"", json);
+    }
+
+    // ── Context type coverage (updated) ─────────────────────────────
+
+    [Theory]
+    [InlineData(typeof(ChatJsonResponse))]
+    [InlineData(typeof(AgentJsonResponse))]
+    [InlineData(typeof(AgentInfo))]
+    public void AppJsonContext_HasTypeInfo_ForResponseTypes(Type expectedType)
+    {
+        // Act
+        JsonTypeInfo? typeInfo = AppJsonContext.Default.GetTypeInfo(expectedType);
+
+        // Assert — source generator covers the new response types
+        Assert.NotNull(typeInfo);
+    }
 }

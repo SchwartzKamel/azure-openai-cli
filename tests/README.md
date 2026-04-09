@@ -1,6 +1,6 @@
 # Tests
 
-This directory contains **423+ unit tests** and **101+ integration tests** for the Azure OpenAI CLI.
+This directory contains **454+ unit tests** and **101+ integration tests** for the Azure OpenAI CLI.
 
 ---
 
@@ -8,11 +8,11 @@ This directory contains **423+ unit tests** and **101+ integration tests** for t
 
 | Suite | Type | Count | Description |
 |-------|------|------:|-------------|
-| [`AzureOpenAI_CLI.Tests/`](AzureOpenAI_CLI.Tests/) | xUnit | 423+ | Unit tests — run via `dotnet test` |
+| [`AzureOpenAI_CLI.Tests/`](AzureOpenAI_CLI.Tests/) | xUnit | 454+ | Unit tests — run via `dotnet test` |
 | [`integration_tests.sh`](integration_tests.sh) | Bash | 101+ | End-to-end CLI tests — no Azure credentials needed |
 | [`docker-image-optimization.sh`](docker-image-optimization.sh) | Bash | — | Dockerfile validation — checks build best practices |
 
-**Total: 524+ tests**
+**Total: 555+ tests**
 
 ---
 

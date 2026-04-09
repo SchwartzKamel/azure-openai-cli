@@ -41,6 +41,16 @@ internal sealed class ShellExecTool : IBuiltInTool
         if (string.IsNullOrEmpty(command))
             return "Error: parameter 'command' must not be empty.";
 
+        // Block shell substitution patterns that could bypass command filtering
+        if (command.Contains("$(") || command.Contains("`"))
+            return "Error: shell substitution ($() and backticks) is blocked for safety.";
+
+        // Block process substitution and eval-like constructs
+        if (command.Contains("<(") || command.Contains(">(") ||
+            command.TrimStart().StartsWith("eval ") || command.Contains("; eval ") ||
+            command.TrimStart().StartsWith("exec ") || command.Contains("; exec "))
+            return "Error: process substitution and eval/exec are blocked for safety.";
+
         // Block dangerous commands
         var firstToken = command.TrimStart().Split(' ', 2)[0].Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
         if (BlockedCommands.Contains(firstToken))
@@ -60,13 +70,14 @@ internal sealed class ShellExecTool : IBuiltInTool
         var psi = new ProcessStartInfo
         {
             FileName = "/bin/sh",
-            Arguments = $"-c \"{command.Replace("\"", "\\\"")}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             RedirectStandardInput = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        psi.ArgumentList.Add("-c");
+        psi.ArgumentList.Add(command);
 
         using var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start shell process");

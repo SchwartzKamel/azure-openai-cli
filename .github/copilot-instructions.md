@@ -4,7 +4,7 @@
 - Azure OpenAI CLI tool written in C# targeting .NET 10
 - Docker-first deployment, Alpine-based multi-stage builds
 - Primary use case: text injection for AHK/Espanso workflows
-- Version: 1.6.0
+- Version: 1.7.0
 
 ## Architecture
 - Single-file CLI entry point: `azureopenai-cli/Program.cs` (~1300 lines)
@@ -36,6 +36,9 @@
 - Streaming via `CompleteChatStreamingAsync` — tool calls arrive as indexed fragments
 - `ChatToolCall.CreateFunctionToolCall(id, name, BinaryData.FromString(args))` for tool call construction
 - Records for immutable data (`CliOptions`, `CliParseError`) defined in Program.cs
+- Use `ErrorAndExit()` helper for all fatal exit paths — consistent `[ERROR]` prefix on stderr + JSON-aware output. Do NOT duplicate inline error/exit patterns
+- `--raw` flag suppresses all formatting (spinner, newline, stderr). Use `isRaw` guard in any new output path
+- Shell substitution blocking: `ShellExecTool` rejects `$()`, backticks, `<()`, `>()`, `eval`, `exec`. Use `ArgumentList` (not `Arguments`) for OS-level escaping. New blocked patterns must have corresponding tests in `ToolHardeningTests`
 
 ## Build & Test
 - Build: `dotnet build azureopenai-cli/AzureOpenAI_CLI.csproj`

@@ -10,6 +10,7 @@
 
 - [Architecture](ARCHITECTURE.md) — system design and component details
 - [Security](SECURITY.md) — security model, credential management, hardening
+- [Text Expansion (Espanso/AHK)](docs/espanso-ahk-integration.md) — use `az-ai` as a text expansion backend
 
 ## Introduction
 
@@ -173,6 +174,26 @@ flowchart LR
     C -->|Streaming Response| B
     B --> D[Formatted Output]
 ```
+
+## :keyboard: Text Expansion (Espanso / AutoHotKey)
+
+The **primary use case** for this CLI is as a text expansion backend. Type a trigger phrase anywhere on your OS → get AI-generated text back in-place. No browser tabs, no context switches.
+
+```yaml
+# ~/.config/espanso/match/ai.yml — fix grammar with a trigger phrase
+matches:
+  - trigger: ":aifix"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          cmd: "xclip -selection clipboard -o | az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
+```
+
+The `--raw` flag is essential — it strips the spinner, token stats, and trailing newline so only clean text is injected.
+
+> **Full guide with Espanso configs, AHK v2 scripts, macOS/Windows variants, performance tips, and troubleshooting:** [docs/espanso-ahk-integration.md](docs/espanso-ahk-integration.md)
 
 ## :zap: Agent Mode
 

@@ -4,6 +4,33 @@ using AzureOpenAI_CLI.Squad;
 
 namespace AzureOpenAI_CLI;
 
+// ── CLI JSON response records (AOT-safe replacements for anonymous types) ───
+
+/// <summary>JSON response for standard (non-agent) chat mode.</summary>
+internal record ChatJsonResponse(
+    [property: JsonPropertyName("model")] string Model,
+    [property: JsonPropertyName("response")] string Response,
+    [property: JsonPropertyName("duration_ms")] long DurationMs,
+    [property: JsonPropertyName("input_tokens")] int? InputTokens = null,
+    [property: JsonPropertyName("output_tokens")] int? OutputTokens = null
+);
+
+/// <summary>JSON response for agent mode.</summary>
+internal record AgentJsonResponse(
+    [property: JsonPropertyName("model")] string Model,
+    [property: JsonPropertyName("response")] string Response,
+    [property: JsonPropertyName("duration_ms")] long DurationMs,
+    [property: JsonPropertyName("agent")] AgentInfo Agent,
+    [property: JsonPropertyName("input_tokens")] int? InputTokens = null,
+    [property: JsonPropertyName("output_tokens")] int? OutputTokens = null
+);
+
+/// <summary>Agent metadata nested inside <see cref="AgentJsonResponse"/>.</summary>
+internal record AgentInfo(
+    [property: JsonPropertyName("rounds")] int Rounds,
+    [property: JsonPropertyName("tools_called")] int ToolsCalled
+);
+
 /// <summary>
 /// System.Text.Json source generator context for AOT-compatible serialization.
 /// Covers all types that are serialized/deserialized across the CLI.
@@ -26,6 +53,10 @@ namespace AzureOpenAI_CLI;
 [JsonSerializable(typeof(TeamConfig))]
 [JsonSerializable(typeof(PersonaConfig))]
 [JsonSerializable(typeof(RoutingRule))]
+// ── CLI JSON response types ─────────────────────────────────────
+[JsonSerializable(typeof(ChatJsonResponse))]
+[JsonSerializable(typeof(AgentJsonResponse))]
+[JsonSerializable(typeof(AgentInfo))]
 // ── Collection types used by the above ──────────────────────────
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(List<PersonaConfig>))]
