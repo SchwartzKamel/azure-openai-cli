@@ -5,6 +5,30 @@ All notable changes to Azure OpenAI CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — 2025-04-09
+
+### Security
+- **ReadFileTool**: Fixed symlink traversal vulnerability; added prefix-based path blocking
+- **ShellExecTool**: Expanded blocked commands (sudo, su, crontab, vi, vim, nano, nc, ncat, netcat, wget); close stdin on child process; HasExited guard before Kill
+- **WebFetchTool**: Added DNS rebinding protection (private IP blocklist); limited redirects to 3; dynamic User-Agent from assembly version
+- **GetClipboardTool**: Enforced clipboard size cap with truncation warning; PATH-based command detection
+- **ToolRegistry**: Replaced substring matching with exact alias dictionary
+
+### Added
+- Parallel tool call execution via `Task.WhenAll` for concurrent agent tool rounds
+- Accurate tool call counting in JSON output (`tools_called` field)
+- CI: code formatting check (`dotnet format --verify-no-changes`)
+- CI: NuGet vulnerability audit (`dotnet list package --vulnerable`)
+- CI: Trivy container image scanning (CRITICAL/HIGH severity)
+- CI: integration test job
+- Makefile: `format`, `format-check`, `audit`, `all-tests` targets
+- 104 new security unit tests (138 total)
+- 11 parallel execution unit tests
+
+### Changed
+- Agent loop now executes multiple tool calls concurrently instead of sequentially
+- Tool name matching uses explicit alias dictionary instead of broad substring search
+
 ## [1.2.0] — 2026-04-08
 
 ### Added

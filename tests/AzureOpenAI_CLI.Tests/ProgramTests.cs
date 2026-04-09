@@ -186,4 +186,58 @@ public class ProgramTests
         // Assert — oversized prompt is rejected (exact code depends on env state)
         Assert.NotEqual(0, exitCode);
     }
+
+    // ── Schema flag ────────────────────────────────────────────────
+
+    [Fact]
+    public void Main_SchemaFlagWithoutValue_ReturnsExitCode1()
+    {
+        // Arrange — --schema with no value should fail
+        var args = new[] { "--schema" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — missing schema value is a parse error
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public void Main_SchemaFlagWithInvalidJson_ReturnsNonZero()
+    {
+        // Arrange — --schema with invalid JSON should fail
+        var args = new[] { "--schema", "not valid json", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — invalid JSON is rejected (exact code depends on env: parse error or API key missing)
+        Assert.NotEqual(0, exitCode);
+    }
+
+    [Fact]
+    public void Main_SchemaFlagWithValidJsonNoCredentials_ReturnsNonZero()
+    {
+        // Arrange — --schema with valid JSON but no Azure credentials
+        var args = new[] { "--schema", "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}}}", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — will fail at API call or credential validation, not at schema parsing
+        Assert.NotEqual(0, exitCode);
+    }
+
+    [Fact]
+    public void Main_SchemaFlagWithJsonModeInvalidJson_ReturnsNonZero()
+    {
+        // Arrange — --json --schema with invalid JSON
+        var args = new[] { "--json", "--schema", "{invalid", "test prompt" };
+
+        // Act
+        int exitCode = InvokeMain(args);
+
+        // Assert — invalid JSON schema is rejected
+        Assert.NotEqual(0, exitCode);
+    }
 }

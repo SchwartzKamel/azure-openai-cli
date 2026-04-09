@@ -16,6 +16,7 @@
 8. [Reporting Vulnerabilities](#8-reporting-vulnerabilities)
 9. [Exit Codes Reference](#9-exit-codes-reference)
 10. [Security Checklist for Users](#10-security-checklist-for-users)
+11. [Tool Security](#11-tool-security)
 
 ---
 
@@ -538,6 +539,93 @@ Use this checklist when deploying or operating the Azure OpenAI CLI:
 
 ---
 
+## 11. Tool Security
+
+> Added in v1.3.0 — documents the security hardening applied to all built-in
+> agent tools.
+
+### Tool Security Protections
+
+#### ReadFileTool
+
+| Protection | Detail |
+|---|---|
+| **Symlink traversal** | Resolves symlinks via `Path.GetFullPath` before checking against blocked paths — prevents aliasing attacks. |
+| **Prefix-based path blocking** | Blocks all files *under* sensitive directories, not just exact paths (e.g., `/root/.ssh/id_rsa` is blocked, not only `/root/.ssh`). |
+| **File size cap** | 256 KB maximum — prevents memory exhaustion from large files. |
+
+Blocked path prefixes:
+
+```
+/etc/shadow
+/etc/passwd
+/etc/sudoers
+/etc/hosts
+/root/.ssh
+/proc/self/environ
+/proc/self/cmdline
+```
+
+#### ShellExecTool
+
+| Protection | Detail |
+|---|---|
+| **Destructive command blocklist** | `rm`, `rmdir`, `mkfs`, `dd`, `shutdown`, `reboot`, `halt`, `poweroff`, `kill`, `killall`, `pkill`, `format`, `del`, `fdisk`, `passwd` |
+| **Privilege / interactive blocklist** | `sudo`, `su`, `crontab`, `vi`, `vim`, `nano`, `nc`, `ncat`, `netcat`, `wget` |
+| **Pipe-chain analysis** | Scans through `\|`, `;`, `&` for blocked commands — prevents bypass via chaining. |
+| **Output cap** | 64 KB stdout, 16 KB stderr — prevents memory exhaustion from verbose commands. |
+| **Timeout** | 10 seconds — prevents long-running or hanging processes. |
+| **Stdin closed** | Child process stdin is closed immediately to prevent interactive command hanging. |
+
+#### WebFetchTool
+
+| Protection | Detail |
+|---|---|
+| **HTTPS-only** | Rejects any URL not using the `https://` scheme. |
+| **DNS rebinding protection** | Resolves hostnames before connecting and blocks requests to private / reserved IP ranges. |
+| **Redirect limit** | Maximum 3 automatic redirects to prevent redirect loops and open-redirect abuse. |
+| **Response size cap** | 128 KB — prevents memory exhaustion from large downloads. |
+| **Timeout** | 10 seconds per request. |
+
+Blocked IP ranges (DNS rebinding protection):
+
+| Range | Description |
+|---|---|
+| `127.0.0.0/8` | IPv4 loopback |
+| `10.0.0.0/8` | RFC 1918 private |
+| `172.16.0.0/12` | RFC 1918 private |
+| `192.168.0.0/16` | RFC 1918 private |
+| `169.254.0.0/16` | Link-local |
+| `::1` | IPv6 loopback |
+| `fd00::/8` | IPv6 unique-local |
+| `fe80::/10` | IPv6 link-local |
+| IPv4-mapped IPv6 | e.g., `::ffff:127.0.0.1` — also blocked |
+
+#### GetClipboardTool
+
+| Protection | Detail |
+|---|---|
+| **Content size cap** | 32 KB with truncation warning returned to the model. |
+| **Platform-adaptive detection** | Looks up clipboard commands via `PATH` (`xclip`, `xsel`, `pbpaste`, `powershell`) — never hard-codes absolute paths. |
+| **Timeout** | 5 seconds — prevents hanging when no clipboard provider is available. |
+
+#### ToolRegistry
+
+| Protection | Detail |
+|---|---|
+| **Exact alias matching** | Uses a dictionary of explicit aliases — not substring search — to prevent unintended tool activation. |
+| **Short aliases** | `shell` → `shell_exec`, `file` → `read_file`, `web` → `web_fetch`, `clipboard` → `get_clipboard`, `datetime` → `get_datetime` |
+
+### Agent Mode Safety
+
+| Control | Detail |
+|---|---|
+| **Maximum tool-calling rounds** | Default: 5, configurable via `--max-rounds`. Prevents infinite loops. |
+| **Operation timeout** | Bounds the entire agent session duration. |
+| **Tool choice** | Set to `"auto"` only when tools are present; otherwise omitted entirely. |
+
+---
+
 ## Further Reading
 
 - [Azure OpenAI Security Best Practices](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/managed-identity)
@@ -548,4 +636,4 @@ Use this checklist when deploying or operating the Azure OpenAI CLI:
 
 ---
 
-*Last updated: 2025*
+*Last updated: 2025-04-09*

@@ -7,7 +7,7 @@ BUILD_CTX := azureopenai-cli
 
 DOCKER_CMD := docker run --rm --env-file .env $(FULL_IMAGE)
 
-.PHONY: all build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests
+.PHONY: all build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests publish-fast publish-aot publish-r2r
 
 ## Help: list available make targets (default target)
 help:
@@ -26,6 +26,9 @@ help:
 	@echo "  make format-check - Check formatting without changes"
 	@echo "  make audit       - Check for vulnerable NuGet packages"
 	@echo "  make all-tests   - Run unit + integration + docker tests"
+	@echo "  make publish-fast - Publish self-contained ReadyToRun binary (fast startup)"
+	@echo "  make publish-r2r  - Alias for publish-fast"
+	@echo "  make publish-aot  - Publish Native AOT binary (fastest startup, experimental)"
 	@echo "  make check       - Verify the project builds successfully"
 	@echo "  make help        - Show this help message"
 
@@ -127,3 +130,27 @@ audit:
 
 ## All-tests: run unit tests + integration tests + docker tests sequentially
 all-tests: test integration-test docker-test
+
+## Publish self-contained binary with ReadyToRun (pre-JIT, ~100ms startup)
+## This is the recommended publish mode for AHK/Espanso text injection workflows
+## where startup latency is critical. R2R pre-compiles IL to native code at publish
+## time, eliminating most JIT overhead while retaining full .NET runtime compatibility.
+publish-fast:
+	dotnet publish azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -r linux-x64 --self-contained -p:PublishReadyToRun=true -o dist/
+	@echo "Published ReadyToRun binary to dist/AzureOpenAI_CLI"
+	@ls -lh dist/AzureOpenAI_CLI
+
+## Alias for publish-fast (ReadyToRun)
+publish-r2r: publish-fast
+
+## Publish Native AOT binary (fastest startup, ~50ms, EXPERIMENTAL)
+## ⚠ Native AOT compiles successfully but crashes at runtime due to reflection-based
+##   JSON serialization in UserConfig.cs and Program.cs (anonymous types).
+##   To fix: add System.Text.Json source generators for all serialized types.
+##   See: https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/source-generation
+##   Until then, use publish-fast (ReadyToRun) for production builds.
+publish-aot:
+	dotnet publish azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -r linux-x64 -p:PublishAot=true -o dist/aot/
+	@echo "Published AOT binary to dist/aot/AzureOpenAI_CLI"
+	@echo "⚠  WARNING: AOT binary may crash at runtime (reflection-based JSON). Use publish-fast instead."
+	@ls -lh dist/aot/AzureOpenAI_CLI

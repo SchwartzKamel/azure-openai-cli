@@ -1,11 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Native AOT Publishing (opt-in, not permanent):
+    AOT produces the smallest/fastest binary (~8MB, ~50ms startup) but currently
+    crashes at runtime because UserConfig.cs and Program.cs use reflection-based
+    System.Text.Json serialization (JsonSerializer.Serialize with anonymous types).
+    
+    To publish AOT (experimental):   make publish-aot
+    To publish ReadyToRun (stable):  make publish-fast
+    
+    To fully enable AOT, migrate all JsonSerializer usage to source generators:
+    https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/source-generation
+    
+    Do NOT add <PublishAot>true</PublishAot> here — it should remain opt-in
+    via the Makefile targets or dotnet publish -p:PublishAot=true.
+  -->
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

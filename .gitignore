@@ -10,6 +10,9 @@ azureopenai-cli/.env
 # .NET build artifacts
 bin/
 obj/
+
+# Publish output directories (make publish-fast, publish-aot)
+dist/
 [Bb]uild[Ll]og.*
 
 # User-specific files

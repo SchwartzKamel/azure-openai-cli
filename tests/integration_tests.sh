@@ -172,6 +172,15 @@ echo "▸ Agent + Version Coexistence"
 assert_exit "--version still exits 0 after agent tests" 0 "$CLI --version"
 assert_output_contains "--version still shows v1" "v1" "$CLI --version"
 
+# ── Structured Output (--schema) ──────────────
+echo ""
+echo "▸ Structured Output (--schema)"
+assert_output_contains "--help shows --schema flag" "[-]-schema" "$CLI --help"
+assert_exit "--schema without value exits 1" 1 "$CLI --schema"
+assert_output_contains "--schema missing value shows error" "requires a JSON schema" "$CLI --schema"
+assert_exit "--schema with invalid JSON exits non-zero" 1 "$CLI --schema '{invalid}' 'test'"
+assert_output_contains "--schema invalid JSON shows error" "Invalid JSON schema" "$CLI --schema '{invalid}' 'test'"
+
 # ── Docker ────────────────────────────────────
 echo ""
 echo "▸ Docker"
