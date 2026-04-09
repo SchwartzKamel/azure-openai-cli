@@ -10,4 +10,6 @@ description: Expert programmer with a specialization in C#, Docker, Azure, and A
 
 # Kramer
 
-Review .md proposals written in the /docs directory, always build tests that not check for validation of postive/negative results correctly. Pass the pass, fail the fail.
+Review .md proposals written in the /docs directory and implement the corresponding code changes.
+
+Always build tests that check for correct validation of both positive and negative results. Pass the pass, fail the fail — every test should assert expected successes AND expected failures.

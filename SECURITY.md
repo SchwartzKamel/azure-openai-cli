@@ -17,6 +17,9 @@
 9. [Exit Codes Reference](#9-exit-codes-reference)
 10. [Security Checklist for Users](#10-security-checklist-for-users)
 11. [Tool Security](#11-tool-security)
+12. [DelegateTaskTool Security](#12-delegatetasktool-security)
+13. [Ralph Mode Security](#13-ralph-mode-security)
+14. [Subagent Attack Surface](#14-subagent-attack-surface)
 
 ---
 
@@ -626,6 +629,238 @@ Blocked IP ranges (DNS rebinding protection):
 
 ---
 
+## 12. DelegateTaskTool Security
+
+> Added in v1.4.0 — documents security hardening for the `delegate_task` tool
+> that enables hierarchical sub-agent delegation.
+
+The `DelegateTaskTool` spawns child agent processes to handle sub-tasks. Because
+child agents have tool access (shell, file, web), multiple layers of defense
+prevent abuse.
+
+### Recursion Depth Cap
+
+The `RALPH_DEPTH` environment variable tracks the current delegation depth.
+Each child process increments this counter. Delegation is rejected when the
+depth reaches the hard-coded maximum of **3 levels**:
+
+```csharp
+private const int MaxDepth = 3;
+// ...
+if (currentDepth >= MaxDepth)
+    return $"Error: maximum delegation depth ({MaxDepth}) reached.";
+```
+
+This prevents infinite agent recursion regardless of model behavior.
+
+### Credential Isolation
+
+Only an explicit allowlist of environment variables is passed to child
+processes — no blanket inheritance:
+
+| Variable | Purpose |
+|---|---|
+| `AZUREOPENAIENDPOINT` | Azure resource URL |
+| `AZUREOPENAIAPI` | API key |
+| `AZUREOPENAIMODEL` | Deployment name |
+| `AZURE_DEEPSEEK_KEY` | DeepSeek API key |
+| `RALPH_DEPTH` | Delegation depth counter (set, not inherited) |
+
+All other parent environment variables (shell history, user paths, tokens from
+CI systems, etc.) are **not** forwarded.
+
+### Timeout Enforcement
+
+Each child agent has a **60-second hard timeout**. On timeout the entire
+process tree is killed:
+
+```csharp
+private const int DefaultTimeoutMs = 60_000;
+// ...
+cts.CancelAfter(DefaultTimeoutMs);
+// ...
+if (!process.HasExited) process.Kill(entireProcessTree: true);
+```
+
+### Output Truncation
+
+Child process output is capped at **64 KB** (`65,536 bytes`). The read buffer
+is pre-allocated at this size and any excess output is silently dropped with a
+truncation notice appended:
+
+```csharp
+private const int MaxOutputBytes = 65_536;
+// ...
+if (read == MaxOutputBytes)
+    output += "\n... (child agent output truncated)";
+```
+
+### stdin Closure
+
+The child process `stdin` is immediately closed after spawning, preventing any
+interactive exploitation path:
+
+```csharp
+process.StandardInput.Close();
+```
+
+### Default Tool Restriction
+
+Child agents default to the tool set `shell,file,web,datetime`. The `delegate`
+tool is **excluded** from this default, preventing recursive delegation chains
+unless the parent explicitly opts in via the `tools` parameter:
+
+```csharp
+string toolsArg = "shell,file,web,datetime";
+```
+
+### Process Isolation
+
+Each child runs as a separate OS process via `Process.Start`. There is no
+shared memory, no shared state, and no direct IPC channel between parent and
+child beyond `stdout`/`stderr` capture.
+
+---
+
+## 13. Ralph Mode Security
+
+> Added in v1.4.0 — documents security controls for Ralph mode, the autonomous
+> iteration loop (`--ralph`).
+
+Ralph mode runs the agent in an autonomous loop: execute a task, optionally
+validate, and retry on failure. Several controls bound the resources and
+attack surface of this loop.
+
+### Iteration Limit
+
+The `--max-iterations` flag is bounded to a range of **1–50** (default: 10).
+Values outside this range are rejected at CLI argument parsing:
+
+```csharp
+int maxIterations = 10;
+// ...
+return (null, new CliParseError("[ERROR] --max-iterations requires a value between 1 and 50", 1));
+```
+
+### Stateless Iterations
+
+Each iteration builds a **fresh message list** — there is no conversation
+history accumulation across iterations. This prevents prompt injection
+artifacts from persisting between iterations:
+
+```csharp
+// Build fresh messages for each iteration (stateless — the Ralph way)
+var messages = new List<ChatMessage>
+{
+    new SystemChatMessage(effectiveSystemPrompt + ...),
+    new UserChatMessage(currentPrompt),
+};
+```
+
+Previous iteration context (error messages, validation output) is injected
+only through the user prompt, not through accumulated assistant messages.
+
+### Validation Sandboxing
+
+The `--validate` command runs via `/bin/sh -c` as a separate process with the
+same timeout as the main agent session. The validation process has `stdin`
+closed immediately:
+
+```csharp
+FileName = "/bin/sh",
+Arguments = $"-c \"{command.Replace("\"", "\\\"")}\"",
+// ...
+process.StandardInput.Close();
+```
+
+On timeout, the validation process tree is killed:
+
+```csharp
+if (!process.HasExited) process.Kill(entireProcessTree: true);
+```
+
+### File-Based State (Wiggum Pattern)
+
+Ralph mode uses the filesystem for state persistence between iterations.
+The agent reads and writes files via the existing `ReadFileTool` and
+`ShellExecTool`, which enforce their own security controls:
+
+- `ReadFileTool` — path blocking, symlink resolution, 256 KB size cap.
+- `ShellExecTool` — command blocklist, output cap, 10-second timeout.
+
+No in-memory state is shared between iterations beyond the constructed prompt.
+
+### `.ralph-log` File
+
+A `.ralph-log` file is written to the **current directory** on a best-effort
+basis. Failures to write the log are silently caught and never cause the loop
+to abort:
+
+```csharp
+static void WriteRalphLog(string content)
+{
+    try { File.WriteAllText(".ralph-log", ...); }
+    catch { /* best-effort logging */ }
+}
+```
+
+### No Credential Exposure in Logs
+
+Agent responses are truncated in `.ralph-log` to prevent credential leakage
+from tool outputs:
+
+| Field | Truncation |
+|---|---|
+| Prompt | 200 characters |
+| Agent response | 500 characters |
+| Validation output | 2,000 characters |
+
+---
+
+## 14. Subagent Attack Surface
+
+> Added in v1.4.0 — threat model for DelegateTaskTool and Ralph mode operating
+> together.
+
+### Threat Model
+
+| Threat | Mitigation | Residual Risk |
+|---|---|---|
+| Infinite recursion | `RALPH_DEPTH` cap (3) | Low — hard limit enforced |
+| Resource exhaustion | 60 s timeout + 64 KB output cap | Low — enforced at process level |
+| Credential leakage to child | Explicit allowlist of env vars | Medium — allowed vars contain API keys |
+| Prompt injection via child response | Child output treated as tool result, not system prompt | Medium — model may trust child output |
+| Ralph loop denial of service | Max 50 iterations, each with timeout | Low — bounded resource use |
+| Validation command injection | Command comes from CLI flags (user-controlled, not model-controlled) | Low — user trusts their own flags |
+
+### Defense-in-Depth Summary
+
+```
+┌──────────────────────────────────────────────┐
+│  CLI Argument Parsing                        │
+│  • --max-iterations capped at 1–50           │
+│  • --validate is user-supplied, not model     │
+├──────────────────────────────────────────────┤
+│  Ralph Loop                                  │
+│  • Stateless iterations (fresh messages)     │
+│  • Validation subprocess sandboxed           │
+│  • .ralph-log truncated to prevent leaks     │
+├──────────────────────────────────────────────┤
+│  DelegateTaskTool                            │
+│  • RALPH_DEPTH ≤ 3                           │
+│  • 60 s timeout, 64 KB output cap            │
+│  • Env var allowlist (4 vars + depth)        │
+│  • delegate excluded from child defaults     │
+├──────────────────────────────────────────────┤
+│  Child Agent Tools                           │
+│  • ShellExecTool: command blocklist, 10 s    │
+│  • ReadFileTool: path blocking, 256 KB       │
+│  • WebFetchTool: HTTPS-only, DNS rebinding   │
+└──────────────────────────────────────────────┘
+```
+
+---
+
 ## Further Reading
 
 - [Azure OpenAI Security Best Practices](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/managed-identity)
@@ -636,4 +871,4 @@ Blocked IP ranges (DNS rebinding protection):
 
 ---
 
-*Last updated: 2025-04-09*
+*Last updated: 2025-07-25*
