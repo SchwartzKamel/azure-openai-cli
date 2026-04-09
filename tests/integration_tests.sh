@@ -184,13 +184,13 @@ assert_output_contains "--schema invalid JSON shows error" "Invalid JSON schema"
 # ── Docker ────────────────────────────────────
 echo ""
 echo "▸ Docker"
-if command -v docker &> /dev/null; then
+if command -v docker &> /dev/null && docker image inspect azure-openai-cli:test &> /dev/null; then
     assert_exit "docker --help exits 0" 0 "docker run --rm azure-openai-cli:test --help"
     assert_exit "docker --version exits 0" 0 "docker run --rm azure-openai-cli:test --version"
     assert_exit "docker --config show exits 0" 0 "docker run --rm azure-openai-cli:test --config show"
     assert_output_contains "docker --help shows Usage" "Usage" "docker run --rm azure-openai-cli:test --help"
 else
-    echo "  ⊘ Docker not available, skipping"
+    echo "  ⊘ Docker image not available, skipping"
 fi
 
 # ── Summary ───────────────────────────────────
