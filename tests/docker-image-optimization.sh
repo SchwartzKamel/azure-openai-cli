@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Docker Image Optimization Tests - Shell Script Version
 # This script validates Docker image optimizations without requiring bats
@@ -24,12 +24,12 @@ NC='\033[0m' # No Color
 
 pass() {
     echo -e "${GREEN}✓${NC} $1"
-    ((PASSED++))
+    PASSED=$((PASSED + 1))
 }
 
 fail() {
     echo -e "${RED}✗${NC} $1"
-    ((FAILED++))
+    FAILED=$((FAILED + 1))
 }
 
 echo "========================================"

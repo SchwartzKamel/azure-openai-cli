@@ -1,3 +1,32 @@
+SHELL := /bin/bash
+
+# Auto-detect Runtime Identifier (RID) for cross-platform publish
+UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_S),Linux)
+  ifeq ($(UNAME_M),aarch64)
+    RID := linux-arm64
+  else
+    RID := linux-x64
+  endif
+else ifeq ($(UNAME_S),Darwin)
+  ifeq ($(UNAME_M),arm64)
+    RID := osx-arm64
+  else
+    RID := osx-x64
+  endif
+else
+  RID := win-x64
+endif
+
+# Binary name varies by platform (.exe on Windows)
+ifeq ($(findstring win,$(RID)),win)
+  BIN_EXT := .exe
+else
+  BIN_EXT :=
+endif
+BIN_NAME := AzureOpenAI_CLI$(BIN_EXT)
+
 IMAGE_NAME := azureopenai-cli
 IMAGE_TAG := gpt-5-chat
 AGENTIC_TAG := 4.1-mini
@@ -9,6 +38,8 @@ DOCKER_CMD := docker run --rm --env-file .env $(FULL_IMAGE)
 
 # Resolve dotnet: prefer PATH, fall back to ~/.dotnet/dotnet (installed by setup.sh)
 DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
+
+.DEFAULT_GOAL := help
 
 .PHONY: all build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests publish-fast publish-aot publish-r2r setup
 
@@ -35,6 +66,8 @@ help:
 	@echo "  make publish-aot  - Publish Native AOT binary (fastest startup, experimental)"
 	@echo "  make check       - Verify the project builds successfully"
 	@echo "  make help        - Show this help message"
+	@echo ""
+	@echo "  Detected platform: $(RID)"
 
 all: build
 
@@ -69,7 +102,7 @@ clean:
 		grep -v 'mcr.microsoft.com/dotnet/sdk:10.0' | \
 		grep -v 'mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine' | \
 		grep -Ev "$(IMAGE_NAME):(gpt-5-chat|4.1-mini)" | \
-		awk '{print $$1}' | xargs -r docker rmi -f || true
+		awk '{print $$1}' | xargs docker rmi -f 2>/dev/null || true
 	@docker builder prune -f
 
 ## Install alias permanently in shell profile
@@ -79,11 +112,12 @@ alias:
 		*/bash) RCFILE=$$HOME/.bashrc ;; \
 		*) RCFILE=$$HOME/.profile ;; \
 	esac; \
-    echo "alias az-ai='$(DOCKER_CMD)'" >> $$RCFILE; \
+	echo "alias az-ai='$(DOCKER_CMD)'" >> $$RCFILE; \
 	echo "Alias 'az-ai' added to $$RCFILE"
 
 ## Run a vulnerability assessment of the compiled image
 scan:
+	@command -v grype >/dev/null 2>&1 || { echo "Error: grype not found. Install: https://github.com/anchore/grype"; exit 1; }
 	grype $(FULL_IMAGE)
 
 ## Setup: install prerequisites (.NET 10, Docker, tools)
@@ -144,21 +178,21 @@ all-tests: test integration-test docker-test
 ## where startup latency is critical. R2R pre-compiles IL to native code at publish
 ## time, eliminating most JIT overhead while retaining full .NET runtime compatibility.
 publish-fast:
-	$(DOTNET) publish azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -r linux-x64 --self-contained -p:PublishReadyToRun=true -o dist/
-	@echo "Published ReadyToRun binary to dist/AzureOpenAI_CLI"
-	@ls -lh dist/AzureOpenAI_CLI
+	$(DOTNET) publish azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -r $(RID) --self-contained -p:PublishReadyToRun=true -o dist/
+	@echo "Published ReadyToRun binary to dist/$(BIN_NAME)"
+	@ls -lh dist/$(BIN_NAME)
 
 ## Alias for publish-fast (ReadyToRun)
 publish-r2r: publish-fast
 
 ## Publish Native AOT binary (fastest startup, ~50ms, EXPERIMENTAL)
-## ⚠ Native AOT compiles successfully but crashes at runtime due to reflection-based
-##   JSON serialization in UserConfig.cs and Program.cs (anonymous types).
-##   To fix: add System.Text.Json source generators for all serialized types.
+## ✅ As of v1.7.0, anonymous types were replaced with source-gen records
+##   (ChatJsonResponse, AgentJsonResponse, AgentInfo), so AOT compilation
+##   and runtime should work correctly. Still considered experimental —
+##   prefer publish-fast (ReadyToRun) for production builds.
 ##   See: https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/source-generation
-##   Until then, use publish-fast (ReadyToRun) for production builds.
 publish-aot:
-	$(DOTNET) publish azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -r linux-x64 -p:PublishAot=true -o dist/aot/
-	@echo "Published AOT binary to dist/aot/AzureOpenAI_CLI"
-	@echo "⚠  WARNING: AOT binary may crash at runtime (reflection-based JSON). Use publish-fast instead."
-	@ls -lh dist/aot/AzureOpenAI_CLI
+	$(DOTNET) publish azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -r $(RID) -p:PublishAot=true -o dist/aot/
+	@echo "Published AOT binary to dist/aot/$(BIN_NAME)"
+	@echo "⚠  NOTE: AOT is experimental. Prefer publish-fast (ReadyToRun) for production."
+	@ls -lh dist/aot/$(BIN_NAME)

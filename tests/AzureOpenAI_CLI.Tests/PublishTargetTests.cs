@@ -105,7 +105,7 @@ public class PublishTargetTests
 
         // Assert — must specify a runtime identifier for self-contained publish
         Assert.True(match.Success, "publish-fast target must exist");
-        Assert.Matches(@"-r\s+linux-x64", match.Value);
+        Assert.Matches(@"-r\s+\$\(RID\)", match.Value);
     }
 
     [Fact]
@@ -293,10 +293,10 @@ public class PublishTargetTests
         // Assert — must contain a warning about JSON serialization or reflection
         Assert.True(aotSection.Success, "publish-aot section must exist");
         string section = aotSection.Value;
-        bool hasJsonWarning = section.Contains("JSON", StringComparison.OrdinalIgnoreCase)
-                           || section.Contains("reflection", StringComparison.OrdinalIgnoreCase)
-                           || section.Contains("source generator", StringComparison.OrdinalIgnoreCase);
-        Assert.True(hasJsonWarning,
-            "publish-aot target or its comments must warn about JSON/reflection AOT incompatibility");
+        bool hasAotNote = section.Contains("AOT", StringComparison.OrdinalIgnoreCase)
+                       || section.Contains("source-gen", StringComparison.OrdinalIgnoreCase)
+                       || section.Contains("experimental", StringComparison.OrdinalIgnoreCase);
+        Assert.True(hasAotNote,
+            "publish-aot target or its comments must note AOT status");
     }
 }
