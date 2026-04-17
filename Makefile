@@ -7,11 +7,15 @@ BUILD_CTX := azureopenai-cli
 
 DOCKER_CMD := docker run --rm --env-file .env $(FULL_IMAGE)
 
-.PHONY: all build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests publish-fast publish-aot publish-r2r
+# Resolve dotnet: prefer PATH, fall back to ~/.dotnet/dotnet (installed by setup.sh)
+DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
+
+.PHONY: all build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests publish-fast publish-aot publish-r2r setup
 
 ## Help: list available make targets (default target)
 help:
 	@echo "Available targets:"
+	@echo "  make setup       - Install prerequisites (.NET 10 SDK, Docker, tools)"
 	@echo "  make build       - Build the Docker image"
 	@echo "  make run         - Run the CLI (requires .env file). Use ARGS=\"your prompt\""
 	@echo "  make clean       - Remove build artifacts and dangling images"
@@ -82,9 +86,13 @@ alias:
 scan:
 	grype $(FULL_IMAGE)
 
+## Setup: install prerequisites (.NET 10, Docker, tools)
+setup:
+	@bash scripts/setup.sh
+
 ## Run unit tests
 test: ## Run unit tests
-	dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity minimal
+	$(DOTNET) test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity minimal
 
 ## Run integration tests (end-to-end, uses dotnet run + Docker)
 integration-test: ## Run integration tests
@@ -99,7 +107,7 @@ smoke-test: clean build
 
 ## Lint: check code formatting (for CI)
 lint:
-	dotnet format --verify-no-changes azure-openai-cli.sln
+	$(DOTNET) format --verify-no-changes azure-openai-cli.sln
 
 ## Check: compile and verify the project builds successfully
 check:
@@ -118,15 +126,15 @@ check:
 
 ## Format: auto-format code
 format:
-	dotnet format azure-openai-cli.sln
+	$(DOTNET) format azure-openai-cli.sln
 
 ## Format-check: check formatting without changing files
 format-check:
-	dotnet format --verify-no-changes azure-openai-cli.sln
+	$(DOTNET) format --verify-no-changes azure-openai-cli.sln
 
 ## Audit: check for vulnerable NuGet packages
 audit:
-	dotnet list package --vulnerable --include-transitive
+	$(DOTNET) list package --vulnerable --include-transitive
 
 ## All-tests: run unit tests + integration tests + docker tests sequentially
 all-tests: test integration-test docker-test
@@ -136,7 +144,7 @@ all-tests: test integration-test docker-test
 ## where startup latency is critical. R2R pre-compiles IL to native code at publish
 ## time, eliminating most JIT overhead while retaining full .NET runtime compatibility.
 publish-fast:
-	dotnet publish azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -r linux-x64 --self-contained -p:PublishReadyToRun=true -o dist/
+	$(DOTNET) publish azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -r linux-x64 --self-contained -p:PublishReadyToRun=true -o dist/
 	@echo "Published ReadyToRun binary to dist/AzureOpenAI_CLI"
 	@ls -lh dist/AzureOpenAI_CLI
 
@@ -150,7 +158,7 @@ publish-r2r: publish-fast
 ##   See: https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/source-generation
 ##   Until then, use publish-fast (ReadyToRun) for production builds.
 publish-aot:
-	dotnet publish azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -r linux-x64 -p:PublishAot=true -o dist/aot/
+	$(DOTNET) publish azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -r linux-x64 -p:PublishAot=true -o dist/aot/
 	@echo "Published AOT binary to dist/aot/AzureOpenAI_CLI"
 	@echo "⚠  WARNING: AOT binary may crash at runtime (reflection-based JSON). Use publish-fast instead."
 	@ls -lh dist/aot/AzureOpenAI_CLI

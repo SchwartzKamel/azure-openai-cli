@@ -11,6 +11,7 @@ namespace AzureOpenAI_CLI.Tests;
 /// entry point. No live Azure credentials required — these paths resolve
 /// before any API call.
 /// </summary>
+[Collection("ConsoleCapture")]
 public class RalphModeTests
 {
     private static readonly MethodInfo MainMethod =

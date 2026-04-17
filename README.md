@@ -56,6 +56,9 @@ flowchart TB
 - [Docker](https://www.docker.com/) installed
 - Azure OpenAI credentials
 
+> **New here?** Run `make setup` to install all prerequisites (.NET 10 SDK, Docker, clipboard tools) automatically.
+> The script detects your OS and walks you through each step. Use `--skip-docker` to skip Docker, or `--help` for options.
+
 > **Note:** All `make` commands shown in this README **must** be run from the repository root directory.
 
 You will need Azure OpenAI credentials before running the CLI.

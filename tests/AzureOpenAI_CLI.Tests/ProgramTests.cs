@@ -11,6 +11,7 @@ namespace AzureOpenAI_CLI.Tests;
 /// reflection.  The tests deliberately avoid scenarios that require live Azure
 /// credentials — we only exercise paths that resolve before the API call.
 /// </summary>
+[Collection("ConsoleCapture")]
 public class ProgramTests
 {
     private static readonly MethodInfo MainMethod =

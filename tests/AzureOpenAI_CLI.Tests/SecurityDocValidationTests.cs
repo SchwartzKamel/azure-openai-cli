@@ -12,6 +12,7 @@ namespace AzureOpenAI_CLI.Tests;
 /// Each test references the specific SECURITY.md claim it validates.
 /// Pass the pass, fail the fail.
 /// </summary>
+[Collection("ConsoleCapture")]
 public class SecurityDocValidationTests
 {
     // ═══════════════════════════════════════════════════════════════════
