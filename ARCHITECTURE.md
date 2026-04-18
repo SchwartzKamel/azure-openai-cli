@@ -147,6 +147,7 @@ Errors are caught at the top level and routed through `--json`-aware paths:
 | `1` | Validation / usage error (missing prompt, bad endpoint, prompt too long, unknown model) | `[ERROR]` on stderr or JSON error |
 | `2` | Azure API error (`RequestFailedException`) — includes HTTP status and human-readable detail for 401/403/404/429 | `[AZURE ERROR]` on stderr or JSON error |
 | `3` | Timeout (`OperationCanceledException`) — streaming exceeded `AZURE_TIMEOUT` seconds | `[ERROR]` on stderr or JSON error |
+| `130` | User interrupt (CTRL+C) — `Console.CancelKeyPress` signals the top-level CancellationToken; Ralph flushes `.ralph-log`, Persona records `[cancelled]` in memory | `[cancelled]` on stderr |
 | `99` | Unhandled exception | `[UNHANDLED ERROR]` on stderr or JSON error |
 
 ---

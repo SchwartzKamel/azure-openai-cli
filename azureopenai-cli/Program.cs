@@ -366,8 +366,21 @@ class Program
         }
         args = opts!.RemainingArgs;
 
+        // Hoisted so the outer catch(OperationCanceledException) can record a
+        // "[cancelled]" marker in persona memory without re-parsing prompts.
+        string userPromptForCatch = string.Empty;
+        AzureOpenAI_CLI.Squad.PersonaConfig? activePersonaForCatch = null;
+        AzureOpenAI_CLI.Squad.PersonaMemory? personaMemoryForCatch = null;
+
         try
         {
+            // Register CTRL+C handler once, as early as possible, so long-running
+            // modes (streaming / agent / Ralph) can flush state before exit.
+            var shutdownCts = ShutdownCts ?? new CancellationTokenSource();
+            if (!CancelHandlerRegistered)
+                RegisterCancelKeyPress(shutdownCts);
+            shutdownCts = ShutdownCts!;
+
             try
             {
                 // Always load from the baked‑in .env file
@@ -504,6 +517,7 @@ class Program
             {
                 return ErrorAndExit($"Prompt too long ({userPrompt.Length} chars). Maximum allowed is {MAX_PROMPT_LENGTH} chars.", 1, jsonMode);
             }
+            userPromptForCatch = userPrompt;
 
             // Validate Azure credentials and endpoint
             var (endpoint, apiKey, deploymentName, validationError) = ValidateConfiguration(
@@ -572,6 +586,12 @@ class Program
                 }
             }
 
+            // Snapshot for the outer OperationCanceledException handler so it can
+            // record a "[cancelled]" marker even when the exception unwinds from
+            // deep in a streaming/agent/ralph loop.
+            activePersonaForCatch = activePersona;
+            personaMemoryForCatch = personaMemory;
+
             var requestOptions = new ChatCompletionOptions()
             {
                 MaxOutputTokenCount = maxTokens,
@@ -602,18 +622,22 @@ class Program
                 return await RunRalphLoop(
                     chatClient, deploymentName, userPrompt, opts.ValidateCommand,
                     opts.MaxIterations, requestOptions, opts.EnabledTools,
-                    opts.MaxAgentRounds, jsonMode, timeoutSeconds, effectiveSystemPrompt);
+                    opts.MaxAgentRounds, jsonMode, timeoutSeconds, effectiveSystemPrompt,
+                    shutdownCts.Token);
             }
 
             // === AGENTIC MODE ===
             if (opts.AgentMode)
             {
                 return await RunAgentLoop(chatClient, messages, requestOptions,
-                    deploymentName, opts.EnabledTools, opts.MaxAgentRounds, jsonMode, timeoutSeconds);
+                    deploymentName, opts.EnabledTools, opts.MaxAgentRounds, jsonMode, timeoutSeconds,
+                    shutdownCts.Token);
             }
 
             // === STANDARD MODE (single-shot streaming) ===
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+            // Link external shutdown (CTRL+C) with per-call timeout.
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(shutdownCts.Token);
+            cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
             // JSON mode: collect tokens and measure duration instead of streaming to stdout
             var stopwatch = jsonMode ? Stopwatch.StartNew() : null;
             var responseBuilder = jsonMode ? new StringBuilder() : null;
@@ -780,6 +804,18 @@ class Program
         }
         catch (OperationCanceledException)
         {
+            bool externalCancel = ShutdownCts?.IsCancellationRequested == true;
+            if (externalCancel)
+            {
+                // Best-effort persona memory marker so "[cancelled]" shows up next session.
+                if (activePersonaForCatch != null && personaMemoryForCatch != null)
+                {
+                    try { personaMemoryForCatch.AppendHistory(activePersonaForCatch.Name, userPromptForCatch, "[cancelled]"); }
+                    catch { /* best-effort */ }
+                }
+                try { Console.Error.WriteLine("[cancelled] Exited on user interrupt (CTRL+C)."); } catch { }
+                return EXIT_CODE_CANCELLED;
+            }
             return ErrorAndExit("Request timed out. Increase AZURE_TIMEOUT (seconds) if needed.", 3, jsonMode);
         }
         catch (Exception ex)
@@ -923,6 +959,11 @@ class Program
         Console.WriteLine("  --schema <json>       enforce structured output with json schema (strict mode)");
         Console.WriteLine("  --raw                 raw text only, no spinner/formatting (for Espanso, AHK, pipes)");
         Console.WriteLine("  --config show         display effective configuration and exit");
+        Console.WriteLine();
+        Console.WriteLine("Interrupt:");
+        Console.WriteLine("  CTRL+C                graceful cancellation — flushes state, exits 130");
+        Console.WriteLine("                        (Ralph mode persists current iteration to .ralph-log;");
+        Console.WriteLine("                         Persona mode records a [cancelled] memory entry)");
         Console.WriteLine();
         Console.WriteLine("Agent Mode:");
         Console.WriteLine("  --agent               Enable agentic mode (model can call tools)");
@@ -1143,7 +1184,8 @@ class Program
         HashSet<string>? enabledToolNames,
         int maxRounds,
         bool jsonMode,
-        int timeoutSeconds)
+        int timeoutSeconds,
+        CancellationToken externalToken = default)
     {
         var registry = ToolRegistry.Create(enabledToolNames);
 
@@ -1166,7 +1208,9 @@ class Program
                 $"\n\nYou have tools available: [{toolNames}]. Use them when the user's request requires real-time data, file access, or system interaction. Call tools rather than guessing.");
         }
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+        // Link external cancellation (CTRL+C) with per-call timeout.
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(externalToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
         var stopwatch = Stopwatch.StartNew();
         bool showStatus = !jsonMode && !Console.IsErrorRedirected;
         int round = 0;
@@ -1331,7 +1375,8 @@ class Program
         int maxAgentRounds,
         bool jsonMode,
         int timeoutSeconds,
-        string effectiveSystemPrompt)
+        string effectiveSystemPrompt,
+        CancellationToken externalToken = default)
     {
         bool showStatus = !jsonMode && !Console.IsErrorRedirected;
         var iterationLog = new StringBuilder();
@@ -1353,6 +1398,18 @@ class Program
             iteration++;
             if (showStatus)
                 Console.Error.WriteLine($"━━━ Iteration {iteration}/{maxIterations} ━━━");
+
+            // Honour CTRL+C *before* starting a new iteration so long loops bail out promptly.
+            if (externalToken.IsCancellationRequested)
+            {
+                iterationLog.AppendLine($"## Iteration {iteration}");
+                iterationLog.AppendLine("**Status:** [cancelled] user interrupted before agent call");
+                iterationLog.AppendLine();
+                WriteRalphLog(iterationLog.ToString());
+                if (showStatus)
+                    Console.Error.WriteLine("\n[cancelled] Ralph loop interrupted — log flushed.");
+                return EXIT_CODE_CANCELLED;
+            }
 
             // Build fresh messages for each iteration (stateless — the Ralph way)
             var messages = new List<ChatMessage>
@@ -1392,7 +1449,21 @@ class Program
                 agentResult = await RunAgentLoop(
                     chatClient, messages, iterOptions,
                     deploymentName, enabledToolNames, maxAgentRounds,
-                    jsonMode, timeoutSeconds);
+                    jsonMode, timeoutSeconds, externalToken);
+            }
+            catch (OperationCanceledException) when (externalToken.IsCancellationRequested)
+            {
+                // Flush whatever we have before exiting — critical: don't lose the log.
+                var partial = agentOutput.ToString().Trim();
+                iterationLog.AppendLine($"## Iteration {iteration}");
+                iterationLog.AppendLine("**Status:** [cancelled] user interrupted mid-agent-call");
+                iterationLog.AppendLine($"**Partial response:** {(partial.Length > 500 ? partial[..500] + "..." : partial)}");
+                iterationLog.AppendLine();
+                WriteRalphLog(iterationLog.ToString());
+                if (!jsonMode) Console.SetOut(originalOut);
+                if (showStatus)
+                    Console.Error.WriteLine("\n[cancelled] Ralph loop interrupted — log flushed.");
+                return EXIT_CODE_CANCELLED;
             }
             finally
             {
@@ -1517,7 +1588,7 @@ class Program
         return (process.ExitCode, output);
     }
 
-    static void WriteRalphLog(string content)
+    internal static void WriteRalphLog(string content)
     {
         try
         {
