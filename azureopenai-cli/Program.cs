@@ -27,7 +27,7 @@ class Program
     /// <summary>
     /// Holds parsed CLI flag values, separated from the remaining positional arguments.
     /// </summary>
-    private record CliOptions(
+    internal record CliOptions(
         float? Temperature,
         int? MaxTokens,
         string? SystemPrompt,
@@ -49,14 +49,14 @@ class Program
     /// <summary>
     /// Represents a CLI flag parse failure with the error message and exit code.
     /// </summary>
-    private record CliParseError(string Message, int ExitCode);
+    internal record CliParseError(string Message, int ExitCode);
 
     /// <summary>
     /// Parses all CLI flags (--temperature, --max-tokens, --system, --config, --agent, --tools,
     /// --max-rounds) out of the argument array. Returns either a populated CliOptions or a
     /// CliParseError if a flag is malformed.
     /// </summary>
-    static (CliOptions? Options, CliParseError? Error) ParseCliFlags(string[] args)
+    internal static (CliOptions? Options, CliParseError? Error) ParseCliFlags(string[] args)
     {
         float? cliTemperature = null;
         int? cliMaxTokens = null;
@@ -599,70 +599,67 @@ class Program
             }
 
             bool firstToken = true;
-            // Retry loop for transient API errors in streaming mode
-            int streamAttempt = 0;
-            const int maxStreamRetries = 3;
             int? promptTokens = null;
             int? completionTokens = null;
             try
             {
-                while (true)
+                // Retry transient errors on the initial streaming call (first-chunk acquisition).
+                // Mid-stream errors propagate to the outer catch; they are not retried because
+                // partial output has already been emitted.
+                var streamHandle = await WithRetryAsync(async () =>
                 {
+                    var stream = chatClient.CompleteChatStreamingAsync(messages, requestOptions, cts.Token);
+                    var e = stream.GetAsyncEnumerator(cts.Token);
                     try
                     {
-                        var response = chatClient.CompleteChatStreaming(messages, requestOptions, cts.Token);
-                        foreach (StreamingChatCompletionUpdate update in response)
-                        {
-                            foreach (ChatMessageContentPart updatePart in update.ContentUpdate)
-                            {
-                                if (firstToken)
-                                {
-                                    firstToken = false;
-                                    if (showSpinner)
-                                    {
-                                        spinnerCts.Cancel();
-                                        if (spinnerTask != null) await spinnerTask;
-                                        Console.Error.Write("\r              \r"); // clear spinner line
-                                    }
-                                }
-                                if (jsonMode)
-                                {
-                                    responseBuilder!.Append(updatePart.Text);
-                                }
-                                else
-                                {
-                                    System.Console.Write(updatePart.Text);
-                                }
-                            }
-                            if (update.Usage != null)
-                            {
-                                promptTokens = update.Usage.InputTokenCount;
-                                completionTokens = update.Usage.OutputTokenCount;
-                            }
-                        }
-                        break; // Success — exit retry loop
+                        bool has = await e.MoveNextAsync();
+                        return (Enumerator: e, HasFirst: has);
                     }
-                    catch (RequestFailedException ex) when (firstToken && streamAttempt < maxStreamRetries && (ex.Status == 429 || ex.Status >= 500))
+                    catch
                     {
-                        streamAttempt++;
-                        var delay = TimeSpan.FromSeconds(Math.Pow(2, streamAttempt - 1));
+                        await e.DisposeAsync();
+                        throw;
+                    }
+                }, ct: cts.Token);
 
-                        // Check for Retry-After header on rate-limit responses
-                        if (ex.Status == 429)
+                try
+                {
+                    bool more = streamHandle.HasFirst;
+                    while (more)
+                    {
+                        StreamingChatCompletionUpdate update = streamHandle.Enumerator.Current;
+                        foreach (ChatMessageContentPart updatePart in update.ContentUpdate)
                         {
-                            var rawResponse = ex.GetRawResponse();
-                            if (rawResponse != null
-                                && rawResponse.Headers.TryGetValue("Retry-After", out string? retryAfter)
-                                && int.TryParse(retryAfter, out int retrySeconds))
+                            if (firstToken)
                             {
-                                delay = TimeSpan.FromSeconds(Math.Min(retrySeconds, 60));
+                                firstToken = false;
+                                if (showSpinner)
+                                {
+                                    spinnerCts.Cancel();
+                                    if (spinnerTask != null) await spinnerTask;
+                                    Console.Error.Write("\r              \r"); // clear spinner line
+                                }
+                            }
+                            if (jsonMode)
+                            {
+                                responseBuilder!.Append(updatePart.Text);
+                            }
+                            else
+                            {
+                                System.Console.Write(updatePart.Text);
                             }
                         }
-
-                        if (!Console.IsErrorRedirected)
-                            Console.Error.Write($"\r⏳ Retry {streamAttempt}/{maxStreamRetries} in {delay.TotalSeconds:F0}s...");
-                        await Task.Delay(delay, cts.Token);
+                        if (update.Usage != null)
+                        {
+                            promptTokens = update.Usage.InputTokenCount;
+                            completionTokens = update.Usage.OutputTokenCount;
+                        }
+                        more = await streamHandle.Enumerator.MoveNextAsync();
                     }
+                }
+                finally
+                {
+                    await streamHandle.Enumerator.DisposeAsync();
                 }
             }
             finally
