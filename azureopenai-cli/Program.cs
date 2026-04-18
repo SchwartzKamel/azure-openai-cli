@@ -24,6 +24,47 @@ class Program
     private const int DEFAULT_MAX_TOKENS = 10000;
     private const string DEFAULT_SYSTEM_PROMPT = "You are a secure, concise CLI assistant. Keep answers factual, no fluff.";
 
+    // SIGINT (CTRL+C) convention: 128 + 2
+    internal const int EXIT_CODE_CANCELLED = 130;
+
+    // Tracks whether the Console.CancelKeyPress handler has been wired up.
+    // Exposed internally for tests to verify registration without simulating a real SIGINT.
+    internal static bool CancelHandlerRegistered { get; private set; }
+
+    // Top-level cancellation source signalled when the user presses CTRL+C.
+    // Mode loops (streaming / agent / Ralph) link their per-call timeout CTS to this token.
+    internal static CancellationTokenSource? ShutdownCts { get; private set; }
+
+    private static readonly object _cancelRegLock = new();
+
+    /// <summary>
+    /// Hooks <see cref="Console.CancelKeyPress"/> once to request graceful shutdown via
+    /// the supplied <see cref="CancellationTokenSource"/>. Subsequent calls are no-ops
+    /// (first registration wins — important for tests that invoke Main repeatedly).
+    /// </summary>
+    internal static void RegisterCancelKeyPress(CancellationTokenSource cts)
+    {
+        lock (_cancelRegLock)
+        {
+            if (CancelHandlerRegistered) return;
+            ShutdownCts = cts;
+            Console.CancelKeyPress += (s, e) =>
+            {
+                e.Cancel = true; // suppress default abort so cleanup can run
+                try { Console.Error.WriteLine("\n[interrupted] Flushing state..."); } catch { }
+                try { cts.Cancel(); } catch { /* already disposed */ }
+            };
+            CancelHandlerRegistered = true;
+        }
+    }
+
+    /// <summary>
+    /// Returns 130 (SIGINT convention) when cancellation came from CTRL+C,
+    /// or 3 (legacy timeout code) otherwise. Extracted for unit testing.
+    /// </summary>
+    internal static int MapCancellationExitCode(bool externalCancelled)
+        => externalCancelled ? EXIT_CODE_CANCELLED : 3;
+
     /// <summary>
     /// Holds parsed CLI flag values, separated from the remaining positional arguments.
     /// </summary>
