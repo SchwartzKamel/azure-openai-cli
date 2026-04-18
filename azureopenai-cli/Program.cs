@@ -882,9 +882,9 @@ class Program
         Console.WriteLine("  -t, --temperature <v> Override temperature (0.0-2.0)");
         Console.WriteLine("  --max-tokens <n>      Override max output tokens");
         Console.WriteLine("  --system <prompt>     Override system prompt for this invocation");
-        Console.WriteLine("  --schema <json>      Enforce structured output with JSON schema (strict mode)");
-        Console.WriteLine("  --raw               Output raw text only (no spinner, no formatting). For Espanso/AHK.");
-        Console.WriteLine("  --config show         Display effective configuration and exit");
+        Console.WriteLine("  --schema <json>       enforce structured output with json schema (strict mode)");
+        Console.WriteLine("  --raw                 raw text only, no spinner/formatting (for Espanso, AHK, pipes)");
+        Console.WriteLine("  --config show         display effective configuration and exit");
         Console.WriteLine();
         Console.WriteLine("Agent Mode:");
         Console.WriteLine("  --agent               Enable agentic mode (model can call tools)");
@@ -908,15 +908,31 @@ class Program
         Console.WriteLine("  azureopenai-cli --agent --tools shell \"run git log -5 and summarize\"");
         Console.WriteLine();
         Console.WriteLine("Ralph Mode:");
-        Console.WriteLine("  --ralph              Enable Ralph mode (autonomous Wiggum loop)");
-        Console.WriteLine("  --validate <cmd>     Validation command to run after each iteration");
-        Console.WriteLine("  --task-file <path>   Read task prompt from file instead of args");
-        Console.WriteLine("  --max-iterations <n> Maximum Ralph loop iterations (default: 10, max: 50)");
+        Console.WriteLine("  --ralph               enable ralph mode (autonomous wiggum loop)");
+        Console.WriteLine("  --validate <cmd>      validation command to run after each iteration");
+        Console.WriteLine("  --task-file <path>    read task prompt from file instead of args");
+        Console.WriteLine("  --max-iterations <n>  maximum ralph loop iterations (default: 10, max: 50)");
         Console.WriteLine();
-        Console.WriteLine("Persona Mode:");
-        Console.WriteLine("  --persona <name>     Use a named persona from .squad.json (or 'auto' for routing)");
-        Console.WriteLine("  --personas           List available personas");
-        Console.WriteLine("  --squad-init         Initialize Squad in current directory");
+        Console.WriteLine("Persona / Squad Mode:");
+        Console.WriteLine("  --squad-init          initialize squad system (creates .squad.json + .squad/ dir)");
+        Console.WriteLine("  --personas            list available personas defined in .squad.json");
+        Console.WriteLine("  --persona <name>      route prompt through a named persona (e.g. coder, reviewer)");
+        Console.WriteLine("  --persona auto        auto-route based on keyword matching in the prompt");
+        Console.WriteLine("                        See ARCHITECTURE.md (Squad System) for details.");
+        Console.WriteLine();
+        Console.WriteLine("Environment Variables:");
+        Console.WriteLine("  AZUREOPENAIENDPOINT   azure openai resource endpoint (required)");
+        Console.WriteLine("  AZUREOPENAIAPI        azure openai api key (required)");
+        Console.WriteLine("  AZUREOPENAIMODEL      comma-separated model deployment names (first = default)");
+        Console.WriteLine("  AZURE_TEMPERATURE     default temperature (overridden by --temperature)");
+        Console.WriteLine("  AZURE_MAX_TOKENS      default max tokens (overridden by --max-tokens)");
+        Console.WriteLine();
+        Console.WriteLine("More Examples:");
+        Console.WriteLine("  azureopenai-cli --squad-init");
+        Console.WriteLine("  azureopenai-cli --personas");
+        Console.WriteLine("  azureopenai-cli --persona coder \"refactor this function\"");
+        Console.WriteLine("  azureopenai-cli --persona auto \"write a unit test for parseArgs\"");
+        Console.WriteLine("  azureopenai-cli --raw \"one-line summary of TLS 1.3\"   # Espanso/AHK-friendly");
     }
 
     /// <summary>
