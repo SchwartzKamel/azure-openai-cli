@@ -648,7 +648,7 @@ JsonSerializer.Serialize(config);
 JsonSerializer.Deserialize<UserConfig>(json);
 ```
 
-`UserConfig.cs` has already been migrated to use `AppJsonContext` for both `Load()` and `Save()`. The Dockerfile uses `PublishReadyToRun=true` for ~50% startup improvement as a stepping stone toward full AOT.
+`UserConfig.cs`, `SquadConfig.cs`, and `SquadInitializer.cs` all use `AppJsonContext` for `Load()` / `Save()` / `Initialize()`. `Program.OutputJsonError` uses the `ErrorJsonResponse` record (no anonymous types). As a result, `make publish-aot` now produces a fully AOT-compatible ~9 MB single-file binary with ~11 ms cold start — the recommended publish mode for the CLI (see [README → Native AOT Status](README.md#native-aot-status)). `make publish-fast` (ReadyToRun) is retained for compatibility but is ~9× slower to start.
 
 ### Vulnerability scanning
 

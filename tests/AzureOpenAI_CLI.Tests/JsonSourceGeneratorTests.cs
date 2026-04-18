@@ -383,6 +383,7 @@ public class JsonSourceGeneratorTests
     [InlineData(typeof(ChatJsonResponse))]
     [InlineData(typeof(AgentJsonResponse))]
     [InlineData(typeof(AgentInfo))]
+    [InlineData(typeof(ErrorJsonResponse))]
     public void AppJsonContext_HasTypeInfo_ForResponseTypes(Type expectedType)
     {
         // Act
@@ -390,5 +391,117 @@ public class JsonSourceGeneratorTests
 
         // Assert — source generator covers the new response types
         Assert.NotNull(typeInfo);
+    }
+
+    // ── ErrorJsonResponse ───────────────────────────────────────────
+
+    [Fact]
+    public void ErrorJsonResponse_Serialization_ProducesExpectedSnakeCaseKeys()
+    {
+        // Arrange — the same shape as the old anonymous type used in OutputJsonError
+        var err = new ErrorJsonResponse(Error: true, Message: "boom", ExitCode: 7);
+
+        // Act
+        string json = JsonSerializer.Serialize(err, AppJsonContext.Default.ErrorJsonResponse);
+        var deserialized = JsonSerializer.Deserialize(json, AppJsonContext.Default.ErrorJsonResponse);
+
+        // Assert — round-trip preserves every field
+        Assert.NotNull(deserialized);
+        Assert.True(deserialized.Error);
+        Assert.Equal("boom", deserialized.Message);
+        Assert.Equal(7, deserialized.ExitCode);
+
+        // Assert — snake_case / lowercase keys present
+        Assert.Contains("\"error\"", json);
+        Assert.Contains("\"message\"", json);
+        Assert.Contains("\"exit_code\"", json);
+
+        // Negative — the old anonymous-type / PascalCase names must NOT appear
+        Assert.DoesNotContain("\"Error\"", json);
+        Assert.DoesNotContain("\"Message\"", json);
+        Assert.DoesNotContain("\"ExitCode\"", json);
+        Assert.DoesNotContain("\"exitCode\"", json);
+    }
+
+    [Fact]
+    public void ErrorJsonResponse_Deserialize_InvalidJson_Throws()
+    {
+        // Arrange — malformed JSON must still fail loudly; we don't want AOT
+        // silently returning defaults when the caller hands us garbage.
+        string badJson = "{ not json }";
+
+        // Act + Assert
+        Assert.Throws<JsonException>(() =>
+            JsonSerializer.Deserialize(badJson, AppJsonContext.Default.ErrorJsonResponse));
+    }
+
+    // ── Shared-context options: comments + trailing commas ──────────
+    // SquadConfig.Load() used to construct a custom JsonSerializerOptions with
+    // ReadCommentHandling=Skip / AllowTrailingCommas=true. After the AOT
+    // migration those flags live on AppJsonContext itself, so confirm the
+    // forgiving parse behavior survived the switch to source-gen.
+
+    [Fact]
+    public void SquadConfig_Deserialize_AllowsCommentsAndTrailingCommas()
+    {
+        // Arrange — JSON with // comments and a trailing comma
+        string json = """
+            {
+              // team metadata
+              "team": { "name": "Hackers", "description": "test", },
+              "personas": [],
+              "routing": [],
+            }
+            """;
+
+        // Act
+        var config = JsonSerializer.Deserialize(json, AppJsonContext.Default.SquadConfig);
+
+        // Assert — parsed successfully despite the non-strict JSON
+        Assert.NotNull(config);
+        Assert.Equal("Hackers", config.Team.Name);
+        Assert.Empty(config.Personas);
+        Assert.Empty(config.Routing);
+    }
+
+    [Fact]
+    public void SquadConfig_Deserialize_CaseInsensitivePropertyNames()
+    {
+        // Arrange — PascalCase keys (not camelCase). SquadConfig also uses
+        // explicit [JsonPropertyName] lowercase tags, so only case differs.
+        string json = """{ "TEAM": { "NAME": "Shout", "DESCRIPTION": "loud" } }""";
+
+        // Act
+        var config = JsonSerializer.Deserialize(json, AppJsonContext.Default.SquadConfig);
+
+        // Assert — PropertyNameCaseInsensitive=true on the context lets this bind
+        Assert.NotNull(config);
+        Assert.Equal("Shout", config.Team.Name);
+        Assert.Equal("loud", config.Team.Description);
+    }
+
+    [Fact]
+    public void SquadConfig_RoundTrip_UsesExplicitSnakeCaseOnPersonaSystemPrompt()
+    {
+        // Arrange — PersonaConfig.SystemPrompt carries [JsonPropertyName("system_prompt")]
+        var config = new SquadConfig
+        {
+            Personas = new List<PersonaConfig>
+            {
+                new() { Name = "coder", Role = "SE", SystemPrompt = "Be concise." }
+            }
+        };
+
+        // Act
+        string json = JsonSerializer.Serialize(config, AppJsonContext.Default.SquadConfig);
+        var back = JsonSerializer.Deserialize(json, AppJsonContext.Default.SquadConfig);
+
+        // Assert — explicit snake_case wins over the CamelCase naming policy
+        Assert.Contains("\"system_prompt\"", json);
+        Assert.DoesNotContain("\"systemPrompt\"", json);
+
+        // And round-trip still preserves the value
+        Assert.NotNull(back);
+        Assert.Equal("Be concise.", back.Personas[0].SystemPrompt);
     }
 }

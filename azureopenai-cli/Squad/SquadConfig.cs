@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AzureOpenAI_CLI;
 
 namespace AzureOpenAI_CLI.Squad;
 
@@ -32,12 +33,7 @@ internal sealed class SquadConfig
             return null;
 
         var json = File.ReadAllText(path);
-        return JsonSerializer.Deserialize<SquadConfig>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true,
-        });
+        return JsonSerializer.Deserialize(json, AppJsonContext.Default.SquadConfig);
     }
 
     /// <summary>
@@ -59,11 +55,7 @@ internal sealed class SquadConfig
     {
         var dir = directory ?? Directory.GetCurrentDirectory();
         var path = Path.Combine(dir, ConfigFileName);
-        var json = JsonSerializer.Serialize(this, new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        });
+        var json = JsonSerializer.Serialize(this, AppJsonContext.Default.SquadConfig);
         File.WriteAllText(path, json);
     }
 }

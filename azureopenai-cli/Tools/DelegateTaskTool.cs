@@ -55,27 +55,30 @@ internal sealed class DelegateTaskTool : IBuiltInTool
         string cliPath;
         string cliArgs;
 
-        var assemblyDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        var dllPath = Path.Combine(assemblyDir ?? ".", "AzureOpenAI_CLI.dll");
+        // Locate the CLI binary in an AOT / single-file-safe way.
+        // Assembly.Location returns "" for single-file/AOT apps, so prefer
+        // Environment.ProcessPath (the actual running executable) and fall
+        // back to AppContext.BaseDirectory for the sibling .dll (dotnet run).
+        var exePath = Environment.ProcessPath;
+        var baseDir = AppContext.BaseDirectory;
+        var dllPath = Path.Combine(baseDir, "AzureOpenAI_CLI.dll");
 
-        if (File.Exists(dllPath))
+        if (exePath != null && File.Exists(exePath) &&
+            !string.Equals(Path.GetFileNameWithoutExtension(exePath), "dotnet", StringComparison.OrdinalIgnoreCase))
         {
+            // Single-file / AOT / published binary — re-invoke ourselves.
+            cliPath = exePath;
+            cliArgs = $"--agent --tools {toolsArg} \"{task.Replace("\"", "\\\"")}\"";
+        }
+        else if (File.Exists(dllPath))
+        {
+            // Running via `dotnet AzureOpenAI_CLI.dll` or `dotnet run` — relaunch with dotnet.
             cliPath = "dotnet";
             cliArgs = $"\"{dllPath}\" --agent --tools {toolsArg} \"{task.Replace("\"", "\\\"")}\"";
         }
         else
         {
-            // Fallback: try to find the binary directly
-            var exePath = Process.GetCurrentProcess().MainModule?.FileName;
-            if (exePath != null && File.Exists(exePath))
-            {
-                cliPath = exePath;
-                cliArgs = $"--agent --tools {toolsArg} \"{task.Replace("\"", "\\\"")}\"";
-            }
-            else
-            {
-                return "Error: could not locate CLI binary for delegation.";
-            }
+            return "Error: could not locate CLI binary for delegation.";
         }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);

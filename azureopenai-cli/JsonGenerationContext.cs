@@ -31,6 +31,13 @@ internal record AgentInfo(
     [property: JsonPropertyName("tools_called")] int ToolsCalled
 );
 
+/// <summary>JSON error response emitted to stdout in --json mode.</summary>
+internal record ErrorJsonResponse(
+    [property: JsonPropertyName("error")] bool Error,
+    [property: JsonPropertyName("message")] string Message,
+    [property: JsonPropertyName("exit_code")] int ExitCode
+);
+
 /// <summary>
 /// System.Text.Json source generator context for AOT-compatible serialization.
 /// Covers all types that are serialized/deserialized across the CLI.
@@ -44,7 +51,10 @@ internal record AgentInfo(
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    WriteIndented = true
+    WriteIndented = true,
+    ReadCommentHandling = JsonCommentHandling.Skip,
+    AllowTrailingCommas = true,
+    PropertyNameCaseInsensitive = true
 )]
 // ── User configuration ──────────────────────────────────────────
 [JsonSerializable(typeof(UserConfig))]
@@ -57,6 +67,7 @@ internal record AgentInfo(
 [JsonSerializable(typeof(ChatJsonResponse))]
 [JsonSerializable(typeof(AgentJsonResponse))]
 [JsonSerializable(typeof(AgentInfo))]
+[JsonSerializable(typeof(ErrorJsonResponse))]
 // ── Collection types used by the above ──────────────────────────
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(List<PersonaConfig>))]

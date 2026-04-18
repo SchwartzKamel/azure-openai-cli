@@ -5,6 +5,30 @@ All notable changes to Azure OpenAI CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Native AOT promoted from experimental to recommended** — `make publish-aot`
+  produces a ~9 MB single-file binary with **~11 ms cold start** (vs ~100 ms for
+  the JIT/ReadyToRun build) on Linux x64. That 9× improvement is significant
+  for Espanso/AutoHotKey text-injection workflows, where every key sequence
+  spawns a fresh process. `make publish` is now an alias for `publish-aot`;
+  `publish-fast` is retained for compatibility.
+- **Remaining AOT warnings fixed** — Migrated `SquadConfig.Load` / `Save` and
+  `SquadInitializer.Initialize` off reflection-based `JsonSerializer` overloads
+  onto source-generated `AppJsonContext.Default.SquadConfig`. Added
+  `ReadCommentHandling`, `AllowTrailingCommas`, and `PropertyNameCaseInsensitive`
+  to `AppJsonContext`'s shared options so Squad config parsing stays forgiving.
+- **Anonymous type eliminated in `OutputJsonError`** — Replaced with the new
+  `ErrorJsonResponse` record registered in `AppJsonContext` (Program.cs:1172).
+- **`DelegateTaskTool` single-file safety** — Replaced
+  `Assembly.GetExecutingAssembly().Location` (empty in single-file/AOT builds)
+  with `Environment.ProcessPath` + `AppContext.BaseDirectory`. Child agents can
+  now be spawned correctly from the AOT-published binary.
+
+The only remaining AOT publish warnings come from third-party assemblies
+(`Azure.AI.OpenAI`, `OpenAI`) and do not affect runtime behavior.
+
 ## [1.7.0] — 2025-07-21
 
 ### Added

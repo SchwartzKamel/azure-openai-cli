@@ -1162,14 +1162,8 @@ class Program
     /// </summary>
     static void OutputJsonError(string message, int exitCode)
     {
-        var errorObj = new
-        {
-            error = true,
-            message = message,
-            exit_code = exitCode
-        };
-        var options = new JsonSerializerOptions { WriteIndented = true };
-        Console.WriteLine(JsonSerializer.Serialize(errorObj, options));
+        var errorObj = new ErrorJsonResponse(Error: true, Message: message, ExitCode: exitCode);
+        Console.WriteLine(JsonSerializer.Serialize(errorObj, AppJsonContext.Default.ErrorJsonResponse));
     }
 
     /// <summary>

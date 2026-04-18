@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AzureOpenAI_CLI;
 
 namespace AzureOpenAI_CLI.Squad;
 
@@ -21,10 +22,7 @@ internal static class SquadInitializer
             return false;
 
         var config = CreateDefaultConfig();
-        var json = JsonSerializer.Serialize(config, new JsonSerializerOptions
-        {
-            WriteIndented = true,
-        });
+        var json = JsonSerializer.Serialize(config, AppJsonContext.Default.SquadConfig);
         File.WriteAllText(configPath, json);
 
         // Create .squad directory structure

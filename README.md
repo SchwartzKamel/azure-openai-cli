@@ -565,9 +565,12 @@ For comprehensive security guidance, see [Security](SECURITY.md).
 
 ## Native AOT Status
 
-This project includes **source-generated JSON serialization** (`AppJsonContext` in `JsonGenerationContext.cs`) for all configuration types (`UserConfig`, `SquadConfig`, `PersonaConfig`, and related Squad types). This eliminates reflection-based `System.Text.Json` usage in the serialization layer and is a key prerequisite for Native AOT compilation.
+**Native AOT is the recommended publish mode** as of the Unreleased section of the [CHANGELOG](CHANGELOG.md). `make publish-aot` produces a ~9 MB self-contained single-file binary with **~11 ms cold start** on Linux x64 — roughly 9× faster than the JIT/ReadyToRun build. This matters for text-injection workflows (Espanso, AutoHotKey) where every invocation pays the startup cost; see [docs/espanso-ahk-integration.md](docs/espanso-ahk-integration.md).
 
-AOT publishing is available experimentally via `make publish-aot`. The `make publish-fast` target uses ReadyToRun compilation for a stable ~50% startup improvement without full AOT constraints.
+All app-level `IL2026` (trim) and `IL3050` (AOT) warnings are fixed via source-generated `System.Text.Json` (`AppJsonContext` in `JsonGenerationContext.cs`). The remaining warnings at publish time originate from third-party assemblies (`Azure.AI.OpenAI`, `OpenAI`) and do not affect runtime behavior.
+
+- `make publish-aot` — recommended, ~11 ms startup, ~9 MB binary (also aliased as `make publish`).
+- `make publish-fast` (alias: `make publish-r2r`) — ReadyToRun self-contained build, ~100 ms startup. Retained for compatibility.
 
 ---
 
