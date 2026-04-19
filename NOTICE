@@ -153,6 +153,10 @@ components this project depends on. This project is not affiliated with,
 endorsed by, or sponsored by Microsoft Corporation, the .NET Foundation, or
 OpenAI, L.L.C.
 
+For the full project trademark posture — including permitted uses of the
+project's own name ("Azure OpenAI CLI" / az-ai), rules for forks, and the
+non-affiliation disclaimer — see docs/legal/trademark-policy.md.
+
 --------------------------------------------------------------------------------
 Project license
 --------------------------------------------------------------------------------
