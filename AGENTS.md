@@ -34,6 +34,8 @@ The supporting players are the executive suite and service bench behind the main
 | **Morty Seinfeld** | FinOps / Cost Watchdog | Token budgets, model economics, spend analysis | [`morty.agent.md`](.github/agents/morty.agent.md) |
 | **Bob Sacamano** | Integrations / Partnerships | Homebrew/Scoop/Nix, VS Code extension, ecosystem packaging | [`bob.agent.md`](.github/agents/bob.agent.md) |
 | **Uncle Leo** | DevRel / Community | Contributor onboarding, issue triage, tone stewardship | [`uncle-leo.agent.md`](.github/agents/uncle-leo.agent.md) |
+| **Frank Costanza** | SRE / Observability / Incident Response | SLOs, opt-in telemetry, reliability signals, incident runbooks | [`frank.agent.md`](.github/agents/frank.agent.md) |
+| **The Maestro** | Prompt Engineering / LLM Research | Prompt library, model A/B, eval harness, temperature cookbook | [`maestro.agent.md`](.github/agents/maestro.agent.md) |
 
 ## How They're Used
 
@@ -44,10 +46,10 @@ Feature Idea
 Mr. Pitt (scopes) ──→ Costanza (product proposal) ──→ docs/proposals/
     │
     ▼
-Kramer (implements) ⇄ Puddy (tests adversarially) ⇄ Morty (cost-audits)
+Maestro (prompt design) ──→ Kramer (implements) ⇄ Puddy (tests adversarially) ⇄ Morty (cost-audits)
     │
     ▼
-Newman (security) ⇄ Jackie (license/legal)
+Newman (security) ⇄ Jackie (license/legal) ⇄ Frank (reliability SLOs)
     │
     ▼
 Elaine (technical docs) ⇄ Peterman (marketing copy) ⇄ Bob (packaging/integrations)
@@ -57,6 +59,7 @@ Jerry (DevOps polish) ──→ Mr. Lippman (release) ──→ 🚢 Ship
                                                     │
                                                     ▼
                                               Uncle Leo (community)
+                                              Frank (incidents, SLO monitoring)
                                               ──→ 📣 Welcome new users
                                               ──→ 🛠  Triage issues
                                               ──→ 👋 Onboard contributors

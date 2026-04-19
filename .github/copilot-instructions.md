@@ -85,7 +85,7 @@
 
 ## Agent Archetypes 🤖
 
-This project uses [GitHub Copilot custom agents](https://gh.io/customagents/config) — specialized AI personas defined in `.github/agents/`. A **main cast** of 5 drives the core build-ship loop; a bench of 8 **supporting players** covers executive PM, release, marketing, QA, legal, FinOps, integrations, and DevRel — 13 agents total. See [`AGENTS.md`](../AGENTS.md) for the full rationale; this section is a kept-in-sync quick reference.
+This project uses [GitHub Copilot custom agents](https://gh.io/customagents/config) — specialized AI personas defined in `.github/agents/`. A **main cast** of 5 drives the core build-ship loop; a bench of 10 **supporting players** covers executive PM, release, marketing, QA, legal, FinOps, integrations, DevRel, SRE/reliability, and prompt engineering — 15 agents total. See [`AGENTS.md`](../AGENTS.md) for the full rationale; this section is a kept-in-sync quick reference.
 
 ### Main Cast
 
@@ -109,6 +109,8 @@ This project uses [GitHub Copilot custom agents](https://gh.io/customagents/conf
 | **Morty Seinfeld** | FinOps / Cost Watchdog | Token budgets, model economics, spend analysis | [`morty.agent.md`](agents/morty.agent.md) |
 | **Bob Sacamano** | Integrations / Partnerships | Homebrew/Scoop/Nix, VS Code extension, ecosystem packaging | [`bob.agent.md`](agents/bob.agent.md) |
 | **Uncle Leo** | DevRel / Community | Contributor onboarding, issue triage, tone stewardship | [`uncle-leo.agent.md`](agents/uncle-leo.agent.md) |
+| **Frank Costanza** | SRE / Observability / Incident Response | SLOs, opt-in telemetry, reliability signals, incident runbooks | [`frank.agent.md`](agents/frank.agent.md) |
+| **The Maestro** | Prompt Engineering / LLM Research | Prompt library, model A/B, eval harness, temperature cookbook | [`maestro.agent.md`](agents/maestro.agent.md) |
 
 ### Workflow
 
@@ -119,10 +121,10 @@ Feature Idea
 Mr. Pitt (scopes) ──→ Costanza (product proposal) ──→ docs/proposals/
     │
     ▼
-Kramer (implements) ⇄ Puddy (tests adversarially) ⇄ Morty (cost-audits)
+Maestro (prompt design) ──→ Kramer (implements) ⇄ Puddy (tests adversarially) ⇄ Morty (cost-audits)
     │
     ▼
-Newman (security) ⇄ Jackie (license/legal)
+Newman (security) ⇄ Jackie (license/legal) ⇄ Frank (reliability SLOs)
     │
     ▼
 Elaine (technical docs) ⇄ Peterman (marketing copy) ⇄ Bob (packaging/integrations)
@@ -132,6 +134,7 @@ Jerry (DevOps polish) ──→ Mr. Lippman (release) ──→ 🚢 Ship
                                                     │
                                                     ▼
                                               Uncle Leo (community)
+                                              Frank (incidents, SLO monitoring)
                                               ──→ 📣 Welcome new users
                                               ──→ 🛠  Triage issues
                                               ──→ 👋 Onboard contributors
