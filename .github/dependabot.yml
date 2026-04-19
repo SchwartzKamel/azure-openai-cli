@@ -1,0 +1,47 @@
+version: 2
+
+updates:
+  # .NET / NuGet dependencies for the CLI project
+  - package-ecosystem: "nuget"
+    directory: "/azureopenai-cli"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "nuget"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    versioning-strategy: "increase"
+    # Allow all update types explicitly — major updates are surfaced
+    # for maintainer review rather than suppressed.
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    groups:
+      nuget-patch:
+        applies-to: version-updates
+        update-types:
+          - "patch"
+
+  # GitHub Actions workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
