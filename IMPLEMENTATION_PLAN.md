@@ -275,3 +275,58 @@ Explicitly **not** in scope — don't scope-creep me:
 - Telemetry opt-in (privacy posture needs a dedicated proposal cycle with Newman + Jackie before a line of code is written)
 - Daemon mode (FR-004 Phase 2 — stays in Phase 3 bucket)
 - Interactive REPL (FR-002 — defer to v1.10 once streaming lands; chat without streaming is a bad demo)
+
+---
+
+## Golden Run — v1.9.0 polish pass
+
+Phase 1 of the **Golden Run**: the first full-fleet exercise since the 13-agent
+roster went live. v1.8.1 shipped clean — binaries, SBOMs, attestations, 541
+green tests. Now we make the project *golden and fancy*. Precisely the right
+way.
+
+Each phase-2 agent receives one concrete deliverable with acceptance criteria
+that are either checkable in CI or visually obvious on inspection. No
+busywork, no scope creep, no overlapping file ownership without coordination.
+Mr. Lippman closes the run in phase 3 and decides whether we earn a
+`v1.9.0-alpha.1` pre-release tag.
+
+### Phase 2 — assignments (11 agents, parallel)
+
+| # | Agent | Deliverable | Acceptance criteria |
+|---|-------|-------------|---------------------|
+| 1 | **Costanza** | `docs/proposals/FR-012-plugin-tool-registry.md` — proposal for user-defined, dynamically-loaded external tools in agent mode. | Proposal file exists in house style (Problem / Goals / Non-goals / Design / Risks / Acceptance). `docs/proposals/README.md` index updated with FR-012 row. Proposal only — no code. |
+| 2 | **Kramer** | `az-ai --completions <bash\|zsh\|fish>` emitting completion scripts to stdout. Implementation in `Program.cs`. | `az-ai --completions bash \| wc -l` > 10. ≥ 2 unit tests covering shell selection + unknown-shell error. README + `docs/` mention with install snippet. Full test suite still green; no regression in existing 541 tests. |
+| 3 | **Elaine** | `docs/adr/ADR-002-squad-persona-memory.md` capturing Squad + persona-memory architecture. | Valid ADR format (Status / Context / Decision / Consequences / Alternatives). References `SquadConfig.cs`, `PersonaMemory.cs`, routing logic, `.squad/` directory layout, and the 32 KB memory cap with rationale. Alternatives section contrasts flat config vs. per-persona file layout. |
+| 4 | **Newman** | `docs/verifying-releases.md` — end-user verification guide. | Copy-pasteable commands for: SHA256 check of release binaries, `gh attestation verify` against SLSA provenance, container image provenance, SBOM parse (`syft`/`grype` or `jq` on the JSON). Every command dogfooded against the live **v1.8.1** artifacts before merge. |
+| 5 | **Jackie Chiles** | `docs/legal/trademark-policy.md` — nominative-use policy. | Covers "Azure" and "OpenAI" nominative use, project name usage, permitted vs. prohibited uses, contact path. Framed explicitly as project policy, **not** legal advice. No binding legal claims. |
+| 6 | **Jerry** | Matrix CI expansion in `.github/workflows/ci.yml`. | `build-and-test` job runs matrix `[ubuntu-latest, macos-latest, windows-latest]` with `fail-fast: false`. `integration-test` job stays Linux-only (bash). YAML valid (`actionlint` clean). All three OS legs green on the PR. |
+| 7 | **Puddy** | `tests/.../CliParserPropertyTests.cs` — property-based test harness for CliParser. | FsCheck preferred; fall back to a systematic boundary generator if FsCheck isn't clean on .NET 10. ≥ 5 properties (e.g., idempotence of flag parsing, unknown-flag rejection, positional/flag commutativity on safe sets, round-trip of known args, no-argv doesn't throw). Properties run in CI. Total test count ≥ **546**. |
+| 8 | **Peterman** | `docs/demos/` directory — recording kit. | `docs/demos/README.md` with asciinema install + record/playback instructions and a "how to regenerate the hero GIF" section. `docs/demos/scripts/*.sh` with 2–3 demo scripts: standard prompt, `--raw` espanso flow, `--agent` tool-calling. Scripts executable, shellcheck-clean. |
+| 9 | **Morty** | `docs/cost-optimization.md` — token budgeting guide. | 120–200 lines. Model economics table covering gpt-4o, gpt-4o-mini, gpt-4.1-mini with concrete $/1M token figures where defensible (public Azure pricing as of 2026-04; cite the pricing page where not). Sections: prompt engineering, caching strategy, budgeting tips. Linked from `README.md`. |
+| 10 | **Bob Sacamano** | `packaging/` tree: `Formula/az-ai.rb`, `scoop/az-ai.json`, `nix/flake.nix`, `packaging/README.md`. | Uses real **v1.8.1** GH Release URLs + SHA256s obtained via `gh release view v1.8.1`. Homebrew formula has `url`, `sha256`, `version`, `install`, `test` methods. Scoop manifest validates as JSON and includes `version`, `architecture`, `hash`, `bin`. `nix flake check` evaluates (starter flake; full build optional). `packaging/README.md` documents publish steps for each channel. |
+| 11 | **Uncle Leo** | Contributor onboarding kit. | `.github/ISSUE_TEMPLATE/{bug_report.yml,feature_request.yml,question.yml}` render correctly in the GH UI (valid issue-form schema). `.github/PULL_REQUEST_TEMPLATE.md` includes DCO / `Co-authored-by` guidance. `CONTRIBUTORS.md` placeholder with "how to add your name". `CONTRIBUTING.md` gains a "First Contribution" section and a labels guide covering `good-first-issue` and `help-wanted`. |
+
+### Phase 3 — closure (1 agent, serial)
+
+| # | Agent | Deliverable | Acceptance criteria |
+|---|-------|-------------|---------------------|
+| 12 | **Mr. Lippman** | Verify all 11 phase-2 artifacts, run the full test suite, and — if everything is clean — tag `v1.9.0-alpha.1` as a GitHub **pre-release** and push. | Every phase-2 acceptance box ticked. `dotnet test` green (≥ 546 tests). Matrix CI green on all three OSes. If any artifact is shy of its criteria, file a blocker issue instead of tagging. Release notes enumerate the 11 deliverables. |
+
+### Coordination notes (conflict map)
+
+- **`ci.yml` contention** — Jerry (matrix expansion) and Puddy (property tests
+  surfaced in CI) both touch CI outputs. Jerry lands the YAML restructure
+  first; Puddy adds tests that ride the existing `build-and-test` job
+  unmodified — no YAML edit required from Puddy unless property tests need a
+  separate step (they shouldn't).
+- **`README.md` contention** — Kramer (completions section), Morty
+  (cost-optimization link), and Uncle Leo (contributing pointer) all append
+  small sections. Edit distinct regions; rebase on `main` before pushing; one
+  merge queue serializes the rest.
+- **`docs/` tree** — proposals, ADR, legal, demos, cost guide, verifying
+  releases all land in distinct subdirectories. No collision expected.
+- **`packaging/`** is net-new — Bob owns it outright.
+- **Test count floor** — Puddy's ≥ 546 target assumes the 541 baseline holds.
+  If any other agent adds tests (Kramer will), the floor rises accordingly;
+  Mr. Lippman's gate is "strictly greater than `main` at run start."
