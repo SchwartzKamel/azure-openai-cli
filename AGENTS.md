@@ -31,6 +31,9 @@ The supporting players are the executive suite and service bench behind the main
 | **J. Peterman** | Storyteller / Marketing | Hero copy, demo scripts, launch announcements | [`peterman.agent.md`](.github/agents/peterman.agent.md) |
 | **David Puddy** | QA / Test Engineer | Regression suites, flakiness triage, adversarial tests | [`puddy.agent.md`](.github/agents/puddy.agent.md) |
 | **Jackie Chiles** | Legal / OSS Licensing | License compliance, third-party attribution, legal review | [`jackie.agent.md`](.github/agents/jackie.agent.md) |
+| **Morty Seinfeld** | FinOps / Cost Watchdog | Token budgets, model economics, spend analysis | [`morty.agent.md`](.github/agents/morty.agent.md) |
+| **Bob Sacamano** | Integrations / Partnerships | Homebrew/Scoop/Nix, VS Code extension, ecosystem packaging | [`bob.agent.md`](.github/agents/bob.agent.md) |
+| **Uncle Leo** | DevRel / Community | Contributor onboarding, issue triage, tone stewardship | [`uncle-leo.agent.md`](.github/agents/uncle-leo.agent.md) |
 
 ## How They're Used
 
@@ -41,16 +44,22 @@ Feature Idea
 Mr. Pitt (scopes) ──→ Costanza (product proposal) ──→ docs/proposals/
     │
     ▼
-Kramer (implements) ⇄ Puddy (tests adversarially)
+Kramer (implements) ⇄ Puddy (tests adversarially) ⇄ Morty (cost-audits)
     │
     ▼
 Newman (security) ⇄ Jackie (license/legal)
     │
     ▼
-Elaine (technical docs) ⇄ Peterman (marketing copy)
+Elaine (technical docs) ⇄ Peterman (marketing copy) ⇄ Bob (packaging/integrations)
     │
     ▼
 Jerry (DevOps polish) ──→ Mr. Lippman (release) ──→ 🚢 Ship
+                                                    │
+                                                    ▼
+                                              Uncle Leo (community)
+                                              ──→ 📣 Welcome new users
+                                              ──→ 🛠  Triage issues
+                                              ──→ 👋 Onboard contributors
 ```
 
 Each agent is stateless — invoke any of them at any time via the Copilot CLI or GitHub Copilot Chat. They can be used individually for focused tasks or composed as a pipeline for larger features. The supporting players are optional for small changes but become essential at release boundaries and for anything user-visible.
