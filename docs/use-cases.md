@@ -221,4 +221,4 @@ docker run --rm -e AZUREOPENAIENDPOINT -e AZUREOPENAIAPI -e AZUREOPENAIMODEL \
 
 ---
 
-*Generated for Azure OpenAI CLI v1.7.0 — 54 features, 6 modes, ~3,600 lines of examples.*
+*Generated for Azure OpenAI CLI — 54 features, 6 modes, ~3,600 lines of examples. See [CHANGELOG](../CHANGELOG.md) for the currently released version.*

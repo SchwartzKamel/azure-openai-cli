@@ -9,9 +9,9 @@
 | [FR-001](FR-001-stdin-pipe-context-injection.md) | Stdin Pipe & Context Injection | P0 | Small | ✅ IMPLEMENTED (v1.1.0) |
 | [FR-002](FR-002-interactive-chat-mode.md) | Interactive Chat Mode with Conversation Memory | P0 | Medium | 📋 PLANNED — Next priority |
 | [FR-003](FR-003-local-user-preferences.md) | Local User Preferences & Config Command | P1 | Small-Medium | 🔧 IN PROGRESS — Phase 1 |
-| [FR-004](FR-004-latency-and-startup-optimization.md) | Latency & Startup Optimization | P0 | Phased | 🔄 PARTIAL — Spinner shipped, daemon pending |
-| [FR-005](FR-005-shell-integration-and-output-intelligence.md) | Shell Integration & Output Intelligence | P1 | Medium | 📋 PLANNED — After FR-002 & FR-003 |
-| [FR-006](FR-006-unblock-native-aot-compilation.md) | Unblock Native AOT Compilation | P0 | Small | 📋 PLANNED — Highest ROI latency fix |
+| [FR-004](FR-004-latency-and-startup-optimization.md) | Latency & Startup Optimization | P0 | Phased | ✅ LARGELY SHIPPED — Spinner (v1.1.0) + AOT (v1.8.0); daemon mode deferred |
+| [FR-005](FR-005-shell-integration-and-output-intelligence.md) | Shell Integration & Output Intelligence | P1 | Medium | 🔄 PARTIAL — `--json`, `--raw` shipped; `--code`/`--shell`/markdown pending |
+| [FR-006](FR-006-unblock-native-aot-compilation.md) | Unblock Native AOT Compilation | P0 | Small | ✅ SHIPPED (v1.8.0) |
 | [FR-007](FR-007-parallel-startup-and-connection-prewarming.md) | Parallel Startup & Connection Pre-warming | P1 | Small | 📋 PLANNED — Complements FR-006 |
 | [FR-008](FR-008-prompt-response-cache.md) | Prompt Response Cache | P1 | Medium | 📋 PLANNED — Espanso/AHK use case |
 | [FR-009](FR-009-config-set-and-directory-overrides.md) | `--config set` Commands & Per-Directory Overrides | P1 | Medium | 📋 PLANNED — Completes FR-003 |
@@ -80,11 +80,15 @@ Blocked on FR-002 and FR-003. Partial overlap with shipped features:
 - `--raw` flag for forced plain-text output
 - Clipboard integration
 
-### 📋 FR-006: Unblock Native AOT Compilation — PLANNED
+### ✅ FR-006: Unblock Native AOT Compilation — SHIPPED in v1.8.0
 
-The single highest-ROI code change for latency. The `OutputJsonError` method in Program.cs uses an anonymous type with reflection-based JSON serialization — the **only remaining blocker** for Native AOT. Fix is ~8 lines: replace the anonymous type with a named record registered in `AppJsonContext`. Cuts binary startup from ~100ms (R2R) to ~8–15ms (AOT).
-
-**Depends on:** Nothing. Can ship independently.
+The `OutputJsonError` anonymous type was replaced with the source-generated
+`ErrorJsonResponse` record registered in `AppJsonContext`, and the remaining
+`SquadConfig.Load` / `Save` / `Initialize` paths were migrated off reflection-
+based `JsonSerializer` overloads. `make publish-aot` produces a ~9 MB
+single-file self-contained binary with **~5.4 ms cold start** on Linux x64
+(vs ~54 ms for ReadyToRun, ~400+ ms for Docker). `make publish` is now an
+alias for `publish-aot`.
 
 ### 📋 FR-007: Parallel Startup & Connection Pre-warming — PLANNED
 

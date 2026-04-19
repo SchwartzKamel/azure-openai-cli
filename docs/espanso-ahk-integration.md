@@ -55,7 +55,7 @@ The `--raw` flag strips all of it:
 | Code explanation (2-3 sentences) | ~2-3s | Depends on code length |
 | Long creative writing | 5-10s+ | Use `--max-tokens` to cap |
 
-Latency is dominated by Azure API round-trip and token generation. The CLI itself adds <100ms overhead. For faster responses, see [Performance Tips](#performance-tips).
+Latency is dominated by Azure API round-trip and token generation. The AOT binary itself adds only ~5 ms of process startup (see [Performance Tips](#performance-tips)); ReadyToRun adds ~55 ms, and the Docker path adds ~400+ ms of container cold-start.
 
 ---
 

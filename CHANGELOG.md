@@ -9,22 +9,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Native AOT promoted from experimental to recommended** — `make publish-aot`
-  produces a ~9 MB single-file binary with **~11 ms cold start** (vs ~100 ms for
-  the JIT/ReadyToRun build) on Linux x64. That 9× improvement is significant
-  for Espanso/AutoHotKey text-injection workflows, where every key sequence
-  spawns a fresh process. `make publish` is now an alias for `publish-aot`;
-  `publish-fast` is retained for compatibility.
+  produces a **~9 MB single-file binary with ~5.4 ms cold start** on Linux x64,
+  compared to ~54 ms for ReadyToRun and ~400+ ms for the Docker container path.
+  That is roughly **10× faster than R2R and ~75× faster than Docker**, which is
+  significant for Espanso/AutoHotKey text-injection workflows where every key
+  sequence spawns a fresh process. `make publish` is now an alias for
+  `publish-aot`; `publish-fast` (ReadyToRun) is retained for compatibility.
+- **`Azure.AI.OpenAI` downgraded to 2.1.0 (stable GA)** — The project previously
+  tracked the `2.9.0-beta.1` pre-release for tool-calling coverage. Tool calling
+  works correctly on the stable `2.1.0` release, so the dependency has been
+  moved back to a supported GA build. This removes pre-release transitive
+  packages from the supply chain.
 - **Remaining AOT warnings fixed** — Migrated `SquadConfig.Load` / `Save` and
   `SquadInitializer.Initialize` off reflection-based `JsonSerializer` overloads
   onto source-generated `AppJsonContext.Default.SquadConfig`. Added
   `ReadCommentHandling`, `AllowTrailingCommas`, and `PropertyNameCaseInsensitive`
   to `AppJsonContext`'s shared options so Squad config parsing stays forgiving.
 - **Anonymous type eliminated in `OutputJsonError`** — Replaced with the new
-  `ErrorJsonResponse` record registered in `AppJsonContext` (Program.cs:1172).
+  `ErrorJsonResponse` record registered in `AppJsonContext`.
 - **`DelegateTaskTool` single-file safety** — Replaced
   `Assembly.GetExecutingAssembly().Location` (empty in single-file/AOT builds)
   with `Environment.ProcessPath` + `AppContext.BaseDirectory`. Child agents can
   now be spawned correctly from the AOT-published binary.
+- **Retry/backoff logic consolidated** — Shared backoff helper reused across
+  streaming and non-streaming code paths (~60 lines of duplication removed)
+  without behavior changes.
+- **`ParseCliFlags` scoped to `internal`** — Argument parser exposed to the test
+  assembly via `InternalsVisibleTo` rather than being part of the public API
+  surface.
+
+### Added
+- **Graceful cancellation on CTRL+C (SIGINT)** — A top-level signal handler
+  cancels the in-flight operation, flushes the Ralph log / persona memory, and
+  exits with code **130** (128 + SIGINT) per POSIX convention. Previously a
+  CTRL+C could leave `.ralph-log` partially written.
+- **Cross-platform publish targets** — New Makefile targets for all 7 supported
+  Runtime Identifiers: `publish-linux-x64`, `publish-linux-musl-x64`,
+  `publish-linux-arm64`, `publish-osx-x64`, `publish-osx-arm64`,
+  `publish-win-x64`, `publish-win-arm64`, plus an aggregate `publish-all`.
+- **`make install` / `make uninstall`** — Installs the AOT binary as `az-ai`
+  on the user's `PATH` (`~/.local/bin` on Linux/macOS) and removes it.
+- **`make bench`** — Invokes `scripts/bench.py` to measure cold-start latency
+  of the locally-built AOT binary against a configurable number of runs.
+- **`scripts/bench.py`** — Portable Python startup benchmark that captures
+  wall-clock invocation time with statistical summaries (min/median/p95/max).
+- **`CliParser` test coverage** — 71 new unit tests covering flag parsing,
+  precedence, validation, and error paths.
+
+### Tests
+- Suite now passes **538 tests** (up from 454) — primarily from new
+  `CliParser` coverage and cancellation tests.
 
 The only remaining AOT publish warnings come from third-party assemblies
 (`Azure.AI.OpenAI`, `OpenAI`) and do not affect runtime behavior.

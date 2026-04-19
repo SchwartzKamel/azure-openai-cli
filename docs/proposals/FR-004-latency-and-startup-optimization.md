@@ -1,5 +1,12 @@
 # FR-004: Latency & Startup Optimization
 
+> **✅ Phase 1 largely shipped** — Spinner (v1.1.0) and Native AOT binary
+> (v1.8.0, ~5.4 ms cold start) are done. Daemon mode and Homebrew/tool
+> distribution remain deferred. The original proposal below describes the
+> pre-AOT baseline for historical context.
+
+---
+
 **Priority:** P0 — Critical  
 **Impact:** Perceived speed is the #1 factor in whether a CLI tool gets habitual use  
 **Effort:** Medium (phased)  

@@ -4,7 +4,7 @@
 - Azure OpenAI CLI tool written in C# targeting .NET 10
 - Docker-first deployment, Alpine-based multi-stage builds
 - Primary use case: text injection for AHK/Espanso workflows
-- Version: 1.7.0
+- Version: see `azureopenai-cli/AzureOpenAI_CLI.csproj` `<Version>` element (source of truth); latest released version is listed in `CHANGELOG.md`
 
 ## Architecture
 - Single-file CLI entry point: `azureopenai-cli/Program.cs` (~1300 lines)
@@ -32,7 +32,7 @@
 - Tools use `TryGetProperty()` (not `GetProperty()`) for parameter access — graceful handling of missing fields
 - Security-first: all tools validate inputs, block dangerous operations
 - Use `AppJsonContext` (in `JsonGenerationContext.cs`) for all new JSON serialization — required for AOT compatibility
-- Use `Azure.AI.OpenAI 2.9.0-beta.1` — required for tool calling (stable 2.1.0 doesn't work)
+- Use `Azure.AI.OpenAI 2.1.0` (stable GA) — tool calling works correctly on this release; pre-release packages have been removed from the dependency set
 - Streaming via `CompleteChatStreamingAsync` — tool calls arrive as indexed fragments
 - `ChatToolCall.CreateFunctionToolCall(id, name, BinaryData.FromString(args))` for tool call construction
 - Records for immutable data (`CliOptions`, `CliParseError`) defined in Program.cs

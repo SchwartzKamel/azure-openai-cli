@@ -1,5 +1,11 @@
 # FR-001: Stdin Pipe & Context Injection
 
+> **✅ Shipped in v1.1.0.** `az-ai` reads from stdin when piped and combines
+> piped content with positional prompt arguments. The 32 KB prompt cap and
+> related input validation landed in the same release. The `--file <path>`
+> flag described below was deferred.
+
+---
 **Priority:** P0 — Critical  
 **Impact:** Transforms the tool from a toy into a workflow weapon  
 **Effort:** Small (< 1 day)  

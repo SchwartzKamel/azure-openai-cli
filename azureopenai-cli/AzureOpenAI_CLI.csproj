@@ -1,19 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Native AOT Publishing (opt-in, not permanent):
-    AOT produces the smallest/fastest binary (~8MB, ~50ms startup) but currently
-    crashes at runtime because UserConfig.cs and Program.cs use reflection-based
-    System.Text.Json serialization (JsonSerializer.Serialize with anonymous types).
-    
-    To publish AOT (experimental):   make publish-aot
-    To publish ReadyToRun (stable):  make publish-fast
-    
-    To fully enable AOT, migrate all JsonSerializer usage to source generators:
-    https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/source-generation
-    
-    Do NOT add <PublishAot>true</PublishAot> here — it should remain opt-in
-    via the Makefile targets or dotnet publish -p:PublishAot=true.
+    Native AOT Publishing (opt-in, recommended):
+    AOT is the recommended publish mode for this CLI. `make publish-aot` produces
+    a ~9 MB single-file, self-contained binary with ~5.4 ms cold start on Linux
+    x64 — ~10× faster than ReadyToRun and ~75× faster than the Docker path.
+
+    All reflection-based System.Text.Json usage has been migrated to source
+    generators in JsonGenerationContext.cs (AppJsonContext). App-level IL2026 /
+    IL3050 warnings are clean; remaining publish warnings come only from
+    third-party assemblies (Azure.AI.OpenAI, OpenAI) and do not affect runtime.
+
+    To publish AOT (recommended):    make publish-aot   (alias: make publish)
+    To publish ReadyToRun (stable):  make publish-fast  (alias: make publish-r2r)
+    To publish every supported RID:  make publish-all
+
+    Do NOT add <PublishAot>true</PublishAot> here — it remains opt-in via the
+    Makefile targets or `dotnet publish -p:PublishAot=true` so that `dotnet
+    build` / `dotnet test` stay fast for local development.
+
+    Reference: https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/source-generation
   -->
 
   <PropertyGroup>

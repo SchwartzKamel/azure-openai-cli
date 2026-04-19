@@ -648,7 +648,7 @@ JsonSerializer.Serialize(config);
 JsonSerializer.Deserialize<UserConfig>(json);
 ```
 
-`UserConfig.cs`, `SquadConfig.cs`, and `SquadInitializer.cs` all use `AppJsonContext` for `Load()` / `Save()` / `Initialize()`. `Program.OutputJsonError` uses the `ErrorJsonResponse` record (no anonymous types). As a result, `make publish-aot` now produces a fully AOT-compatible ~9 MB single-file binary with ~11 ms cold start — the recommended publish mode for the CLI (see [README → Native AOT Status](README.md#native-aot-status)). `make publish-fast` (ReadyToRun) is retained for compatibility but is ~9× slower to start.
+`UserConfig.cs`, `SquadConfig.cs`, and `SquadInitializer.cs` all use `AppJsonContext` for `Load()` / `Save()` / `Initialize()`. `Program.OutputJsonError` uses the `ErrorJsonResponse` record (no anonymous types). As a result, `make publish-aot` now produces a fully AOT-compatible ~9 MB single-file binary with **~5.4 ms cold start** (Linux x64) — the recommended publish mode for the CLI (see [README → Native AOT Status](README.md#native-aot-status)). `make publish-fast` (ReadyToRun) is retained for compatibility but starts in ~54 ms — roughly 10× slower. The Docker container path adds another order of magnitude on top (~400+ ms cold start) and is suitable for non-latency-sensitive invocations.
 
 ### Vulnerability scanning
 
@@ -761,7 +761,7 @@ azure-openai-cli/
 | **Streaming responses** | Uses `CompleteChatStreaming` so the user sees tokens as they arrive, rather than waiting for the entire completion. This dramatically improves perceived latency for long responses. |
 | **JSON config in home directory** | Familiar convention (`~/.<app>.json`). Survives container restarts if a volume is mounted. Keeps credentials separate from user preferences. |
 | **Opt-in agent mode** | `--agent` is a clear boundary. Without it, zero tool loading, zero prompt injection surface, identical latency to v1.0. |
-| **Azure.AI.OpenAI 2.9.0-beta.1** | Required for tool calling support. Stable 2.1.0 doesn't serialize tool definitions correctly. Same version used by Microsoft's Agent Framework samples. |
+| **Azure.AI.OpenAI 2.1.0 (stable GA)** | Stable GA release. Earlier work pinned to `2.9.0-beta.1` for tool-calling, but the current CLI exercises tool calling successfully against `2.1.0` and prefers the supported GA build to keep pre-release packages out of the supply chain. |
 | **Raw ChatTool over Agent Framework** | Microsoft.Agents.AI is designed for multi-agent orchestration — overkill for a single-shot CLI. Raw `ChatTool.CreateFunctionTool()` keeps the dependency tree small. |
 | **Non-streaming tool rounds** | Tool-calling rounds use `CompleteChatAsync` (non-streaming) because the full response is needed to check `FinishReason` and extract tool calls. Only the final text response could be streamed. |
 | **Ralph mode (Wiggum loop)** | Deterministic validation (tests, linters) catches errors that the LLM cannot self-detect. File-based state means each iteration starts with a clean context window while retaining all prior work on disk. Inspired by ghuntley's Ralph Wiggum technique. |
