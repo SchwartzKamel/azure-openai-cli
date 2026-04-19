@@ -507,12 +507,38 @@ This saves tokens (faster), prevents pasted junk (cleaner), and improves reliabi
 Docker adds ~200-300ms of container startup overhead per invocation. For text expansion where every millisecond matters, use the native binary:
 
 ```bash
-# Native binary: ~100ms startup
+# Native binary AOT: ~5ms startup (RECOMMENDED)
+~/.local/bin/az-ai --raw "Hello"
+
+# Native binary R2R: ~55ms startup
 az-ai --raw "Hello"
 
-# Docker: ~300-400ms startup
+# Docker: ~400-600ms startup (container cold-start overhead)
 docker run --rm --env-file .env azure-openai-cli --raw "Hello"
 ```
+
+**Build and install the Native AOT binary (Linux, macOS, WSL):**
+
+```bash
+make publish-aot      # builds dist/aot/AzureOpenAI_CLI (~9 MB, ~5 ms startup)
+make install          # copies to ~/.local/bin/az-ai
+make bench            # measures cold-start (10 runs)
+```
+
+**Cross-platform builds (for distributing to teammates on other OSes):**
+
+```bash
+make publish-linux-x64       # Ubuntu/Debian/Fedora/WSL
+make publish-linux-musl-x64  # Alpine
+make publish-linux-arm64     # Raspberry Pi, ARM servers
+make publish-osx-x64         # Intel Mac
+make publish-osx-arm64       # Apple Silicon (M1/M2/M3)
+make publish-win-x64         # Windows
+make publish-win-arm64       # Windows ARM64
+make publish-all             # build all 7 at once
+```
+
+Cross-builds use ReadyToRun (portable from any host). For maximum speed on each target, run `make publish-aot` natively on that OS.
 
 If you installed via `make alias`, consider switching to a native binary for expansion triggers while keeping Docker for agentic/Ralph workflows.
 

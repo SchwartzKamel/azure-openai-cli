@@ -16,7 +16,12 @@ else ifeq ($(UNAME_S),Darwin)
     RID := osx-x64
   endif
 else
-  RID := win-x64
+  # Windows / unknown — attempt arm64 detection via PROCESSOR_ARCHITECTURE
+  ifeq ($(PROCESSOR_ARCHITECTURE),ARM64)
+    RID := win-arm64
+  else
+    RID := win-x64
+  endif
 endif
 
 # Binary name varies by platform (.exe on Windows)
@@ -41,7 +46,11 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests publish publish-fast publish-aot publish-r2r setup
+.PHONY: all build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests publish publish-fast publish-aot publish-r2r setup \
+	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
+	publish-osx-x64 publish-osx-arm64 \
+	publish-win-x64 publish-win-arm64 \
+	publish-all bench install uninstall
 
 ## Help: list available make targets (default target)
 help:
@@ -63,8 +72,24 @@ help:
 	@echo "  make all-tests   - Run unit + integration + docker tests"
 	@echo "  make publish-fast - Publish self-contained ReadyToRun binary (~100ms startup)"
 	@echo "  make publish-r2r  - Alias for publish-fast"
-	@echo "  make publish-aot  - Publish Native AOT binary (RECOMMENDED, ~11ms startup)"
+	@echo "  make publish-aot  - Publish Native AOT binary (RECOMMENDED, ~5ms startup, host RID)"
 	@echo "  make publish      - Alias for publish-aot (the new default)"
+	@echo ""
+	@echo "Per-OS cross-builds (portable ReadyToRun, dist/<rid>/):"
+	@echo "  make publish-linux-x64       - Linux glibc x64 (WSL/Ubuntu/Debian/Fedora)"
+	@echo "  make publish-linux-musl-x64  - Linux musl x64 (Alpine)"
+	@echo "  make publish-linux-arm64     - Linux ARM64 (Raspberry Pi, ARM servers)"
+	@echo "  make publish-osx-x64         - macOS Intel"
+	@echo "  make publish-osx-arm64       - macOS Apple Silicon (M1/M2/M3)"
+	@echo "  make publish-win-x64         - Windows x64"
+	@echo "  make publish-win-arm64       - Windows ARM64"
+	@echo "  make publish-all             - Build all 7 cross-platform binaries"
+	@echo ""
+	@echo "Native-install & benchmark (drop Docker for speed — ideal for Espanso/AHK):"
+	@echo "  make install      - Install host-AOT binary to ~/.local/bin/az-ai (Linux/macOS/WSL)"
+	@echo "  make uninstall    - Remove ~/.local/bin/az-ai"
+	@echo "  make bench        - Measure cold-start time of dist/aot/$(BIN_NAME) (10 runs)"
+	@echo ""
 	@echo "  make check       - Verify the project builds successfully"
 	@echo "  make help        - Show this help message"
 	@echo ""
@@ -202,3 +227,102 @@ publish-aot:
 
 ## Default `make publish` now builds the AOT binary.
 publish: publish-aot
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Per-OS cross-builds (portable ReadyToRun self-contained, dist/<rid>/)
+#
+# Why R2R, not AOT, for cross-builds?
+#   Native AOT compilation is host-constrained:
+#     - Linux host: can AOT-build linux-x64, linux-arm64 only
+#     - macOS host: can AOT-build osx-x64, osx-arm64 only
+#     - Windows host: can AOT-build win-x64, win-arm64 only
+#   Cross-OS AOT (e.g. Linux → macOS) is not supported by .NET 10.
+#   ReadyToRun is fully portable: build any RID from any host.
+#
+# Want maximum speed on YOUR OS? Use `make publish-aot` on each platform.
+# Need ONE command to build everything (e.g. for a release)? Use `publish-all`.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_publish_rid = \
+	$(DOTNET) publish azureopenai-cli/AzureOpenAI_CLI.csproj \
+		-c Release -r $(1) --self-contained \
+		-p:PublishReadyToRun=true -p:PublishSingleFile=true \
+		-p:IncludeNativeLibrariesForSelfExtract=true \
+		-o dist/$(1)/
+
+publish-linux-x64:
+	@echo ">> Publishing linux-x64 (ReadyToRun, self-contained) to dist/linux-x64/"
+	@$(call _publish_rid,linux-x64)
+	@ls -lh dist/linux-x64/AzureOpenAI_CLI
+
+publish-linux-musl-x64:
+	@echo ">> Publishing linux-musl-x64 (Alpine) to dist/linux-musl-x64/"
+	@$(call _publish_rid,linux-musl-x64)
+	@ls -lh dist/linux-musl-x64/AzureOpenAI_CLI
+
+publish-linux-arm64:
+	@echo ">> Publishing linux-arm64 to dist/linux-arm64/"
+	@$(call _publish_rid,linux-arm64)
+	@ls -lh dist/linux-arm64/AzureOpenAI_CLI
+
+publish-osx-x64:
+	@echo ">> Publishing osx-x64 (macOS Intel) to dist/osx-x64/"
+	@$(call _publish_rid,osx-x64)
+	@ls -lh dist/osx-x64/AzureOpenAI_CLI
+
+publish-osx-arm64:
+	@echo ">> Publishing osx-arm64 (Apple Silicon) to dist/osx-arm64/"
+	@$(call _publish_rid,osx-arm64)
+	@ls -lh dist/osx-arm64/AzureOpenAI_CLI
+
+publish-win-x64:
+	@echo ">> Publishing win-x64 to dist/win-x64/"
+	@$(call _publish_rid,win-x64)
+	@ls -lh dist/win-x64/AzureOpenAI_CLI.exe
+
+publish-win-arm64:
+	@echo ">> Publishing win-arm64 to dist/win-arm64/"
+	@$(call _publish_rid,win-arm64)
+	@ls -lh dist/win-arm64/AzureOpenAI_CLI.exe
+
+## Publish all 7 supported RIDs (~7× single-build time).
+## Uses ReadyToRun because AOT is host-OS-constrained. Runs in parallel if
+## invoked with `make -j7 publish-all`.
+publish-all: publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
+             publish-osx-x64 publish-osx-arm64 \
+             publish-win-x64 publish-win-arm64
+	@echo ""
+	@echo ">> All 7 binaries built under dist/<rid>/"
+	@du -sh dist/*/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Native install & benchmark (drop Docker — ideal for Espanso/AHK workflows)
+# ─────────────────────────────────────────────────────────────────────────────
+
+PREFIX ?= $(HOME)/.local
+INSTALL_BIN := $(PREFIX)/bin/az-ai
+
+## Install host-AOT binary to ~/.local/bin/az-ai (Linux/macOS/WSL).
+## Requires `make publish-aot` to have been run first.
+## Add ~/.local/bin to PATH if it isn't already (most distros do this).
+install: dist/aot/$(BIN_NAME)
+	@mkdir -p $(PREFIX)/bin
+	@cp dist/aot/$(BIN_NAME) $(INSTALL_BIN)
+	@chmod +x $(INSTALL_BIN)
+	@echo ">> Installed to $(INSTALL_BIN)"
+	@echo "   Invoke with: az-ai \"your prompt\""
+	@echo "   Espanso:     command: [\"az-ai\", \"--raw\", \"{{prompt}}\"]"
+
+## If the host-AOT binary doesn't exist, build it first.
+dist/aot/$(BIN_NAME):
+	@$(MAKE) publish-aot
+
+uninstall:
+	@rm -f $(INSTALL_BIN)
+	@echo ">> Removed $(INSTALL_BIN)"
+
+## Measure cold-start of the host-AOT binary (10 runs, after 2 warm-ups).
+## Requires python3 on PATH (which it is on Linux, macOS, WSL, and Git Bash).
+bench: dist/aot/$(BIN_NAME)
+	@command -v python3 >/dev/null 2>&1 || { echo "Error: python3 required for bench"; exit 1; }
+	@python3 scripts/bench.py dist/aot/$(BIN_NAME) --args --version
