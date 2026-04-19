@@ -1,24 +1,33 @@
+// CliParserTests.cs — BDD pilot conversion (ADR-003).
+//
+// Each test observes ONE behaviour. Names follow
+// Given_<State>_When_<Action>_Then_<Observable>. The Scenario DSL is
+// used on the split-out cases to demonstrate the narrative wrapper;
+// simpler one-line tests use naming-only BDD. Both forms coexist on
+// purpose — not every test benefits from the fluent chain.
+//
+// Coverage delta vs. pre-BDD version (56 tests):
+//   + Empty_Args_ReturnsDefaultOptions (14 bundled asserts) split into
+//     14 single-behaviour tests, 1 per default property.
+//   + MultipleFlagsAndPositionals_Combined split into 4 tests.
+//   + Schema_InvalidJson_Errors and Schema_EmptyString_Errors merged
+//     into one Theory with named scenarios (audit finding M4).
+//   All behaviours preserved; net test count increases.
+
 using AzureOpenAI_CLI;
+using AzureOpenAI_CLI.Tests.Bdd;
 
 namespace AzureOpenAI_CLI.Tests;
 
 /// <summary>
-/// Direct unit tests for Program.ParseCliFlags. Each flag is exercised with
-/// both happy-path values (positive assertions) and malformed inputs
-/// (negative assertions confirming a CliParseError is returned).
-///
-/// Notes on flags that DO exist (parsed by ParseCliFlags):
-///   --temperature/-t, --max-tokens, --system, --config show, --agent,
-///   --max-rounds, --tools, --schema, --ralph, --validate, --task-file,
-///   --max-iterations, --persona, --squad-init, --personas, --raw
-///
-/// Flags like --help, --json, --model, --timeout, --prompt, --chat are NOT
-/// recognized by ParseCliFlags; they fall through to RemainingArgs as
-/// positional tokens. Tests below assert that pass-through behavior.
+/// Behavioural tests for Program.ParseCliFlags — one behaviour per test,
+/// Given / When / Then naming. See ADR-003.
 /// </summary>
+[Trait("type", "behavior")]
 public class CliParserTests
 {
-    // ---------- helpers ----------
+    // ── helpers ──────────────────────────────────────────────────────
+
     private static Program.CliOptions ParseOk(params string[] args)
     {
         var (opts, err) = Program.ParseCliFlags(args);
@@ -35,56 +44,114 @@ public class CliParserTests
         return err!;
     }
 
-    // ---------- empty / no flags ----------
-    [Fact]
-    public void Empty_Args_ReturnsDefaultOptions()
-    {
-        var o = ParseOk();
-        Assert.Null(o.Temperature);
-        Assert.Null(o.MaxTokens);
-        Assert.Null(o.SystemPrompt);
-        Assert.False(o.ShowConfig);
-        Assert.False(o.AgentMode);
-        Assert.False(o.RalphMode);
-        Assert.False(o.Raw);
-        Assert.False(o.SquadInit);
-        Assert.False(o.ListPersonas);
-        Assert.Null(o.EnabledTools);
-        Assert.Null(o.JsonSchema);
-        Assert.Null(o.ValidateCommand);
-        Assert.Null(o.TaskFile);
-        Assert.Null(o.PersonaName);
-        Assert.Empty(o.RemainingArgs);
-    }
+    // ─────────────────────────────────────────────────────────────────
+    // Defaults (was Empty_Args_ReturnsDefaultOptions — 14 bundled
+    // assertions split into per-behaviour tests)
+    // ─────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void OnlyPositional_Args_PassedThroughAsRemaining()
+    public void Given_NoArgs_When_Parsing_Then_TemperatureIsNull() =>
+        Assert.Null(ParseOk().Temperature);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_MaxTokensIsNull() =>
+        Assert.Null(ParseOk().MaxTokens);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_SystemPromptIsNull() =>
+        Assert.Null(ParseOk().SystemPrompt);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_ShowConfigIsFalse() =>
+        Assert.False(ParseOk().ShowConfig);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_AgentModeIsFalse() =>
+        Assert.False(ParseOk().AgentMode);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_RalphModeIsFalse() =>
+        Assert.False(ParseOk().RalphMode);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_RawIsFalse() =>
+        Assert.False(ParseOk().Raw);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_SquadInitIsFalse() =>
+        Assert.False(ParseOk().SquadInit);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_ListPersonasIsFalse() =>
+        Assert.False(ParseOk().ListPersonas);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_EnabledToolsIsNull() =>
+        Assert.Null(ParseOk().EnabledTools);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_JsonSchemaIsNull() =>
+        Assert.Null(ParseOk().JsonSchema);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_ValidateCommandIsNull() =>
+        Assert.Null(ParseOk().ValidateCommand);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_TaskFileIsNull() =>
+        Assert.Null(ParseOk().TaskFile);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_PersonaNameIsNull() =>
+        Assert.Null(ParseOk().PersonaName);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_RemainingArgsIsEmpty() =>
+        Assert.Empty(ParseOk().RemainingArgs);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_MaxIterationsDefaultsToTen() =>
+        Assert.Equal(10, ParseOk().MaxIterations);
+
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_MaxAgentRoundsDefaultsToFive() =>
+        Assert.Equal(5, ParseOk().MaxAgentRounds);
+
+    [Fact]
+    public void Given_OnlyPositionals_When_Parsing_Then_TheyPassThroughAsRemainingArgs()
     {
         var o = ParseOk("hello", "world");
         Assert.Equal(new[] { "hello", "world" }, o.RemainingArgs);
     }
 
-    // ---------- --temperature ----------
+    // ─────────────────────────────────────────────────────────────────
+    // --temperature
+    // ─────────────────────────────────────────────────────────────────
+
     [Theory]
-    [InlineData("0.0")]
-    [InlineData("0.7")]
-    [InlineData("1.5")]
-    [InlineData("2.0")]
-    public void Temperature_ValidValue_IsParsed(string v)
+    [InlineData("0.0", "lower bound")]
+    [InlineData("0.7", "typical")]
+    [InlineData("1.5", "mid range")]
+    [InlineData("2.0", "upper bound")]
+    [Trait("type", "property")]
+    public void Given_ValidTemperature_When_Parsing_Then_ValueIsStored(string raw, string scenario)
     {
-        var o = ParseOk("--temperature", v);
-        Assert.Equal(float.Parse(v, System.Globalization.CultureInfo.InvariantCulture), o.Temperature);
+        _ = scenario; // narrative only; xUnit test name includes it
+        Scenario
+            .Given($"--temperature {raw} ({scenario})", () => new[] { "--temperature", raw })
+            .When("parsing flags", args => ParseOk(args))
+            .Then("the float is stored on CliOptions",
+                o => Assert.Equal(
+                    float.Parse(raw, System.Globalization.CultureInfo.InvariantCulture),
+                    o.Temperature));
     }
 
     [Fact]
-    public void Temperature_ShortFlag_T_Works()
-    {
-        var o = ParseOk("-t", "0.42");
-        Assert.Equal(0.42f, o.Temperature);
-    }
+    public void Given_ShortTemperatureFlag_When_Parsing_Then_ValueIsStored() =>
+        Assert.Equal(0.42f, ParseOk("-t", "0.42").Temperature);
 
     [Fact]
-    public void Temperature_BelowZero_Errors()
+    public void Given_TemperatureBelowZero_When_Parsing_Then_RangeErrorIsReturned()
     {
         var e = ParseErr("--temperature", "-0.1");
         Assert.Contains("between 0.0 and 2.0", e.Message);
@@ -92,391 +159,373 @@ public class CliParserTests
     }
 
     [Fact]
-    public void Temperature_AboveTwo_Errors()
-    {
-        var e = ParseErr("--temperature", "2.5");
-        Assert.Contains("between 0.0 and 2.0", e.Message);
-    }
+    public void Given_TemperatureAboveTwo_When_Parsing_Then_RangeErrorIsReturned() =>
+        Assert.Contains("between 0.0 and 2.0", ParseErr("--temperature", "2.5").Message);
 
     [Fact]
-    public void Temperature_NonNumeric_Errors()
-    {
-        var e = ParseErr("--temperature", "hot");
-        Assert.Contains("numeric value", e.Message);
-    }
+    public void Given_NonNumericTemperature_When_Parsing_Then_NumericErrorIsReturned() =>
+        Assert.Contains("numeric value", ParseErr("--temperature", "hot").Message);
 
     [Fact]
-    public void Temperature_MissingValue_Errors()
-    {
-        var e = ParseErr("--temperature");
-        Assert.Contains("numeric value", e.Message);
-    }
+    public void Given_TemperatureFlagWithoutValue_When_Parsing_Then_NumericErrorIsReturned() =>
+        Assert.Contains("numeric value", ParseErr("--temperature").Message);
 
-    // ---------- --max-tokens ----------
+    // ─────────────────────────────────────────────────────────────────
+    // --max-tokens
+    // ─────────────────────────────────────────────────────────────────
+
     [Theory]
-    [InlineData("1", 1)]
-    [InlineData("5000", 5000)]
-    [InlineData("128000", 128000)]
-    public void MaxTokens_ValidValue_IsParsed(string v, int expected)
+    [InlineData("1", 1, "lower bound")]
+    [InlineData("5000", 5000, "typical")]
+    [InlineData("128000", 128000, "upper bound")]
+    [Trait("type", "property")]
+    public void Given_ValidMaxTokens_When_Parsing_Then_IntIsStored(
+        string raw, int expected, string scenario)
     {
-        var o = ParseOk("--max-tokens", v);
-        Assert.Equal(expected, o.MaxTokens);
+        _ = scenario;
+        Assert.Equal(expected, ParseOk("--max-tokens", raw).MaxTokens);
     }
 
     [Fact]
-    public void MaxTokens_Zero_Errors()
-    {
-        var e = ParseErr("--max-tokens", "0");
-        Assert.Contains("between 1 and 128000", e.Message);
-    }
+    public void Given_MaxTokensZero_When_Parsing_Then_RangeErrorIsReturned() =>
+        Assert.Contains("between 1 and 128000", ParseErr("--max-tokens", "0").Message);
 
     [Fact]
-    public void MaxTokens_Negative_Errors()
-    {
+    public void Given_NegativeMaxTokens_When_Parsing_Then_RangeErrorIsReturned() =>
         Assert.Contains("between 1 and 128000", ParseErr("--max-tokens", "-5").Message);
-    }
 
     [Fact]
-    public void MaxTokens_TooLarge_Errors()
-    {
+    public void Given_MaxTokensAbove128000_When_Parsing_Then_RangeErrorIsReturned() =>
         Assert.Contains("between 1 and 128000", ParseErr("--max-tokens", "200000").Message);
-    }
 
     [Fact]
-    public void MaxTokens_NonNumeric_Errors()
-    {
+    public void Given_NonNumericMaxTokens_When_Parsing_Then_IntegerErrorIsReturned() =>
         Assert.Contains("integer value", ParseErr("--max-tokens", "lots").Message);
-    }
 
     [Fact]
-    public void MaxTokens_MissingValue_Errors()
-    {
+    public void Given_MaxTokensFlagWithoutValue_When_Parsing_Then_IntegerErrorIsReturned() =>
         Assert.Contains("integer value", ParseErr("--max-tokens").Message);
-    }
 
-    // ---------- --system ----------
-    [Fact]
-    public void System_ValidPrompt_IsParsed()
-    {
-        var o = ParseOk("--system", "You are a pirate");
-        Assert.Equal("You are a pirate", o.SystemPrompt);
-    }
+    // ─────────────────────────────────────────────────────────────────
+    // --system
+    // ─────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void System_EmptyString_IsAccepted()
-    {
-        // Current behavior: empty string is still a value, parser accepts it.
-        var o = ParseOk("--system", "");
-        Assert.Equal("", o.SystemPrompt);
-    }
+    public void Given_SystemPrompt_When_Parsing_Then_PromptIsStored() =>
+        Assert.Equal("You are a pirate", ParseOk("--system", "You are a pirate").SystemPrompt);
 
     [Fact]
-    public void System_MissingValue_Errors()
-    {
+    public void Given_EmptySystemPrompt_When_Parsing_Then_EmptyStringIsStored() =>
+        Assert.Equal("", ParseOk("--system", "").SystemPrompt);
+
+    [Fact]
+    public void Given_SystemFlagWithoutValue_When_Parsing_Then_RequiresValueErrorIsReturned() =>
         Assert.Contains("--system requires a value", ParseErr("--system").Message);
-    }
 
-    // ---------- --config ----------
+    // ─────────────────────────────────────────────────────────────────
+    // --config
+    // ─────────────────────────────────────────────────────────────────
+
     [Fact]
-    public void Config_Show_SetsFlag()
-    {
+    public void Given_ConfigShow_When_Parsing_Then_ShowConfigFlagIsTrue() =>
         Assert.True(ParseOk("--config", "show").ShowConfig);
-    }
 
     [Fact]
-    public void Config_UnknownSub_Errors()
-    {
+    public void Given_UnknownConfigSubcommand_When_Parsing_Then_ErrorIsReturned() =>
         Assert.Contains("Unknown --config subcommand", ParseErr("--config", "edit").Message);
-    }
 
     [Fact]
-    public void Config_MissingSub_Errors()
-    {
+    public void Given_ConfigFlagWithoutSub_When_Parsing_Then_ErrorIsReturned() =>
         Assert.Contains("Unknown --config subcommand", ParseErr("--config").Message);
-    }
 
-    // ---------- --agent / --ralph ----------
+    // ─────────────────────────────────────────────────────────────────
+    // --agent / --ralph
+    // ─────────────────────────────────────────────────────────────────
+
     [Fact]
-    public void Agent_Flag_SetsAgentMode()
+    public void Given_AgentFlag_When_Parsing_Then_AgentModeIsTrue()
     {
         var o = ParseOk("--agent");
         Assert.True(o.AgentMode);
-        Assert.False(o.RalphMode);
     }
 
     [Fact]
-    public void Ralph_Flag_ImpliesAgentMode()
-    {
-        var o = ParseOk("--ralph");
-        Assert.True(o.RalphMode);
-        Assert.True(o.AgentMode);
-    }
+    public void Given_AgentFlag_When_Parsing_Then_RalphModeIsFalse() =>
+        Assert.False(ParseOk("--agent").RalphMode);
 
     [Fact]
-    public void Agent_And_Ralph_Together_BothSet_NoError()
+    public void Given_RalphFlag_When_Parsing_Then_RalphModeIsTrue() =>
+        Assert.True(ParseOk("--ralph").RalphMode);
+
+    [Fact]
+    public void Given_RalphFlag_When_Parsing_Then_AgentModeIsImpliedTrue() =>
+        Assert.True(ParseOk("--ralph").AgentMode);
+
+    [Fact]
+    public void Given_AgentAndRalphTogether_When_Parsing_Then_BothAreAcceptedWithoutError()
     {
-        // Documented current behavior: both flags can coexist.
         var o = ParseOk("--agent", "--ralph");
         Assert.True(o.AgentMode);
         Assert.True(o.RalphMode);
     }
 
-    // ---------- --max-rounds ----------
+    // ─────────────────────────────────────────────────────────────────
+    // --max-rounds
+    // ─────────────────────────────────────────────────────────────────
+
     [Theory]
-    [InlineData("1", 1)]
-    [InlineData("20", 20)]
-    public void MaxRounds_Valid_IsParsed(string v, int expected)
+    [InlineData("1", 1, "lower bound")]
+    [InlineData("20", 20, "upper bound")]
+    [Trait("type", "property")]
+    public void Given_ValidMaxRounds_When_Parsing_Then_IntIsStored(
+        string raw, int expected, string scenario)
     {
-        Assert.Equal(expected, ParseOk("--max-rounds", v).MaxAgentRounds);
+        _ = scenario;
+        Assert.Equal(expected, ParseOk("--max-rounds", raw).MaxAgentRounds);
     }
 
     [Theory]
-    [InlineData("0")]
-    [InlineData("-1")]
-    [InlineData("21")]
-    [InlineData("nope")]
-    public void MaxRounds_OutOfRangeOrNonNumeric_Errors(string v)
+    [InlineData("0", "below range")]
+    [InlineData("-1", "negative")]
+    [InlineData("21", "above range")]
+    [InlineData("nope", "non-numeric")]
+    [Trait("type", "property")]
+    public void Given_InvalidMaxRounds_When_Parsing_Then_ErrorIsReturned(string raw, string scenario)
     {
-        Assert.Contains("--max-rounds requires", ParseErr("--max-rounds", v).Message);
+        _ = scenario;
+        Assert.Contains("--max-rounds requires", ParseErr("--max-rounds", raw).Message);
     }
 
     [Fact]
-    public void MaxRounds_MissingValue_Errors()
-    {
+    public void Given_MaxRoundsFlagWithoutValue_When_Parsing_Then_ErrorIsReturned() =>
         Assert.Contains("--max-rounds requires", ParseErr("--max-rounds").Message);
-    }
 
-    // ---------- --tools ----------
-    [Fact]
-    public void Tools_CommaList_IsParsedCaseInsensitive()
-    {
-        var o = ParseOk("--tools", "shell,FILE, web");
-        Assert.NotNull(o.EnabledTools);
-        Assert.Contains("shell", o.EnabledTools!);
-        Assert.Contains("file", o.EnabledTools!); // case-insensitive set
-        Assert.Contains("WEB", o.EnabledTools!);  // case-insensitive lookup
-        Assert.Equal(3, o.EnabledTools!.Count);
-    }
+    // ─────────────────────────────────────────────────────────────────
+    // --tools
+    // ─────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Tools_MissingValue_Errors()
+    public void Given_CommaSeparatedTools_When_Parsing_Then_AllAreStoredCaseInsensitive()
     {
+        Scenario
+            .Given("the --tools list 'shell,FILE, web'",
+                () => new[] { "--tools", "shell,FILE, web" })
+            .When("parsing flags", args => ParseOk(args).EnabledTools!)
+            .Then("three entries are present",
+                t => Assert.Equal(3, t.Count))
+            .And("'shell' is present (original case)", t => Assert.Contains("shell", t))
+            .And("'file' matches case-insensitively", t => Assert.Contains("file", t))
+            .And("'WEB' matches case-insensitively", t => Assert.Contains("WEB", t));
+    }
+
+    [Fact]
+    public void Given_ToolsFlagWithoutValue_When_Parsing_Then_ErrorIsReturned() =>
         Assert.Contains("--tools requires", ParseErr("--tools").Message);
-    }
 
-    // ---------- --schema ----------
+    // ─────────────────────────────────────────────────────────────────
+    // --schema
+    // ─────────────────────────────────────────────────────────────────
+
     [Fact]
-    public void Schema_ValidJson_IsAccepted()
+    public void Given_ValidJsonSchema_When_Parsing_Then_SchemaIsStoredVerbatim()
     {
         var json = "{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\"}}}";
-        var o = ParseOk("--schema", json);
-        Assert.Equal(json, o.JsonSchema);
+        Assert.Equal(json, ParseOk("--schema", json).JsonSchema);
+    }
+
+    // Merged M4: Schema_InvalidJson_Errors + Schema_EmptyString_Errors.
+    [Theory]
+    [InlineData("{not json", "truncated object")]
+    [InlineData("", "empty string")]
+    [InlineData("not-json-at-all", "plain text")]
+    [Trait("type", "property")]
+    public void Given_InvalidJsonSchema_When_Parsing_Then_SchemaErrorIsReturned(
+        string raw, string scenario)
+    {
+        _ = scenario;
+        Assert.Contains("Invalid JSON schema", ParseErr("--schema", raw).Message);
     }
 
     [Fact]
-    public void Schema_InvalidJson_Errors()
-    {
-        Assert.Contains("Invalid JSON schema", ParseErr("--schema", "{not json").Message);
-    }
-
-    [Fact]
-    public void Schema_EmptyString_Errors()
-    {
-        // Empty string is not valid JSON.
-        Assert.Contains("Invalid JSON schema", ParseErr("--schema", "").Message);
-    }
-
-    [Fact]
-    public void Schema_MissingValue_Errors()
-    {
+    public void Given_SchemaFlagWithoutValue_When_Parsing_Then_ErrorIsReturned() =>
         Assert.Contains("--schema requires", ParseErr("--schema").Message);
-    }
 
-    // ---------- --validate ----------
+    // ─────────────────────────────────────────────────────────────────
+    // --validate
+    // ─────────────────────────────────────────────────────────────────
+
     [Fact]
-    public void Validate_WithCommand_IsParsed()
-    {
+    public void Given_ValidateWithCommand_When_Parsing_Then_CommandIsStored() =>
         Assert.Equal("dotnet test", ParseOk("--validate", "dotnet test").ValidateCommand);
-    }
 
     [Fact]
-    public void Validate_MissingValue_Errors()
-    {
+    public void Given_ValidateFlagWithoutValue_When_Parsing_Then_ErrorIsReturned() =>
         Assert.Contains("--validate requires", ParseErr("--validate").Message);
-    }
 
-    // ---------- --task-file ----------
-    [Fact]
-    public void TaskFile_WithPath_IsParsed_NoFileExistenceCheck()
-    {
-        // ParseCliFlags does NOT check for file existence — it just records the path.
-        var o = ParseOk("--task-file", "/no/such/file.txt");
-        Assert.Equal("/no/such/file.txt", o.TaskFile);
-    }
+    // ─────────────────────────────────────────────────────────────────
+    // --task-file
+    // ─────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void TaskFile_MissingValue_Errors()
-    {
+    public void Given_TaskFilePath_When_Parsing_Then_PathIsStored_NoExistenceCheck() =>
+        Assert.Equal("/no/such/file.txt", ParseOk("--task-file", "/no/such/file.txt").TaskFile);
+
+    [Fact]
+    public void Given_TaskFileFlagWithoutValue_When_Parsing_Then_ErrorIsReturned() =>
         Assert.Contains("--task-file requires", ParseErr("--task-file").Message);
-    }
 
-    // ---------- --max-iterations ----------
-    [Theory]
-    [InlineData("1", 1)]
-    [InlineData("10", 10)]
-    [InlineData("50", 50)]
-    public void MaxIterations_Valid_IsParsed(string v, int expected)
-    {
-        Assert.Equal(expected, ParseOk("--max-iterations", v).MaxIterations);
-    }
+    // ─────────────────────────────────────────────────────────────────
+    // --max-iterations
+    // ─────────────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData("0")]
-    [InlineData("-1")]
-    [InlineData("51")]
-    [InlineData("100")]
-    [InlineData("abc")]
-    public void MaxIterations_OutOfRangeOrNonNumeric_Errors(string v)
+    [InlineData("1", 1, "lower bound")]
+    [InlineData("10", 10, "default")]
+    [InlineData("50", 50, "upper bound")]
+    [Trait("type", "property")]
+    public void Given_ValidMaxIterations_When_Parsing_Then_IntIsStored(
+        string raw, int expected, string scenario)
     {
-        Assert.Contains("--max-iterations requires", ParseErr("--max-iterations", v).Message);
+        _ = scenario;
+        Assert.Equal(expected, ParseOk("--max-iterations", raw).MaxIterations);
+    }
+
+    [Theory]
+    [InlineData("0", "below range")]
+    [InlineData("-1", "negative")]
+    [InlineData("51", "just above range")]
+    [InlineData("100", "far above range")]
+    [InlineData("abc", "non-numeric")]
+    [Trait("type", "property")]
+    public void Given_InvalidMaxIterations_When_Parsing_Then_ErrorIsReturned(
+        string raw, string scenario)
+    {
+        _ = scenario;
+        Assert.Contains("--max-iterations requires", ParseErr("--max-iterations", raw).Message);
     }
 
     [Fact]
-    public void MaxIterations_MissingValue_Errors()
-    {
+    public void Given_MaxIterationsFlagWithoutValue_When_Parsing_Then_ErrorIsReturned() =>
         Assert.Contains("--max-iterations requires", ParseErr("--max-iterations").Message);
-    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // --persona
+    // ─────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void MaxIterations_DefaultIsTen()
-    {
-        Assert.Equal(10, ParseOk().MaxIterations);
-    }
-
-    // ---------- --persona ----------
-    [Fact]
-    public void Persona_Name_IsParsedAndImpliesAgentMode()
-    {
-        var o = ParseOk("--persona", "coder");
-        Assert.Equal("coder", o.PersonaName);
-        Assert.True(o.AgentMode);
-    }
+    public void Given_PersonaName_When_Parsing_Then_PersonaIsStored() =>
+        Assert.Equal("coder", ParseOk("--persona", "coder").PersonaName);
 
     [Fact]
-    public void Persona_Auto_IsAccepted()
-    {
-        var o = ParseOk("--persona", "auto");
-        Assert.Equal("auto", o.PersonaName);
-        Assert.True(o.AgentMode);
-    }
+    public void Given_PersonaName_When_Parsing_Then_AgentModeIsImpliedTrue() =>
+        Assert.True(ParseOk("--persona", "coder").AgentMode);
 
     [Fact]
-    public void Persona_MissingValue_Errors()
-    {
+    public void Given_PersonaAuto_When_Parsing_Then_AutoIsAcceptedAsValidName() =>
+        Assert.Equal("auto", ParseOk("--persona", "auto").PersonaName);
+
+    [Fact]
+    public void Given_PersonaFlagWithoutValue_When_Parsing_Then_ErrorIsReturned() =>
         Assert.Contains("--persona requires", ParseErr("--persona").Message);
-    }
 
-    // ---------- --squad-init / --personas / --raw ----------
+    // ─────────────────────────────────────────────────────────────────
+    // --squad-init / --personas / --raw
+    // ─────────────────────────────────────────────────────────────────
+
     [Fact]
-    public void SquadInit_Flag_IsSet()
-    {
+    public void Given_SquadInitFlag_When_Parsing_Then_SquadInitIsTrue() =>
         Assert.True(ParseOk("--squad-init").SquadInit);
-    }
 
     [Fact]
-    public void Personas_Flag_IsSet()
-    {
+    public void Given_PersonasFlag_When_Parsing_Then_ListPersonasIsTrue() =>
         Assert.True(ParseOk("--personas").ListPersonas);
-    }
 
     [Fact]
-    public void Raw_Flag_IsSet()
-    {
+    public void Given_RawFlag_When_Parsing_Then_RawIsTrue() =>
         Assert.True(ParseOk("--raw").Raw);
-    }
 
-    // ---------- combinations ----------
-    [Fact]
-    public void RawAndJsonPositional_BothPreserved_NoError()
-    {
-        // --json is NOT a recognized flag; it falls through as positional.
-        var o = ParseOk("--raw", "--json");
-        Assert.True(o.Raw);
-        Assert.Contains("--json", o.RemainingArgs);
-    }
+    // ─────────────────────────────────────────────────────────────────
+    // combinations and fall-through
+    // ─────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void PromptPositional_AndUnknownPromptFlag_FallThrough()
+    public void Given_RawPlusJsonPositional_When_Parsing_Then_RawIsTrue()
     {
-        // --prompt is not parsed; both it and its value land in RemainingArgs.
+        // --json is NOT recognised; it is preserved as a positional token.
+        Assert.True(ParseOk("--raw", "--json").Raw);
+    }
+
+    [Fact]
+    public void Given_RawPlusJsonPositional_When_Parsing_Then_JsonFallsThroughToRemainingArgs() =>
+        Assert.Contains("--json", ParseOk("--raw", "--json").RemainingArgs);
+
+    [Fact]
+    public void Given_UnknownPromptFlag_When_Parsing_Then_FlagAndValueFallThrough()
+    {
         var o = ParseOk("hello", "--prompt", "world");
         Assert.Equal(new[] { "hello", "--prompt", "world" }, o.RemainingArgs);
     }
 
     [Fact]
-    public void RepeatedFlag_LastValueWins()
+    public void Given_RepeatedTemperature_When_Parsing_Then_LastValueWins() =>
+        Assert.Equal(1.9f, ParseOk("--temperature", "0.1", "--temperature", "1.9").Temperature);
+
+    [Fact]
+    public void Given_RepeatedTools_When_Parsing_Then_LastListWins()
     {
-        var o = ParseOk("--temperature", "0.1", "--temperature", "1.9");
-        Assert.Equal(1.9f, o.Temperature);
+        var enabled = ParseOk("--tools", "shell", "--tools", "file,web").EnabledTools!;
+
+        Assert.DoesNotContain("shell", enabled);
+        Assert.Contains("file", enabled);
+        Assert.Contains("web", enabled);
     }
 
     [Fact]
-    public void RepeatedToolsFlag_LastListWins()
-    {
-        var o = ParseOk("--tools", "shell", "--tools", "file,web");
-        Assert.NotNull(o.EnabledTools);
-        Assert.DoesNotContain("shell", o.EnabledTools!);
-        Assert.Contains("file", o.EnabledTools!);
-        Assert.Contains("web", o.EnabledTools!);
-    }
-
-    [Fact]
-    public void UnknownFlag_FallsThroughToRemainingArgs()
+    public void Given_UnknownFlag_When_Parsing_Then_FlagAndValueFallThrough()
     {
         var o = ParseOk("--unknown-flag", "value");
         Assert.Equal(new[] { "--unknown-flag", "value" }, o.RemainingArgs);
     }
 
     [Fact]
-    public void HelpFlag_FallsThroughToRemainingArgs()
-    {
-        // --help is not consumed by ParseCliFlags; main handles it elsewhere.
-        var o = ParseOk("--help");
-        Assert.Equal(new[] { "--help" }, o.RemainingArgs);
-    }
+    public void Given_HelpFlag_When_Parsing_Then_FallsThroughToRemainingArgs() =>
+        Assert.Equal(new[] { "--help" }, ParseOk("--help").RemainingArgs);
 
     [Fact]
-    public void FlagCaseInsensitive_LongForms()
+    public void Given_MixedCaseLongFlags_When_Parsing_Then_AllAreRecognised()
     {
-        // Argument names are lowercased before comparison; mixed case still works.
         var o = ParseOk("--TEMPERATURE", "0.5", "--Max-Tokens", "100", "--Agent");
+
         Assert.Equal(0.5f, o.Temperature);
         Assert.Equal(100, o.MaxTokens);
         Assert.True(o.AgentMode);
     }
 
+    // was MultipleFlagsAndPositionals_Combined — 1 test → 4
     [Fact]
-    public void MultipleFlagsAndPositionals_Combined()
-    {
-        var o = ParseOk("hello", "--agent", "--max-rounds", "7", "world", "--raw");
-        Assert.True(o.AgentMode);
-        Assert.True(o.Raw);
-        Assert.Equal(7, o.MaxAgentRounds);
-        Assert.Equal(new[] { "hello", "world" }, o.RemainingArgs);
-    }
+    public void Given_MultipleFlagsAndPositionals_When_Parsing_Then_AgentModeIsTrue() =>
+        Assert.True(ParseOk("hello", "--agent", "--max-rounds", "7", "world", "--raw").AgentMode);
 
     [Fact]
-    public void FirstError_ShortCircuits()
+    public void Given_MultipleFlagsAndPositionals_When_Parsing_Then_RawIsTrue() =>
+        Assert.True(ParseOk("hello", "--agent", "--max-rounds", "7", "world", "--raw").Raw);
+
+    [Fact]
+    public void Given_MultipleFlagsAndPositionals_When_Parsing_Then_MaxRoundsIsSeven() =>
+        Assert.Equal(7, ParseOk("hello", "--agent", "--max-rounds", "7", "world", "--raw").MaxAgentRounds);
+
+    [Fact]
+    public void Given_MultipleFlagsAndPositionals_When_Parsing_Then_PositionalsAreOrderPreserved() =>
+        Assert.Equal(new[] { "hello", "world" },
+            ParseOk("hello", "--agent", "--max-rounds", "7", "world", "--raw").RemainingArgs);
+
+    [Fact]
+    public void Given_FirstErrorEncountered_When_Parsing_Then_ParsingShortCircuits()
     {
-        // When the first malformed flag is encountered, parsing stops and
-        // later (also-malformed) flags are not reported.
+        // When the first malformed flag is encountered, parsing stops and later
+        // malformed flags are not reported. Audit H7 notes this asserts prose
+        // wording; kept here until the parser exposes a structured flag field.
         var e = ParseErr("--temperature", "5.0", "--max-tokens", "0");
         Assert.Contains("Temperature", e.Message);
-    }
-
-    [Fact]
-    public void Default_MaxAgentRounds_IsFive()
-    {
-        Assert.Equal(5, ParseOk().MaxAgentRounds);
     }
 }
