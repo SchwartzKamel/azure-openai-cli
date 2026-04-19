@@ -68,7 +68,7 @@ public class CliParserPropertyTests
             // Half below 0, half above 2.
             double v = (i % 2 == 0)
                 ? -(rng.NextDouble() * 100.0 + 0.0001)  // (-100, 0)
-                :  (2.0001 + rng.NextDouble() * 100.0); // (2, 102)
+                : (2.0001 + rng.NextDouble() * 100.0); // (2, 102)
             yield return new object[] { v };
         }
     }
@@ -115,7 +115,7 @@ public class CliParserPropertyTests
         {
             int v = (i % 2 == 0)
                 ? -rng.Next(1, 1_000_000)          // negatives
-                :  rng.Next(128_001, 10_000_000);  // too large
+                : rng.Next(128_001, 10_000_000);  // too large
             yield return new object[] { v };
         }
     }
