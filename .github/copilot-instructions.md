@@ -82,3 +82,48 @@
 - Checks: format verification, build, unit tests, vulnerability scan
 - Docker job builds image and runs Trivy security scan
 - Integration tests run after build succeeds
+
+## Agent Archetypes 🤖
+
+This project uses [GitHub Copilot custom agents](https://gh.io/customagents/config) — specialized AI personas defined in `.github/agents/`. A **main cast** of 5 drives the core build-ship loop; a bench of 5 **supporting players** covers executive PM, release, marketing, QA, and legal. See [`AGENTS.md`](../AGENTS.md) for the full rationale; this section is a kept-in-sync quick reference.
+
+### Main Cast
+
+| Agent | Role | Specialty | File |
+|-------|------|-----------|------|
+| **Costanza** | Product Manager | Architecture, UX, latency optimization, feature proposals | [`costanza.agent.md`](agents/costanza.agent.md) |
+| **Kramer** | Engineer | C#, Docker, Azure OpenAI, test implementation | [`kramer.agent.md`](agents/kramer.agent.md) |
+| **Elaine** | Technical Writer | Documentation, ADRs, guides, clarity | [`elaine.agent.md`](agents/elaine.agent.md) |
+| **Jerry** | DevOps Specialist | CI/CD, Dockerfile optimization, dependency management | [`jerry.agent.md`](agents/jerry.agent.md) |
+| **Newman** | Security Inspector | Container hardening, secrets, OWASP, supply chain | [`newman.agent.md`](agents/newman.agent.md) |
+
+### Supporting Players
+
+| Agent | Role | Specialty | File |
+|-------|------|-----------|------|
+| **Mr. Pitt** | Executive / Program Manager | Roadmap, OKRs, cross-agent coordination, scoping | [`mr-pitt.agent.md`](agents/mr-pitt.agent.md) |
+| **Mr. Lippman** | Release Manager | SemVer decisions, CHANGELOG curation, release notes | [`mr-lippman.agent.md`](agents/mr-lippman.agent.md) |
+| **J. Peterman** | Storyteller / Marketing | Hero copy, demo scripts, launch announcements | [`peterman.agent.md`](agents/peterman.agent.md) |
+| **David Puddy** | QA / Test Engineer | Regression suites, flakiness triage, adversarial tests | [`puddy.agent.md`](agents/puddy.agent.md) |
+| **Jackie Chiles** | Legal / OSS Licensing | License compliance, third-party attribution, legal review | [`jackie.agent.md`](agents/jackie.agent.md) |
+
+### Workflow
+
+```
+Feature Idea
+    │
+    ▼
+Mr. Pitt (scopes) ──→ Costanza (product proposal) ──→ docs/proposals/
+    │
+    ▼
+Kramer (implements) ⇄ Puddy (tests adversarially)
+    │
+    ▼
+Newman (security) ⇄ Jackie (license/legal)
+    │
+    ▼
+Elaine (technical docs) ⇄ Peterman (marketing copy)
+    │
+    ▼
+Jerry (DevOps polish) ──→ Mr. Lippman (release) ──→ 🚢 Ship
+```
