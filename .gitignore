@@ -3,6 +3,8 @@
 .roomodes
 .ruru
 scripts
+!docs/demos/scripts/
+!docs/demos/scripts/**
 
 # env
 azureopenai-cli/.env
