@@ -16,6 +16,7 @@
 | [FR-008](FR-008-prompt-response-cache.md) | Prompt Response Cache | P1 | Medium | 📋 PLANNED — Espanso/AHK use case |
 | [FR-009](FR-009-config-set-and-directory-overrides.md) | `--config set` Commands & Per-Directory Overrides | P1 | Medium | 📋 PLANNED — Completes FR-003 |
 | [FR-010](FR-010-model-aliases-and-smart-defaults.md) | Model Aliases & Smart Defaults | P2 | Small | 📋 PLANNED — DX polish |
+| [FR-011](FR-011-agent-streaming-output.md) | Agent Mode Streaming Output | P0 | Small-Medium | 📋 PLANNED — v1.9.0 top priority |
 
 ---
 
