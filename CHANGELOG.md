@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] — 2025-11-20
+
 ### Changed
 - **Native AOT promoted from experimental to recommended** — `make publish-aot`
   produces a **~9 MB single-file binary with ~5.4 ms cold start** on Linux x64,
