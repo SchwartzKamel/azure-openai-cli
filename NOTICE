@@ -1,0 +1,160 @@
+azure-openai-cli
+================
+
+This product includes software developed by third parties. Licenses below.
+
+All third-party dependencies enumerated here are distributed under the MIT
+License (SPDX: MIT), which is compatible with this project's MIT license. No
+copyleft (GPL/LGPL/AGPL) or otherwise incompatible licenses are present in the
+dependency graph at the versions pinned below.
+
+Each block is intentionally machine-friendly: one dependency per block, with
+SPDX short identifiers and links to upstream license text.
+
+--------------------------------------------------------------------------------
+Top-level dependencies
+--------------------------------------------------------------------------------
+
+Name:        Azure.AI.OpenAI
+Version:     2.1.0
+Copyright:   Copyright (c) Microsoft Corporation
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/Azure/azure-sdk-for-net
+License-URL: https://github.com/Azure/azure-sdk-for-net/blob/main/LICENSE.txt
+
+Name:        Azure.Core
+Version:     1.51.1
+Copyright:   Copyright (c) Microsoft Corporation
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/Azure/azure-sdk-for-net
+License-URL: https://github.com/Azure/azure-sdk-for-net/blob/main/LICENSE.txt
+
+Name:        dotenv.net
+Version:     3.1.2
+Copyright:   Copyright (c) Bolorunduro Winner-Timothy B
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/bolorundurowb/dotenv.net
+License-URL: https://github.com/bolorundurowb/dotenv.net/blob/master/LICENSE
+
+--------------------------------------------------------------------------------
+Transitive dependencies
+--------------------------------------------------------------------------------
+
+Name:        OpenAI
+Version:     2.1.0
+Copyright:   Copyright (c) OpenAI
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/openai/openai-dotnet
+License-URL: https://github.com/openai/openai-dotnet/blob/main/LICENSE
+
+Name:        System.ClientModel
+Version:     1.9.0
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Name:        System.Memory.Data
+Version:     10.0.1
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Name:        Microsoft.Bcl.AsyncInterfaces
+Version:     10.0.2
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Name:        Microsoft.Extensions.Configuration.Abstractions
+Version:     10.0.2
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Name:        Microsoft.Extensions.DependencyInjection.Abstractions
+Version:     10.0.2
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Name:        Microsoft.Extensions.Diagnostics.Abstractions
+Version:     10.0.2
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Name:        Microsoft.Extensions.FileProviders.Abstractions
+Version:     10.0.2
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Name:        Microsoft.Extensions.Hosting.Abstractions
+Version:     10.0.2
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Name:        Microsoft.Extensions.Logging.Abstractions
+Version:     10.0.2
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Name:        Microsoft.Extensions.Options
+Version:     10.0.2
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Name:        Microsoft.Extensions.Primitives
+Version:     10.0.2
+Copyright:   Copyright (c) .NET Foundation and Contributors
+License:     MIT
+SPDX:        MIT
+Homepage:    https://github.com/dotnet/runtime
+License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+--------------------------------------------------------------------------------
+Trademarks (nominative use)
+--------------------------------------------------------------------------------
+
+"Azure" and "Microsoft" are trademarks of Microsoft Corporation.
+"OpenAI" is a trademark of OpenAI, L.L.C.
+".NET" is a trademark of the .NET Foundation / Microsoft Corporation.
+
+All trademarks are the property of their respective owners and are used here
+solely in a nominative, descriptive sense to identify the upstream software
+components this project depends on. This project is not affiliated with,
+endorsed by, or sponsored by Microsoft Corporation, the .NET Foundation, or
+OpenAI, L.L.C.
+
+--------------------------------------------------------------------------------
+Project license
+--------------------------------------------------------------------------------
+
+This project itself is licensed under MIT — see LICENSE.
