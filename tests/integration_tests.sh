@@ -283,6 +283,119 @@ else
     echo "  ⊘ Docker image not available, skipping"
 fi
 
+# ── Adversarial Cases (Puddy) ─────────────────
+# "Gotta test it. Either it works or it doesn't."
+# All cases here must fail fast at validation or missing-config.
+# No real Azure calls — creds are deliberately stripped.
+echo ""
+echo "=== Adversarial Cases (Puddy) ==="
+
+# Hide .env to simulate hostile environments. The dotenv loader overwrites.
+_adv_env_moved=false
+if [ -f .env ]; then
+    mv .env .env.adv_bak
+    _adv_env_moved=true
+fi
+_adv_restore_api="${AZUREOPENAIAPI:-}"
+_adv_restore_ep="${AZUREOPENAIENDPOINT:-}"
+_adv_restore_mdl="${AZUREOPENAIMODEL:-}"
+unset AZUREOPENAIAPI AZUREOPENAIENDPOINT AZUREOPENAIMODEL 2>/dev/null || true
+
+echo ""
+echo "▸ Missing Required Env"
+# No API key anywhere — should fail cleanly, not stack-trace.
+assert_exit "no AZUREOPENAIAPI exits non-zero" 99 "$CLI 'hello'"
+assert_output_contains "no AZUREOPENAIAPI shows API key error" "API key" "$CLI 'hello'"
+# Stack traces leak ' at ' frames — assert they don't surface.
+set +e
+_adv_out=$($CLI 'hello' 2>&1)
+set -e
+if echo "$_adv_out" | grep -qE '^\s+at [A-Za-z].*\(.*\)'; then
+    red "  ✗ no AZUREOPENAIAPI leaked a stack trace"
+    FAIL=$((FAIL + 1))
+else
+    green "  ✓ no AZUREOPENAIAPI produces clean error (no stack trace)"
+    PASS=$((PASS + 1))
+fi
+
+echo ""
+echo "▸ Malformed Endpoint URL"
+# API key present but endpoint is garbage — must exit cleanly, not hang or crash.
+# Exit code varies (1 = arg/config validation, 99 = cred/endpoint failure) — both acceptable.
+set +e
+timeout 30 bash -c "AZUREOPENAIAPI=fake-key AZUREOPENAIENDPOINT=not-a-url AZUREOPENAIMODEL=gpt-4 $CLI 'hello' > /dev/null 2>&1"
+_adv_ep_rc=$?
+set -e
+if [ "$_adv_ep_rc" -eq 124 ]; then
+    red "  ✗ malformed endpoint hung (timeout)"
+    FAIL=$((FAIL + 1))
+elif [ "$_adv_ep_rc" -ne 0 ]; then
+    green "  ✓ malformed endpoint exits non-zero cleanly (exit $_adv_ep_rc)"
+    PASS=$((PASS + 1))
+else
+    red "  ✗ malformed endpoint unexpectedly succeeded (exit 0)"
+    FAIL=$((FAIL + 1))
+fi
+set +e
+_adv_ep_out=$(AZUREOPENAIAPI=fake-key AZUREOPENAIENDPOINT=not-a-url AZUREOPENAIMODEL=gpt-4 $CLI 'hello' 2>&1)
+set -e
+if echo "$_adv_ep_out" | grep -qE '^\s+at [A-Za-z].*\(.*\)'; then
+    red "  ✗ malformed endpoint leaked a stack trace"
+    FAIL=$((FAIL + 1))
+else
+    green "  ✓ malformed endpoint produces clean error (no stack trace)"
+    PASS=$((PASS + 1))
+fi
+
+echo ""
+echo "▸ Temperature Out-Of-Range (99)"
+# Spec'd edge — validation must reject BEFORE any API call.
+assert_exit "--temperature 99 exits 1" 1 "$CLI --temperature 99 'test'"
+assert_output_contains "--temperature 99 shows range error" "between 0.0 and 2.0" "$CLI --temperature 99 'test'"
+
+echo ""
+echo "▸ Huge Prompt Boundary (1MB)"
+# 1MB of 'x'. With no creds, should fail fast with API key error — not hang, not truncate.
+# Guard with a timeout so a hang fails loudly instead of wedging CI.
+set +e
+timeout 30 bash -c "python3 -c \"print('x' * 1048576)\" | $CLI > /dev/null 2>&1"
+_adv_big_rc=$?
+set -e
+if [ "$_adv_big_rc" -eq 124 ]; then
+    red "  ✗ 1MB piped prompt hung (timeout)"
+    FAIL=$((FAIL + 1))
+elif [ "$_adv_big_rc" -ne 0 ]; then
+    green "  ✓ 1MB piped prompt failed cleanly (exit $_adv_big_rc, no hang)"
+    PASS=$((PASS + 1))
+else
+    green "  ✓ 1MB piped prompt succeeded cleanly (exit 0)"
+    PASS=$((PASS + 1))
+fi
+
+echo ""
+echo "▸ Invalid Model Name"
+# Deployment name that doesn't exist. Without creds we still expect the
+# missing-API-key path (exit 99, "API key" message) — NOT a null-ref / stack trace.
+assert_exit "--model invalid exits non-zero" 99 "$CLI --model not-a-real-deployment 'hi'"
+set +e
+_adv_mdl_out=$($CLI --model not-a-real-deployment 'hi' 2>&1)
+set -e
+if echo "$_adv_mdl_out" | grep -qiE 'NullReferenceException|Object reference not set'; then
+    red "  ✗ --model invalid leaked a null-ref"
+    FAIL=$((FAIL + 1))
+else
+    green "  ✓ --model invalid produces routed error (no null-ref)"
+    PASS=$((PASS + 1))
+fi
+
+# Restore env
+if [ "$_adv_env_moved" = true ] && [ -f .env.adv_bak ]; then
+    mv .env.adv_bak .env
+fi
+[ -n "$_adv_restore_api" ] && export AZUREOPENAIAPI="$_adv_restore_api"
+[ -n "$_adv_restore_ep" ] && export AZUREOPENAIENDPOINT="$_adv_restore_ep"
+[ -n "$_adv_restore_mdl" ] && export AZUREOPENAIMODEL="$_adv_restore_mdl"
+
 # ── Summary ───────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════"
