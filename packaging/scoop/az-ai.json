@@ -1,0 +1,31 @@
+{
+    "version": "1.8.1",
+    "description": "Azure OpenAI CLI — 5ms native AOT agent for text injection",
+    "homepage": "https://github.com/SchwartzKamel/azure-openai-cli",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v1.8.1/azure-openai-cli-win-x64.zip",
+            "hash": "d3db710084749305dd2524d9ae3e247cbd8116ad40ac92920d9b069239759253"
+        }
+    },
+    "bin": [
+        [
+            "AzureOpenAI_CLI.exe",
+            "az-ai"
+        ]
+    ],
+    "checkver": {
+        "github": "https://github.com/SchwartzKamel/azure-openai-cli"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v$version/azure-openai-cli-win-x64.zip"
+            }
+        },
+        "hash": {
+            "url": "$url.sbom.json"
+        }
+    }
+}
