@@ -160,6 +160,85 @@ public class ProgramTests
         Assert.Equal(0, exitCode);
     }
 
+    [Fact]
+    public void Main_VersionShort_EmitsBareSemverOnly()
+    {
+        // Arrange — --version --short must emit only "X.Y.Z\n" (≤10 bytes)
+        var originalOut = Console.Out;
+        var writer = new System.IO.StringWriter();
+        Console.SetOut(writer);
+        try
+        {
+            // Act
+            int exitCode = InvokeMain(new[] { "--version", "--short" });
+
+            // Assert — exit 0, output is bare semver
+            Assert.Equal(0, exitCode);
+            var output = writer.ToString();
+            Assert.DoesNotContain("Azure OpenAI CLI", output);
+            Assert.DoesNotContain("v", output.TrimEnd()); // no leading 'v' prefix
+            // Must match semver pattern X.Y.Z followed by newline
+            Assert.Matches(@"^\d+\.\d+\.\d+\r?\n$", output);
+            // Byte budget: ≤10 bytes as per acceptance criteria
+            Assert.True(System.Text.Encoding.UTF8.GetByteCount(output) <= 10,
+                $"Short version output exceeds 10 bytes: {System.Text.Encoding.UTF8.GetByteCount(output)}");
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
+
+    [Fact]
+    public void Main_VersionShort_AliasShortFlags_SameOutput()
+    {
+        // Arrange — -V -s must behave identically to --version --short
+        var originalOut = Console.Out;
+        var writer = new System.IO.StringWriter();
+        Console.SetOut(writer);
+        try
+        {
+            // Act
+            int exitCode = InvokeMain(new[] { "-V", "-s" });
+
+            // Assert — exit 0, bare semver only
+            Assert.Equal(0, exitCode);
+            var output = writer.ToString();
+            Assert.DoesNotContain("Azure OpenAI CLI", output);
+            Assert.Matches(@"^\d+\.\d+\.\d+\r?\n$", output);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
+
+    [Fact]
+    public void Main_VersionLongForm_StillPrintsBanner()
+    {
+        // Regression guard — bare --version must keep the long-form banner.
+        var originalOut = Console.Out;
+        var writer = new System.IO.StringWriter();
+        Console.SetOut(writer);
+        try
+        {
+            // Act
+            int exitCode = InvokeMain(new[] { "--version" });
+
+            // Assert — long form retains the "Azure OpenAI CLI v…" banner
+            Assert.Equal(0, exitCode);
+            var output = writer.ToString();
+            Assert.Contains("Azure OpenAI CLI v", output);
+            // And the output is DEFINITELY longer than a short-form semver
+            Assert.True(output.Length > 10,
+                $"Long-form --version unexpectedly short: '{output}'");
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
+
     // ── JSON mode ──────────────────────────────────────────────────
 
     [Fact]

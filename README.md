@@ -42,6 +42,8 @@ You need an Azure OpenAI resource — grab the [endpoint](https://learn.microsof
 
 Full flag reference: `az-ai --help`.
 
+Scripting tip: `az-ai --version --short` emits bare semver (e.g. `1.8.0`) — ideal for packaging scripts, release automation, and shell `$()` substitutions.
+
 ## Performance
 
 Measured on `linux-x64`, median of 10 runs of `--version`:

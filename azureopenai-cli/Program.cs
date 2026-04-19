@@ -851,7 +851,19 @@ class Program
             case "--version":
             case "-v":
                 var version = Assembly.GetEntryAssembly()?.GetName().Version;
-                Console.WriteLine($"Azure OpenAI CLI v{version?.ToString(3) ?? "unknown"}");
+                string semver = version?.ToString(3) ?? "unknown";
+                // --short / -s: emit bare semver for script-friendly consumption
+                bool shortForm = args.Skip(1).Any(a =>
+                    a.Equals("--short", StringComparison.OrdinalIgnoreCase) ||
+                    a.Equals("-s", StringComparison.OrdinalIgnoreCase));
+                if (shortForm)
+                {
+                    Console.WriteLine(semver);
+                }
+                else
+                {
+                    Console.WriteLine($"Azure OpenAI CLI v{semver}");
+                }
                 return 0;
 
             case "--help":
@@ -949,6 +961,7 @@ class Program
         Console.WriteLine("  --current-model       Show the currently active model");
         Console.WriteLine("  --set-model <name>    Set the active model");
         Console.WriteLine("  --version, -v         Show version information");
+        Console.WriteLine("  --version --short     Show bare semver only (e.g. 1.8.0) for scripts");
         Console.WriteLine("  --help, -h            Show this help message");
         Console.WriteLine();
         Console.WriteLine("Options:");
