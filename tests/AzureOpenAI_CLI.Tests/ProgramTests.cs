@@ -239,6 +239,137 @@ public class ProgramTests
         }
     }
 
+    // ── Shell completions ──────────────────────────────────────────
+
+    [Fact]
+    public void Main_CompletionsBash_EmitsValidScript()
+    {
+        // Arrange
+        var originalOut = Console.Out;
+        var writer = new System.IO.StringWriter();
+        Console.SetOut(writer);
+        try
+        {
+            // Act
+            int exitCode = InvokeMain(new[] { "--completions", "bash" });
+
+            // Assert — success, script contains bash completion markers
+            Assert.Equal(0, exitCode);
+            var output = writer.ToString();
+            Assert.Contains("complete -F", output);
+            Assert.Contains("az-ai", output);
+            // Script should have a reasonable number of lines (>10 per acceptance)
+            var lineCount = output.Split('\n').Length;
+            Assert.True(lineCount > 10, $"Bash script line count too low: {lineCount}");
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
+
+    [Fact]
+    public void Main_CompletionsZsh_EmitsValidScript()
+    {
+        // Arrange
+        var originalOut = Console.Out;
+        var writer = new System.IO.StringWriter();
+        Console.SetOut(writer);
+        try
+        {
+            // Act
+            int exitCode = InvokeMain(new[] { "--completions", "zsh" });
+
+            // Assert — zsh script contains _az-ai function and compdef
+            Assert.Equal(0, exitCode);
+            var output = writer.ToString();
+            Assert.Contains("_az-ai", output);
+            Assert.Contains("compdef", output);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
+
+    [Fact]
+    public void Main_CompletionsFish_EmitsValidScript()
+    {
+        // Arrange
+        var originalOut = Console.Out;
+        var writer = new System.IO.StringWriter();
+        Console.SetOut(writer);
+        try
+        {
+            // Act
+            int exitCode = InvokeMain(new[] { "--completions", "fish" });
+
+            // Assert — fish script uses `complete -c az-ai`
+            Assert.Equal(0, exitCode);
+            var output = writer.ToString();
+            Assert.Contains("complete -c az-ai", output);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
+
+    [Fact]
+    public void Main_CompletionsInvalidShell_Exits2()
+    {
+        // Arrange — powershell is unsupported
+        var originalErr = Console.Error;
+        var originalOut = Console.Out;
+        var errWriter = new System.IO.StringWriter();
+        var outWriter = new System.IO.StringWriter();
+        Console.SetError(errWriter);
+        Console.SetOut(outWriter);
+        try
+        {
+            // Act
+            int exitCode = InvokeMain(new[] { "--completions", "powershell" });
+
+            // Assert — exit 2, friendly error on stderr, no script on stdout
+            Assert.Equal(2, exitCode);
+            var errOutput = errWriter.ToString();
+            Assert.Contains("powershell", errOutput, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("bash", errOutput);
+            Assert.Contains("zsh", errOutput);
+            Assert.Contains("fish", errOutput);
+            // stdout must not contain a completion script
+            Assert.DoesNotContain("complete -F", outWriter.ToString());
+            Assert.DoesNotContain("complete -c", outWriter.ToString());
+        }
+        finally
+        {
+            Console.SetError(originalErr);
+            Console.SetOut(originalOut);
+        }
+    }
+
+    [Fact]
+    public void Main_CompletionsMissingShell_Exits2()
+    {
+        // Arrange — --completions with no argument should error
+        var originalErr = Console.Error;
+        var errWriter = new System.IO.StringWriter();
+        Console.SetError(errWriter);
+        try
+        {
+            // Act
+            int exitCode = InvokeMain(new[] { "--completions" });
+
+            // Assert — exit 2, usage hint on stderr
+            Assert.Equal(2, exitCode);
+            Assert.Contains("bash", errWriter.ToString());
+        }
+        finally
+        {
+            Console.SetError(originalErr);
+        }
+    }
+
     // ── JSON mode ──────────────────────────────────────────────────
 
     [Fact]

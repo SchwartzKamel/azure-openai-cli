@@ -871,9 +871,128 @@ class Program
                 ShowUsage();
                 return 0;
 
+            case "--completions":
+                if (args.Length < 2)
+                {
+                    Console.Error.WriteLine("[ERROR] Please specify a shell. Usage: --completions <bash|zsh|fish>");
+                    return 2;
+                }
+                return EmitCompletions(args[1]);
+
             default:
                 // Not a model command, continue with normal processing
                 return -1;
+        }
+    }
+
+    // ── Shell completion scripts ──────────────────────────────────
+    // Keep these minimal: enumerate top-level flags only. Users source
+    // the output via `source <(az-ai --completions bash)` or equivalent.
+
+    private const string BashCompletionScript = @"# bash completion for az-ai
+_az_ai_completions()
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur=""${COMP_WORDS[COMP_CWORD]}""
+    prev=""${COMP_WORDS[COMP_CWORD-1]}""
+    opts=""--agent --ralph --persona --raw --json --version --help --model --set-model --current-model --models --completions --temperature --max-tokens --system --schema --tools --max-rounds --config --short""
+
+    case ""${prev}"" in
+        --completions)
+            COMPREPLY=( $(compgen -W ""bash zsh fish"" -- ${cur}) )
+            return 0
+            ;;
+        --set-model|--model)
+            COMPREPLY=( $(compgen -W """" -- ${cur}) )
+            return 0
+            ;;
+    esac
+
+    if [[ ${cur} == -* ]] ; then
+        COMPREPLY=( $(compgen -W ""${opts}"" -- ${cur}) )
+        return 0
+    fi
+}
+complete -F _az_ai_completions az-ai
+complete -F _az_ai_completions azureopenai-cli
+";
+
+    private const string ZshCompletionScript = @"#compdef az-ai azureopenai-cli
+# zsh completion for az-ai
+_az-ai() {
+    local -a opts
+    opts=(
+        '--agent[Enable agentic mode]'
+        '--ralph[Enable Ralph loop mode]'
+        '--persona[Use a persona]'
+        '--raw[Raw text output]'
+        '--json[JSON output]'
+        '--version[Show version]'
+        '--help[Show help]'
+        '--model[Select model]:model:'
+        '--set-model[Set active model]:model:'
+        '--current-model[Show current model]'
+        '--models[List available models]'
+        '--completions[Emit shell completions]:shell:(bash zsh fish)'
+        '--temperature[Override temperature]:value:'
+        '--max-tokens[Override max tokens]:value:'
+        '--system[Override system prompt]:prompt:'
+        '--schema[Enforce JSON schema]:schema:'
+        '--tools[Enable tools list]:tools:'
+        '--max-rounds[Max agent rounds]:rounds:'
+        '--config[Show config]:what:(show)'
+        '--short[Bare semver (with --version)]'
+    )
+    _arguments -s $opts
+}
+compdef _az-ai az-ai azureopenai-cli
+";
+
+    private const string FishCompletionScript = @"# fish completion for az-ai
+complete -c az-ai -l agent -d 'Enable agentic mode'
+complete -c az-ai -l ralph -d 'Enable Ralph loop mode'
+complete -c az-ai -l persona -d 'Use a persona'
+complete -c az-ai -l raw -d 'Raw text output'
+complete -c az-ai -l json -d 'JSON output'
+complete -c az-ai -l version -s v -d 'Show version'
+complete -c az-ai -l help -s h -d 'Show help'
+complete -c az-ai -l model -d 'Select model' -r
+complete -c az-ai -l set-model -d 'Set active model' -r
+complete -c az-ai -l current-model -d 'Show current model'
+complete -c az-ai -l models -d 'List available models'
+complete -c az-ai -l completions -d 'Emit shell completions' -xa 'bash zsh fish'
+complete -c az-ai -l temperature -s t -d 'Override temperature' -r
+complete -c az-ai -l max-tokens -d 'Override max tokens' -r
+complete -c az-ai -l system -d 'Override system prompt' -r
+complete -c az-ai -l schema -d 'Enforce JSON schema' -r
+complete -c az-ai -l tools -d 'Enable tools list' -r
+complete -c az-ai -l max-rounds -d 'Max agent rounds' -r
+complete -c az-ai -l config -d 'Show config' -xa 'show'
+complete -c az-ai -l short -s s -d 'Bare semver (with --version)'
+complete -c azureopenai-cli -w az-ai
+";
+
+    /// <summary>
+    /// Emits a shell completion script to stdout for the requested shell.
+    /// Returns 0 on success, 2 for unknown/invalid shell.
+    /// </summary>
+    internal static int EmitCompletions(string shell)
+    {
+        switch ((shell ?? string.Empty).ToLowerInvariant())
+        {
+            case "bash":
+                Console.Write(BashCompletionScript);
+                return 0;
+            case "zsh":
+                Console.Write(ZshCompletionScript);
+                return 0;
+            case "fish":
+                Console.Write(FishCompletionScript);
+                return 0;
+            default:
+                Console.Error.WriteLine($"[ERROR] Unsupported shell '{shell}'. Supported: bash, zsh, fish.");
+                return 2;
         }
     }
 
@@ -962,6 +1081,7 @@ class Program
         Console.WriteLine("  --set-model <name>    Set the active model");
         Console.WriteLine("  --version, -v         Show version information");
         Console.WriteLine("  --version --short     Show bare semver only (e.g. 1.8.0) for scripts");
+        Console.WriteLine("  --completions <shell> Emit shell completion script (bash|zsh|fish) to stdout");
         Console.WriteLine("  --help, -h            Show this help message");
         Console.WriteLine();
         Console.WriteLine("Options:");
