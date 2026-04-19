@@ -442,6 +442,17 @@ make clean && make build && make scan
 We take security issues seriously. If you discover a vulnerability, please
 report it responsibly.
 
+### Supported Versions
+
+Only the latest minor release receives security fixes. Prior lines are best-
+effort and users are strongly encouraged to upgrade.
+
+| Version | Supported |
+|---|---|
+| `1.8.x` (current) | ✅ Active security support |
+| `1.7.x` | ⚠️ Critical fixes only, until next minor |
+| `< 1.7` | ❌ Unsupported — please upgrade |
+
 ### How to Report
 
 | Method | Details |
@@ -868,6 +879,67 @@ from tool outputs:
 - [CIS Docker Benchmark](https://www.cisecurity.org/benchmark/docker)
 - [Grype Vulnerability Scanner](https://github.com/anchore/grype)
 - [Azure RBAC for Cognitive Services](https://learn.microsoft.com/en-us/azure/ai-services/authentication)
+
+---
+
+## 15. Repository Hardening Recommendations
+
+> Advisory guidance for maintainers and forkers. These controls cannot be
+> fully expressed in code and must be configured in the GitHub UI.
+
+### Branch Protection (`main`)
+
+The following rules should be enforced via **Settings → Branches → Branch
+protection rules** (or the equivalent Rulesets) for the `main` branch:
+
+| Rule | Setting |
+|---|---|
+| Require a pull request before merging | ✅ — at least **1** approving review |
+| Dismiss stale approvals on new commits | ✅ |
+| Require review from Code Owners | ✅ (when `CODEOWNERS` exists) |
+| Require status checks to pass before merging | ✅ — `build-and-test`, `integration-test`, `docker` |
+| Require branches to be up to date before merging | ✅ |
+| Require signed commits | ✅ |
+| Require linear history | ✅ (recommended) |
+| Include administrators | ✅ |
+| Restrict who can push to matching branches | ✅ — maintainers only |
+| Allow force pushes | ❌ Disabled |
+| Allow deletions | ❌ Disabled |
+
+### Tag Protection
+
+Release tags (`v*`) should be protected to prevent retroactive tag hijacking:
+
+- **Settings → Tags → New rule** → pattern `v*` → restrict to maintainers.
+
+### Actions Hardening
+
+- **Settings → Actions → General**:
+  - Allow only GitHub-owned and verified actions, plus the SHAs explicitly
+    pinned in this repository.
+  - Workflow permissions: **Read repository contents** (default). Workflows
+    opt into more via `permissions:` blocks.
+  - Require approval for all outside contributor workflow runs.
+
+### Vulnerability Reporting Infrastructure
+
+- **Private vulnerability reporting**: enable under **Settings → Code security
+  and analysis → Private vulnerability reporting**.
+- **Dependabot alerts + security updates**: enable.
+- **Dependency graph**: enable.
+- **Code scanning**: OpenSSF Scorecards runs weekly (`.github/workflows/scorecards.yml`).
+
+### Supply-Chain Attestations
+
+Release artifacts (binaries and GHCR container image) are published with
+[SLSA build provenance](https://slsa.dev/) via `actions/attest-build-provenance`.
+Verify a downloaded binary with:
+
+```bash
+gh attestation verify <artifact> --repo SchwartzKamel/azure-openai-cli
+```
+
+SBOMs (CycloneDX JSON) are attached to each release alongside the binaries.
 
 ---
 
