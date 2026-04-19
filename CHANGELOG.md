@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.1] — 2026-04-19
+
+### Fixed
+- **Release workflow: CycloneDX SBOM tool pin** — The v1.8.0 release workflow
+  failed in all five `build-binaries` matrix jobs because
+  `dotnet tool install --global CycloneDX --version 4.0.2` referenced a version
+  that does not exist on NuGet (latest is 6.x). As a result, no binary artifacts
+  or binary-provenance attestations shipped for v1.8.0 (the container image and
+  its attestation shipped cleanly and remain the anchor for `v1.8.0`). The tool
+  is now pinned via a `.config/dotnet-tools.json` local manifest (CycloneDX
+  6.1.1), restored with `dotnet tool restore`, and invoked as
+  `dotnet dotnet-CycloneDX` with the current `--output-format Json` flag.
+  Dependabot will surface future CycloneDX bumps as reviewable PRs.
+- **Release runbook** — New `docs/runbooks/release-runbook.md` codifies the
+  pre-flight checklist, tag-and-push sequence, post-release verification, and
+  rollback / hotfix procedure so the next release does not re-discover the
+  lessons learned from v1.8.0.
+
 ## [1.8.0] — 2025-11-20
 
 ### Changed

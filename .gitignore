@@ -68,6 +68,9 @@ UpgradeLog*.htm
 *.pdb
 *.cache
 *.config
+# But DO track the .NET local tool manifest — needed by release.yml for SBOM.
+!.config/
+!.config/dotnet-tools.json
 *.lock.json
 
 # Smith workspace (auto-added by smith init)

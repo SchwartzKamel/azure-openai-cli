@@ -65,13 +65,14 @@ jobs:
           fi
 
       - name: Generate SBOM (CycloneDX)
+        # Tool version is pinned in .config/dotnet-tools.json so it stays
+        # reproducible and a single bump (or Dependabot PR) covers every job.
         run: |
-          dotnet tool install --global CycloneDX --version 4.0.2
-          export PATH="$PATH:$HOME/.dotnet/tools"
-          dotnet CycloneDX azureopenai-cli/AzureOpenAI_CLI.csproj \
+          dotnet tool restore
+          dotnet dotnet-CycloneDX azureopenai-cli/AzureOpenAI_CLI.csproj \
             --output . \
             --filename ${{ matrix.name }}.sbom.json \
-            --json
+            --output-format Json
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
