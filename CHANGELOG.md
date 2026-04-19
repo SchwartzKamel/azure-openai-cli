@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`az-ai --completions <shell>`** — Emit shell-completion scripts for
+  `bash`, `zsh`, and `fish`. Pipe into your rc file (e.g.
+  `az-ai --completions bash >> ~/.bash_completion`) for flag / subcommand
+  tab-completion.
+- **Packaging scaffolds** — Homebrew formula, Scoop manifest, and Nix flake
+  under [`packaging/`](packaging/) for third-party distribution channels.
+  Not yet submitted to upstream taps/buckets; see `packaging/README.md`.
+- **Verifying Releases guide** — [`docs/verifying-releases.md`](docs/verifying-releases.md)
+  walks users through cosign / GitHub attestation verification for binaries,
+  container images, and SBOMs.
+- **Cost Optimization guide** — [`docs/cost-optimization.md`](docs/cost-optimization.md)
+  covers model selection, token budgeting, caching, and per-persona cost
+  profiles.
+- **Trademark Policy** — [`docs/legal/trademark-policy.md`](docs/legal/trademark-policy.md)
+  clarifies permitted use of the "Azure OpenAI CLI" / `az-ai` names.
+- **ADR-002: Squad persona + memory architecture** —
+  [`docs/adr/ADR-002-squad-persona-memory.md`](docs/adr/ADR-002-squad-persona-memory.md)
+  records the persona-config + `.squad/` memory design.
+- **FR-012 proposal: Plugin / tool registry** —
+  [`docs/proposals/FR-012-plugin-tool-registry.md`](docs/proposals/FR-012-plugin-tool-registry.md)
+  outlines a future extensibility surface for third-party tools.
+- **Asciinema demo scripts** — [`docs/demos/`](docs/demos/) ships rehearsed
+  terminal demos for standard, raw, and agent modes, ready for recording.
+- **Contributor onboarding** — New `CONTRIBUTORS.md`, structured issue forms
+  under `.github/ISSUE_TEMPLATE/`, and a PR template at
+  [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
+- **Property-based tests for `CliParser`** — Boundary and invariant coverage
+  using FsCheck-style generators. Total test count **541 → 925**.
+
+### Changed
+- **CI matrix expanded to `{ubuntu, macos, windows}`** — `build-and-test`
+  now runs on all three platforms in parallel (fail-fast off), catching
+  platform-specific regressions before release rather than in the
+  cross-OS publish matrix.
+
 ## [1.8.1] — 2026-04-19
 
 ### Fixed

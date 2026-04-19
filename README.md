@@ -92,11 +92,13 @@ Set via environment, `.env` file, or `~/.azureopenai-cli.json`. Precedence: **CL
 
 Switch models on the fly: `az-ai --models`, `az-ai --set-model gpt-4o` (persisted to `~/.azureopenai-cli.json`).
 
+Keeping token spend sane — model selection, caching, and per-persona budgets: [docs/cost-optimization.md](docs/cost-optimization.md).
+
 ## Security
 
 The CLI is meant to be given shell and file access inside agent mode, so defense-in-depth matters. `shell_exec` blocks a denylist of destructive commands and enforces timeouts; `web_fetch` is HTTPS-only with SSRF filtering against private/link-local ranges; `read_file` refuses sensitive paths and caps read size; `delegate_task` recursion is depth-capped. Credentials are never baked into the binary or Docker image — always injected at runtime.
 
-Full threat model and hardening checklist: [SECURITY.md](SECURITY.md). Report vulnerabilities per the policy there.
+Full threat model and hardening checklist: [SECURITY.md](SECURITY.md). Report vulnerabilities per the policy there. To cryptographically verify a downloaded binary, container, or SBOM against the build attestations, see [docs/verifying-releases.md](docs/verifying-releases.md).
 
 ## Install
 
@@ -132,4 +134,4 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 
 ## License
 
-[MIT](LICENSE). Third-party attributions in [NOTICE](NOTICE). Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+[MIT](LICENSE). Third-party attributions in [NOTICE](NOTICE). Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md), the [Code of Conduct](CODE_OF_CONDUCT.md), and the roll call in [CONTRIBUTORS.md](CONTRIBUTORS.md).
