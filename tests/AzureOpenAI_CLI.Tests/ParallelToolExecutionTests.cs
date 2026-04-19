@@ -56,12 +56,27 @@ public class ParallelToolExecutionTests : IDisposable
         sw.Stop();
 
         // Assert — all three returned valid results
+        //
+        // Note (audit H5): this test was previously advertised as a
+        // wall-clock concurrency check ("should be close to 200 ms"), but
+        // get_datetime is effectively instantaneous so there is no timing
+        // signal to assert. The concurrency invariant we can verify is
+        // that Task.WhenAll returns *all* results, none corrupted, which
+        // is what this test now asserts. A separate fixture would be
+        // needed for genuine wall-clock verification (e.g., a Delay tool).
         Assert.Equal(3, results.Length);
         foreach (var r in results)
         {
             Assert.DoesNotContain("Error", r);
-            Assert.Contains(DateTime.Now.Year.ToString(), r);
+            // Year-boundary safe (audit H1): regex 20xx, not literal current year.
+            Assert.Matches(@"20\d{2}", r);
         }
+        // Sanity guard on the stopwatch: parallel dispatch for three trivial
+        // tools must not take seconds. 5s is a very loose upper bound that
+        // fails only on a broken Task.WhenAll (e.g., re-serialised execution
+        // with some future blocking bug) but tolerates slow CI.
+        Assert.True(sw.Elapsed.TotalSeconds < 5,
+            $"three get_datetime calls via Task.WhenAll took {sw.Elapsed.TotalSeconds:F1}s — suspect sequential execution");
     }
 
     // ── Order preservation ──────────────────────────────────────────
@@ -92,7 +107,8 @@ public class ParallelToolExecutionTests : IDisposable
         // Assert — results match their positional input
         Assert.Equal("CONTENT_ONE", results[0]);
         Assert.DoesNotContain("Error", results[1]);       // datetime result
-        Assert.Contains(DateTime.Now.Year.ToString(), results[1]);
+        // Year-boundary safe (audit H1): regex 20xx, not literal current year.
+        Assert.Matches(@"20\d{2}", results[1]);
         Assert.Equal("CONTENT_TWO", results[2]);
     }
 
@@ -202,7 +218,8 @@ public class ParallelToolExecutionTests : IDisposable
         // Assert
         Assert.Single(results);
         Assert.DoesNotContain("Error", results[0]);
-        Assert.Contains(DateTime.Now.Year.ToString(), results[0]);
+        // Year-boundary safe (audit H1): regex 20xx, not literal current year.
+        Assert.Matches(@"20\d{2}", results[0]);
     }
 
     [Fact]

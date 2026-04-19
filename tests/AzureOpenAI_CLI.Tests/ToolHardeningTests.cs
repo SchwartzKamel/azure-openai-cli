@@ -200,7 +200,8 @@ public class ToolHardeningTests
         var result = await tool.ExecuteAsync(args, CancellationToken.None);
 
         Assert.DoesNotContain("Error", result);
-        Assert.Contains(DateTime.Now.Year.ToString(), result);
+        // Year-boundary safe (audit H1): match 20xx structure, not literal current year.
+        Assert.Matches(@"20\d{2}", result);
     }
 
     // ═══════════════════════════════════════════════════════════════════
