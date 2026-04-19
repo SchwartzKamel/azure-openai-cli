@@ -139,3 +139,79 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 ## Questions?
 
 Not sure where to start? Open an issue with your question — we're happy to help!
+
+## First Contribution
+
+New here? Welcome. Here's the fastest path from clone to merged PR.
+
+### 1. Set up your environment
+
+```bash
+git clone https://github.com/SchwartzKamel/azure-openai-cli.git
+cd azure-openai-cli
+make setup   # restores dependencies and preps local tooling
+make test    # runs the full test suite
+```
+
+If `make test` is green, you're good. If it isn't, that's already a valuable
+bug report — open an issue with your OS and the output.
+
+### 2. Find something small
+
+Look for issues labeled [`good-first-issue`](https://github.com/SchwartzKamel/azure-openai-cli/labels/good-first-issue).
+These are scoped deliberately small: a docs fix, a single-function change, a
+clear test to add. Comment on the issue saying you're picking it up so no one
+duplicates your work.
+
+Nothing on the board catches your eye? Small PRs we always welcome:
+
+- Typo and grammar fixes in docs
+- A missing `--help` example
+- An extra test for an existing behavior
+- A clearer error message
+
+### 3. Ship the small PR
+
+```bash
+git checkout -b fix/short-description
+# ...make your change...
+make test
+git commit -m "docs: clarify chat --stream flag behavior"
+git push origin fix/short-description
+```
+
+Open the PR. Fill in the template. `make test` should pass in CI. A
+maintainer will review — we try to respond within a few days. Ping the PR
+if a week goes by; we don't mind the nudge.
+
+### A note on AI assistance
+
+Using Copilot, Claude, or similar to help write code is fine and
+encouraged — just disclose it. Add a `Co-authored-by:` trailer to your
+commit message so the assistant shows up as a co-author:
+
+```
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+```
+
+Don't be shy. We'd rather have a rough first PR from you than a polished
+one that never leaves your laptop.
+
+## Labels
+
+We use a small, boring set of labels. If you're browsing issues, these are
+the ones that matter:
+
+| Label | Meaning |
+| --- | --- |
+| `good-first-issue` | Open, well-scoped, ideal for newcomers. Start here. |
+| `help-wanted` | We'd love help, but the scope assumes some project familiarity. |
+| `needs-triage` | New, awaiting maintainer review. Auto-applied by issue forms. |
+| `bug` | Confirmed defect or regression. |
+| `enhancement` | Feature request or improvement. |
+| `question` | A usage or design question; often ends up in Discussions. |
+| `docs` | Documentation-only change. |
+| `security` | Security-sensitive. Prefer [Security Advisories](https://github.com/SchwartzKamel/azure-openai-cli/security/advisories/new) for vulnerabilities. |
+
+Maintainers apply labels during triage. If you think a label is wrong,
+say so on the issue — we're not precious about it.

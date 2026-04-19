@@ -1,0 +1,103 @@
+name: 🐛 Bug report
+description: Something in az-ai isn't working the way the docs say it should.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Clear reproduction steps
+        make the difference between a fix this week and a fix next quarter.
+
+        Before filing, please search [existing issues](https://github.com/SchwartzKamel/azure-openai-cli/issues?q=is%3Aissue)
+        to avoid duplicates.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the actual behavior.
+      placeholder: When I ran `az-ai chat`, it exited with code 1 and printed...
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What did you expect to happen?
+      description: What should have happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal, self-contained steps. Include commands, config snippets (redact secrets!), and input.
+      placeholder: |
+        1. Run `az-ai config init`
+        2. Set `AZURE_OPENAI_ENDPOINT=...`
+        3. Run `az-ai chat "hello"`
+        4. Observe error
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: az-ai version
+      description: Output of `az-ai --version --short`.
+      placeholder: "0.3.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS and architecture
+      options:
+        - Linux x64
+        - Linux arm64
+        - macOS Intel
+        - macOS Apple Silicon
+        - Windows x64
+        - Other (describe in logs)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install az-ai?
+      options:
+        - make install
+        - homebrew
+        - scoop
+        - nix
+        - docker
+        - built from source
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / stack trace
+      description: |
+        Paste relevant output. Re-run with `--verbose` if possible.
+        **Redact secrets, endpoints, and tokens before pasting.**
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmations
+      options:
+        - label: I have searched existing issues and this is not a duplicate.
+          required: true
+        - label: I have redacted any API keys, endpoints, or other secrets from my report.
+          required: true

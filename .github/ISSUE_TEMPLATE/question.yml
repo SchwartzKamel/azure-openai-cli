@@ -1,0 +1,38 @@
+name: ❓ Question
+description: Ask how to use az-ai, or about expected behavior.
+title: "[Question]: "
+labels: ["question", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before filing**, consider [GitHub Discussions](https://github.com/SchwartzKamel/azure-openai-cli/discussions)
+        for open-ended questions — you'll typically get faster answers, and
+        others can benefit from the thread.
+
+        Use this issue form when your question is specific, reproducible, and
+        might turn into a bug report or documentation fix.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What are you trying to accomplish? What's unclear?
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you already tried?
+      description: Commands run, docs read, searches performed. This helps us point you somewhere useful instead of repeating what you've seen.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmations
+      options:
+        - label: I have searched existing issues and Discussions for my question.
+          required: true

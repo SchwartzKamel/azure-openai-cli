@@ -1,0 +1,52 @@
+name: ✨ Feature request
+description: Suggest an improvement or new capability for az-ai.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape az-ai. Feature requests that describe the
+        *problem* first — not just the solution — are the easiest to act on.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: What can't you do today? Who is affected? How often?
+      placeholder: When scripting az-ai in CI, I can't pipe JSON output because...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What would you like az-ai to do? Include CLI shape, flags, output, or UX if relevant.
+      placeholder: Add a `--json` flag to `az-ai chat` that emits a JSON object with fields...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you evaluated, and why they fall short.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links, related issues, prior art in other CLIs, screenshots, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmations
+      options:
+        - label: I have searched existing issues and this is not a duplicate.
+          required: true
