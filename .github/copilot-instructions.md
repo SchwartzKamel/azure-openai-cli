@@ -85,7 +85,7 @@
 
 ## Agent Archetypes 🤖
 
-This project uses [GitHub Copilot custom agents](https://gh.io/customagents/config) — specialized AI personas defined in `.github/agents/`. A **main cast** of 5 drives the core build-ship loop; a bench of 10 **supporting players** covers executive PM, release, marketing, QA, legal, FinOps, integrations, DevRel, SRE/reliability, and prompt engineering — 15 agents total. See [`AGENTS.md`](../AGENTS.md) for the full rationale; this section is a kept-in-sync quick reference.
+This project uses [GitHub Copilot custom agents](https://gh.io/customagents/config) — specialized AI personas defined in `.github/agents/`. A **main cast** of 5 drives the core build-ship loop; a bench of 20 **supporting players** covers executive PM, release, marketing, QA, legal, FinOps, integrations, DevRel, SRE/reliability, prompt engineering, perf benchmarking, accessibility, competitive analysis, conference speaking, AI ethics, i18n, UX polish, process/change management, style/merge gating, and red-team/chaos — **25 agents total**. See [`AGENTS.md`](../AGENTS.md) for the full rationale; this section is a kept-in-sync quick reference.
 
 ### Main Cast
 
@@ -111,31 +111,57 @@ This project uses [GitHub Copilot custom agents](https://gh.io/customagents/conf
 | **Uncle Leo** | DevRel / Community | Contributor onboarding, issue triage, tone stewardship | [`uncle-leo.agent.md`](agents/uncle-leo.agent.md) |
 | **Frank Costanza** | SRE / Observability / Incident Response | SLOs, opt-in telemetry, reliability signals, incident runbooks | [`frank.agent.md`](agents/frank.agent.md) |
 | **The Maestro** | Prompt Engineering / LLM Research | Prompt library, model A/B, eval harness, temperature cookbook | [`maestro.agent.md`](agents/maestro.agent.md) |
+| **Kenny Bania** | Performance Benchmarking | Pre-merge perf benchmarks, regression detection, throughput/latency baselines | [`bania.agent.md`](agents/bania.agent.md) |
+| **Mickey Abbott** | Accessibility & CLI Ergonomics | a11y review, screen-reader output, keyboard ergonomics, terminal UX | [`mickey.agent.md`](agents/mickey.agent.md) |
+| **Sue Ellen Mischke** | Competitive Analysis & Market Positioning | Competitor tracking, differentiators, positioning briefs | [`sue-ellen.agent.md`](agents/sue-ellen.agent.md) |
+| **Keith Hernandez** | DevRel & Conference Speaking | Talk pitches, demo scripts, CFP submissions, stage presence | [`keith.agent.md`](agents/keith.agent.md) |
+| **Rabbi Kirschbaum** | AI Ethics & Responsible Use | Ethical guardrails, responsible-AI review, bias and misuse checks | [`rabbi.agent.md`](agents/rabbi.agent.md) |
+| **Babu Bhatt** | i18n / Localization | Translations, locale handling, Unicode correctness, RTL support | [`babu.agent.md`](agents/babu.agent.md) |
+| **Russell Dalrymple** | UX / Presentation Standards | Visual polish, output formatting, presentation consistency | [`russell.agent.md`](agents/russell.agent.md) |
+| **Mr. Wilhelm** | Process & Change Management | Change control, process adherence, merge protocol, handoffs | [`wilhelm.agent.md`](agents/wilhelm.agent.md) |
+| **The Soup Nazi** | Code Style & Merge Gatekeeping | Formatting, style enforcement, strict merge gates — no soup for you | [`soup-nazi.agent.md`](agents/soup-nazi.agent.md) |
+| **FDR (Franklin Delano Romanowski)** | Adversarial Red Team / Chaos Engineering | Red-team exercises, fault injection, chaos scenarios, attack paths | [`fdr.agent.md`](agents/fdr.agent.md) |
 
 ### Workflow
 
 ```
-Feature Idea
-    │
-    ▼
-Mr. Pitt (scopes) ──→ Costanza (product proposal) ──→ docs/proposals/
-    │
-    ▼
-Maestro (prompt design) ──→ Kramer (implements) ⇄ Puddy (tests adversarially) ⇄ Morty (cost-audits)
-    │
-    ▼
-Newman (security) ⇄ Jackie (license/legal) ⇄ Frank (reliability SLOs)
-    │
-    ▼
-Elaine (technical docs) ⇄ Peterman (marketing copy) ⇄ Bob (packaging/integrations)
-    │
-    ▼
-Jerry (DevOps polish) ──→ Mr. Lippman (release) ──→ 🚢 Ship
-                                                    │
-                                                    ▼
-                                              Uncle Leo (community)
-                                              Frank (incidents, SLO monitoring)
-                                              ──→ 📣 Welcome new users
-                                              ──→ 🛠  Triage issues
-                                              ──→ 👋 Onboard contributors
+                              Feature Idea
+                                   │
+                                   ▼
+┌─────────────────────────────── PLANNING ───────────────────────────────┐
+│  Mr. Pitt ──→ Costanza ──→ Sue Ellen (competitive) ──→ Rabbi (ethics)  │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌──────────────────────────────── DESIGN ────────────────────────────────┐
+│  Maestro (prompt) ──→ Russell (UX) ──→ Mickey (a11y) ──→ Babu (i18n)   │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌───────────────────────── IMPLEMENTATION ───────────────────────────────┐
+│              Kramer  ⇄  Puddy  ⇄  Morty (cost-audit)                   │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌──────────────────────────────── TESTING ───────────────────────────────┐
+│       FDR (red team / chaos)  ⇄  Bania (perf benchmarks)               │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌─────────────────────────────── HARDENING ──────────────────────────────┐
+│       Newman (security)  ⇄  Frank (reliability / SLOs)                 │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌────────────────────────────── MERGE GATES ─────────────────────────────┐
+│    Soup Nazi (style)  ⇄  Wilhelm (process)  ⇄  Jackie (licensing)      │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌─────────────────────────── RELEASE & LAUNCH ───────────────────────────┐
+│        Jerry (CI)  ──→  Mr. Lippman (release)  ──→  🚢 Ship            │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌──────────────────────── COMMUNITY & ADVOCACY ──────────────────────────┐
+│  Peterman (copy)  ⇄  Keith (speaking)  ⇄  Uncle Leo (community)        │
+│              ⇄  Bob (packaging)  ⇄  Elaine (docs)                      │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌───────────────────────────── OPERATIONS ───────────────────────────────┐
+│       Frank (SLOs / incidents)  ⇄  Morty (cost watch)                  │
+└────────────────────────────────────────────────────────────────────────┘
 ```

@@ -6,7 +6,7 @@ This project uses [GitHub Copilot custom agents](https://gh.io/customagents/conf
 
 Agent archetypes are markdown files that configure Copilot with a **name**, **description**, and **system instructions** scoped to a particular role. When invoked, each agent applies its expertise to the task — a product manager thinks about UX and roadmaps, an engineer thinks about correctness and tests.
 
-This project uses a **fleet dispatch pattern**: instead of one catch-all agent, specialized agents collaborate across their domains. The **main cast** drives the core build-ship loop; a bench of **supporting players** — NBC-producer style — fills in the executive, release, marketing, QA, and legal beats that keep the show on the air.
+This project uses a **fleet dispatch pattern**: instead of one catch-all agent, specialized agents collaborate across their domains. The **main cast** of 5 drives the core build-ship loop; a bench of 20 **supporting players** — NBC-producer style — fills in the executive, release, marketing, QA, legal, ethics, a11y, i18n, competitive, perf, chaos, style, and advocacy beats that keep the show on the air. **25 agents total.**
 
 ## Agent Fleet
 
@@ -36,33 +36,61 @@ The supporting players are the executive suite and service bench behind the main
 | **Uncle Leo** | DevRel / Community | Contributor onboarding, issue triage, tone stewardship | [`uncle-leo.agent.md`](.github/agents/uncle-leo.agent.md) |
 | **Frank Costanza** | SRE / Observability / Incident Response | SLOs, opt-in telemetry, reliability signals, incident runbooks | [`frank.agent.md`](.github/agents/frank.agent.md) |
 | **The Maestro** | Prompt Engineering / LLM Research | Prompt library, model A/B, eval harness, temperature cookbook | [`maestro.agent.md`](.github/agents/maestro.agent.md) |
+| **Kenny Bania** | Performance Benchmarking | Pre-merge perf benchmarks, regression detection, throughput/latency baselines | [`bania.agent.md`](.github/agents/bania.agent.md) |
+| **Mickey Abbott** | Accessibility & CLI Ergonomics | a11y review, screen-reader output, keyboard ergonomics, terminal UX | [`mickey.agent.md`](.github/agents/mickey.agent.md) |
+| **Sue Ellen Mischke** | Competitive Analysis & Market Positioning | Competitor tracking, differentiators, positioning briefs | [`sue-ellen.agent.md`](.github/agents/sue-ellen.agent.md) |
+| **Keith Hernandez** | DevRel & Conference Speaking | Talk pitches, demo scripts, CFP submissions, stage presence | [`keith.agent.md`](.github/agents/keith.agent.md) |
+| **Rabbi Kirschbaum** | AI Ethics & Responsible Use | Ethical guardrails, responsible-AI review, bias and misuse checks | [`rabbi.agent.md`](.github/agents/rabbi.agent.md) |
+| **Babu Bhatt** | i18n / Localization | Translations, locale handling, Unicode correctness, RTL support | [`babu.agent.md`](.github/agents/babu.agent.md) |
+| **Russell Dalrymple** | UX / Presentation Standards | Visual polish, output formatting, presentation consistency | [`russell.agent.md`](.github/agents/russell.agent.md) |
+| **Mr. Wilhelm** | Process & Change Management | Change control, process adherence, merge protocol, handoffs | [`wilhelm.agent.md`](.github/agents/wilhelm.agent.md) |
+| **The Soup Nazi** | Code Style & Merge Gatekeeping | Formatting, style enforcement, strict merge gates — no soup for you | [`soup-nazi.agent.md`](.github/agents/soup-nazi.agent.md) |
+| **FDR (Franklin Delano Romanowski)** | Adversarial Red Team / Chaos Engineering | Red-team exercises, fault injection, chaos scenarios, attack paths | [`fdr.agent.md`](.github/agents/fdr.agent.md) |
 
 ## How They're Used
 
+The fleet runs as a multi-phase pipeline. Not every phase fires for every change — small bugfixes skip most of it — but at release boundaries and for anything user-visible, the full cast shows up.
+
 ```
-Feature Idea
-    │
-    ▼
-Mr. Pitt (scopes) ──→ Costanza (product proposal) ──→ docs/proposals/
-    │
-    ▼
-Maestro (prompt design) ──→ Kramer (implements) ⇄ Puddy (tests adversarially) ⇄ Morty (cost-audits)
-    │
-    ▼
-Newman (security) ⇄ Jackie (license/legal) ⇄ Frank (reliability SLOs)
-    │
-    ▼
-Elaine (technical docs) ⇄ Peterman (marketing copy) ⇄ Bob (packaging/integrations)
-    │
-    ▼
-Jerry (DevOps polish) ──→ Mr. Lippman (release) ──→ 🚢 Ship
-                                                    │
-                                                    ▼
-                                              Uncle Leo (community)
-                                              Frank (incidents, SLO monitoring)
-                                              ──→ 📣 Welcome new users
-                                              ──→ 🛠  Triage issues
-                                              ──→ 👋 Onboard contributors
+                              Feature Idea
+                                   │
+                                   ▼
+┌─────────────────────────────── PLANNING ───────────────────────────────┐
+│  Mr. Pitt ──→ Costanza ──→ Sue Ellen (competitive) ──→ Rabbi (ethics)  │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌──────────────────────────────── DESIGN ────────────────────────────────┐
+│  Maestro (prompt) ──→ Russell (UX) ──→ Mickey (a11y) ──→ Babu (i18n)   │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌───────────────────────── IMPLEMENTATION ───────────────────────────────┐
+│              Kramer  ⇄  Puddy  ⇄  Morty (cost-audit)                   │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌──────────────────────────────── TESTING ───────────────────────────────┐
+│       FDR (red team / chaos)  ⇄  Bania (perf benchmarks)               │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌─────────────────────────────── HARDENING ──────────────────────────────┐
+│       Newman (security)  ⇄  Frank (reliability / SLOs)                 │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌────────────────────────────── MERGE GATES ─────────────────────────────┐
+│    Soup Nazi (style)  ⇄  Wilhelm (process)  ⇄  Jackie (licensing)      │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌─────────────────────────── RELEASE & LAUNCH ───────────────────────────┐
+│        Jerry (CI)  ──→  Mr. Lippman (release)  ──→  🚢 Ship            │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌──────────────────────── COMMUNITY & ADVOCACY ──────────────────────────┐
+│  Peterman (copy)  ⇄  Keith (speaking)  ⇄  Uncle Leo (community)        │
+│              ⇄  Bob (packaging)  ⇄  Elaine (docs)                      │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 ▼
+┌───────────────────────────── OPERATIONS ───────────────────────────────┐
+│       Frank (SLOs / incidents)  ⇄  Morty (cost watch)                  │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 Each agent is stateless — invoke any of them at any time via the Copilot CLI or GitHub Copilot Chat. They can be used individually for focused tasks or composed as a pipeline for larger features. The supporting players are optional for small changes but become essential at release boundaries and for anything user-visible.
