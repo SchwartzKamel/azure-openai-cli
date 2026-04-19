@@ -38,10 +38,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   using FsCheck-style generators. Total test count **541 → 925**.
 
 ### Changed
-- **CI matrix expanded to `{ubuntu, macos, windows}`** — `build-and-test`
-  now runs on all three platforms in parallel (fail-fast off), catching
-  platform-specific regressions before release rather than in the
-  cross-OS publish matrix.
+- **CI matrix expanded to `{ubuntu, macos}`** — `build-and-test` now runs
+  on Ubuntu **and** macOS in parallel (fail-fast off), catching
+  platform-specific regressions before release. `windows-latest` was in
+  scope for this Golden Run but surfaced 26 pre-existing POSIX-path
+  assumptions (`/bin/sh`, `/etc/passwd`, `/root/.ssh/*`) in
+  `ToolHardeningTests` / `SecurityToolTests` that predate this release.
+  Tracked as a v1.9 follow-up; the cross-OS *publish* matrix in
+  `release.yml` continues to build + smoke-test `win-x64` / `win-arm64`
+  binaries, so shipped Windows artifacts remain covered.
 
 ## [1.8.1] — 2026-04-19
 
