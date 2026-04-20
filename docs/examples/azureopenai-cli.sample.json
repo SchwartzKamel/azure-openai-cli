@@ -1,0 +1,15 @@
+{
+  "models": {
+    "fast": "gpt-4o-mini",
+    "smart": "gpt-4o",
+    "reasoning": "gpt-5",
+    "cheap": "gpt-35-turbo"
+  },
+  "default_model": "fast",
+  "defaults": {
+    "temperature": 0.7,
+    "max_tokens": 4000,
+    "timeout_seconds": 90,
+    "system_prompt": "You are a terse, accurate assistant. No preamble, no sign-off."
+  }
+}
