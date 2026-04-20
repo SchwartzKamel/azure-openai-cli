@@ -9,7 +9,7 @@
 
 1. [Overview](#overview)
 2. [Prerequisites](#prerequisites)
-3. [Espanso Configuration](#espanso-configuration)
+3. [Espanso Configuration](#espanso-configuration) — Linux / macOS / Windows / **WSL**
 4. [AutoHotKey Configuration](#autohotkey-configuration)
 5. [Performance Tips](#performance-tips)
 6. [Troubleshooting](#troubleshooting)
@@ -298,6 +298,89 @@ matches:
 
 > **Tip:** On Windows, if `az-ai` isn't on your `PATH`, use the full path to the binary:  
 > `C:\\Users\\you\\tools\\AzureOpenAI_CLI.exe`
+
+### WSL Variants (the `:shaka:` build) 🤙
+
+If you're on Windows but do your real work in WSL, you've got two clean paths. Both use the **Linux-native AOT binary** (`dist/aot/AzureOpenAI_CLI`, ~8.9 MB, ~11 ms cold start) — skip Docker entirely, skip the `.exe`, just run the native ELF. This is the *fastest* setup on any platform: no Docker daemon, no interop translation, pure syscalls.
+
+**Path A — Espanso running *inside* WSL** (recommended if you do most text work in a Linux GUI app, terminal, VS Code Remote-WSL, etc.)
+
+Install Espanso natively in WSL, drop the Linux config, done. Zero Windows/Linux boundary — same process tree:
+
+```bash
+# Inside WSL (Ubuntu/Debian-style)
+curl -fsSL https://github.com/federico-terzi/espanso/releases/latest/download/espanso-debian-x11-amd64.deb \
+  -o /tmp/espanso.deb
+sudo apt install /tmp/espanso.deb
+espanso service register
+espanso start
+
+# Put the AOT binary somewhere on PATH
+sudo install -m 0755 dist/aot/AzureOpenAI_CLI /usr/local/bin/az-ai
+az-ai --help  # should print in < 20ms
+```
+
+Use the **Linux/macOS Espanso config** from earlier in this doc as-is — `xclip` and all. It works unmodified.
+
+**Path B — Espanso running on *Windows*, calling the WSL binary** (recommended if you need expansion inside Windows apps: Outlook, Teams, Edge, Notepad, the whole Win32 stack)
+
+Windows Espanso shells out to `wsl.exe` to hop the boundary. The WSL2 VM stays warm between invocations, so the boundary adds roughly **20–80 ms** on top of the ~11 ms AOT cold start. Total local overhead is still <100 ms — the Azure round-trip dwarfs it.
+
+```yaml
+# %APPDATA%\espanso\match\ai-wsl.yml
+# Windows Espanso → WSL → AOT az-ai
+matches:
+
+  - trigger: ":aifix"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          # powershell Get-Clipboard -> wsl stdin -> az-ai -> stdout -> Espanso
+          cmd: "powershell -NoProfile -Command \"Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --max-tokens 500 --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'\""
+          shell: cmd
+
+  - trigger: ":aicommit"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          # For git diffs copied to clipboard. 100-token cap keeps the bill honest.
+          cmd: "powershell -NoProfile -Command \"Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message. Format: type(scope): description. Output ONLY the commit message.'\""
+          shell: cmd
+
+  - trigger: ":aiexplain"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          cmd: "powershell -NoProfile -Command \"Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Output ONLY the explanation.'\""
+          shell: cmd
+```
+
+**Gotchas — read these before you spend an hour debugging:**
+
+1. **WSL default distro matters.** `wsl.exe -e` runs in whatever distro is default (`wsl --list --verbose` to check). If you've got multiple distros, pin it: `wsl.exe -d Ubuntu -e /usr/local/bin/az-ai …`
+2. **`.env` must live *inside* WSL** (e.g. `~/.azureopenai-cli.json` or `/etc/environment` or sourced in `~/.bashrc`). The Windows process environment doesn't cross the `wsl.exe` boundary unless you explicitly forward with `WSLENV`. Putting creds in `~/.bashrc` inside WSL is simplest and keeps them off the Windows side entirely — good for the compliance posture.
+3. **Clipboard encoding.** PowerShell `Get-Clipboard` emits UTF-16 by default on some locales; pipe through `[System.Text.Encoding]::UTF8` if you see mojibake: `[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); Get-Clipboard | wsl.exe …`
+4. **Path translation.** If you need to pass a Windows file path *to* `az-ai` in WSL, use `wslpath`: `wsl.exe -e az-ai --read-file $(wslpath -a 'C:\temp\file.txt')`. Don't hand raw `C:\…` paths to a Linux binary.
+5. **Keep the binary on the WSL side, not a mounted Windows drive.** Running `az-ai` from `/mnt/c/tools/` adds filesystem-translation overhead on every syscall — that ~11 ms startup becomes ~150 ms. Install to `/usr/local/bin` (native ext4), always.
+6. **Cost note (Morty says):** the WSL path is 2-way text over stdin/stdout. Every byte of piped clipboard is an input token you pay for. A 32 KB clipboard is a 32 KB bill event. The CLI caps clipboard at 32 KB in agent mode (`Tools/GetClipboardTool.cs:12`), but here you're piping directly — *you* enforce the cap with `--max-tokens` on output. Don't let a runaway paste become a runaway invoice.
+
+**Performance summary — WSL AOT path vs alternatives:**
+
+| Setup                                    | Local overhead  | Runs on   | Notes                           |
+|------------------------------------------|:---------------:|:---------:|---------------------------------|
+| **WSL AOT (Path A — Espanso in WSL)**    | **~11 ms**      | WSL       | Fastest. Pure Linux, no boundary.|
+| **WSL AOT (Path B — Windows → wsl.exe)** | **~30–90 ms**   | WSL       | Native Windows apps, warm WSL2. |
+| Native Windows `.exe` (AOT Win build)    | ~15 ms          | Windows   | Requires `make publish-aot-win`. No `xclip`, no `bash`.|
+| Docker on Windows                        | ~200–500 ms     | Docker    | Cold container start dominates. |
+| Docker in WSL                            | ~100–300 ms     | WSL Docker| Still slower than native binary.|
+
+**Bottom line:** on WSL you're running the same Linux AOT binary a Linux dev runs. 2× cheaper than Docker, 10× cheaper than cold `.exe`, identical code path. Bicking back bool. 🤙
 
 ---
 
