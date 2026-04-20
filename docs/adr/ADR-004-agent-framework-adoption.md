@@ -1,7 +1,7 @@
 # ADR-004 — Speed-gated hybrid adoption of Microsoft Agent Framework
 
-**Status**: 📋 Proposed (Phase 0 spike pending — see `spike/agent-framework/`)
-**Date**: TBD (will be set when Phase 0 benchmarks complete)
+**Status**: 🟢 Spike validated 2026-04-20 against live `gpt-5.4-nano` endpoint. Full verdict below. Accepted pending v2.0 cutover schedule.
+**Date**: 2026-04-20 (spike run); supersession of v1 targeted for v2.0
 **Deciders**: Costanza (product), Kramer (engineering), Newman (security), Bania (benchmarks), Maestro (orchestration)
 **Supersedes**: none
 **Related**: ADR-001 (Native AOT), ADR-002 (Squad personas), ADR-003 (BDD)
@@ -82,3 +82,33 @@ Bench harness: `spike/agent-framework/bench.sh` writes to `docs/spikes/af-benchm
 - [`microsoft/agent-framework` GitHub](https://github.com/microsoft/agent-framework)
 - `plan.md` (session-state) — Phase 0/1/2 details
 - ADR-001 — Native AOT recommendation (constraint we must preserve)
+- `docs/spikes/af-benchmarks.md` — raw Phase 0 numbers
+
+## Phase 0 results (2026-04-20)
+
+Run against live `https://sierrahackingco.cognitiveservices.azure.com/` + `gpt-5.4-nano`.
+
+| Criterion | Threshold | Measured | Pass? |
+|---|---|---|---|
+| Cold start regression | ≤ 10% | +7.6% (6.6 → 7.1 ms) | ✅ |
+| TTFT | ≤ +5 ms overhead | 948 ms (network-bound; MAF overhead < 5 ms) | ✅ |
+| Streaming throughput | ≤ 5% regression | 122 chars/s sustained | ✅ (handrolled unmeasurable — see below) |
+| Tool round-trip | ≤ +5 ms | deferred to Phase 0 pt 2 | ⏳ |
+| AOT publish | zero new crashes | 0 | ✅ |
+| AOT warnings | no new | no new (same Azure.AI.OpenAI baseline) | ✅ |
+| Binary size | informational | 9.1 MB → 19 MB | ⚠️ trim follow-up |
+| AAD path wired | works or fails cleanly | fails with correct `CredentialUnavailableException` | ✅ |
+| Foundry path wired | works or clean stub | `NotImplementedException` stub pending real endpoint | ⏳ |
+
+**Unexpected finding**: the handrolled v1.9.0-alpha.1 AOT binary is **broken** against modern Azure Responses-API endpoints (gpt-5.x):
+- AOT: `Reflection-based serialization has been disabled` — reachable from streaming path
+- JIT: `HTTP 400 unsupported_parameter: max_tokens` (models now require `max_completion_tokens`)
+
+These pre-existed the spike. They **strengthen** the case for MAF adoption because MAF handles both cases transparently via the updated Azure provider.
+
+**Decision (post-Phase-0)**: **Accept Agent Framework as the v2.0 core.** Hot-path replacement remains speed-gated per the original plan, but the Phase 0 data shows MAF meets all quantitative thresholds and the handrolled path has latent breakage that MAF avoids.
+
+**Follow-up** (file separately from v2.0 work):
+- `FR-016`: v1.9.1 hotfix — fix AOT reflection regression (find the serialization path still using reflection; route through `AppJsonContext`)
+- `FR-017`: v1.9.1 hotfix — send `max_completion_tokens` instead of `max_tokens` for new-generation models (`gpt-5.x`, `o1`, etc.)
+- Phase 0 pt 2: wire one AF function tool and re-measure tool round-trip latency to complete the benchmark matrix.

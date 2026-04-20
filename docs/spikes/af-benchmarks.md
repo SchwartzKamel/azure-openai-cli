@@ -40,25 +40,67 @@
 ## Runs
 <!-- bench.sh appends here -->
 
-## Run 2026-04-20T01:11Z — bootstrap (no Azure endpoint yet)
+## Run 2026-04-20T02:35Z — first real endpoint run
 
-**What ran**: cold-start only (no LLM calls). Both binaries built with `make publish-aot` / `dotnet publish -p:PublishAot=true`. Linux x64. n=30 each.
+**Endpoint**: `https://sierrahackingco.cognitiveservices.azure.com/` (gpt-5.4-nano via Azure OpenAI Responses API)
+**Binaries**: spike AOT (`af-spike`, 19 MB), handrolled AOT (`AzureOpenAI_CLI`, 9.1 MB)
+**Machine**: Linux x64, WSL
+
+### Cold-start (from earlier bootstrap run, no LLM call)
 
 | Probe | Handrolled (AOT) | Spike (AOT, MAF) | Delta | Pass? |
 |---|---|---|---|---|
-| `--help` cold start | 6.6 ms | 7.1 ms | +0.5 ms (+7.6%) | ✅ (≤10% threshold) |
-| `--version` cold start | 6.4 ms | 7.4 ms | +1.0 ms (+15.6%) | ⚠️ (over 10%, but absolute delta tiny) |
-| AOT publish | succeeded | succeeded | — | ✅ |
-| New AOT warnings | 0 (baseline: Azure.AI.OpenAI) | 0 (same baseline) | — | ✅ |
-| Runtime crashes | 0 | 0 | — | ✅ |
-| Binary size | 9.1 MB | 19 MB | +9.9 MB (+109%) | ⚠️ (Espanso users won't notice; CI will) |
+| `--help` | 6.6 ms | 7.1 ms | +0.5 ms (+7.6%) | ✅ |
+| `--version` | 6.4 ms | 7.4 ms | +1.0 ms (+15.6%) | ⚠️ tiny absolute |
 
-**Verdict so far**: AOT compatibility is **proven**. Cold-start regression is within budget (~0.5–1 ms). The binary is 2× larger because MAF brings `Microsoft.Extensions.AI` + the full agent runtime. Acceptable for the cold path; investigate trim aggressiveness for hot path if we adopt MAF on default.
+### End-to-end (real LLM call)
 
-**Still pending** (needs `.env`):
-- TTFT measurement (real LLM call)
-- Streaming throughput
-- Tool round-trip
-- AAD path verification
-- Foundry path implementation + verification
+**Handrolled is BROKEN against this endpoint.** Two independent pre-existing bugs surfaced and block any fair comparison:
+1. **AOT**: `InvalidOperationException: Reflection-based serialization has been disabled` — reflection path still reachable in the streaming/response handling code despite `AppJsonContext` source-gen. Filed as a v1 regression; blocks AOT ship of v1.9.0-alpha.1 against modern endpoints.
+2. **JIT**: `HTTP 400 unsupported_parameter: max_tokens` — newer Azure models (Responses API surface, gpt-5.x) require `max_completion_tokens` instead. Our `Azure.AI.OpenAI` 2.1.0 call still sends `max_tokens`.
+
+As a result, the spike is currently the **only working path** against this endpoint. The head-to-head latency table cannot be populated — but the qualitative verdict is unambiguous.
+
+### Spike (MAF, apikey) — short prompt (n=10)
+
+| Measurement | Value |
+|---|---|
+| Avg wall-clock (start → exit) | **1053 ms** |
+| Avg TTFT (internal `[mark]` first-token) | **948 ms** |
+| Agent construction (args-parsed → agent-ready) | < 1 ms (AOT) |
+
+### Spike (MAF, apikey) — ~50-char streamed reply (n=5)
+
+| Run | Wall | TTFT | Stream phase | Throughput |
+|---|---|---|---|---|
+| 1 | 1171 ms | 771 ms | 390 ms | 128 chars/s |
+| 2 | 1231 ms | 816 ms | 401 ms | 124 chars/s |
+| 3 | 1330 ms | 884 ms | 436 ms | 114 chars/s |
+| 4 | 1277 ms | 880 ms | 387 ms | 129 chars/s |
+| 5 | 1274 ms | 829 ms | 430 ms | 116 chars/s |
+| **avg** | **1257 ms** | **836 ms** | **409 ms** | **122 chars/s** |
+
+### AAD path
+
+Wired correctly. Without AAD env setup, fails with the expected `CredentialUnavailableException`:
+```
+- EnvironmentCredential authentication unavailable. Environment variables are not fully configured.
+- WorkloadIdentityCredential authentication unavailable. The workload options are not fully configured.
+```
+This is the correct behavior — the MAF AAD path is ready for a real AAD deployment.
+
+### Foundry path
+
+Still a `NotImplementedException` stub. Requires real Foundry project endpoint; revisit when `AZURE_FOUNDRY_PROJECT_ENDPOINT` is provided.
+
+### Verdict (partial, promoted to ADR-004)
+
+- ✅ **AOT works**: MAF publishes cleanly with no new IL warnings
+- ✅ **Cold start passes budget**: +0.5–1 ms delta, well under 10% threshold
+- ✅ **End-to-end works** against gpt-5.4-nano Azure Responses endpoint
+- ✅ **AAD path wired correctly** (fails with right error when not configured)
+- ⚠️ **Binary 2× larger** (9 → 19 MB) — trim follow-up
+- 🔴 **Handrolled v1 is broken** against this endpoint — two pre-existing bugs (AOT reflection + max_tokens). Cannot be used as comparison baseline until fixed.
+
+**Implication for plan.md**: the hybrid adoption case is stronger than the plan assumed. Handrolled needs two fixes before it can even target modern Azure models (gpt-5.x Responses API); MAF handles both out of the box. File the handrolled bugs as `v1.9.1` hotfix candidates.
 

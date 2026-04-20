@@ -8,6 +8,9 @@ scripts
 
 # env
 azureopenai-cli/.env
+.env
+.env.*
+!.env.example
 
 # .NET build artifacts
 bin/
