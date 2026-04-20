@@ -105,6 +105,12 @@ internal class Program
             return 0;
         }
 
+        // Validate --task-file exists early (before checking credentials)
+        if (!string.IsNullOrWhiteSpace(opts.TaskFile) && !File.Exists(opts.TaskFile))
+        {
+            return ErrorAndExit($"Task file not found: {opts.TaskFile}", 1, jsonMode: false);
+        }
+
         // Resolve endpoint and API key from env
         var endpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
         var apiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
@@ -130,10 +136,6 @@ internal class Program
         // Ralph mode: --task-file takes precedence
         if (opts.RalphMode && !string.IsNullOrWhiteSpace(opts.TaskFile))
         {
-            if (!File.Exists(opts.TaskFile))
-            {
-                return ErrorAndExit($"Task file not found: {opts.TaskFile}", 1, jsonMode: false);
-            }
             try
             {
                 prompt = await File.ReadAllTextAsync(opts.TaskFile);

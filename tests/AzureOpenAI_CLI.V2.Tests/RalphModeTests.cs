@@ -11,8 +11,8 @@ namespace AzureOpenAI_CLI_V2.Tests;
 public class RalphModeTests
 {
     private static readonly MethodInfo MainMethod =
-        typeof(Program).Assembly.EntryPoint
-        ?? throw new InvalidOperationException("Could not locate the assembly entry point");
+        typeof(Program).GetMethod("Main", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
+        ?? throw new InvalidOperationException("Could not locate Program.Main method");
 
     /// <summary>
     /// Invokes Program.Main through reflection and returns the exit code.
