@@ -72,7 +72,10 @@ internal static class RalphWorkflow
                 using var iterCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 iterCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
 
-                await foreach (var update in agent.RunStreamingAsync(currentPrompt, cancellationToken: iterCts.Token))
+                await foreach (var update in agent.RunStreamingAsync(
+                    currentPrompt,
+                    options: new Microsoft.Agents.AI.ChatClientAgentRunOptions { ChatOptions = Program.BuildModernChatOptions() },
+                    cancellationToken: iterCts.Token))
                 {
                     if (!string.IsNullOrEmpty(update.Text))
                     {

@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Azure.AI.OpenAI;
+using Azure.AI.OpenAI.Chat;
 using dotenv.net;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -251,7 +252,14 @@ internal class Program
             int? inputTokens = null;
             int? outputTokens = null;
 
-            await foreach (var update in agent.RunStreamingAsync(prompt, cancellationToken: cts2.Token))
+            // FR-017: opt into `max_completion_tokens` serialization so reasoning /
+            // Responses-API models (o1, o3, gpt-5.x) accept the token cap. The Chat
+            // Completions SDK still defaults to legacy `max_tokens` for back-compat,
+            // which those deployments reject. Safe to always enable. Ported from v1
+            // Program.cs (SetNewMaxCompletionTokensPropertyEnabled call sites).
+            var runOpts = new ChatClientAgentRunOptions { ChatOptions = BuildModernChatOptions() };
+
+            await foreach (var update in agent.RunStreamingAsync(prompt, options: runOpts, cancellationToken: cts2.Token))
             {
                 if (!string.IsNullOrEmpty(update.Text))
                 {
@@ -643,6 +651,24 @@ internal class Program
         }
         return exitCode;
     }
+
+    /// <summary>
+    /// FR-017: build a <see cref="ChatOptions"/> whose <see cref="ChatOptions.RawRepresentationFactory"/>
+    /// seeds a <see cref="ChatCompletionOptions"/> with the modern <c>max_completion_tokens</c> wire
+    /// property enabled. Required for gpt-5.x / o1 / o3 deployments which reject legacy <c>max_tokens</c>.
+    /// Exposed internal for reuse across agent call sites (standard mode + Ralph loop).
+    /// </summary>
+    internal static ChatOptions BuildModernChatOptions() => new()
+    {
+        RawRepresentationFactory = _ =>
+        {
+            var opts = new ChatCompletionOptions();
+#pragma warning disable AOAI001
+            opts.SetNewMaxCompletionTokensPropertyEnabled(true);
+#pragma warning restore AOAI001
+            return opts;
+        },
+    };
 
     private static void ShowHelp()
     {
