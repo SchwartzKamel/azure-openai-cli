@@ -632,6 +632,45 @@ public class ToolHardeningTests
     }
 
     [Fact]
+    public void Program_SafetyClause_IsNonEmpty()
+    {
+        // The refusal clause must exist and mention key threats so that a
+        // reviewer can spot it. This guards against silent removal.
+        Assert.False(string.IsNullOrWhiteSpace(Program.SAFETY_CLAUSE));
+        Assert.Contains("refuse", Program.SAFETY_CLAUSE, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("secrets", Program.SAFETY_CLAUSE, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("credentials", Program.SAFETY_CLAUSE, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Program_SafetyClause_ReferencedByAgentAndRalphPaths()
+    {
+        // Structural: confirm Program.cs actually uses SAFETY_CLAUSE in both
+        // the agent loop and the Ralph loop. Reads the source file so we
+        // don't have to stand up the full streaming/agent harness.
+        var path = FindProgramSource();
+        Assert.True(File.Exists(path), $"Program.cs not found at {path}");
+        var src = File.ReadAllText(path);
+        // At least three references: the declaration + agent-mode + ralph-mode.
+        var count = System.Text.RegularExpressions.Regex.Matches(src, @"\bSAFETY_CLAUSE\b").Count;
+        Assert.True(count >= 3, $"Expected ≥3 SAFETY_CLAUSE references, found {count}");
+    }
+
+    private static string FindProgramSource()
+    {
+        // Walk up from test assembly location to find repo root, then resolve
+        // azureopenai-cli/Program.cs. Keeps the test independent of cwd.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir.FullName, "azureopenai-cli", "Program.cs");
+            if (File.Exists(candidate)) return candidate;
+            dir = dir.Parent;
+        }
+        return "";
+    }
+
+    [Fact]
     public void GetClipboard_FindCommand_MultipleRapidCalls_NoLeak()
     {
         var method = typeof(GetClipboardTool).GetMethod(
