@@ -1,6 +1,6 @@
 # Feature Requests
 
-> Last updated: 2026-04-08 — After v1.1.0 release
+> Last updated: 2026-04-20 — After v1.9.1 release. See [STATUS-AUDIT.md](STATUS-AUDIT.md) for the authoritative verified-status matrix; this table is the short form.
 
 > **v2 Migration in progress**: See [v2-migration.md](../v2-migration.md) for the Microsoft Agent Framework transition plan (v1 → v2.0). Feature requests below are v1.x scope unless noted.
 
@@ -8,21 +8,28 @@
 
 | ID | Title | Priority | Effort | Status |
 |----|-------|----------|--------|--------|
-| [FR-001](FR-001-stdin-pipe-context-injection.md) | Stdin Pipe & Context Injection | P0 | Small | ✅ IMPLEMENTED (v1.1.0) |
-| [FR-002](FR-002-interactive-chat-mode.md) | Interactive Chat Mode with Conversation Memory | P0 | Medium | 📋 PLANNED — Next priority |
-| [FR-003](FR-003-local-user-preferences.md) | Local User Preferences & Config Command | P1 | Small-Medium | 🔧 IN PROGRESS — Phase 1 |
-| [FR-004](FR-004-latency-and-startup-optimization.md) | Latency & Startup Optimization | P0 | Phased | ✅ LARGELY SHIPPED — Spinner (v1.1.0) + AOT (v1.8.0); daemon mode deferred |
+| [FR-001](FR-001-stdin-pipe-context-injection.md) | Stdin Pipe & Context Injection | P0 | Small | ✅ SHIPPED v1 (v1.1.0). ⚠️ v2 partial — **no buffer cap (regression)** |
+| [FR-002](FR-002-interactive-chat-mode.md) | Interactive Chat Mode with Conversation Memory | P0 | Medium | 📋 PLANNED — v1.3 / v2.1 |
+| [FR-003](FR-003-local-user-preferences.md) | Local User Preferences & Config Command | P1 | Small-Medium | ✓ PHASE 1 SHIPPED v1.1.0 (env vars + inline flags); Phase 2 (`--config set/get/reset`) not started |
+| [FR-004](FR-004-latency-and-startup-optimization.md) | Latency & Startup Optimization | P0 | Phased | ✅ LARGELY SHIPPED — Spinner (v1.1.0) + AOT (v1.8.0); daemon deferred |
 | [FR-005](FR-005-shell-integration-and-output-intelligence.md) | Shell Integration & Output Intelligence | P1 | Medium | 🔄 PARTIAL — `--json`, `--raw` shipped; `--code`/`--shell`/markdown pending |
 | [FR-006](FR-006-unblock-native-aot-compilation.md) | Unblock Native AOT Compilation | P0 | Small | ✅ SHIPPED (v1.8.0) |
-| [FR-007](FR-007-parallel-startup-and-connection-prewarming.md) | Parallel Startup & Connection Pre-warming | P1 | Small | 📋 PLANNED — Complements FR-006 |
+| [FR-007](FR-007-parallel-startup-and-connection-prewarming.md) | Parallel Startup & Connection Pre-warming | P1 | Small | 📋 PLANNED — **quick win, 3–5 h, 200–300 ms TTFT** |
 | [FR-008](FR-008-prompt-response-cache.md) | Prompt Response Cache | P1 | Medium | 📋 PLANNED — Espanso/AHK use case |
-| [FR-009](FR-009-config-set-and-directory-overrides.md) | `--config set` Commands & Per-Directory Overrides | P1 | Medium | 📋 PLANNED — Completes FR-003 |
-| [FR-010](FR-010-model-aliases-and-smart-defaults.md) | Model Aliases & Smart Defaults | P2 | Small | 📋 PLANNED — DX polish |
-| [FR-011](FR-011-agent-streaming-output.md) | Agent Mode Streaming Output | P0 | Small-Medium | 📋 PLANNED — v1.9.0 top priority |
+| [FR-009](FR-009-config-set-and-directory-overrides.md) | `--config set` Commands & Per-Directory Overrides | P1 | Medium | 📋 PLANNED — Completes FR-003; blocks FR-010 |
+| [FR-010](FR-010-model-aliases-and-smart-defaults.md) | Model Aliases & Smart Defaults | P2 | Small | 📋 PLANNED — blocked by FR-009 |
+| [FR-011](FR-011-agent-streaming-output.md) | Agent Mode Streaming Output | P0 | Small-Medium | ✓ INFRA PRESENT (streams via `CompleteChatStreamingAsync`); polish (per-round stderr status, `--raw`/`--json` matrix) outstanding |
 | [FR-012](FR-012-plugin-tool-registry.md) | Plugin/Tool Registry System | P2 | Medium-Large | 📋 PLANNED — Extensibility platform |
-| [FR-019](FR-019-gemma-cpp-direct-adapter.md) | gemma.cpp Direct Adapter | P3 | Medium | 📝 DRAFT — Depends on FR-018 provider abstraction |
-| [FR-018](FR-018-local-model-provider-llamacpp.md) | Local-Model Provider (llama.cpp / Ollama) | P2 | Medium | 📋 PLANNED — v2.1; layers on FR-014 |
-| [FR-020](FR-020-nvidia-nim-provider-per-trigger-routing.md) | NVIDIA NIM Provider with Per-Trigger Routing (2B-first) | P2 | Small | 📝 DRAFT — Implements ADR-006; depends on FR-018 |
+| [FR-013](FR-013-mcp-client-and-server-support.md) | MCP Client and Server Support | P1 | Large | 📝 DRAFT — Largest distribution-vector gap; v2.1 / v2.2 |
+| [FR-014](FR-014-local-preferences-and-multi-provider.md) | Local Preferences + Multi-Provider Profiles | P1 | Medium | 📝 DRAFT — **Critical path**; subsumes FR-003/009/010; blocks FR-018/020 |
+| [FR-015](FR-015-pattern-library-and-cost-estimator.md) | Curated Pattern Library + Pre-Flight Cost Estimator | P2 | Small-Medium | ⚠️ INFRA PARTIAL — rate card in `CostHook.cs`; `--estimate` UX unshipped |
+| [FR-016](FR-016-aot-reflection-regression-hotfix.md) | AOT Reflection Regression Hotfix | P0 | Small | ✅ SHIPPED (v1.9.1) — archive |
+| [FR-017](FR-017-max-completion-tokens-compatibility.md) | `max_completion_tokens` Compatibility | P0 | Small | ✅ v1 SHIPPED (v1.9.1). ❌ **v2 NOT PORTED — P0 v2.0.0 blocker** |
+| [FR-018](FR-018-local-model-provider-llamacpp.md) | Local-Model Provider (llama.cpp / Ollama) | P2 | Medium | 📝 DRAFT — v2.1; blocked by FR-014 |
+| [FR-019](FR-019-gemma-cpp-direct-adapter.md) | gemma.cpp Direct Adapter | P3 | Medium | 📝 DRAFT — niche; blocked by FR-018 |
+| [FR-020](FR-020-nvidia-nim-provider-per-trigger-routing.md) | NVIDIA NIM Provider with Per-Trigger Routing (2B-first) | P2 | Medium | 📝 DRAFT — Implements ADR-006; blocked by FR-018 (effort upgraded from "Small" per FR-020 body) |
+
+> **v2.0.0 cutover blockers** (see [STATUS-AUDIT.md](STATUS-AUDIT.md)): v2 regressed SECURITY-AUDIT-001 MEDIUM-001 (unbounded stdin, `azureopenai-cli-v2/Program.cs:181`) and MEDIUM-002 (HTTPS-only check missing, `azureopenai-cli-v2/Program.cs:197`). FR-017 is not ported to v2. All three must close before v2 replaces v1.
 
 ---
 
