@@ -46,6 +46,12 @@
 - Integration: `bash tests/integration_tests.sh`
 - Format: `dotnet format azure-openai-cli.sln --verify-no-changes`
 - Docker: `docker build -t azure-openai-cli:test .`
+- **Preflight (run before every code commit):** `make preflight` — see [`.github/skills/preflight.md`](skills/preflight.md). Non-negotiable for `.cs`/`.csproj`/`.sln`/workflow changes. Skipping this is how commit `180d64f` turned `main` red for five runs.
+
+## Skills
+- [`preflight`](skills/preflight.md) — format + build + test gates before commit
+- [`commit`](skills/commit.md) — Conventional Commits, Copilot co-author trailer, signing rules
+- [`ci-triage`](skills/ci-triage.md) — diagnosing and fix-forwarding a red CI run
 
 ## Environment Variables
 - `AZUREOPENAIENDPOINT` — Azure OpenAI endpoint URL (required)

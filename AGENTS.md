@@ -103,3 +103,17 @@ Each agent is stateless — invoke any of them at any time via the Copilot CLI o
 4. Merge to the default branch to make the agent available
 
 See the [GitHub custom agents documentation](https://gh.io/customagents/config) for format details.
+
+## Skills — the verbs every agent follows
+
+Agents are *nouns* (who). Skills are *verbs* (how). Every cast member — human or AI — follows the same skill procedures so we don't relearn the same lesson twice. Skills live in [`.github/skills/`](.github/skills/).
+
+| Skill | Purpose | File |
+|-------|---------|------|
+| **preflight** | Format + build + test + integration before every code commit | [`preflight.md`](.github/skills/preflight.md) |
+| **commit** | Conventional Commits, Copilot trailer, push rules | [`commit.md`](.github/skills/commit.md) |
+| **ci-triage** | Diagnose and fix-forward a red CI run | [`ci-triage.md`](.github/skills/ci-triage.md) |
+
+**Enforcement:** The Soup Nazi blocks merges that skipped **preflight**. Mr. Wilhelm blocks commits that skipped **commit**. Jerry + Frank own **ci-triage** escalation. None of it is optional.
+
+The existence of these skills is a debt we paid in real incidents — commit `180d64f` shipped without `dotnet format` and left `main` red for five consecutive runs before `ec03a37` cleaned it up. Every skill file is a ward against that class of mistake.

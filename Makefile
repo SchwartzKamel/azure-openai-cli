@@ -192,6 +192,10 @@ format:
 format-check:
 	$(DOTNET) format --verify-no-changes azure-openai-cli.sln
 
+## Preflight: format-check + build + test + integration (skill: .github/skills/preflight.md)
+preflight: format-check build test integration-test
+	@echo "[preflight] all gates green — safe to commit"
+
 ## Audit: check for vulnerable NuGet packages
 audit:
 	$(DOTNET) list package --vulnerable --include-transitive
