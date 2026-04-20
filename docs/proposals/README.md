@@ -20,6 +20,8 @@
 | [FR-010](FR-010-model-aliases-and-smart-defaults.md) | Model Aliases & Smart Defaults | P2 | Small | 📋 PLANNED — DX polish |
 | [FR-011](FR-011-agent-streaming-output.md) | Agent Mode Streaming Output | P0 | Small-Medium | 📋 PLANNED — v1.9.0 top priority |
 | [FR-012](FR-012-plugin-tool-registry.md) | Plugin/Tool Registry System | P2 | Medium-Large | 📋 PLANNED — Extensibility platform |
+| [FR-019](FR-019-gemma-cpp-direct-adapter.md) | gemma.cpp Direct Adapter | P3 | Medium | 📝 DRAFT — Depends on FR-018 provider abstraction |
+| [FR-018](FR-018-local-model-provider-llamacpp.md) | Local-Model Provider (llama.cpp / Ollama) | P2 | Medium | 📋 PLANNED — v2.1; layers on FR-014 |
 
 ---
 
