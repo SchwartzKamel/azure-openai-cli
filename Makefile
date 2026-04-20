@@ -50,7 +50,8 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
-	publish-all bench install uninstall
+	publish-all bench install uninstall \
+	install-nim-gemma-2b uninstall-nim-gemma-2b nim-status nim-warmup
 
 ## Help: list available make targets (default target)
 help:
@@ -330,3 +331,28 @@ uninstall:
 bench: dist/aot/$(BIN_NAME)
 	@command -v python3 >/dev/null 2>&1 || { echo "Error: python3 required for bench"; exit 1; }
 	@python3 scripts/bench.py dist/aot/$(BIN_NAME) --args --version
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NVIDIA NIM (local Gemma-4-2B-NVFP4) — see docs/nim-setup.md, ADR-006
+# ─────────────────────────────────────────────────────────────────────────────
+
+install-nim-gemma-2b: ## Install and warm-start NIM with Gemma-4-2B-NVFP4
+	@bash scripts/install-nim-gemma-2b.sh $(ARGS)
+
+uninstall-nim-gemma-2b: ## Stop and remove the NIM daemon
+	@bash scripts/uninstall-nim-gemma-2b.sh $(ARGS)
+
+nim-status: ## Show NIM daemon status and health
+	@systemctl --user status az-ai-nim.service --no-pager || true
+	@echo ""
+	@echo ">> /v1/health/ready:"
+	@curl -sS -o /dev/stdout -w "\nHTTP %{http_code}\n" http://localhost:8000/v1/health/ready || echo "(unreachable)"
+
+nim-warmup: ## Block until NIM is warm
+	@deadline=$$(( $$(date +%s) + 120 )); \
+	while [ $$(date +%s) -lt $$deadline ]; do \
+	  code=$$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/v1/health/ready || true); \
+	  if [ "$$code" = "200" ]; then echo ">> NIM ready"; exit 0; fi; \
+	  printf '.'; sleep 2; \
+	done; \
+	echo ""; echo ">> timeout waiting for NIM"; exit 1

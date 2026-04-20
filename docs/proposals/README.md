@@ -22,6 +22,7 @@
 | [FR-012](FR-012-plugin-tool-registry.md) | Plugin/Tool Registry System | P2 | Medium-Large | 📋 PLANNED — Extensibility platform |
 | [FR-019](FR-019-gemma-cpp-direct-adapter.md) | gemma.cpp Direct Adapter | P3 | Medium | 📝 DRAFT — Depends on FR-018 provider abstraction |
 | [FR-018](FR-018-local-model-provider-llamacpp.md) | Local-Model Provider (llama.cpp / Ollama) | P2 | Medium | 📋 PLANNED — v2.1; layers on FR-014 |
+| [FR-020](FR-020-nvidia-nim-provider-per-trigger-routing.md) | NVIDIA NIM Provider with Per-Trigger Routing (2B-first) | P2 | Small | 📝 DRAFT — Implements ADR-006; depends on FR-018 |
 
 ---
 

@@ -1,0 +1,23 @@
+[Unit]
+Description=NVIDIA NIM serving Gemma-4-2B-IT-NVFP4 for az-ai
+After=default.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/az-ai/providers/nvidia.env
+ExecStartPre=-/usr/bin/docker rm -f az-ai-nim
+ExecStart=/usr/bin/docker run --rm --name az-ai-nim \
+    --gpus all \
+    --shm-size=1g \
+    -e NIM_MODEL_NAME=nvidia/gemma-4-2b-it-nvfp4 \
+    -e NIM_MODEL_PROFILE=latency \
+    -e NGC_API_KEY=${NGC_API_KEY} \
+    -v %h/.cache/nim:/opt/nim/.cache \
+    -p 127.0.0.1:8000:8000 \
+    __NIM_IMAGE__
+ExecStop=/usr/bin/docker stop az-ai-nim
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target

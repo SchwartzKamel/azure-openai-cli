@@ -1,0 +1,126 @@
+# %APPDATA%\espanso\match\ai.yml
+# az-ai Espanso matches — Option B (Espanso on Windows, shells to WSL).
+#
+# Boundary layers to survive:  Espanso → cmd.exe → powershell.exe → wsl.exe → bash
+# Rules to keep those layers sane:
+#   * Every outer cmd: block uses shell: cmd (Espanso's default on Windows).
+#   * User text (form or clipboard) enters bash via STDIN only — never as an
+#     argument — so shell metachars are inert at every layer.
+#   * We invoke `wsl.exe -e /usr/local/bin/az-ai-wrap` (the wrapper sources
+#     ~/.bashrc so env vars are present even in a non-login shell).
+#   * stderr from the WSL side goes to /dev/null; the outer PowerShell's stderr
+#     goes to $null; Espanso only sees clean stdout.
+#   * UTF-8 is forced for PowerShell output to avoid UTF-16 mojibake.
+#
+# Expected latency: ~3 s per trigger (Azure round-trip + ~30–90 ms WSL hop).
+
+matches:
+
+  # ── :ai <space> — free-form prompt via form ────────────────────────────
+  # The form value reaches bash via a single-quoted heredoc, so no shell
+  # metachars in the prompt are ever expanded.
+  - trigger: ":ai "
+    replace: "{{output}}"
+    vars:
+      - name: form1
+        type: form
+        params:
+          layout: "AI prompt:\n\n[[prompt]]"
+          fields:
+            prompt:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: |
+            powershell -NoProfile -Command "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new(); wsl.exe -e bash -c 'az-ai-wrap --raw 2>/dev/null <<''__AZ_AI_EOF__''
+            {{form1.prompt}}
+            __AZ_AI_EOF__
+            '" 2>NUL
+
+  # ── :aifix — grammar/spelling fix on Windows clipboard ─────────────────
+  - trigger: ":aifix"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            Get-Clipboard -Raw |
+            wsl.exe -e bash -c 'tr -d \"\\r\" |
+            az-ai-wrap --raw --max-tokens 500 --temperature 0.3
+            --system ''Fix grammar and spelling. Preserve meaning, tone, and formatting. Output ONLY the corrected text, nothing else.''
+            2>/dev/null'" 2>NUL
+
+  # ── :aiexp — explain clipboard contents ────────────────────────────────
+  - trigger: ":aiexp"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            Get-Clipboard -Raw |
+            wsl.exe -e bash -c 'tr -d \"\\r\" |
+            az-ai-wrap --raw --max-tokens 300 --temperature 0.4
+            --system ''Explain the following clearly in 2-3 sentences. If it is code, be precise and technical. Output ONLY the explanation, no preamble.''
+            2>/dev/null'" 2>NUL
+
+  # ── :aitldr — 2-sentence summary ───────────────────────────────────────
+  - trigger: ":aitldr"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            Get-Clipboard -Raw |
+            wsl.exe -e bash -c 'tr -d \"\\r\" |
+            az-ai-wrap --raw --max-tokens 150 --temperature 0.4
+            --system ''Summarize in exactly 2 sentences. Be concise. Output ONLY the summary.''
+            2>/dev/null'" 2>NUL
+
+  # ── :airw — professional rewrite ───────────────────────────────────────
+  - trigger: ":airw"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            Get-Clipboard -Raw |
+            wsl.exe -e bash -c 'tr -d \"\\r\" |
+            az-ai-wrap --raw --max-tokens 600 --temperature 0.5
+            --system ''Rewrite the following in a more professional, polished tone. Preserve meaning and key facts. Do not add information. Output ONLY the rewritten text.''
+            2>/dev/null'" 2>NUL
+
+  # ── :aic — code review on clipboard (persona, with fallback) ───────────
+  - trigger: ":aic"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            Get-Clipboard -Raw |
+            wsl.exe -e bash -c 'CLIP=$(cat | tr -d \"\\r\");
+            printf %s \"$CLIP\" | az-ai-wrap --raw --persona reviewer --max-tokens 500 2>/dev/null ||
+            printf %s \"$CLIP\" | az-ai-wrap --raw --max-tokens 500 --temperature 0.3
+            --system ''You are a senior code reviewer. Identify bugs, security issues, and design problems. Be concise, specific, and actionable. Use bullet points. Output ONLY the review.''
+            2>/dev/null'" 2>NUL
