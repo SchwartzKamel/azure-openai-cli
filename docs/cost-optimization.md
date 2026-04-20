@@ -44,11 +44,13 @@ Rough order-of-magnitude as of **2026-04** (USD per 1M tokens, global PAYG, conf
 | `gpt-4o`       |   ~$2.50   |   ~$10.00   | Reasoning matters. Multi-step explanations, code review, non-trivial refactors. |
 | `gpt-4.1`      |   ~$3.00   |   ~$12.00   | Complex agent tool-calling, long-context synthesis, reliable JSON over many turns. |
 | `DeepSeek-V3.2`|   $0.58    |    $1.68    | Ultra-cheap fallback. Non-OpenAI lineage; serverless on Azure Foundry. **Data residency caveats — see §3.5.** |
+| `Phi-4-mini-instruct` | **$0.075** | **$0.300** | **Cheapest sane option.** Microsoft-first-party SLM on Foundry. Espanso rewrites, commit messages, yes/no classifiers. See §3.6. |
+| `Phi-4-mini-reasoning`| $0.080 | $0.320 | Math / logic / Ralph-validator duty. NOT for Espanso — reasoning overhead kills TTFT. See §3.6. |
 | `o1-mini`      |   ~$3.00   |   ~$12.00*  | Hard problems where you can afford seconds-to-minutes of latency. *Reasoning tokens bill as output.* |
 
 > ⚠️ **Unverified numbers.** I am flagging these as estimates — I cannot hit the live Azure pricing API from this doc. The **ratios** (mini ~15× cheaper than 4o, 4o output ~4× its input) are stable; the absolute dollars drift. Always cite the pricing page above in a PR that changes a model default.
 > 
-> gpt-5.4-nano rates verified against Azure OpenAI pricing (2025-08-07 refresh); DeepSeek-V3.2 rates pulled from Azure Foundry serverless catalog. Both are current as of early 2026, but region and deployment type may drift prices ±10%.
+> gpt-5.4-nano rates verified against Azure OpenAI pricing (2025-08-07 refresh); DeepSeek-V3.2 and both Phi-4-mini variants pulled from Azure Foundry serverless catalog (Microsoft Community Hub announcement + cloudprice.net corroboration, April 2026). Region and deployment type may drift prices ±10%.
 
 **Morty's rule of thumb:** if you can't write a one-sentence justification for why `gpt-4o-mini` *cannot* do the job, you're using the wrong model. "It feels smarter" is not a sentence. That's how you buy a Cadillac to go to the mailbox.
 
@@ -69,6 +71,59 @@ Alright, now here's where I get nervous. DeepSeek-V3.2 on Azure Foundry looks ch
 **But.** DeepSeek is *not OpenAI*. It's a non-OpenAI model from a Chinese research org. Now, Microsoft runs it on Azure Foundry with serverless deployment, so you get Azure's data centers and compliance framing. Here's what I don't like: **data residency and audit trail.** Your Espanso workflow reads clipboard content—potentially sensitive stuff: API keys, diff context, personal notes—and pipes it through an LLM. With OpenAI models, you get clear compliance: FedRAMP, BAA, SOC2. With DeepSeek on Foundry? You get Foundry's terms, which *are* enterprise-grade, but DeepSeek itself is a third-party model *routed through* Azure. If your clipboard contains secrets, or if you need auditable isolation, this is a **non-starter**. 
 
 The SECURITY.md in this repo caps clipboard at 32 KB for a reason — we assume the content is sensitive. The threat model is "untrusted stdin, clipboard, and network responses." DeepSeek doesn't change the risk, but it *does* change the compliance profile. **Do not default to DeepSeek for Espanso workflows without signed approval from your security team.** For throw-away research or non-sensitive summarization? Sure, burn the tokens cheap. For the primary use case? No.
+
+---
+
+### 3.6 The Phi-4-mini twins — finally, something I can endorse
+
+*[Morty, visibly relieved, loosening his tie]*
+
+After the `gpt-5.4-nano` sticker-shock and the DeepSeek compliance headache, Kramer comes back with `Phi-4-mini`. Microsoft's own small language model family. 3.8B parameters. MIT-licensed. And — get ready — **seventy-five cents per million input tokens.** I read it twice. I made him read it twice. It's real.
+
+Let me lay it out:
+
+| Metric                          | `gpt-4o-mini` (today's default) | `Phi-4-mini-instruct` |
+|---------------------------------|:-------------------------------:|:---------------------:|
+| Input $/1M                      | ~$0.15                          | **$0.075** (**2× cheaper**) |
+| Output $/1M                     | ~$0.60                          | **$0.300** (**2× cheaper**) |
+| Vendor                          | OpenAI (via Azure OpenAI)       | Microsoft (first-party, Foundry) |
+| Compliance posture              | FedRAMP / BAA / SOC2            | Same — it's Microsoft's own model, not a third-party routed one |
+| Parameters                      | ~8B (est.)                      | 3.8B                  |
+| Context window                  | 128K                            | 128K                  |
+| Chat Completions wire protocol  | ✅ native                        | ✅ OpenAI-compatible on Foundry |
+| Function calling                | ✅ strong                        | ✅ supported (reliability: unverified at scale) |
+| Strict JSON Schema output       | ✅ battle-tested                 | ⚠️ supported, needs live validation in our `--schema` path |
+
+**`Phi-4-mini-instruct`: The real candidate for an Espanso-default swap**
+
+This isn't DeepSeek. This is Microsoft's own model, running on Microsoft's infrastructure, under Microsoft's compliance framework. The clipboard threat model doesn't get worse — the data never leaves the same Azure tenancy you're already paying for. So the security objection that killed DeepSeek does **not** apply here.
+
+For the primary use case — Espanso text rewrites, commit messages, one-paragraph summaries, yes/no classifiers — a 3.8B model is *plenty*. That's not a controversial take, that's Microsoft's entire Phi thesis: small, focused, cheap, good-enough. **It is literally the model they built for this.**
+
+The catch? **Integration cost.** Our hand-rolled path in `Program.cs` currently points at Azure OpenAI endpoints. Foundry uses the same OpenAI-compatible chat-completions dialect (confirmed via Foundry Models API), but it's a *different endpoint host* and a *different deployment-name convention*. That's not a port, that's a config change — but someone has to route `AZURE_DEPLOYMENT=Phi-4-mini-instruct` through the Foundry hostname instead of the Azure OpenAI hostname. See Phase 0 pt 2 on `plan.md` — the spike's Foundry path is still a `NotImplementedException` stub.
+
+**`Phi-4-mini-reasoning`: Not for Espanso. Ralph validator, maybe.**
+
+Five-thousandths of a dollar more per 1M input tokens than the instruct variant ($0.080 vs $0.075). You're not paying for the parameters — you're paying for the reasoning overhead at inference time, which burns output tokens AND latency. Reasoning tokens bill as output. Sound familiar? That's the `o1-mini` pattern all over again, just at pauper rates.
+
+**Do not put this behind an Espanso trigger.** The reasoning warm-up is going to blow your TTFT and nobody types a commit message while waiting 2 seconds for the model to "think."
+
+**Where it earns its keep:** the Ralph validator loop. Ralph iterates up to 10 times by default; each iteration wants a judgment — "is the output correct / complete?" — which is exactly the logic-inference task Phi-4-mini-reasoning was trained on. At $0.08/$0.32, ten iterations of a 2K-token exchange costs pennies. That's a future FR — not a default change today, but worth a benchmark sprint. File it.
+
+**Open questions before making `Phi-4-mini-instruct` the new default:**
+
+1. **Strict JSON Schema mode (`--schema`):** Does Foundry's Phi endpoint respect `response_format: json_schema` with `strict: true`? Gpt-4o-mini does. If Phi doesn't, every `--schema` caller gets a quality drop. ⚠️ **Verify before flipping the default.**
+2. **Function-calling reliability under agent mode:** 3.8B models have historically been shakier on multi-tool chains than 8B+ OpenAI models. Benchmark against our 6 built-in tools before recommending Phi for `--agent`.
+3. **Availability in the user's region:** Phi-4-mini on Foundry isn't in every region yet. Users east of the Mississippi are fine; users outside US/EU need to verify.
+4. **Cold-start behavior on Foundry serverless:** First-call latency on serverless Foundry can spike to 2-3s after idle. For Espanso — which fires sporadically — this matters. Measure warm-vs-cold TTFT before endorsing.
+
+**Morty's Phi verdict:**
+
+- **`Phi-4-mini-instruct` is the first serious challenger to the `gpt-4o-mini` default since this doc was written.** It's cheap, it's compliant, it's Microsoft-native, and it's built for exactly our use case. After the four open questions above get answered with "yes it's fine," I will personally sign off on making it the Espanso default.
+- **`Phi-4-mini-reasoning`** is a specialist tool, not a default. Keep it on the bench for future Ralph-validator work. Filing under "cost-efficient reasoning experiments."
+- **Until Foundry routing lands in `Program.cs` (Phase 0 pt 2 on plan.md), the `gpt-4o-mini` default stands by default-of-default.** You can't recommend a model the CLI can't reach.
+
+*"You paid HOW much for a pair of reasoning models? And Microsoft has one for seventy-five cents? What are we, lunatics?"*
 
 ---
 
@@ -175,7 +230,7 @@ These are the ways the bill gets away from you. Memorize them.
 
 ## 8. "Why pay more?"
 
-Look. I'm not telling you to eat at the Bistro every night. Sometimes you need `gpt-4.1` — sometimes the job is worth it. I'm telling you to **know which night it is**. (And no, `gpt-5.4-nano` doesn't change this. Neither does DeepSeek — not for your primary use case.)
+Look. I'm not telling you to eat at the Bistro every night. Sometimes you need `gpt-4.1` — sometimes the job is worth it. I'm telling you to **know which night it is**. (And no, `gpt-5.4-nano` doesn't change this. Neither does DeepSeek. `Phi-4-mini-instruct` *might* — once we can route to Foundry and answer the four open questions in §3.6.)
 
 **Morty's top three savings tips:**
 
