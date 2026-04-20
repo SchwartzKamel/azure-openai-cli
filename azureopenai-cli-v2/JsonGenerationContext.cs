@@ -42,6 +42,9 @@ internal record ErrorJsonResponse(
 [JsonSerializable(typeof(TeamConfig))]
 [JsonSerializable(typeof(PersonaConfig))]
 [JsonSerializable(typeof(RoutingRule))]
+// ── Observability price table (M3: folded from PriceTableJsonContext) ───
+[JsonSerializable(typeof(AzureOpenAI_CLI_V2.Observability.PriceTableEntry))]
+[JsonSerializable(typeof(Dictionary<string, AzureOpenAI_CLI_V2.Observability.PriceTableEntry>))]
 // ── Collection types used by the above ──────────────────────────
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(List<PersonaConfig>))]

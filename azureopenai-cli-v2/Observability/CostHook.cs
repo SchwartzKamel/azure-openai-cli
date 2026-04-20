@@ -72,7 +72,7 @@ internal static class CostHook
         try
         {
             var json = File.ReadAllText(customPath);
-            var parsed = JsonSerializer.Deserialize(json, PriceTableJsonContext.Default.DictionaryStringPriceTableEntry);
+            var parsed = JsonSerializer.Deserialize(json, global::AzureOpenAI_CLI_V2.AppJsonContext.Default.DictionaryStringPriceTableEntry);
             if (parsed == null)
                 return;
 

@@ -61,7 +61,7 @@ internal static class DelegateTaskTool
     [Description("Delegate a subtask to a child agent. Use this to break complex tasks into smaller, focused sub-tasks. The child agent runs in-process and shares the parent's chat client; it receives only the tools you list.")]
     public static async Task<string> DelegateAsync(
         [Description("A clear, specific description of the subtask to delegate")] string task,
-        [Description("Comma-separated list of tools to enable for the child agent (default: shell,file,web,datetime). Options: shell, file, web, datetime, clipboard")] string? tools = null,
+        [Description("Comma-separated list of tools to enable for the child agent (default: shell_exec,read_file,web_fetch,get_datetime). Options: shell_exec, read_file, web_fetch, get_datetime, get_clipboard")] string? tools = null,
         CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(task))
@@ -76,9 +76,11 @@ internal static class DelegateTaskTool
             return $"Error: maximum delegation depth ({MaxDepth}) reached. Complete this task directly instead of delegating.";
 
         // Allowlist contract: child gets *only* the tools named here, never the
-        // parent's full registry. Default mirrors v1 (excludes clipboard + nested delegate).
-        var toolsSpec = string.IsNullOrWhiteSpace(tools) ? "shell,file,web,datetime" : tools;
-        var filtered = toolsSpec.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // parent's full registry. M5: default mirrors ToolRegistry.DefaultChildAgentTools
+        // (excludes clipboard + nested delegate).
+        IEnumerable<string> filtered = string.IsNullOrWhiteSpace(tools)
+            ? ToolRegistry.DefaultChildAgentTools
+            : tools.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         var childTools = ToolRegistry.CreateMafTools(filtered);
         var childAgent = s_chatClient.AsAIAgent(

@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Azure.AI.OpenAI;
-using Azure.AI.OpenAI.Chat;
 using dotenv.net;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -74,7 +73,8 @@ internal class Program
         string? SetModelSpec,       // --set-model alias=deployment
         string? ConfigSubcommand,   // --config set|get|list|reset|show (FR-009)
         string? ConfigKey,          // key arg for --config set/get
-        string? ConfigValue         // value arg for --config set (parsed from key=value)
+        string? ConfigValue,        // value arg for --config set (parsed from key=value)
+        bool Prewarm                // FR-007: --prewarm / AZ_PREWARM=1 — fire-and-forget TLS/DNS warmup
     );
 
     private static async Task<int> Main(string[] args)
@@ -214,6 +214,16 @@ internal class Program
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             return ErrorAndExit("AZUREOPENAIAPI environment variable not set", 1, jsonMode: opts.Json);
+        }
+
+        // FR-007: fire-and-forget TLS / DNS prewarm against the configured
+        // endpoint. Runs concurrent with stdin read + prompt resolution so the
+        // real chat request hits a warm connection pool. Silent — never touches
+        // stdout/stderr. Errors swallowed: if prewarm fails, the real request
+        // cold-starts normally.
+        if (opts.Prewarm)
+        {
+            _ = PrewarmAsync(endpoint, apiKey);
         }
 
         // FR-010: resolve model via alias map, then env, then UserConfig smart default,
@@ -364,7 +374,7 @@ internal class Program
                     temperature: opts.Temperature,
                     maxTokens: opts.MaxTokens,
                     timeoutSeconds: opts.TimeoutSeconds,
-                    tools: opts.Tools ?? "shell,file,web,datetime,delegate",
+                    tools: opts.Tools ?? string.Join(",", AzureOpenAI_CLI_V2.Tools.ToolRegistry.DefaultAgentTools),
                     ct: cts.Token
                 );
             }
@@ -532,7 +542,8 @@ internal class Program
         SetModelSpec: null,
         ConfigSubcommand: null,
         ConfigKey: null,
-        ConfigValue: null
+        ConfigValue: null,
+        Prewarm: false
     );
 
     /// <summary>Default agent tool-call round cap, matching v1 (<c>--max-rounds</c>).</summary>
@@ -580,6 +591,7 @@ internal class Program
         string? configSubcommand = null;
         string? configKey = null;
         string? configValue = null;
+        bool prewarm = false;
         var positionalArgs = new List<string>();
 
         bool parseFailed = false;
@@ -775,6 +787,9 @@ internal class Program
                 case "--json":
                     json = true;
                     break;
+                case "--prewarm":
+                    prewarm = true;
+                    break;
                 default:
                     positionalArgs.Add(args[i]);
                     break;
@@ -820,6 +835,14 @@ internal class Program
             enableTelemetry = true;
         }
 
+        // FR-007: honor AZ_PREWARM=1 as an env fallback for --prewarm.
+        if (!prewarm)
+        {
+            var envPre = Environment.GetEnvironmentVariable("AZ_PREWARM");
+            if (!string.IsNullOrWhiteSpace(envPre) && envPre == "1")
+                prewarm = true;
+        }
+
         return DefaultOptions() with
         {
             Model = model,
@@ -857,6 +880,7 @@ internal class Program
             ConfigSubcommand = configSubcommand,
             ConfigKey = configKey,
             ConfigValue = configValue,
+            Prewarm = prewarm,
         };
     }
 
@@ -972,6 +996,46 @@ internal class Program
     }
 
     /// <summary>
+    /// FR-007 connection prewarm. Fires a <c>HEAD</c> request against the
+    /// configured endpoint to warm DNS + TCP + TLS + HTTP/2 state so the
+    /// subsequent chat request hits a hot connection. Silent by contract:
+    /// never writes to stdout or stderr, swallows every exception. The
+    /// returned <see cref="Task"/> is exposed internal so tests can await it;
+    /// production callers discard it (<c>_ = PrewarmAsync(...)</c>).
+    /// <para>
+    /// Note: the prewarm <see cref="HttpClient"/> is separate from the Azure
+    /// SDK's internal pool, so the benefit is limited to OS-level DNS cache and
+    /// the kernel's TLS session cache. Sharing a <see cref="System.Net.Http.SocketsHttpHandler"/>
+    /// is a follow-up; this change delivers most of the FR-007 win with zero
+    /// SDK-coupling risk.
+    /// </para>
+    /// </summary>
+    internal static async Task PrewarmAsync(string endpoint, string apiKey)
+    {
+        try
+        {
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme != "https")
+                return;
+
+            using var client = new System.Net.Http.HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(3),
+            };
+            using var req = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head, uri);
+            // Azure rejects the HEAD with 401/404 — we don't care, TLS is up.
+            if (!string.IsNullOrEmpty(apiKey))
+                req.Headers.TryAddWithoutValidation("api-key", apiKey);
+            using var resp = await client.SendAsync(req, System.Net.Http.HttpCompletionOption.ResponseHeadersRead)
+                .ConfigureAwait(false);
+            // Discard the response — we only wanted the handshake cost.
+        }
+        catch
+        {
+            // Silent degrade by design — prewarm is best-effort.
+        }
+    }
+
+    /// <summary>
     /// <summary>
     /// FR-017: build a <see cref="ChatOptions"/> whose <see cref="ChatOptions.RawRepresentationFactory"/>
     /// seeds a fresh <see cref="ChatCompletionOptions"/>. Required for gpt-5.x / o1 / o3 deployments
@@ -1054,6 +1118,11 @@ Telemetry (opt-in):
                             (env: AZ_TELEMETRY=1 — equivalent to --telemetry)
   --otel                    Export spans to OTLP endpoint (tracing only)
   --metrics                 Export metrics to OTLP endpoint (meters only)
+
+Performance (FR-007):
+  --prewarm                 Fire a background TLS handshake against the endpoint
+                            at startup so the first chat request hits a warm
+                            connection (env: AZ_PREWARM=1)
 
 Cost Estimator (FR-015, no API call):
   --estimate                Print estimated USD cost for the prompt and exit
@@ -1202,8 +1271,7 @@ complete -c az-ai -w az-ai-v2
             case "zsh": Console.Write(ZshCompletionScript); return 0;
             case "fish": Console.Write(FishCompletionScript); return 0;
             default:
-                Console.Error.WriteLine($"[ERROR] Unsupported shell '{shell}'. Supported: bash, zsh, fish.");
-                return 2;
+                return ErrorAndExit($"Unsupported shell '{shell}'. Supported: bash, zsh, fish.", 2, jsonMode: false);
         }
     }
 
