@@ -22,6 +22,14 @@ shell-interpolated args).
 
 Pick **one** Espanso option (A or B). AHK is independent and complements either.
 
+> **No GPU? No problem.** This kit works with **just Azure creds** — no
+> Docker, no systemd, no NIM. Follow §1 and skip the entire "Local NIM
+> (optional)" section at the bottom. Every trigger (`:aifix`, `:airw`,
+> `:aitldr`, `:aiexp`, `:aic`, `:ai`) routes to Azure with a 2–3 s budget
+> and no local footprint. The local-NIM path is a **later upgrade** for
+> users on Blackwell-class hardware who want sub-second `:aifix` / `:airw`;
+> see [`docs/nim-setup.md`](../../docs/nim-setup.md) when you're ready.
+
 ---
 
 ## 1. One-time WSL prerequisites

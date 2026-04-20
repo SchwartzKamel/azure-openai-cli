@@ -4,8 +4,17 @@ This guide gets you from a fresh WSL2 Ubuntu 24.04 on a Blackwell laptop to
 `:aifix` working locally against NVIDIA NIM in under 10 minutes.
 
 - Design rationale: [ADR-006 — NVIDIA NIM / NVFP4 integration](adr/ADR-006-nvfp4-nim-integration.md)
-- Provider spec: FR-020 (to be drafted once ADR-006 is accepted)
-- Companion integration: [Espanso / AHK](espanso-ahk-integration.md)
+- Provider spec: [FR-020 — NVIDIA NIM provider + per-trigger routing](proposals/FR-020-nvidia-nim-provider-per-trigger-routing.md)
+- Companion integration: [Espanso / AHK kit](../examples/espanso-ahk-wsl/README.md)
+
+> **You probably do not need this page.** If you don't have a Blackwell /
+> Ada / Hopper GPU with ≥ 8 GB VRAM, or you just want the CLI working
+> today, **skip this entirely**. Install the AOT binary, export your Azure
+> creds, and drop in the [Espanso/AHK kit](../examples/espanso-ahk-wsl/README.md)
+> — every trigger (`:aifix`, `:airw`, `:aitldr`, `:aiexp`, `:aic`, `:ai`)
+> routes to Azure out of the box with a 2–3 s budget. This page is the
+> **opt-in upgrade** for users who want sub-second `:aifix` and `:airw`
+> against a local NVFP4 model. See FR-020 §4.8 for the cloud-only guarantee.
 
 ---
 

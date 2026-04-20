@@ -261,6 +261,63 @@ passes `--fallback azure` or sets `fallback.on_nim_down = "azure"`. Silent
 cloud calls on a local-requested prompt violate privacy, cost, and offline
 intent simultaneously; we do not do this.
 
+### 4.8 Cloud-only mode — zero-hardware onboarding (Uncle Leo / Costanza)
+
+**Not every user has a Blackwell laptop.** A contributor on a ThinkPad, a
+reviewer on an Intel MacBook, or a CI runner in a plain container must have
+a first-class onboarding path that is strictly simpler than the NIM path,
+not a degraded variant of it.
+
+**Guarantee:** If `[providers.nim]` is absent from preferences, the router
+degrades to a **no-op**. Every trigger resolves to `default_provider`
+(Azure). No health probes, no warm-up, no Docker, no systemd, no NGC key,
+no Gemma ToU gate. The binary behaves exactly as v1.x did — no regression
+in setup cost for users who never asked for local inference.
+
+**Three-step cloud-only setup:**
+
+```bash
+# 1. Install the AOT binary (or download a release artifact)
+make publish-aot && sudo install -m 0755 dist/aot/AzureOpenAI_CLI /usr/local/bin/az-ai
+
+# 2. Export Azure creds (same as v1)
+export AZUREOPENAIENDPOINT="https://YOUR.openai.azure.com"
+export AZUREOPENAIAPI="YOUR-KEY"
+export AZUREOPENAIMODEL="gpt-4o-mini"
+
+# 3. Drop in the Espanso/AHK kit — it works unchanged
+cp examples/espanso-ahk-wsl/espanso/ai.yml ~/.config/espanso/match/
+```
+
+That's it. `:aifix`, `:airw`, `:aitldr`, `:aiexp`, `:aic`, `:ai` all route
+to Azure. Latency is whatever Azure gives you (~2–3 s typical); no local
+footprint at all.
+
+**No separate binary, no separate build flag.** The same AOT binary ships
+for both audiences. This is load-bearing: we will not fork the release into
+`az-ai-cloud` and `az-ai-local` SKUs. Complexity stays in configuration,
+not in packaging.
+
+**Opt-in upgrade path:** when a cloud-only user later gets a Blackwell
+box, they run `make install-nim-gemma-2b`, which **only writes to
+`~/.config/az-ai/preferences.toml`** — it never touches the binary. The
+installer adds `[providers.nim]` + a `[routing]` table with Maestro's
+defaults. Existing Azure-only users upgrading a release see **zero**
+behaviour change until they explicitly opt in.
+
+**Success criterion for cloud-only:** the `examples/espanso-ahk-wsl` kit's
+Option A (Espanso-in-WSL) and Option B (Espanso-on-Windows-to-WSL) must
+both work end-to-end on a machine with **no GPU, no Docker, no systemd**,
+using only Azure creds. That's the hardest test: the kit cannot assume
+local inference exists. (See §10 criterion 9.)
+
+**Documentation ordering rule (Elaine/Uncle Leo):** every onboarding doc
+(`README.md`, `examples/espanso-ahk-wsl/README.md`, `docs/nim-setup.md`)
+must present **cloud-only first, NIM second**. The common case leads. The
+niche case — local NVFP4 on Blackwell — is a clearly-labelled upgrade
+section, not the default narrative. This is a welcome-mat commitment, not
+a style preference.
+
 ## 5. Security (Newman — non-negotiables)
 
 1. **Digest-pinned images only.** The install script pulls by sha256 digest.
@@ -360,8 +417,12 @@ should produce a binary within ±1 % of pre-FR-020 size. CI asserts this.
   below.
 - **Phase B:** `NimProvider` + preferences extension + `--provider` /
   `--trigger` flags + digest pinning + bearer token auth + ack-file gate.
+  **Cloud-only remains the default out-of-the-box state** — shipping Phase B
+  must not change the behaviour of a user who never edits preferences.
 - **Phase C:** Per-trigger routing layer + length-gating heuristic +
-  `--fallback` opt-in. `:aifix` / `:airw` ship here as local-by-default.
+  `--fallback` opt-in. `:aifix` / `:airw` ship here as local-by-default
+  **only when `[providers.nim]` is configured**; the no-op degrade path
+  (§4.8) is a gating test, not an afterthought.
 - **Phase D:** `make install-nim-gemma-2b` one-shot + `az-ai-nim.service`
   systemd-user unit + `loginctl enable-linger` + install/uninstall docs.
   WSL2 Ubuntu 24.04 is the reference target.
@@ -397,6 +458,11 @@ Ultra 7 265H / WSL2 Ubuntu 24.04** reference box:
    a fixed deterministic prompt (Mickey's diff test).
 8. Mickey-approved exit codes (42–45) and sentinel strings stable and
    documented in `docs/man/az-ai.1`.
+9. **Cloud-only parity (§4.8):** on a machine with **no GPU, no Docker,
+   no systemd, no `[providers.nim]` config**, every `--trigger` flag
+   routes to Azure with no warnings, no health probes, and no startup
+   cost beyond v1.x baseline. The full `examples/espanso-ahk-wsl` kit
+   (Options A and B) works end-to-end on such a machine.
 
 ## 11. Routing Map Appendix (Maestro, verbatim quality matrix)
 
