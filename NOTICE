@@ -1,15 +1,31 @@
 azure-openai-cli
 ================
 
-This product includes software developed by third parties. Licenses below.
+This product includes software developed by third parties. A per-package
+manifest with aggregated license texts is maintained in THIRD_PARTY_NOTICES.md
+at the repository root. A reproducible audit — including license expression
+sources, verification method, and reaffirmation cadence — is kept in
+docs/licensing-audit.md.
 
-All third-party dependencies enumerated here are distributed under the MIT
-License (SPDX: MIT), which is compatible with this project's MIT license. No
-copyleft (GPL/LGPL/AGPL) or otherwise incompatible licenses are present in the
-dependency graph at the versions pinned below.
+As of v2.0.0, the resolved dependency graph uses these licenses:
 
-Each block is intentionally machine-friendly: one dependency per block, with
-SPDX short identifiers and links to upstream license text.
+    MIT             - the majority of Microsoft / Azure / .NET / OpenAI /
+                      dotenv.net packages. Compatible with this project's MIT.
+    Apache-2.0      - the OpenTelemetry packages (new in v2). Compatible with
+                      MIT. The upstream opentelemetry-dotnet repository carries
+                      no NOTICE file at version 1.15.2, so Apache-2.0 section
+                      4(d) imposes no inherited notice text on this project.
+    BSD-3-Clause    - Google.Protobuf, pulled transitively by the OpenTelemetry
+                      OTLP exporter. Compatible with MIT. The no-endorsement
+                      clause is honored by this project's trademark policy.
+
+No copyleft licenses (GPL / LGPL / AGPL / MPL / SSPL / EPL / CDDL / CC-NC)
+are present in the v2.0.0 dependency graph. See docs/licensing-audit.md
+for the complete per-package table and verification record.
+
+The blocks below cover only the v1 baseline and are retained for continuity
+while v2 packaging transitions to THIRD_PARTY_NOTICES.md as the authoritative
+manifest.
 
 --------------------------------------------------------------------------------
 Top-level dependencies
