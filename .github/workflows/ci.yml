@@ -52,8 +52,11 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal
+      - name: Test v1
+        run: dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --no-build --configuration Release --verbosity normal
+
+      - name: Test v2
+        run: dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj --no-build --configuration Release --verbosity normal
 
       - name: Check for vulnerable packages
         shell: bash

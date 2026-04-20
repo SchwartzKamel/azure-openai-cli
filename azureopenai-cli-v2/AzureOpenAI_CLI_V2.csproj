@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Phase 1 v2 migration: Microsoft Agent Framework standard mode with streaming and raw mode support.
+    
+    Scope: MAF-based chat client with full CLI flag parity for standard mode.
+    Out of scope: tools (Phase 2), agent mode (Phase 2), ralph (Phase 3), squad (Phase 4).
+    
+    Env contract: identical to v1.
+    AOT: verified via dotnet publish with PublishAot=true.
+    See ADR-004 for migration strategy.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>2.0.0-alpha.1</Version>
+    <AssemblyName>az-ai-v2</AssemblyName>
+    
+    <!-- AOT configuration (matches spike verification) -->
+    <IsTrimmable>true</IsTrimmable>
+    <TrimMode>full</TrimMode>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Microsoft Agent Framework packages (versions from spike) -->
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.1.0" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+    <PackageReference Include="dotenv.net" Version="3.1.2" />
+  </ItemGroup>
+
+</Project>
