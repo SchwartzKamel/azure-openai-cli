@@ -27,7 +27,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.9.0-alpha.1</Version>
+    <Version>1.9.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -36,8 +36,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Azure OpenAI SDK (stable GA release) -->
-    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+    <!-- Azure OpenAI SDK — 2.9.0-beta.1 needed for:
+         - max_completion_tokens serialization (FR-017) for gpt-5.x / o1 models
+         - Improved AOT/source-gen support (FR-016)
+         - Tool-calling streaming fragments (used in agent mode) -->
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.9.0-beta.1" />
     <PackageReference Include="Azure.Core" Version="1.51.1" />
     <PackageReference Include="dotenv.net" Version="3.1.2" />
   </ItemGroup>

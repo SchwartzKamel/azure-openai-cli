@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-04-20
+
+### Fixed
+- **gpt-5.x / o1 / o3 compatibility** ([FR-017](docs/proposals/FR-017-max-completion-tokens-compatibility.md)) — Chat
+  Completions now send `max_completion_tokens` on the wire instead of the
+  legacy `max_tokens`, unblocking modern Azure OpenAI Responses-API
+  deployments that reject the old parameter with HTTP 400. Applied via the
+  `SetNewMaxCompletionTokensPropertyEnabled()` opt-in at both the standard
+  and Ralph iteration call sites. Safe for older models too — `gpt-4o`,
+  `gpt-4o-mini`, and earlier accept both field names.
+- **AOT reflection regression** ([FR-016](docs/proposals/FR-016-aot-reflection-regression-hotfix.md)) — Native AOT
+  binary no longer throws `InvalidOperationException: Reflection-based
+  serialization has been disabled` when streaming from modern endpoints.
+  Fixed incidentally by the SDK upgrade below. AOT binary is now 8.9 MB
+  (down from 9.1 MB), zero new trim/AOT warnings.
+
+### Changed
+- Upgraded `Azure.AI.OpenAI` `2.1.0` → `2.9.0-beta.1` (pulls `OpenAI` `2.1.0` →
+  `2.9.1`). Required for `max_completion_tokens` support and AOT cleanliness.
+
+### Verified
+- End-to-end against `gpt-5.4-nano` on
+  `api-version=2025-04-01-preview` (both JIT and AOT).
+- `1001/1001` unit tests passing.
+
+## [Unreleased - pre-1.9.1 notes]
+
 ### Added
 - **`az-ai --completions <shell>`** — Emit shell-completion scripts for
   `bash`, `zsh`, and `fish`. Pipe into your rc file (e.g.

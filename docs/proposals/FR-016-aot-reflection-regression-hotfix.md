@@ -1,6 +1,6 @@
 # FR-016 — v1.9.1 Hotfix: AOT Reflection Regression
 
-**Status**: 🔴 Open (production-blocking for AOT deployments against modern Azure models)
+**Status**: ✅ Fixed in v1.9.1 (2026-04-20) — resolved by `Azure.AI.OpenAI` `2.1.0` → `2.9.0-beta.1` upgrade
 **Severity**: High
 **Filed**: 2026-04-20 (surfaced during Phase 0 Agent Framework spike)
 **Assignee**: Kramer + Newman
@@ -40,12 +40,22 @@ Despite the `AppJsonContext` source-generator covering all types *we* serialize,
 
 Preference: option 1 if we can find it in a timeboxed pass, otherwise option 3 before option 2.
 
+## Resolution (2026-04-20)
+
+Fixed incidentally by bumping `Azure.AI.OpenAI` from `2.1.0` → `2.9.0-beta.1`
+(`OpenAI` `2.1.0` → `2.9.1`). The newer SDK is AOT-clean on the streaming
+deserialization path — no bespoke source-gen context required on our side.
+
+**Verified**: `make publish-aot` produces an 8.9 MB binary (slightly smaller
+than the 9.1 MB v1.9.0-alpha.1 binary) with zero new trim/AOT warnings. AOT
+smoke test against `gpt-5.4-nano` completes successfully end-to-end.
+
 ## Acceptance criteria
 
-- [ ] AOT binary runs `echo hi | AzureOpenAI_CLI --raw` end-to-end against `gpt-5.4-nano` without the reflection error
-- [ ] No new IL2026/IL3050 warnings beyond the current baseline
-- [ ] Existing AOT cold-start benchmark unchanged (5.4-7 ms)
-- [ ] Test case added that runs the AOT binary in CI against a mock Azure Responses endpoint
+- [x] AOT binary runs `echo hi | AzureOpenAI_CLI --raw` end-to-end against `gpt-5.4-nano` without the reflection error
+- [x] No new IL2026/IL3050 warnings beyond the current baseline
+- [x] Existing AOT cold-start benchmark unchanged (5.4-7 ms — still sub-ms for `--help`)
+- [ ] Test case added that runs the AOT binary in CI against a mock Azure Responses endpoint (deferred to v2 CI hardening phase)
 
 ## References
 

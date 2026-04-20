@@ -611,6 +611,14 @@ class Program
                 FrequencyPenalty = 0.0f,
                 PresencePenalty = 0.0f,
             };
+            // FR-017: opt into `max_completion_tokens` wire serialization so
+            // reasoning / Responses-API models (o1, o3, gpt-5.x) accept the
+            // token cap. The Chat Completions SDK still defaults to `max_tokens`
+            // for back-compat. Safe to always enable — older models also accept
+            // `max_completion_tokens`.
+            #pragma warning disable AOAI001
+            requestOptions.SetNewMaxCompletionTokensPropertyEnabled(true);
+            #pragma warning restore AOAI001
 
             // Apply structured output schema if provided (already validated as valid JSON in ParseCliFlags)
             if (opts.JsonSchema != null)
@@ -1570,6 +1578,11 @@ complete -c azureopenai-cli -w az-ai
                 FrequencyPenalty = 0.0f,
                 PresencePenalty = 0.0f,
             };
+            // FR-017: propagate opt-in so Ralph iterations also send
+            // max_completion_tokens to reasoning / Responses-API models.
+            #pragma warning disable AOAI001
+            iterOptions.SetNewMaxCompletionTokensPropertyEnabled(true);
+            #pragma warning restore AOAI001
 
             // Apply schema if present
             if (baseOptions.ResponseFormat is not null)
