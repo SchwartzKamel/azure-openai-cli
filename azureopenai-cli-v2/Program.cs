@@ -41,7 +41,9 @@ internal class Program
         string? TaskFile,
         int MaxIterations,
         string? Prompt,
-        bool ParseError // True if there was a parse error (forces exit code 1)
+        bool ParseError, // True if there was a parse error (forces exit code 1)
+        bool EnableOtel,  // --otel flag: enable OpenTelemetry tracing
+        bool EnableMetrics // --metrics flag: enable Meter emission
     );
 
     private static async Task<int> Main(string[] args)
@@ -51,6 +53,23 @@ internal class Program
 
         var opts = ParseArgs(args);
 
+        // Initialize OpenTelemetry if --otel or --metrics flags are set
+        // Must be called before any Activities or Metrics are emitted
+        Observability.Telemetry.Initialize(opts.EnableOtel, opts.EnableMetrics);
+
+        try
+        {
+            return await RunAsync(opts);
+        }
+        finally
+        {
+            // Shutdown and flush telemetry providers
+            Observability.Telemetry.Shutdown();
+        }
+    }
+
+    private static async Task<int> RunAsync(CliOptions opts)
+    {
         if (opts.ShowHelp)
         {
             ShowHelp();
@@ -267,6 +286,8 @@ internal class Program
         string? validateCommand = null;
         string? taskFile = null;
         int maxIterations = 10;
+        bool enableOtel = false;
+        bool enableMetrics = false;
         var positionalArgs = new List<string>();
 
         for (int i = 0; i < args.Length; i++)
@@ -367,7 +388,9 @@ internal class Program
                             TaskFile: null,
                             MaxIterations: 10,
                             Prompt: null,
-                            ParseError: true
+                            ParseError: true,
+                            EnableOtel: false,
+                            EnableMetrics: false
                         );
                     }
                     break;
@@ -398,7 +421,9 @@ internal class Program
                             TaskFile: null,
                             MaxIterations: 10,
                             Prompt: null,
-                            ParseError: true
+                            ParseError: true,
+                            EnableOtel: false,
+                            EnableMetrics: false
                         );
                     }
                     break;
@@ -427,7 +452,9 @@ internal class Program
                                 TaskFile: null,
                                 MaxIterations: 10,
                                 Prompt: null,
-                                ParseError: true
+                                ParseError: true,
+                            EnableOtel: false,
+                            EnableMetrics: false
                             );
                         }
                         maxIterations = iters;
@@ -455,7 +482,9 @@ internal class Program
                             TaskFile: null,
                             MaxIterations: 10,
                             Prompt: null,
-                            ParseError: true
+                            ParseError: true,
+                            EnableOtel: false,
+                            EnableMetrics: false
                         );
                     }
                     break;
@@ -466,6 +495,12 @@ internal class Program
                 case "--version":
                 case "-v":
                     showVersion = true;
+                    break;
+                case "--otel":
+                    enableOtel = true;
+                    break;
+                case "--metrics":
+                    enableMetrics = true;
                     break;
                 default:
                     // Positional argument (prompt)
@@ -531,7 +566,9 @@ internal class Program
             TaskFile: taskFile,
             MaxIterations: maxIterations,
             Prompt: prompt,
-            ParseError: false
+            ParseError: false,
+            EnableOtel: enableOtel,
+            EnableMetrics: enableMetrics
         );
     }
 

@@ -32,10 +32,10 @@
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="dotenv.net" Version="3.1.2" />
     
-    <!-- OpenTelemetry packages for observability (Phase 5) -->
-    <PackageReference Include="OpenTelemetry" Version="1.10.0" />
-    <PackageReference Include="OpenTelemetry.Api" Version="1.10.0" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.10.0" />
+    <!-- OpenTelemetry packages for observability (Phase 5) - using 1.15.2 (latest stable, no vulnerabilities) -->
+    <PackageReference Include="OpenTelemetry" Version="1.15.2" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.15.2" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.2" />
   </ItemGroup>
 
 </Project>
