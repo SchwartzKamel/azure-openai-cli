@@ -19,6 +19,27 @@ internal sealed class ShellExecTool : IBuiltInTool
         "nc", "ncat", "netcat", "wget",
     };
 
+    /// <summary>
+    /// Environment variables scrubbed from the child process before execution.
+    /// Hardening rationale: the shell_exec tool is callable by the LLM with arbitrary
+    /// commands. Even though BlockedCommands prevents obvious exfiltration vectors,
+    /// a well-crafted `printenv` / `env` / `$VAR` echo could leak credentials into
+    /// the tool output and then into chat history. Remove known secret-bearing
+    /// variables from the child process environment so even a successful leak
+    /// attempt yields nothing. The parent process retains them for its own use.
+    /// </summary>
+    private static readonly string[] SensitiveEnvVars = new[]
+    {
+        "AZURE_OPENAI_API_KEY",
+        "AZUREOPENAIAPI",      // this repo's convention — see project memory
+        "AZUREOPENAIENDPOINT",
+        "AZUREOPENAIMODEL",
+        "GITHUB_TOKEN",
+        "GH_TOKEN",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+    };
+
     public string Name => "shell_exec";
     public string Description => "Execute a shell command and return its stdout. Use for running git, ls, cat, grep, curl, etc. Commands that delete or modify system state are blocked.";
     public BinaryData ParametersSchema => BinaryData.FromString("""
@@ -78,6 +99,11 @@ internal sealed class ShellExecTool : IBuiltInTool
         };
         psi.ArgumentList.Add("-c");
         psi.ArgumentList.Add(command);
+
+        // Scrub sensitive env vars from child process (defence in depth — see
+        // SensitiveEnvVars XML doc above).
+        foreach (var name in SensitiveEnvVars)
+            psi.Environment.Remove(name);
 
         using var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start shell process");

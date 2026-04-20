@@ -559,4 +559,51 @@ public class ToolHardeningTests
         }
         // If we didn't exhaust file descriptors or process handles, disposal works.
     }
+
+    [Fact]
+    public async Task ShellExec_ScrubsSensitiveEnvVars()
+    {
+        // Threat model: LLM-issued shell commands must not be able to read
+        // AZUREOPENAIAPI / GITHUB_TOKEN / etc. via `printenv` or `$VAR`.
+        if (OperatingSystem.IsWindows()) return; // /bin/sh not available
+
+        const string key = "AZUREOPENAIAPI";
+        var prev = Environment.GetEnvironmentVariable(key);
+        Environment.SetEnvironmentVariable(key, "sekrit-value-123");
+        try
+        {
+            var tool = new ShellExecTool();
+            var args = JsonDocument.Parse("""{"command": "printenv AZUREOPENAIAPI || echo MISSING"}""").RootElement;
+            var result = await tool.ExecuteAsync(args, CancellationToken.None);
+            Assert.DoesNotContain("sekrit-value-123", result);
+            Assert.Contains("MISSING", result);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(key, prev);
+        }
+    }
+
+    [Theory]
+    [InlineData("AZURE_OPENAI_API_KEY")]
+    [InlineData("GITHUB_TOKEN")]
+    [InlineData("OPENAI_API_KEY")]
+    [InlineData("ANTHROPIC_API_KEY")]
+    public async Task ShellExec_ScrubsAllSensitiveEnvVars(string varName)
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var prev = Environment.GetEnvironmentVariable(varName);
+        Environment.SetEnvironmentVariable(varName, "CANARY-" + varName);
+        try
+        {
+            var tool = new ShellExecTool();
+            var args = JsonDocument.Parse($$"""{"command": "printenv {{varName}} || echo MISSING"}""").RootElement;
+            var result = await tool.ExecuteAsync(args, CancellationToken.None);
+            Assert.DoesNotContain("CANARY-" + varName, result);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(varName, prev);
+        }
+    }
 }
