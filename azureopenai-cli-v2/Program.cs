@@ -36,7 +36,12 @@ internal class Program
         bool SquadInit,
         string? Persona,
         bool ListPersonas,
-        string? Prompt
+        bool RalphMode,
+        string? ValidateCommand,
+        string? TaskFile,
+        int MaxIterations,
+        string? Prompt,
+        bool ParseError // True if there was a parse error (forces exit code 1)
     );
 
     private static async Task<int> Main(string[] args)
@@ -49,7 +54,7 @@ internal class Program
         if (opts.ShowHelp)
         {
             ShowHelp();
-            return 0;
+            return opts.ParseError ? 1 : 0;
         }
 
         if (opts.ShowVersion)
@@ -119,9 +124,26 @@ internal class Program
             ?? Environment.GetEnvironmentVariable("AZUREOPENAIMODEL")
             ?? "gpt-4o-mini";
 
-        // Resolve prompt: positional arg > stdin if redirected > error
+        // Resolve prompt: --task-file > positional arg > stdin if redirected > error
         var prompt = opts.Prompt;
-        if (string.IsNullOrWhiteSpace(prompt) && Console.IsInputRedirected)
+
+        // Ralph mode: --task-file takes precedence
+        if (opts.RalphMode && !string.IsNullOrWhiteSpace(opts.TaskFile))
+        {
+            if (!File.Exists(opts.TaskFile))
+            {
+                return ErrorAndExit($"Task file not found: {opts.TaskFile}", 1, jsonMode: false);
+            }
+            try
+            {
+                prompt = await File.ReadAllTextAsync(opts.TaskFile);
+            }
+            catch (Exception ex)
+            {
+                return ErrorAndExit($"Failed to read task file: {ex.Message}", 1, jsonMode: false);
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(prompt) && Console.IsInputRedirected)
         {
             try
             {
@@ -139,13 +161,37 @@ internal class Program
             return ErrorAndExit("No prompt provided (provide as argument or via stdin)", 1, jsonMode: false);
         }
 
-        // Build AIAgent via MAF
+        // Build chat client
         try
         {
             var client = new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(apiKey));
             var chatClient = client.GetChatClient(model).AsIChatClient();
 
-            // Agent mode: wire tools if --agent is set
+            // Ralph mode: run autonomous loop
+            if (opts.RalphMode)
+            {
+                using var cts = new CancellationTokenSource();
+                Console.CancelKeyPress += (_, e) =>
+                {
+                    e.Cancel = true;
+                    cts.Cancel();
+                };
+
+                return await AzureOpenAI_CLI_V2.Ralph.RalphWorkflow.RunAsync(
+                    chatClient,
+                    taskPrompt: prompt,
+                    systemPrompt: opts.SystemPrompt,
+                    validateCommand: opts.ValidateCommand,
+                    maxIterations: opts.MaxIterations,
+                    temperature: opts.Temperature,
+                    maxTokens: opts.MaxTokens,
+                    timeoutSeconds: opts.TimeoutSeconds,
+                    tools: opts.Tools ?? "shell,file,web,datetime,delegate",
+                    ct: cts.Token
+                );
+            }
+
+            // Standard agent mode: wire tools if --agent is set
             var agent = opts.AgentMode
                 ? chatClient.AsAIAgent(
                     instructions: opts.SystemPrompt,
@@ -154,11 +200,11 @@ internal class Program
                 : chatClient.AsAIAgent(instructions: opts.SystemPrompt);
 
             // Run streaming chat
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(opts.TimeoutSeconds));
+            using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(opts.TimeoutSeconds));
             int? inputTokens = null;
             int? outputTokens = null;
 
-            await foreach (var update in agent.RunStreamingAsync(prompt, cancellationToken: cts.Token))
+            await foreach (var update in agent.RunStreamingAsync(prompt, cancellationToken: cts2.Token))
             {
                 if (!string.IsNullOrEmpty(update.Text))
                 {
@@ -215,6 +261,10 @@ internal class Program
         bool squadInit = false;
         string? persona = null;
         bool listPersonas = false;
+        bool ralphMode = false;
+        string? validateCommand = null;
+        string? taskFile = null;
+        int maxIterations = 10;
         var positionalArgs = new List<string>();
 
         for (int i = 0; i < args.Length; i++)
@@ -284,6 +334,129 @@ internal class Program
                 case "--personas":
                     listPersonas = true;
                     break;
+                case "--ralph":
+                    ralphMode = true;
+                    agentMode = true; // Ralph implies agent mode
+                    break;
+                case "--validate":
+                    if (i + 1 < args.Length)
+                    {
+                        validateCommand = args[++i];
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("[ERROR] --validate requires a command argument");
+                        return new CliOptions(
+                            Model: null,
+                            Temperature: DEFAULT_TEMPERATURE,
+                            MaxTokens: DEFAULT_MAX_TOKENS,
+                            TimeoutSeconds: DEFAULT_TIMEOUT_SECONDS,
+                            SystemPrompt: DEFAULT_SYSTEM_PROMPT,
+                            Raw: false,
+                            ShowHelp: true,
+                            ShowVersion: false,
+                            AgentMode: false,
+                            Tools: null,
+                            SquadInit: false,
+                            Persona: null,
+                            ListPersonas: false,
+                            RalphMode: false,
+                            ValidateCommand: null,
+                            TaskFile: null,
+                            MaxIterations: 10,
+                            Prompt: null,
+                            ParseError: true
+                        );
+                    }
+                    break;
+                case "--task-file":
+                    if (i + 1 < args.Length)
+                    {
+                        taskFile = args[++i];
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("[ERROR] --task-file requires a file path argument");
+                        return new CliOptions(
+                            Model: null,
+                            Temperature: DEFAULT_TEMPERATURE,
+                            MaxTokens: DEFAULT_MAX_TOKENS,
+                            TimeoutSeconds: DEFAULT_TIMEOUT_SECONDS,
+                            SystemPrompt: DEFAULT_SYSTEM_PROMPT,
+                            Raw: false,
+                            ShowHelp: true,
+                            ShowVersion: false,
+                            AgentMode: false,
+                            Tools: null,
+                            SquadInit: false,
+                            Persona: null,
+                            ListPersonas: false,
+                            RalphMode: false,
+                            ValidateCommand: null,
+                            TaskFile: null,
+                            MaxIterations: 10,
+                            Prompt: null,
+                            ParseError: true
+                        );
+                    }
+                    break;
+                case "--max-iterations":
+                    if (i + 1 < args.Length && int.TryParse(args[i + 1], out int iters))
+                    {
+                        if (iters < 1 || iters > 50)
+                        {
+                            Console.Error.WriteLine("[ERROR] --max-iterations must be between 1 and 50");
+                            return new CliOptions(
+                                Model: null,
+                                Temperature: DEFAULT_TEMPERATURE,
+                                MaxTokens: DEFAULT_MAX_TOKENS,
+                                TimeoutSeconds: DEFAULT_TIMEOUT_SECONDS,
+                                SystemPrompt: DEFAULT_SYSTEM_PROMPT,
+                                Raw: false,
+                                ShowHelp: true,
+                                ShowVersion: false,
+                                AgentMode: false,
+                                Tools: null,
+                                SquadInit: false,
+                                Persona: null,
+                                ListPersonas: false,
+                                RalphMode: false,
+                                ValidateCommand: null,
+                                TaskFile: null,
+                                MaxIterations: 10,
+                                Prompt: null,
+                                ParseError: true
+                            );
+                        }
+                        maxIterations = iters;
+                        i++;
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("[ERROR] --max-iterations requires a numeric value (1-50)");
+                        return new CliOptions(
+                            Model: null,
+                            Temperature: DEFAULT_TEMPERATURE,
+                            MaxTokens: DEFAULT_MAX_TOKENS,
+                            TimeoutSeconds: DEFAULT_TIMEOUT_SECONDS,
+                            SystemPrompt: DEFAULT_SYSTEM_PROMPT,
+                            Raw: false,
+                            ShowHelp: true,
+                            ShowVersion: false,
+                            AgentMode: false,
+                            Tools: null,
+                            SquadInit: false,
+                            Persona: null,
+                            ListPersonas: false,
+                            RalphMode: false,
+                            ValidateCommand: null,
+                            TaskFile: null,
+                            MaxIterations: 10,
+                            Prompt: null,
+                            ParseError: true
+                        );
+                    }
+                    break;
                 case "--help":
                 case "-h":
                     showHelp = true;
@@ -351,7 +524,12 @@ internal class Program
             SquadInit: squadInit,
             Persona: persona,
             ListPersonas: listPersonas,
-            Prompt: prompt
+            RalphMode: ralphMode,
+            ValidateCommand: validateCommand,
+            TaskFile: taskFile,
+            MaxIterations: maxIterations,
+            Prompt: prompt,
+            ParseError: false
         );
     }
 
@@ -393,6 +571,12 @@ Options:
   --help, -h                Show this help
   --version, -v             Show version
 
+Ralph Mode (Autonomous Agent Loop):
+  --ralph                   Enable Ralph mode (autonomous loop with validation)
+  --validate <command>      Shell command to validate each iteration (exit 0 = pass)
+  --task-file <path>        Read task prompt from file
+  --max-iterations <n>      Maximum loop iterations (default: 10, max: 50)
+
 Environment Variables (required):
   AZUREOPENAIENDPOINT       Azure OpenAI endpoint URL
   AZUREOPENAIAPI            API key
@@ -401,6 +585,7 @@ Examples:
   az-ai-v2 ""What is the capital of France?""
   az-ai-v2 --model gpt-4o --temperature 0.7 ""Write a haiku""
   az-ai-v2 --agent --tools shell,file ""List and summarize the files in this directory""
+  az-ai-v2 --ralph --task-file task.md --validate ""dotnet test"" --max-iterations 5
   echo ""Summarize this"" | az-ai-v2 --raw
 ");
     }
