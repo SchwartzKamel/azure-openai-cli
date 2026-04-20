@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System.ClientModel;
+using System.ClientModel.Primitives;
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -6,6 +8,7 @@ using System.Text.Json;
 using Azure;
 using Azure.AI.OpenAI;
 using Azure.AI.OpenAI.Chat;
+using OpenAI;
 using OpenAI.Chat;
 using dotenv.net;
 using AzureOpenAI_CLI;
@@ -316,34 +319,128 @@ class Program
             taskFile, maxIterations, personaName, squadInit, listPersonas, raw, cleanedArgs.ToArray()), null);
     }
 
+    // === ADR-005: Azure AI Foundry routing ===============================
+    // When AZURE_FOUNDRY_ENDPOINT is set AND the deployment name matches one
+    // of the Foundry-routable models below (case-insensitive), we reach the
+    // OpenAI-compatible `/models/chat/completions` surface on services.ai.azure.com
+    // instead of the Azure OpenAI cognitiveservices surface. Zero new deps:
+    // same OpenAI.Chat.ChatClient, custom base URL + api-version query, api-key
+    // header injected via pipeline policy. See docs/adr/ADR-005-foundry-routing.md.
+    // Update this list in lockstep with CONTRIBUTING.md when new Foundry models
+    // are validated against this CLI.
+    internal static readonly string[] FoundryRoutedModels = new[]
+    {
+        "Phi-4-mini-instruct",
+        "Phi-4-mini-reasoning",
+        "DeepSeek-V3.2",
+    };
+
+    internal const string FoundryApiVersion = "2024-05-01-preview";
+
+    internal enum ChatRoute { AzureOpenAI, AzureFoundry }
+
     /// <summary>
-    /// Validates that the Azure OpenAI credentials (API key, endpoint, deployment model)
-    /// are properly configured. Returns the validated endpoint URI, API key, and deployment name.
-    /// Throws on missing API key or endpoint; returns an error message for invalid endpoint URLs.
+    /// ADR-005 decision #2: if AZURE_FOUNDRY_ENDPOINT is set AND the deployment
+    /// name is in the Foundry allowlist (case-insensitive), route to Foundry.
+    /// Otherwise fall back to the Azure OpenAI path (existing behavior).
     /// </summary>
-    static (Uri endpoint, string apiKey, string deploymentName, string? errorMessage) ValidateConfiguration(
-        string? azureOpenAiEndpoint, string? azureOpenAiApiKey, UserConfig config)
+    internal static ChatRoute ResolveRoute(string? foundryEndpoint, string? deploymentName)
+    {
+        if (string.IsNullOrWhiteSpace(foundryEndpoint) || string.IsNullOrWhiteSpace(deploymentName))
+            return ChatRoute.AzureOpenAI;
+        foreach (var m in FoundryRoutedModels)
+        {
+            if (m.Equals(deploymentName, StringComparison.OrdinalIgnoreCase))
+                return ChatRoute.AzureFoundry;
+        }
+        return ChatRoute.AzureOpenAI;
+    }
+
+    /// <summary>
+    /// Validates Azure credentials + resolves endpoint routing (ADR-005).
+    /// Returns the endpoint actually used for the chosen route, the API key,
+    /// the deployment name, and which route was selected. Throws on missing
+    /// API key / endpoint; returns an error message for invalid endpoint URLs.
+    /// </summary>
+    internal static (Uri endpoint, string apiKey, string deploymentName, ChatRoute route, string? errorMessage) ValidateConfiguration(
+        string? azureOpenAiEndpoint, string? azureOpenAiApiKey, UserConfig config,
+        string? foundryEndpoint = null)
     {
         // Early validation: API key must not be empty/whitespace
         if (string.IsNullOrWhiteSpace(azureOpenAiApiKey))
             throw new ArgumentNullException(nameof(azureOpenAiApiKey), "Azure OpenAI API key is not set.");
 
-        // Early validation: endpoint must be a valid URL
-        if (string.IsNullOrWhiteSpace(azureOpenAiEndpoint))
-            throw new ArgumentNullException(nameof(azureOpenAiEndpoint), "Azure OpenAI endpoint is not set.");
-        if (!Uri.TryCreate(azureOpenAiEndpoint, UriKind.Absolute, out var endpoint)
-            || endpoint.Scheme != "https")
-        {
-            return (null!, null!, null!, $"Invalid endpoint URL: '{azureOpenAiEndpoint}'. Must be a valid HTTPS URL.");
-        }
-
-        // Use the active model from user config, falling back to the first model in the list
+        // Deployment name — needed *before* we can resolve the route
         var deploymentName = config.ActiveModel
             ?? config.AvailableModels.FirstOrDefault()
             ?? throw new InvalidOperationException("Azure OpenAI model is not set. Configure AZUREOPENAIMODEL in your .env file.");
 
-        return (endpoint, azureOpenAiApiKey, deploymentName, null);
+        var route = ResolveRoute(foundryEndpoint, deploymentName);
+        var rawEndpoint = route == ChatRoute.AzureFoundry ? foundryEndpoint : azureOpenAiEndpoint;
+
+        if (string.IsNullOrWhiteSpace(rawEndpoint))
+            throw new ArgumentNullException(nameof(azureOpenAiEndpoint), "Azure OpenAI endpoint is not set.");
+        if (!Uri.TryCreate(rawEndpoint, UriKind.Absolute, out var endpoint)
+            || endpoint.Scheme != "https")
+        {
+            return (null!, null!, null!, route, $"Invalid endpoint URL: '{rawEndpoint}'. Must be a valid HTTPS URL.");
+        }
+
+        return (endpoint, azureOpenAiApiKey, deploymentName, route, null);
     }
+
+    /// <summary>
+    /// ADR-005: construct an OpenAI.Chat.ChatClient pointed at Azure AI Foundry's
+    /// OpenAI-compatible `/models/chat/completions` endpoint. We reuse the OpenAI
+    /// SDK (zero new deps) and inject `api-key` header + `api-version` query via
+    /// a pipeline policy — Foundry rejects `Authorization: Bearer` on this surface.
+    /// </summary>
+    internal static ChatClient BuildFoundryChatClient(Uri foundryEndpoint, string apiKey, string deploymentName)
+    {
+        var options = new OpenAIClientOptions { Endpoint = foundryEndpoint };
+        options.AddPolicy(new FoundryAuthPolicy(apiKey, FoundryApiVersion), PipelinePosition.PerCall);
+        // The ApiKeyCredential is required by the SDK but Foundry's /models surface
+        // ignores Authorization: Bearer when api-key header is present (our policy sets it).
+        return new ChatClient(deploymentName, new ApiKeyCredential(apiKey), options);
+    }
+
+    /// <summary>
+    /// Pipeline policy that (a) swaps OpenAI's `Authorization: Bearer` for the
+    /// Azure `api-key: <key>` header and (b) appends `api-version=<ver>` to the
+    /// request URI. Foundry's OpenAI-compatible surface requires both.
+    /// </summary>
+    internal sealed class FoundryAuthPolicy : PipelinePolicy
+    {
+        private readonly string _apiKey;
+        private readonly string _apiVersion;
+        public FoundryAuthPolicy(string apiKey, string apiVersion)
+        {
+            _apiKey = apiKey;
+            _apiVersion = apiVersion;
+        }
+        public override void Process(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
+        {
+            Apply(message);
+            ProcessNext(message, pipeline, currentIndex);
+        }
+        public override async ValueTask ProcessAsync(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
+        {
+            Apply(message);
+            await ProcessNextAsync(message, pipeline, currentIndex).ConfigureAwait(false);
+        }
+        private void Apply(PipelineMessage message)
+        {
+            var req = message.Request;
+            req.Headers.Set("api-key", _apiKey);
+            req.Headers.Remove("Authorization");
+            if (req.Uri is Uri uri && !uri.Query.Contains("api-version=", StringComparison.OrdinalIgnoreCase))
+            {
+                var sep = string.IsNullOrEmpty(uri.Query) ? "?" : "&";
+                req.Uri = new Uri(uri.AbsoluteUri + sep + "api-version=" + _apiVersion);
+            }
+        }
+    }
+    // === end ADR-005 =====================================================
 
     /// <summary>
     /// Resolves the effective temperature, max tokens, timeout, and system prompt by applying
@@ -450,6 +547,9 @@ class Program
             string? azureOpenAiModel = Environment.GetEnvironmentVariable("AZUREOPENAIMODEL");
             string? azureOpenAiApiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
             string? envSystemPrompt = Environment.GetEnvironmentVariable("SYSTEMPROMPT");
+            // ADR-005: optional Foundry endpoint. When set + AZUREOPENAIMODEL
+            // matches a Foundry-routable model, we route there instead of Azure OpenAI.
+            string? azureFoundryEndpoint = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_ENDPOINT");
 
             // Initialize available models from environment (supports comma-separated list)
             config.InitializeFromEnvironment(azureOpenAiModel);
@@ -530,18 +630,26 @@ class Program
             }
             userPromptForCatch = userPrompt;
 
-            // Validate Azure credentials and endpoint
-            var (endpoint, apiKey, deploymentName, validationError) = ValidateConfiguration(
-                azureOpenAiEndpoint, azureOpenAiApiKey, config);
+            // Validate Azure credentials and endpoint (ADR-005: routing-aware)
+            var (endpoint, apiKey, deploymentName, route, validationError) = ValidateConfiguration(
+                azureOpenAiEndpoint, azureOpenAiApiKey, config, azureFoundryEndpoint);
             if (validationError != null)
             {
                 return ErrorAndExit(validationError, 1, jsonMode);
             }
 
-            AzureOpenAIClient azureClient = new(
-                endpoint,
-                new AzureKeyCredential(apiKey));
-            ChatClient chatClient = azureClient.GetChatClient(deploymentName);
+            ChatClient chatClient;
+            if (route == ChatRoute.AzureFoundry)
+            {
+                chatClient = BuildFoundryChatClient(endpoint, apiKey, deploymentName);
+            }
+            else
+            {
+                AzureOpenAIClient azureClient = new(
+                    endpoint,
+                    new AzureKeyCredential(apiKey));
+                chatClient = azureClient.GetChatClient(deploymentName);
+            }
 
             // Apply precedence: CLI flags > UserConfig > Env vars > Defaults
             var (temperature, maxTokens, timeoutSeconds, effectiveSystemPrompt) =
@@ -1155,6 +1263,7 @@ complete -c azureopenai-cli -w az-ai
         Console.WriteLine("  AZUREOPENAIENDPOINT   azure openai resource endpoint (required)");
         Console.WriteLine("  AZUREOPENAIAPI        azure openai api key (required)");
         Console.WriteLine("  AZUREOPENAIMODEL      comma-separated model deployment names (first = default)");
+        Console.WriteLine("  AZURE_FOUNDRY_ENDPOINT  optional: route Foundry models (Phi-4-mini-*, DeepSeek-V3.2) to services.ai.azure.com (ADR-005)");
         Console.WriteLine("  AZURE_TEMPERATURE     default temperature (overridden by --temperature)");
         Console.WriteLine("  AZURE_MAX_TOKENS      default max tokens (overridden by --max-tokens)");
         Console.WriteLine();
