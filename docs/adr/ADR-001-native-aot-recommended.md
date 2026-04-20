@@ -2,7 +2,7 @@
 
 - **Status**: Accepted — 2026-04-19
 - **Deciders**: Core maintainers
-- **Related**: `FR-006-native-aot.md`, `docs/espanso-ahk-integration.md`, CHANGELOG v1.8.0
+- **Related**: `FR-006-unblock-native-aot-compilation.md`, `docs/espanso-ahk-integration.md`, CHANGELOG v1.8.0
 
 ## Context
 
@@ -95,7 +95,7 @@ leaving the official toolchain.
 
 ## References
 
-- [`FR-006-native-aot.md`](../specs/FR-006-native-aot.md) — original feature
+- [`FR-006-unblock-native-aot-compilation.md`](../proposals/FR-006-unblock-native-aot-compilation.md) — original feature
   proposal and measurement methodology.
 - [`docs/espanso-ahk-integration.md`](../espanso-ahk-integration.md) — latency
   measurements and integration recipes.
