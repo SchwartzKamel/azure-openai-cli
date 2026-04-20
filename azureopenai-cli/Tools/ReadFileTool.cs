@@ -10,6 +10,7 @@ internal sealed class ReadFileTool : IBuiltInTool
     private const int MaxFileSizeBytes = 262_144; // 256 KB
 
     // Blocked path prefixes — any resolved path starting with these is denied.
+    // Tilde-prefixed entries are expanded to the current user's home at check-time.
     private static readonly string[] BlockedPathPrefixes = new[]
     {
         "/etc/shadow",
@@ -19,6 +20,13 @@ internal sealed class ReadFileTool : IBuiltInTool
         "/root/.ssh",
         "/proc/self/environ",
         "/proc/self/cmdline",
+        "/var/run/secrets",   // Kubernetes / systemd service-account tokens
+        "/run/secrets",       // Docker/Podman secret mount point
+        "/var/run/docker.sock",
+        "~/.aws",             // AWS CLI credentials / config
+        "~/.azure",           // Azure CLI tokens & service-principal creds
+        "~/.config/az-ai",    // az-ai CLI config directory
+        "~/.azureopenai-cli.json", // this CLI's own config file
     };
 
     public string Name => "read_file";
@@ -72,13 +80,37 @@ internal sealed class ReadFileTool : IBuiltInTool
 
     /// <summary>
     /// Check if a path matches or falls under any blocked path prefix.
+    /// Tilde-prefixed blocklist entries are expanded to the current user's
+    /// home directory at check-time, so (e.g.) "~/.aws" matches both
+    /// "/home/alice/.aws" and "/home/alice/.aws/credentials".
     /// </summary>
     internal static bool IsBlockedPath(string fullPath)
     {
-        foreach (var prefix in BlockedPathPrefixes)
+        // Block any file whose name is `.env` or ends in `.env` (case-insensitive),
+        // EXCEPT common example/sample variants which contain no real secrets.
+        var fileName = Path.GetFileName(fullPath);
+        if (!string.IsNullOrEmpty(fileName))
         {
+            bool isEnvExample =
+                fileName.EndsWith(".env.example", StringComparison.OrdinalIgnoreCase) ||
+                fileName.EndsWith(".env.sample", StringComparison.OrdinalIgnoreCase) ||
+                fileName.EndsWith(".env.template", StringComparison.OrdinalIgnoreCase);
+            bool isEnv =
+                fileName.Equals(".env", StringComparison.OrdinalIgnoreCase) ||
+                fileName.EndsWith(".env", StringComparison.OrdinalIgnoreCase);
+            if (isEnv && !isEnvExample)
+                return true;
+        }
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        foreach (var raw in BlockedPathPrefixes)
+        {
+            var prefix = raw.StartsWith('~')
+                ? Path.Combine(home, raw[1..].TrimStart('/'))
+                : raw;
             if (fullPath.Equals(prefix, StringComparison.OrdinalIgnoreCase)
-                || fullPath.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase))
+                || fullPath.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase)
+                || fullPath.StartsWith(prefix + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
         return false;

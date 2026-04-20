@@ -544,6 +544,62 @@ public class ToolHardeningTests
         Assert.Null(bogusResult);
     }
 
+    [Theory]
+    [InlineData("/var/run/secrets/token")]
+    [InlineData("/run/secrets/db-password")]
+    [InlineData("/var/run/docker.sock")]
+    public void IsBlockedPath_ContainerSecrets_Blocked(string path)
+    {
+        Assert.True(ReadFileTool.IsBlockedPath(path));
+    }
+
+    [Fact]
+    public void IsBlockedPath_AwsCredentials_Blocked()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        Assert.True(ReadFileTool.IsBlockedPath(Path.Combine(home, ".aws", "credentials")));
+        Assert.True(ReadFileTool.IsBlockedPath(Path.Combine(home, ".aws")));
+    }
+
+    [Fact]
+    public void IsBlockedPath_AzureCli_Blocked()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        Assert.True(ReadFileTool.IsBlockedPath(Path.Combine(home, ".azure", "accessTokens.json")));
+    }
+
+    [Fact]
+    public void IsBlockedPath_AzAiConfigDir_Blocked()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        Assert.True(ReadFileTool.IsBlockedPath(Path.Combine(home, ".config", "az-ai", "anything")));
+    }
+
+    [Fact]
+    public void IsBlockedPath_AzureOpenAiCliJson_Blocked()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        Assert.True(ReadFileTool.IsBlockedPath(Path.Combine(home, ".azureopenai-cli.json")));
+    }
+
+    [Theory]
+    [InlineData("/any/path/.env")]
+    [InlineData("/home/user/project/.ENV")]
+    [InlineData("/app/config/production.env")]
+    public void IsBlockedPath_DotEnvFiles_Blocked(string path)
+    {
+        Assert.True(ReadFileTool.IsBlockedPath(path));
+    }
+
+    [Theory]
+    [InlineData("/app/.env.example")]
+    [InlineData("/app/.env.sample")]
+    [InlineData("/app/config/.env.template")]
+    public void IsBlockedPath_DotEnvExamples_NotBlocked(string path)
+    {
+        Assert.False(ReadFileTool.IsBlockedPath(path));
+    }
+
     [Fact]
     public void GetClipboard_FindCommand_MultipleRapidCalls_NoLeak()
     {
