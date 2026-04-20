@@ -85,6 +85,13 @@ internal sealed class ShellExecTool : IBuiltInTool
                 return $"Error: command '{token}' is blocked for safety.";
         }
 
+        // Block curl/wget body + upload forms (write-side HTTP). Read-only GETs
+        // stay allowed so the model can fetch public metadata, but any flag that
+        // would send data or upload a file is rejected — those belong in
+        // web_fetch (GET only) or a proper HTTP client, not a shell tool.
+        if (ContainsHttpWriteForms(command, out var offending))
+            return $"Error: curl with body/upload options is not permitted in shell_exec — use web_fetch (GET only) or a proper HTTP client (offending token: {offending}).";
+
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(DefaultTimeoutMs);
 
@@ -127,6 +134,68 @@ internal sealed class ShellExecTool : IBuiltInTool
             result += $"\n[exit code {process.ExitCode}]\n[stderr] {stderr}";
 
         return string.IsNullOrEmpty(result) ? "(no output)" : result;
+    }
+
+    /// <summary>
+    /// Detect curl/wget invocations carrying request-body or file-upload flags.
+    /// Returns true if the command contains <c>curl</c> or <c>wget</c> and any
+    /// of the HTTP write-side options (body, form, upload, explicit POST/PUT/DELETE).
+    /// </summary>
+    internal static bool ContainsHttpWriteForms(string command, out string offending)
+    {
+        offending = "";
+        // Tokenize on whitespace and common shell separators so we match tokens,
+        // not substrings (avoids false positives like `ls -data_dir`).
+        var tokens = command.Split(
+            new[] { ' ', '\t', '\n', '|', ';', '&', '(', ')' },
+            StringSplitOptions.RemoveEmptyEntries);
+
+        bool hasHttpClient = false;
+        foreach (var raw in tokens)
+        {
+            var t = raw.Split('/').LastOrDefault() ?? "";
+            if (t.Equals("curl", StringComparison.OrdinalIgnoreCase) ||
+                t.Equals("wget", StringComparison.OrdinalIgnoreCase))
+            {
+                hasHttpClient = true;
+                break;
+            }
+        }
+        if (!hasHttpClient) return false;
+
+        string[] bodyFlags =
+        {
+            "-d", "--data", "--data-raw", "--data-binary", "--data-urlencode", "--data-ascii",
+            "-F", "--form", "--form-string",
+            "-T", "--upload-file",
+        };
+        foreach (var tok in tokens)
+        {
+            foreach (var f in bodyFlags)
+            {
+                if (tok.Equals(f, StringComparison.Ordinal) ||
+                    tok.StartsWith(f + "=", StringComparison.Ordinal))
+                {
+                    offending = f;
+                    return true;
+                }
+            }
+        }
+
+        // -X / --request <METHOD> — reject non-GET/HEAD methods.
+        for (int i = 0; i < tokens.Length - 1; i++)
+        {
+            if (tokens[i] == "-X" || tokens[i] == "--request")
+            {
+                var method = tokens[i + 1].Trim('"', '\'').ToUpperInvariant();
+                if (method is "POST" or "PUT" or "DELETE" or "PATCH")
+                {
+                    offending = $"{tokens[i]} {method}";
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static async Task<string> ReadCappedAsync(StreamReader reader, int maxBytes, CancellationToken ct)
