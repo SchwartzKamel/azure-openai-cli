@@ -110,6 +110,21 @@ Five-thousandths of a dollar more per 1M input tokens than the instruct variant 
 
 **Where it earns its keep:** the Ralph validator loop. Ralph iterates up to 10 times by default; each iteration wants a judgment — "is the output correct / complete?" — which is exactly the logic-inference task Phi-4-mini-reasoning was trained on. At $0.08/$0.32, ten iterations of a 2K-token exchange costs pennies. That's a future FR — not a default change today, but worth a benchmark sprint. File it.
 
+**"What about Phi-3.5-mini-instruct?" — No. Next question.**
+
+Kramer asked. I checked. Here's the whole story in one table so nobody burns another hour on this:
+
+| Metric              | `Phi-3.5-mini-instruct` (Aug 2024) | `Phi-4-mini-instruct` (Feb 2025) |
+|---------------------|:----------------------------------:|:--------------------------------:|
+| Input $/1M          | $0.13                              | **$0.075** (**1.73× cheaper**)   |
+| Output $/1M         | $0.52                              | **$0.300** (**1.73× cheaper**)   |
+| Parameters          | 3.8B                               | 3.8B                             |
+| Context window      | 128K                               | 128K                             |
+| MMLU / reasoning    | Lower                              | **Significantly higher**          |
+| Multilingual        | Yes                                | Improved                         |
+
+Phi-3.5 is a **strict Pareto loss** vs. Phi-4-mini: costs more, performs worse, same hardware footprint. Microsoft is pricing the older SKU *up* to push you to the new one — that's not a suggestion, that's a traffic cop. Unless you're mid-migration on a Phi-3.5 deployment or you've got a regional-availability quirk we don't (we don't — we're on neither), **there is no cost-ROI scenario in which Phi-3.5-mini-instruct wins.** Moving on.
+
 **Open questions before making `Phi-4-mini-instruct` the new default:**
 
 1. **Strict JSON Schema mode (`--schema`):** Does Foundry's Phi endpoint respect `response_format: json_schema` with `strict: true`? Gpt-4o-mini does. If Phi doesn't, every `--schema` caller gets a quality drop. ⚠️ **Verify before flipping the default.**
