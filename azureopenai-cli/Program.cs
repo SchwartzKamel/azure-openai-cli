@@ -1504,23 +1504,24 @@ complete -c azureopenai-cli -w az-ai
                     }
                 }
 
-                // Stream text tokens to console immediately (only for non-tool responses)
+                // FR-011: stream text tokens to console immediately in ALL rounds,
+                // including pre-tool-call preambles. The tool-call accumulation above
+                // reads from update.ToolCallUpdates (a separate field), so text parts
+                // never contain tool-call JSON fragments — suppressing them was pure
+                // loss of user-visible output during tool-calling rounds.
                 foreach (var part in update.ContentUpdate)
                 {
-                    if (!isToolCallRound)
+                    if (firstTextToken)
                     {
-                        if (firstTextToken)
-                        {
-                            firstTextToken = false;
-                            if (showStatus)
-                                Console.Error.Write($"\r                              \r");
-                        }
-
-                        textBuilder.Append(part.Text);
-
-                        if (!jsonMode)
-                            Console.Write(part.Text);
+                        firstTextToken = false;
+                        if (showStatus)
+                            Console.Error.Write($"\r                              \r");
                     }
+
+                    textBuilder.Append(part.Text);
+
+                    if (!jsonMode)
+                        Console.Write(part.Text);
                 }
 
                 // Finish reason appears on the last streaming update

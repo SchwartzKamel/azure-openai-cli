@@ -723,4 +723,96 @@ public class StreamingAgentLoopTests
         // Assert — empty dict prevents tool execution even if flag is set
         Assert.False(shouldExecuteTools);
     }
+
+    // ── FR-011: stream text in ALL rounds, including tool-call preambles ─────
+
+    [Fact]
+    public void FR011_TextStreamsInToolCallRound_PreambleCapturedAndStreamed()
+    {
+        // Regression for FR-011: verify text deltas arriving in the same round as
+        // a tool-call update are BOTH captured in textBuilder AND streamed to the
+        // "console" (simulated via a capture StringBuilder). Prior to the fix, a
+        // `!isToolCallRound` guard suppressed text once any tool-call update had
+        // been seen in that round, losing pre- and post-tool-call text from the
+        // user-visible stream.
+        var preamble = new ChatMessageContent();
+        preamble.Add(ChatMessageContentPart.CreateTextPart("Let me look that up. "));
+
+        var postamble = new ChatMessageContent();
+        postamble.Add(ChatMessageContentPart.CreateTextPart("Checking now."));
+
+        // Round 1: preamble text, then tool-call fragment, then more text (the
+        // model may emit narration around the tool call), then finish.
+        var round1 = new[]
+        {
+            OpenAIChatModelFactory.StreamingChatCompletionUpdate(contentUpdate: preamble),
+            OpenAIChatModelFactory.StreamingChatCompletionUpdate(
+                toolCallUpdates: new[]
+                {
+                    OpenAIChatModelFactory.StreamingChatToolCallUpdate(
+                        index: 0,
+                        toolCallId: "call_fr011",
+                        functionName: "web_fetch",
+                        functionArgumentsUpdate: BinaryData.FromString("{\"url\":\"https://x\"}")),
+                }),
+            OpenAIChatModelFactory.StreamingChatCompletionUpdate(contentUpdate: postamble),
+            OpenAIChatModelFactory.StreamingChatCompletionUpdate(
+                finishReason: ChatFinishReason.ToolCalls),
+        };
+
+        // Round 2: plain text response after tool result.
+        var finalText = new ChatMessageContent();
+        finalText.Add(ChatMessageContentPart.CreateTextPart("Here is the answer."));
+        var round2 = new[]
+        {
+            OpenAIChatModelFactory.StreamingChatCompletionUpdate(contentUpdate: finalText),
+            OpenAIChatModelFactory.StreamingChatCompletionUpdate(
+                finishReason: ChatFinishReason.Stop),
+        };
+
+        // Act — replicate the NEW RunAgentLoop logic (guard removed).
+        var consoleOut = new StringBuilder();
+        var perRoundTexts = new List<string>();
+
+        foreach (var round in new[] { round1, round2 })
+        {
+            var toolCallsById = new Dictionary<int, (string Id, string Name, StringBuilder Args)>();
+            var textBuilder = new StringBuilder();
+
+            foreach (var update in round)
+            {
+                if (update.ToolCallUpdates is { Count: > 0 })
+                {
+                    foreach (var tc in update.ToolCallUpdates)
+                    {
+                        if (!toolCallsById.ContainsKey(tc.Index))
+                            toolCallsById[tc.Index] = (tc.ToolCallId, tc.FunctionName, new StringBuilder());
+                        if (tc.FunctionArgumentsUpdate is not null)
+                            toolCallsById[tc.Index].Args.Append(tc.FunctionArgumentsUpdate.ToString());
+                    }
+                }
+
+                // NEW FR-011 behavior: no !isToolCallRound guard — always stream text.
+                foreach (var part in update.ContentUpdate)
+                {
+                    textBuilder.Append(part.Text);
+                    consoleOut.Append(part.Text);
+                }
+            }
+
+            perRoundTexts.Add(textBuilder.ToString());
+        }
+
+        // Assert — streamed text from BOTH the tool-call round (preamble + postamble)
+        // and the final round reaches the console. This is the user-visible fix.
+        var streamed = consoleOut.ToString();
+        Assert.Contains("Let me look that up.", streamed);
+        Assert.Contains("Checking now.", streamed);
+        Assert.Contains("Here is the answer.", streamed);
+
+        // Per-round text builders also captured the text (pre-fix the tool-call
+        // round's textBuilder was empty once the tool-call update arrived).
+        Assert.Equal("Let me look that up. Checking now.", perRoundTexts[0]);
+        Assert.Equal("Here is the answer.", perRoundTexts[1]);
+    }
 }
