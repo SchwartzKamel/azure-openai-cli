@@ -4,7 +4,7 @@
 
 Version: 0.1  
 Last updated: 2026-04-20  
-Status: Phase 0 done, Phase 0 pt 2 in flight, Phase 1+ pending  
+Status: Phases 0-4 complete, Phase 5 in flight, Phase 6-7 pending  
 Decision: [ADR-004](adr/ADR-004-agent-framework-adoption.md)
 
 ---
@@ -18,6 +18,17 @@ Microsoft consolidated Semantic Kernel and AutoGen into **Microsoft Agent Framew
 Adopting MAF enables Azure AI Foundry integration with proper authentication, native support for persistent agents and MCP clients, and built-in observability. It reduces our maintenance burden without changing the CLI surface that Espanso and AutoHotkey users depend on. See [ADR-004](adr/ADR-004-agent-framework-adoption.md) for the full rationale and speed-gating criteria.
 
 The v1 → v2 transition is structured as eight distinct phases with controlled risk and incremental delivery. Phase 0 benchmarks validated that MAF meets all performance thresholds and introduces zero regressions to the hot path (cold start, TTFT, streaming throughput). The v2 branch will remain isolated until Phase 6 cutover, preserving main as a stable base for v1.x hotfixes.
+
+## Recent progress (2026-04-20)
+
+| Commit | Phase | Milestone |
+|--------|-------|-----------|
+| `78b4fd5` | Phase 0 pt 2 | Tool round-trip benchmarking complete; Foundry endpoint integration validated |
+| `ad613c7` | Phase 1 | v2 core CLI skeleton merged — hot-path contract (`--raw`, streaming) verified |
+| `7af5b07` | Phases 2–4 | Tools port, Ralph workflow, and personas coordinated merge — all built-in tools migrated to AF function tools, Ralph loop ported to `Workflow` + `CheckpointManager`, squad personas wired to `AgentSession` |
+| `32f7ce0` | Phase 3 | Ralph workflow integration — multi-iteration planning now uses MAF graph primitives |
+
+**Next**: Phase 5 (observability + OTel cost hooks) in flight with Frank Costanza and Morty Seinfeld.
 
 ## Non-goals
 
@@ -38,12 +49,12 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 | Phase | Name | Status | Owner(s) | Key deliverable | SQL todo ID |
 |-------|------|--------|----------|-----------------|-------------|
 | 0 | AF + AOT spike | ✅ Done | Kramer | Benchmark MAF vs handrolled on hot path; validate AOT compatibility | `v2-spike` |
-| 0 pt 2 | Tool round-trip + Foundry path | 🟡 In flight | Kramer | Wire AF function tool and re-bench; confirm Foundry endpoint integration | `v2-spike-pt2` |
-| 1 | v2 core skeleton | ⏸️ Pending | Kramer | New `azureopenai-cli-v2/` project; CLI entrypoint + standard/streaming/`--raw` preserve flag contract | `v2-core-skeleton` |
-| 2 | Tools port | ⏸️ Pending | Kramer + Newman | Migrate 6 tools to AF function tools; preserve Newman's hardening | `v2-tools-port` |
-| 3 | Ralph workflow | ⏸️ Pending | Kramer + Costanza | Port Ralph multi-iteration loop to AF `Workflow` graph; `CheckpointManager` for retries | `v2-ralph-workflow` |
-| 4 | Personas | ⏸️ Pending | Kramer + Jerry | Migrate squad personas to `AgentSession` + `AIContextProvider`; byte-identical `.squad/` format | `v2-personas` |
-| 5 | Observability | ⏸️ Pending | Frank + Morty | OTel integration + FinOps cost hook; opt-in telemetry flag | `v2-observability` |
+| 0 pt 2 | Tool round-trip + Foundry path | ✅ Done | Kramer | Wire AF function tool and re-bench; confirm Foundry endpoint integration | `v2-spike-pt2` |
+| 1 | v2 core skeleton | ✅ Done | Kramer | New `azureopenai-cli-v2/` project; CLI entrypoint + standard/streaming/`--raw` preserve flag contract | `v2-core-skeleton` |
+| 2 | Tools port | ✅ Done | Kramer + Newman | Migrate 6 tools to AF function tools; preserve Newman's hardening | `v2-tools-port` |
+| 3 | Ralph workflow | ✅ Done | Kramer + Costanza | Port Ralph multi-iteration loop to AF `Workflow` graph; `CheckpointManager` for retries | `v2-ralph-workflow` |
+| 4 | Personas | ✅ Done | Kramer + Jerry | Migrate squad personas to `AgentSession` + `AIContextProvider`; byte-identical `.squad/` format | `v2-personas` |
+| 5 | Observability | 🟡 In progress | Frank + Morty | OTel integration + FinOps cost hook; opt-in telemetry flag | `v2-observability` |
 | 6 | Cutover | ⏸️ Pending | Wilhelm + Lippman | Rename `v2` → `main`, `main` → `v1.x`; bump to 2.0.0; update CHANGELOG/CI/Docker | `v2-cutover` |
 | 7 | Dogfood | ⏸️ Pending | FDR + Bania + all | User-supplied `.env` testing; recursive tool-use stress tests; cost benchmarks | `v2-dogfood` |
 
@@ -67,7 +78,7 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 
 ---
 
-### Phase 0 pt 2: Tool round-trip + Foundry path 🟡
+### Phase 0 pt 2: Tool round-trip + Foundry path ✅
 
 **Goal**: Complete the benchmark matrix with tool invocation latency; confirm Foundry endpoint routing works or fails cleanly.
 
@@ -79,11 +90,11 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 
 **Risk**: Foundry endpoint may have undocumented quirks (model-catalog format, api-version requirements) that require workarounds. If substantial, defer to Phase 4 and document as known limitation.
 
-**Status**: 🟡 In flight (`kramer-spike-pt2` session active as of 2026-04-20).
+**Status**: ✅ Complete (2026-04-20, commit `78b4fd5`). Tool latency +2.1ms within threshold. Foundry endpoint routing validated end-to-end.
 
 ---
 
-### Phase 1: v2 core skeleton ⏸️
+### Phase 1: v2 core skeleton ✅
 
 **Goal**: Establish the v2 branch with a minimal CLI that preserves the hot-path contract (standard, streaming, `--raw`).
 
@@ -95,9 +106,11 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 
 **Risk**: MAF's streaming API may not expose line-by-line control needed for `--raw` clean stdout. Mitigation: Phase 0 already validated `RunStreamingAsync` compatibility; fallback is dual-runtime mode (`--agent-runtime native|af`).
 
+**Status**: ✅ Complete (2026-04-20, commit `ad613c7`). Core skeleton merged to v2 branch. Hot-path contract validated.
+
 ---
 
-### Phase 2: Tools port ⏸️
+### Phase 2: Tools port ✅
 
 **Goal**: Migrate all 6 built-in tools to MAF function tools while preserving Newman's security hardening.
 
@@ -109,9 +122,11 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 
 **Risk**: MAF function tool interface may lack hooks for pre-call validation (denylist checks). Mitigation: wrap in a thin adapter layer that calls Newman's validators before invoking the actual tool.
 
+**Status**: ✅ Complete (2026-04-20, commit `7af5b07`). All 6 tools migrated. Newman's security policies integrated.
+
 ---
 
-### Phase 3: Ralph workflow ⏸️
+### Phase 3: Ralph workflow ✅
 
 **Goal**: Port Ralph's self-correcting autonomous loop to MAF's `Workflow` + `CheckpointManager` primitives.
 
@@ -123,9 +138,11 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 
 **Risk**: `Workflow` API may not support custom validators or may enforce opinionated retry strategies. If blocked, implement as a custom workflow node or defer to post-v2.0 if non-critical.
 
+**Status**: ✅ Complete (2026-04-20, commit `32f7ce0`). Ralph multi-iteration loop now uses MAF graph primitives.
+
 ---
 
-### Phase 4: Personas ⏸️
+### Phase 4: Personas ✅
 
 **Goal**: Migrate squad personas to `AgentSession` + `AIContextProvider` while keeping `.squad/` files byte-identical.
 
@@ -137,9 +154,11 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 
 **Risk**: `AIContextProvider` may expect a different persistence format. Mitigation: implement a custom provider that translates MAF's internal state to/from our markdown format.
 
+**Status**: ✅ Complete (2026-04-20, commit `7af5b07` — coordinated merge with Phase 2). Squad personas wired to `AgentSession`.
+
 ---
 
-### Phase 5: Observability ⏸️
+### Phase 5: Observability 🟡
 
 **Goal**: Add OpenTelemetry integration and FinOps cost tracking via MAF's telemetry hooks.
 
@@ -150,6 +169,8 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 **Owner**: Frank Costanza (SRE/telemetry) + Morty (FinOps cost schema).
 
 **Risk**: OTel package dependencies may bloat AOT binary. Mitigation: conditional compilation (`#if TELEMETRY_ENABLED`) or runtime feature flag to exclude OTel types from trim.
+
+**Status**: 🟡 In progress (2026-04-20). Frank Costanza and Morty Seinfeld actively building OTel hooks and cost schema.
 
 ---
 

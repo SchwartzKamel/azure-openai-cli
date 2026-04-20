@@ -31,6 +31,11 @@
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.1.0" />
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="dotenv.net" Version="3.1.2" />
+    
+    <!-- OpenTelemetry packages for observability (Phase 5) -->
+    <PackageReference Include="OpenTelemetry" Version="1.10.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.10.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.10.0" />
   </ItemGroup>
 
 </Project>
