@@ -1,0 +1,11 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "respond with only a JSON object like {\"ok\":true}"
+    }
+  ],
+  "max_completion_tokens": 128,
+  "temperature": 0,
+  "stream": false
+}

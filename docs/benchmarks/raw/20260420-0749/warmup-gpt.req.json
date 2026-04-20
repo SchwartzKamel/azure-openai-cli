@@ -1,0 +1,11 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "hello"
+    }
+  ],
+  "max_completion_tokens": 16,
+  "temperature": 0,
+  "stream": false
+}

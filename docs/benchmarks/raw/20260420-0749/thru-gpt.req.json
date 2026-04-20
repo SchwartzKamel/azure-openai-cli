@@ -1,0 +1,11 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write a 100-word story about a cat."
+    }
+  ],
+  "max_completion_tokens": 256,
+  "temperature": 0,
+  "stream": true
+}

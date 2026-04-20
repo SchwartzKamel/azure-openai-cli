@@ -1,0 +1,1 @@
+{"error":{"code":"Invalid input","status":422,"message":"invalid input error","details":[{"type":"value_error","loc":["body","response_format","type"],"msg":"Value error, Response format was json_schema but must be either 'text' or 'json_object'.","input":"json_schema","ctx":{"error":{}}}]}}

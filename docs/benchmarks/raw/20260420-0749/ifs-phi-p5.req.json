@@ -1,0 +1,12 @@
+{
+  "model": "Phi-4-mini-instruct",
+  "messages": [
+    {
+      "role": "user",
+      "content": "classify as positive or negative, one word: 'I love it'"
+    }
+  ],
+  "max_tokens": 128,
+  "temperature": 0,
+  "stream": false
+}

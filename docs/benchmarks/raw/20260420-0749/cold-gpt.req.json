@@ -1,0 +1,11 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "reply with the single word: pong"
+    }
+  ],
+  "max_completion_tokens": 64,
+  "temperature": 0,
+  "stream": false
+}

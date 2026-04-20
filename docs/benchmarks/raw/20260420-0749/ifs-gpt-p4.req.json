@@ -1,0 +1,11 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "fix this typo: 'teh cat sat'. Output ONLY the corrected sentence."
+    }
+  ],
+  "max_completion_tokens": 128,
+  "temperature": 0,
+  "stream": false
+}

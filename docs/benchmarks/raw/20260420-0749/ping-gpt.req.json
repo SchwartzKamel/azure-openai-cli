@@ -1,0 +1,11 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "ping"
+    }
+  ],
+  "max_completion_tokens": 8,
+  "temperature": 0,
+  "stream": false
+}

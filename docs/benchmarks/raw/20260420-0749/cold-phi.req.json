@@ -1,0 +1,12 @@
+{
+  "model": "Phi-4-mini-instruct",
+  "messages": [
+    {
+      "role": "user",
+      "content": "reply with the single word: pong"
+    }
+  ],
+  "max_tokens": 64,
+  "temperature": 0,
+  "stream": false
+}

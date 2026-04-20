@@ -1,0 +1,12 @@
+{
+  "model": "Phi-4-mini-instruct",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hello"
+    }
+  ],
+  "max_tokens": 16,
+  "temperature": 0,
+  "stream": false
+}
