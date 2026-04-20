@@ -1,11 +1,34 @@
 # Agent Mode — Use Cases & Examples
 
-> Comprehensive working examples for every agent mode feature in `az-ai`.
+> Comprehensive working examples for every agent mode feature in `az-ai`
+> (v2.0.0, Microsoft Agent Framework).
 
 ## Prerequisites
 
 See [`prerequisites.md`](prerequisites.md) for the required environment
 variables (`AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`).
+
+## What changed in v2
+
+Agent mode now runs on Microsoft Agent Framework (MAF). The CLI surface is
+unchanged, but a few things are worth knowing up front:
+
+- **Tool loop** — MAF's `ChatClientAgent` drives the round-by-round tool
+  loop. Each round is one `RunStreamingAsync` call that may emit multiple
+  parallel tool invocations; the CLI accounts for it as a single round.
+  `--max-rounds` (default `5`, max `20`) caps rounds, not tool calls.
+- **Persona overlay** — `--persona <name>` forces agent mode on, replaces
+  the system prompt with the persona's, and replaces `--tools` with the
+  persona's allow-list if the persona defines any. See
+  [`persona-guide.md`](persona-guide.md).
+- **`--json` mode** — errors flow as structured JSON on stdout with `error`,
+  `message`, and `exit_code` fields. Stderr stays for the spinner and tool
+  banners; pair with `2>/dev/null` for a clean machine-readable stream.
+- **`--estimate`** — the cost estimator short-circuits **before** agent
+  construction. You can ask for a dollar estimate on an agent prompt with no
+  credentials loaded.
+- **`--telemetry`** (opt-in) — OTel spans and per-call cost events go to
+  stderr, unchanged by agent-mode framing.
 
 ---
 
@@ -844,15 +867,21 @@ az-ai --agent "your question"
 # With tool restriction
 az-ai --agent --tools shell,file "your question"
 
-# With round limit
+# With round limit (default 5, max 20)
 az-ai --agent --max-rounds 10 "your question"
 
 # Combined flags
 az-ai --agent --tools shell,file,web --max-rounds 8 "complex task description"
 
-# JSON output (for scripting)
+# JSON errors for scripting (content still streams on stdout)
 az-ai --agent --json "your question"
 
-# Quiet mode (suppress status)
+# Quiet mode (suppress stderr banners/spinner)
 az-ai --agent "your question" 2>/dev/null
+
+# Predict cost without calling the API
+az-ai --estimate --agent "your question"
+
+# Persona overlay — implies --agent, persona's tools win over --tools
+az-ai --persona security "audit src/auth.py"
 ```

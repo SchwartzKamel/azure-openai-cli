@@ -42,7 +42,24 @@ You need an Azure OpenAI resource — grab the [endpoint](https://learn.microsof
 
 Full flag reference: `az-ai --help`.
 
-Scripting tip: `az-ai --version --short` emits bare semver (e.g. `1.8.0`) — ideal for packaging scripts, release automation, and shell `$()` substitutions.
+Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) — ideal for packaging scripts, release automation, and shell `$()` substitutions.
+
+### New in v2.0.0
+
+| Flag | What it does |
+|------|--------------|
+| `--json` | Machine-readable output. Errors go to stdout as structured JSON with `error`, `message`, and `exit_code` fields. |
+| `--schema <json>` | Capture a JSON schema for structured output (wire enforcement lands in 2.1.x). |
+| `--max-rounds <n>` | Agent tool-call cap. Default `5`, range `1–20`. |
+| `--config <path>` | Use an alternate config file instead of `./.azureopenai-cli.json` or `~/.azureopenai-cli.json`. |
+| `--config set/get/list/reset/show` | Full CRUD for the persistent user config (e.g. `az-ai --config set defaults.temperature=0.3`). |
+| `--completions <bash\|zsh\|fish>` | Emit a shell-completion script to stdout. Source it or drop it into your completions dir. |
+| `--models`, `--list-models`, `--current-model`, `--set-model <alias>=<deployment>` | Persist alias → deployment mappings in `~/.azureopenai-cli.json`. First `--set-model` also becomes the default. |
+| `--telemetry` (or `AZ_TELEMETRY=1`) | Opt-in OpenTelemetry spans + per-call cost events on stderr. Zero overhead when off. |
+| `--estimate` / `--dry-run-cost` / `--estimate-with-output <n>` | Predict USD cost for a prompt **without calling the API**. Short-circuits before credential resolution — safe for CI budget gates. |
+| `--persona <name\|auto>` | Named persona routing — now wired end-to-end via `SquadCoordinator` and `PersonaMemory`. See [docs/persona-guide.md](docs/persona-guide.md). |
+
+Upgrading from v1.9.x? See [docs/migration-v1-to-v2.md](docs/migration-v1-to-v2.md). Nothing breaks; a lot adds.
 
 ## Performance
 
@@ -78,7 +95,9 @@ Type `:aifix` → clipboard text goes in → corrected prose comes out in-place.
 
 ## Configuration
 
-Set via environment, `.env` file, or `~/.azureopenai-cli.json`. Precedence: **CLI flag > user config > env > default**. Inspect the effective config with `az-ai --config show`.
+Set via environment, `.env` file, or `~/.azureopenai-cli.json`. Precedence: **CLI flag > environment variable > user config > built-in default** (`gpt-4o-mini` for model). An explicit `--config <path>` takes priority over `./.azureopenai-cli.json`, which takes priority over `~/.azureopenai-cli.json`. Inspect the effective config with `az-ai --config show`.
+
+Full env-var reference (single source of truth): [docs/prerequisites.md](docs/prerequisites.md).
 
 | Variable | Required | Default | Description |
 |----------|:--------:|--------:|-------------|
@@ -89,6 +108,7 @@ Set via environment, `.env` file, or `~/.azureopenai-cli.json`. Precedence: **CL
 | `AZURE_MAX_TOKENS` |  | `10000` | Max output tokens (1–128000) |
 | `AZURE_TEMPERATURE` |  | `0.55` | Sampling temperature (0.0–2.0) |
 | `AZURE_TIMEOUT` |  | `120` | Streaming timeout (seconds) |
+| `AZ_TELEMETRY` |  | *unset* | Set to `1` to enable OTel + cost events (equivalent to `--telemetry`) |
 
 Switch models on the fly: `az-ai --models`, `az-ai --set-model gpt-4o` (persisted to `~/.azureopenai-cli.json`).
 
@@ -131,8 +151,9 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 - [docs/adr/](docs/adr/) — Architecture Decision Records
 
 ### Operating the CLI
-- [docs/prerequisites.md](docs/prerequisites.md) — required environment variables
-- [docs/use-cases.md](docs/use-cases.md) — end-to-end workflow recipes
+- [docs/prerequisites.md](docs/prerequisites.md) — required environment variables (single source of truth)
+- [docs/use-cases.md](docs/use-cases.md) — end-to-end workflow recipes (indexes the per-mode guides)
+- [docs/persona-guide.md](docs/persona-guide.md) — persona + Squad reference (`--persona`, `.squad.json`, memory)
 - [docs/espanso-ahk-integration.md](docs/espanso-ahk-integration.md) — text expansion setup
 - [docs/cost-optimization.md](docs/cost-optimization.md) — token budgeting and per-persona cost profiles
 
@@ -142,7 +163,8 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 
 ### Release & migration
 - [CHANGELOG.md](CHANGELOG.md) — release history
-- [docs/v2-migration.md](docs/v2-migration.md) — v1 → v2 (Microsoft Agent Framework) migration plan and current status
+- [docs/migration-v1-to-v2.md](docs/migration-v1-to-v2.md) — user-facing v1 → v2.0.0 upgrade notes
+- [docs/v2-migration.md](docs/v2-migration.md) — internal MAF-adoption phase plan
 - [CONTRIBUTING.md](CONTRIBUTING.md) — dev workflow and PR expectations
 
 ### Glossary

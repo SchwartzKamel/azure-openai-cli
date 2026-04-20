@@ -1,224 +1,84 @@
-# Azure OpenAI CLI — Complete Use Cases Guide
+# Azure OpenAI CLI — Use Cases
 
-> **54+ features** across 4 operational modes, with real-world examples for every one.
+> Index of mode-by-mode recipes. Pick the mode you need, jump to the deep
+> dive, and come back if your workflow spans more than one.
 
-## Table of Contents
+## Prerequisites
 
-| Mode | Features | Doc |
-|------|----------|-----|
-| [Standard Mode](#standard-mode) | Prompting, streaming, --raw, --json, tokens, --system, --schema, exit codes | [use-cases-standard.md](use-cases-standard.md) |
-| [Agent Mode](#agent-mode) | --agent, 6 built-in tools, parallel execution, tool selection | [use-cases-agent.md](use-cases-agent.md) |
-| [Ralph + Squad Mode](#ralph--squad-mode) | --ralph, --validate, personas, auto-routing, memory | [use-cases-ralph-squad.md](use-cases-ralph-squad.md) |
-| [Config + Integration + Security](#config--integration--security) | Models, Espanso, AHK, pipelines, sandboxing, SSRF | [use-cases-config-integration.md](use-cases-config-integration.md) |
-
----
-
-## Quick Start
+Set the three required env vars before running any example — see
+[`prerequisites.md`](prerequisites.md) (single source of truth):
+`AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`.
 
 ```bash
-# Set up credentials
-export AZUREOPENAIENDPOINT="https://your-resource.openai.azure.com/"
-export AZUREOPENAIAPI="your-api-key"
-export AZUREOPENAIMODEL="gpt-4o"
-
-# Basic prompt
-az-ai "explain quantum computing in one sentence"
-
-# Pipe text through AI
+az-ai "Explain quantum tunnelling in one sentence"        # standard
 echo "teh quik brown fox" | az-ai --raw --system "Fix spelling"
-
-# Agent mode with tools
-az-ai --agent "what files are in my home directory?"
-
-# Ralph autonomous loop
-az-ai --ralph --validate "python -m pytest" "Fix the failing test in test_auth.py"
-
-# Squad persona
-az-ai --persona security "audit this codebase for vulnerabilities"
+az-ai --agent "What files are in /var/log?"               # agent
+az-ai --ralph --validate "pytest" "Fix the failing test"  # autonomous loop
+az-ai --persona security "Audit Tools/WebFetchTool.cs"    # named persona
 ```
 
----
-
-## Standard Mode
-
-14 features covering basic prompting through structured output.
-
-:point_right: **[Full Standard Mode Use Cases →](use-cases-standard.md)**
-
-### Highlights
+Cost-check any prompt without spending a token:
 
 ```bash
-# Stream with token tracking
-az-ai "write a haiku about Kubernetes"
-# Output: haiku text + [tokens: 42→18, 60 total]
-
-# Raw mode for Espanso/AHK (no formatting)
-az-ai --raw "one-liner about Docker"
-
-# JSON output with jq
-az-ai --json "explain REST" | jq '.response'
-
-# Structured output with schema
-az-ai --schema '{"type":"object","properties":{"name":{"type":"string"},"age":{"type":"integer"}},"required":["name","age"]}' \
-  "Extract: John Smith is 42 years old"
-
-# Custom system prompt + piped input
-cat error.log | az-ai --system "You are a DevOps expert. Diagnose this error."
-
-# Temperature control
-az-ai -t 0.0 "What is 2+2?"          # Deterministic
-az-ai -t 1.5 "Write a poem about AI"  # Creative
+az-ai --estimate --model gpt-4o "$(cat big-prompt.txt)"
+# → {"model":"gpt-4o","input_tokens":…, "estimated_usd":…}
 ```
 
 ---
 
-## Agent Mode
+## Modes at a glance
 
-12 features with 6 built-in tools for autonomous multi-step tasks.
+| Mode              | Flag(s)                      | Model can call tools? | Autonomous loop? | Memory    | Primary guide                                                                 |
+|-------------------|------------------------------|:---------------------:|:----------------:|-----------|-------------------------------------------------------------------------------|
+| **Standard**      | *(default)*                  | ❌                    | ❌               | ❌        | [`use-cases-standard.md`](use-cases-standard.md)                              |
+| **Raw**           | `--raw`                      | ❌                    | ❌               | ❌        | [`use-cases-standard.md`](use-cases-standard.md) (§ `--raw`)                  |
+| **Agent**         | `--agent` [`--tools`]        | ✅ (6 built-ins)      | ❌               | ❌        | [`use-cases-agent.md`](use-cases-agent.md)                                    |
+| **Ralph**         | `--ralph` [`--validate`]     | ✅ (implies `--agent`)| ✅               | ❌        | [`use-cases-ralph-squad.md`](use-cases-ralph-squad.md) (Part 1)               |
+| **Persona/Squad** | `--persona <name\|auto>`     | ✅ (per persona)      | ❌ (unless `--ralph`) | ✅ (`.squad/`) | [`persona-guide.md`](persona-guide.md) + [`use-cases-ralph-squad.md`](use-cases-ralph-squad.md) (Part 2) |
 
-:point_right: **[Full Agent Mode Use Cases →](use-cases-agent.md)**
+Config, Espanso/AHK integration, pipelines, Docker, and the security sandbox
+are cross-mode — see [`use-cases-config-integration.md`](use-cases-config-integration.md).
 
-### Highlights
-
-```bash
-# Let the AI use tools autonomously
-az-ai --agent "what's running on port 8080?"
-
-# Restrict tools for safety
-az-ai --agent --tools file,datetime "summarize my README.md"
-
-# Multi-step workflow
-az-ai --agent "read package.json, check for outdated deps, and suggest updates"
-
-# Web research
-az-ai --agent --tools web "fetch https://api.github.com/zen and explain it"
-
-# Limit rounds for cost control
-az-ai --agent --max-rounds 3 "quick system health check"
-```
-
-**Built-in Tools:** `shell_exec` · `read_file` · `web_fetch` · `get_clipboard` · `get_datetime` · `delegate_task`
+Shared flags that apply to most modes: `--json`, `--raw`, `--system`,
+`--temperature`, `--max-tokens`, `--timeout`, `--model`, `--schema`,
+`--estimate`, `--telemetry`.
 
 ---
 
-## Ralph + Squad Mode
+## What's new in v2
 
-13 features for autonomous loops and AI team personas.
+The 2.0.0 release adds nine flags and wires `--persona` end-to-end. Full
+rundown in [`migration-v1-to-v2.md`](migration-v1-to-v2.md) §1. Headline
+additions (also listed in `az-ai --help`):
 
-:point_right: **[Full Ralph + Squad Use Cases →](use-cases-ralph-squad.md)**
-
-### Highlights
-
-```bash
-# Self-correcting loop with validation
-az-ai --ralph --validate "dotnet test" "Fix the NullReferenceException in UserService.cs"
-
-# Task from file
-az-ai --ralph --validate "npm run build" --task-file feature-spec.md
-
-# Initialize squad
-az-ai --squad-init
-
-# Use a specific persona
-az-ai --persona coder "implement binary search in Python"
-az-ai --persona security "audit Tools/WebFetchTool.cs"
-
-# Auto-route to best persona
-az-ai --persona auto "review the authentication flow for security issues"
-
-# List available personas
-az-ai --personas
-```
-
-**Default Personas:** `coder` · `reviewer` · `architect` · `writer` · `security`
+- `--json` — machine-readable errors and estimator output.
+- `--version --short` — bare semver (`2.0.0`), for packaging scripts.
+- `--schema <json>` — capture a JSON schema (wire enforcement deferred to 2.1.x).
+- `--max-rounds <n>` — agent tool-call cap; default 5, range 1–20.
+- `--config <path>` and `--config set/get/list/reset/show` — alternate-path
+  overrides and CRUD for persisted preferences.
+- `--completions <bash|zsh|fish>` — shell completion scripts on stdout.
+- `--models` / `--list-models` / `--current-model` / `--set-model
+  <alias>=<deployment>` — model-alias management, persisted to
+  `~/.azureopenai-cli.json`.
+- `--telemetry` (or `AZ_TELEMETRY=1`) — opt-in OTel + cost events on stderr.
+- `--estimate` / `--dry-run-cost` / `--estimate-with-output <n>` — predicted
+  USD without an API call. Short-circuits before credential resolution.
+- `--persona <name|auto>` — now fully wired via `SquadCoordinator` + memory.
 
 ---
 
-## Config + Integration + Security
+## Pick your starting point
 
-17 features covering configuration, text expansion, and hardened security.
-
-:point_right: **[Full Config + Integration + Security Use Cases →](use-cases-config-integration.md)**
-
-### Highlights
-
-```bash
-# Model management
-az-ai --models                    # List all models
-az-ai --set-model gpt-4o-mini    # Switch to fast model
-az-ai --config show               # Show full config
-
-# Pipeline integration
-git diff | az-ai --raw --system "Summarize these changes in one paragraph"
-cat error.log | az-ai --raw --system "What went wrong?"
-az-ai --json "explain X" | jq -r '.response'
-
-# Docker (secure, non-root)
-docker run --rm -e AZUREOPENAIENDPOINT -e AZUREOPENAIAPI -e AZUREOPENAIMODEL \
-  ghcr.io/schwartzkamel/azure-openai-cli "hello world"
-```
+- **Just want to prompt a model?** → [`use-cases-standard.md`](use-cases-standard.md)
+- **Need the model to run shell/file/web tools?** → [`use-cases-agent.md`](use-cases-agent.md)
+- **Building an autonomous fix-until-green loop?** → [`use-cases-ralph-squad.md`](use-cases-ralph-squad.md) Part 1
+- **Want named AI teammates with persistent memory?** → [`persona-guide.md`](persona-guide.md)
+- **Setting up Espanso, AHK, or model aliases?** → [`use-cases-config-integration.md`](use-cases-config-integration.md)
+- **Upgrading from v1.9.x?** → [`migration-v1-to-v2.md`](migration-v1-to-v2.md)
+- **Wrangling token spend?** → [`cost-optimization.md`](cost-optimization.md)
 
 ---
 
-## Feature Coverage Matrix
-
-| Feature | Mode | Flag/Mechanism |
-|---------|------|----------------|
-| Basic prompting | Standard | positional args |
-| Stdin piping | Standard | pipe `\|` |
-| Streaming + spinner | Standard | default |
-| Token tracking | Standard | stderr display |
-| Raw mode | Standard | `--raw` |
-| JSON output | Standard | `--json` |
-| Temperature | Standard | `-t`, `--temperature` |
-| Max tokens | Standard | `--max-tokens` |
-| System prompt | Standard | `--system` |
-| Structured output | Standard | `--schema` |
-| Timeout | Standard | `AZURE_TIMEOUT` |
-| Exit codes | Standard | 0/1/2/3/99 |
-| Prompt size limit | Standard | 32K chars |
-| Retry logic | Standard | auto backoff |
-| Agent mode | Agent | `--agent` |
-| Round limit | Agent | `--max-rounds` |
-| Tool selection | Agent | `--tools` |
-| shell_exec | Agent | tool |
-| read_file | Agent | tool |
-| web_fetch | Agent | tool |
-| get_clipboard | Agent | tool |
-| get_datetime | Agent | tool |
-| delegate_task | Agent | tool |
-| Parallel tools | Agent | auto |
-| Agent status | Agent | stderr |
-| Ralph mode | Ralph | `--ralph` |
-| Validation | Ralph | `--validate` |
-| Task file | Ralph | `--task-file` |
-| Max iterations | Ralph | `--max-iterations` |
-| Ralph log | Ralph | `.ralph-log` |
-| Squad init | Squad | `--squad-init` |
-| Persona select | Squad | `--persona` |
-| Auto-routing | Squad | `--persona auto` |
-| List personas | Squad | `--personas` |
-| Persona memory | Squad | `.squad/history/` |
-| Custom personas | Squad | `.squad.json` |
-| Config show | Config | `--config show` |
-| List models | Config | `--models` |
-| Set model | Config | `--set-model` |
-| Current model | Config | `--current-model` |
-| User config | Config | `~/.azureopenai-cli.json` |
-| Env precedence | Config | flags > env > config |
-| .env support | Config | `.env` file |
-| Espanso | Integration | YAML triggers |
-| AutoHotKey | Integration | AHK v2 scripts |
-| Pipelines | Integration | shell pipes |
-| Help | Help | `--help`, `-h` |
-| Version | Help | `--version`, `-v` |
-| Shell sandbox | Security | blocked cmds |
-| File sandbox | Security | blocked paths |
-| SSRF protection | Security | 3-layer defense |
-| Input validation | Security | size/range limits |
-| Docker security | Security | non-root + env |
-| DotEnv resilience | Standard | try-catch |
-
----
-
-*Generated for Azure OpenAI CLI — 54 features, 4 modes, ~3,600 lines of examples. See [CHANGELOG](../CHANGELOG.md) for the currently released version.*
+*Azure OpenAI CLI — v2.0.0. See [`CHANGELOG.md`](../CHANGELOG.md) for the
+currently released version.*
