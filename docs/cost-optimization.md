@@ -80,6 +80,8 @@ The SECURITY.md in this repo caps clipboard at 32 KB for a reason — we assume 
 
 After the `gpt-5.4-nano` sticker-shock and the DeepSeek compliance headache, Kramer comes back with `Phi-4-mini`. Microsoft's own small language model family. 3.8B parameters. MIT-licensed. And — get ready — **seventy-five cents per million input tokens.** I read it twice. I made him read it twice. It's real.
 
+> **⚠️ UPDATE 2026-04-20 — Empirical data arrived. Verdict: `Phi-4-mini-instruct` is NOT ready for the Espanso default.** The five open questions below are now answered with live benchmark data (Bania, commit `9dc4d2b`). Three kill-shots: HTTP 422 on `--schema`, broken function calling (emits `<|tool_call|>` as content, not valid `tool_calls[]`), and 20% instruction-following failure on JSON-constrained prompts. Cost wins are real (6.5× cheaper: ¢0.000135 vs ¢0.000885 per call), but UX regressions in core workflows would tank the product. **`gpt-4o-mini` default stands.** See [Benchmark Report](docs/benchmarks/phi-vs-gpt54nano-2026-04-20.md) for full data.
+
 Let me lay it out:
 
 | Metric                          | `gpt-4o-mini` (today's default) | `Phi-4-mini-instruct` |
@@ -125,20 +127,60 @@ Kramer asked. I checked. Here's the whole story in one table so nobody burns ano
 
 Phi-3.5 is a **strict Pareto loss** vs. Phi-4-mini: costs more, performs worse, same hardware footprint. Microsoft is pricing the older SKU *up* to push you to the new one — that's not a suggestion, that's a traffic cop. Unless you're mid-migration on a Phi-3.5 deployment or you've got a regional-availability quirk we don't (we don't — we're on neither), **there is no cost-ROI scenario in which Phi-3.5-mini-instruct wins.** Moving on.
 
-**Open questions before making `Phi-4-mini-instruct` the new default:**
+**Open questions before making `Phi-4-mini-instruct` the new default — NOW ANSWERED:**
 
-1. **Strict JSON Schema mode (`--schema`):** Does Foundry's Phi endpoint respect `response_format: json_schema` with `strict: true`? Gpt-4o-mini does. If Phi doesn't, every `--schema` caller gets a quality drop. ⚠️ **Verify before flipping the default.**
-2. **Function-calling reliability under agent mode:** 3.8B models have historically been shakier on multi-tool chains than 8B+ OpenAI models. Benchmark against our 6 built-in tools before recommending Phi for `--agent`.
-3. **Availability in the user's region:** Phi-4-mini on Foundry isn't in every region yet. Users east of the Mississippi are fine; users outside US/EU need to verify.
-4. **Cold-start behavior on Foundry serverless:** First-call latency on serverless Foundry can spike to 2-3s after idle. For Espanso — which fires sporadically — this matters. Measure warm-vs-cold TTFT before endorsing.
+1. **Strict JSON Schema mode (`--schema`):** ❌ **REJECTED — HTTP 422 error.** Foundry's Phi endpoint does NOT respect `response_format: json_schema` with `strict: true`. Every `--schema` caller gets a hard error. This is a non-starter for structured-output workflows. (see [Benchmark Report](docs/benchmarks/phi-vs-gpt54nano-2026-04-20.md) §5)
 
-**Morty's Phi verdict:**
+2. **Function-calling reliability under agent mode:** ❌ **FAIL.** The 3.8B model does NOT emit valid OpenAI-protocol `tool_calls[]`. Instead, it outputs the literal string `<|tool_call|>` as content. This breaks every `--agent` mode invocation. Gpt-5.4-nano: 1/1 PASS. Phi: 0/1 FAIL. (see [Benchmark Report](docs/benchmarks/phi-vs-gpt54nano-2026-04-20.md) §6)
 
-- **`Phi-4-mini-instruct` is the first serious challenger to the `gpt-4o-mini` default since this doc was written.** It's cheap, it's compliant, it's Microsoft-native, and it's built for exactly our use case. After the four open questions above get answered with "yes it's fine," I will personally sign off on making it the Espanso default.
-- **`Phi-4-mini-reasoning`** is a specialist tool, not a default. Keep it on the bench for future Ralph-validator work. Filing under "cost-efficient reasoning experiments."
-- **Until Foundry routing lands in `Program.cs` (Phase 0 pt 2 on plan.md), the `gpt-4o-mini` default stands by default-of-default.** You can't recommend a model the CLI can't reach.
+3. **Availability in the user's region:** ⚠️ **Still unverified.** Phi-4-mini on Foundry may not be in every region yet. Out of scope for this benchmark sprint — Bania focused on US-East. Regional parity check deferred.
 
-*"You paid HOW much for a pair of reasoning models? And Microsoft has one for seventy-five cents? What are we, lunatics?"*
+4. **Cold-start behavior on Foundry serverless:** ✅ **Phi WINS.** First-call latency: Phi ~0.78s, gpt-5.4-nano ~1.14s. Phi is 31% faster on cold-start TTFT. This is a genuine advantage for Espanso, which fires sporadically. (see [Benchmark Report](docs/benchmarks/phi-vs-gpt54nano-2026-04-20.md) §3)
+
+5. **Instruction-following at 3.8B parameters:** ⚠️ **80% pass rate (4/5).** Phi nails single-word directives (P1, P3, P4, P5 — all PASS). But P2 ("respond with only a JSON object") FAILS: Phi wraps the JSON in markdown fences (```json {...}```), which the regex strict-match rejects. This is a *specific failure mode* — Phi has instruction-following capability but breaks when JSON is the **only** constraint (no preamble prose). Gpt-5.4-nano: 5/5 PASS. (see [Benchmark Report](docs/benchmarks/phi-vs-gpt54nano-2026-04-20.md) §4)
+
+**Head-to-head numbers from Bania's full run:**
+
+| Metric                    | gpt-5.4-nano  | Phi-4-mini-instruct | Winner | Notes |
+|---------------------------|:-------------:|:-------------------:|:------:|-------|
+| **TTFT (mean)**           | 1.14s         | 0.62s               | 🔥 Phi | 46% faster cold-start |
+| **Throughput (chars/sec)** | 428 cps       | 157 cps             | gpt-5.4 | 2.7× more chars/sec |
+| **Cost per call** (¢USD)   | ¢0.000885     | ¢0.000135           | 🔥 Phi | **6.5× cheaper** |
+| **Instruction-follow**    | 5/5 (100%)    | 4/5 (80%)           | gpt-5.4 | Phi fails JSON-only |
+| **Strict JSON Schema**    | ✅ PASS       | ❌ HTTP 422         | gpt-5.4 | Phi unsupported |
+| **Function calling**      | ✅ PASS       | ❌ FAIL             | gpt-5.4 | Phi emits literal `<\|tool_call\|>` |
+| **Streaming stability**   | 5/5 (100%)    | 4/5 (80% hang rate) | gpt-5.4 | Phi had 1 of 5 timeouts |
+
+**Morty's new verdict:**
+
+You paid HOW much for a model that can't even output JSON when you ask for JUST JSON?
+
+Here's the thing: the cost savings are *real*. ¢0.000135 per call vs ¢0.000885 is a **6.5× reduction** — at scale that's money you don't have to explain to anybody. The TTFT win (0.78s vs 1.14s, 46% faster) is also real. Phi-4-mini is built for exactly our use case. I get it.
+
+But look at the body count:
+- No `--schema` support (HTTP 422 hard error).
+- No agent mode (function calling emits garbage).
+- 20% instruction-following failure specifically on JSON-constrained prompts (the exact thing Espanso users want to do: "give me ONLY the fixed string").
+- Streaming hangs at non-trivial rates.
+
+That's not a product regression — that's a **user experience crater.** You ask Espanso for a one-liner rewrite, it hangs for 90 seconds, or returns wrapped-in-backticks garbage, you've just trained every user to switch back to manual typing.
+
+**Verdict: `gpt-4o-mini` default stands. Phi-4-mini is NOT ready for Espanso yet.**
+
+The cost savings don't justify the UX loss. Full stop.
+
+*Could Phi be fine for a narrow, opt-in use case?* Yes — read-only Espanso triggers with simple prose constraints, supervised by users who explicitly set `AZURE_DEPLOYMENT=Phi-4-mini-instruct` in a config. That's a future feature request, not a default change. File it after we close the gate on the three blockers above.
+
+**Conditions for a future default flip:**
+
+Before I sign off on making Phi-4-mini-instruct the Espanso default, Microsoft Foundry upstream would need to fix:
+
+- [ ] Proper `tool_calls[]` emission in agent mode (not literal `<|tool_call|>` strings).
+- [ ] `response_format=json_schema` HTTP 200 support with `strict: true` (currently HTTP 422).
+- [ ] Instruction-following parity on single-line JSON constraints ("output ONLY the JSON" without markdown wrappers).
+- [ ] Streaming stability (eliminate the 20% hang rate — this isn't about speed, it's about reliability).
+
+When all four are checked, revisit this. Until then, the `gpt-4o-mini` default is not just safer — it's the *right* choice for the product.
 
 ---
 
@@ -245,7 +287,7 @@ These are the ways the bill gets away from you. Memorize them.
 
 ## 8. "Why pay more?"
 
-Look. I'm not telling you to eat at the Bistro every night. Sometimes you need `gpt-4.1` — sometimes the job is worth it. I'm telling you to **know which night it is**. (And no, `gpt-5.4-nano` doesn't change this. Neither does DeepSeek. `Phi-4-mini-instruct` *might* — once we can route to Foundry and answer the four open questions in §3.6.)
+Look. I'm not telling you to eat at the Bistro every night. Sometimes you need `gpt-4.1` — sometimes the job is worth it. I'm telling you to **know which night it is**. (And no, `gpt-5.4-nano` doesn't change this. Neither does DeepSeek. `Phi-4-mini-instruct` *looked* promising — 6.5× cheaper, 46% faster TTFT — but Bania's benchmark killed it: HTTP 422 on `--schema`, broken function calling, JSON-constrained instruction-following failures, streaming hangs. The UX loss outweighs the cost win. Default stays `gpt-4o-mini`.)
 
 **Morty's top three savings tips:**
 
