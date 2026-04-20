@@ -1,6 +1,6 @@
 # ADR-004 — Speed-gated hybrid adoption of Microsoft Agent Framework
 
-**Status**: 🟢 Spike validated 2026-04-20 against live `gpt-5.4-nano` endpoint. Full verdict below. Accepted pending v2.0 cutover schedule.
+**Status**: 🟢 Accepted. Phase 0 done (2026-04-20), Phase 0 pt 2 in flight. See [`docs/v2-migration.md`](../v2-migration.md) for full transition plan and phase status.
 **Date**: 2026-04-20 (spike run); supersession of v1 targeted for v2.0
 **Deciders**: Costanza (product), Kramer (engineering), Newman (security), Bania (benchmarks), Maestro (orchestration)
 **Supersedes**: none

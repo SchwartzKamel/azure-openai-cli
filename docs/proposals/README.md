@@ -2,6 +2,8 @@
 
 > Last updated: 2026-04-08 — After v1.1.0 release
 
+> **v2 Migration in progress**: See [v2-migration.md](../v2-migration.md) for the Microsoft Agent Framework transition plan (v1 → v2.0). Feature requests below are v1.x scope unless noted.
+
 ## Priority Matrix
 
 | ID | Title | Priority | Effort | Status |

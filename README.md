@@ -129,6 +129,7 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 - [AGENTS.md](AGENTS.md) — fleet dispatch pattern and the 25-agent roster
 - [CHANGELOG.md](CHANGELOG.md) — release history
 - [SECURITY.md](SECURITY.md) — threat model and reporting
+- [docs/v2-migration.md](docs/v2-migration.md) — v1 → v2 (Microsoft Agent Framework) migration plan and current status
 - [docs/espanso-ahk-integration.md](docs/espanso-ahk-integration.md) — text expansion setup
 - [docs/use-cases.md](docs/use-cases.md) — end-to-end workflow recipes
 - [docs/verifying-releases.md](docs/verifying-releases.md) — cosign / attestation verification
