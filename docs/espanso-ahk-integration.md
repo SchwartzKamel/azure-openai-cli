@@ -90,17 +90,134 @@ make alias
 
 ### 2. Set Environment Variables
 
-`az-ai` needs these environment variables to connect to Azure OpenAI:
+`az-ai` needs three environment variables:
+
+| Variable              | Value                                            |
+|-----------------------|--------------------------------------------------|
+| `AZUREOPENAIENDPOINT` | `https://your-resource.openai.azure.com`         |
+| `AZUREOPENAIAPI`      | your API key (note: `API`, not `APIKEY`)         |
+| `AZUREOPENAIMODEL`    | default deployment name (e.g. `gpt-4o-mini`)     |
+
+**Never put these in `.azureopenai-cli.json`** — that file is for model aliases and defaults, not credentials. Config files get committed, synced to OneDrive, or shared across a team; environment variables don't. See [`docs/config-reference.md`](./config-reference.md#security-notes).
+
+#### Linux / macOS / WSL — secure storage
+
+**Don't paste secrets directly into `~/.bashrc` or `~/.zshrc` if those are committed to a dotfiles repo.** Use one of the options below.
+
+**Option A — Separate secrets file (simple, recommended).** Keep the secrets out of your tracked rcfile:
 
 ```bash
+# Create a private file (0600 = only you can read it)
+umask 077
+cat > ~/.azureopenai.env <<'EOF'
 export AZUREOPENAIENDPOINT="https://your-resource.openai.azure.com"
 export AZUREOPENAIAPI="your-api-key-here"
 export AZUREOPENAIMODEL="gpt-4o-mini"
+EOF
+chmod 600 ~/.azureopenai.env
+
+# Source it from your rcfile (safe to commit this one line)
+echo '[ -f ~/.azureopenai.env ] && . ~/.azureopenai.env' >> ~/.bashrc
+# or: >> ~/.zshrc
 ```
 
-Add them to your shell profile (`~/.bashrc`, `~/.zshrc`) so they persist across sessions and are available to Espanso/AHK when it spawns a shell.
+Add `.azureopenai.env` to `.gitignore` if your `$HOME` is under version control.
 
-> **macOS/Espanso note:** Espanso may not inherit your shell's environment. If commands fail with credential errors, use the `shell: bash` param and source your profile explicitly — see the [Troubleshooting](#troubleshooting) section.
+**Option B — OS keyring (most secure, needs one helper).** Store the key in `gnome-keyring` / `libsecret` / macOS Keychain and pull it on shell start:
+
+```bash
+# One-time: save the secret
+# Linux:
+secret-tool store --label="Azure OpenAI API" service azure-openai user api-key
+# macOS:
+security add-generic-password -a "$USER" -s "azure-openai-api" -w
+
+# In ~/.bashrc or ~/.zshrc:
+export AZUREOPENAIENDPOINT="https://your-resource.openai.azure.com"
+export AZUREOPENAIMODEL="gpt-4o-mini"
+# Linux:
+export AZUREOPENAIAPI="$(secret-tool lookup service azure-openai user api-key)"
+# macOS:
+export AZUREOPENAIAPI="$(security find-generic-password -a "$USER" -s azure-openai-api -w)"
+```
+
+The endpoint and default model aren't secrets — leave them in the rcfile.
+
+**Option C — `direnv` (per-project).** If you run `az-ai` only in specific directories, use [`direnv`](https://direnv.net/) with a `.envrc` that isn't committed. Good for isolating work vs. personal keys.
+
+**Espanso must see the variables.** Espanso spawns its own shell and may not inherit a login environment — especially on macOS (launchd) and WSL (where Windows-side Espanso launches a non-interactive `wsl.exe`). Confirm with:
+
+```bash
+espanso cmd -- bash -lc 'env | grep AZUREOPENAI'
+```
+
+If nothing prints, see the [Troubleshooting](#environment-variables-not-found) section below.
+
+#### Windows — secure storage
+
+Windows has no `.bashrc`. Pick one of these:
+
+**Option A — User-level environment variables (simplest).** These persist across reboots and are visible to every process *you* launch, including Espanso and AHK. They are **not** encrypted on disk but are scoped to your Windows user profile.
+
+```powershell
+# PowerShell — run once. Sets User-level (not Machine-level) env vars.
+[Environment]::SetEnvironmentVariable('AZUREOPENAIENDPOINT', 'https://your-resource.openai.azure.com', 'User')
+[Environment]::SetEnvironmentVariable('AZUREOPENAIAPI',      'your-api-key-here',                      'User')
+[Environment]::SetEnvironmentVariable('AZUREOPENAIMODEL',    'gpt-4o-mini',                            'User')
+```
+
+Or via GUI: **Win → "Edit environment variables for your account" → New…** under *User variables*. Restart Espanso / AHK / your terminal after setting — running processes won't pick up changes.
+
+> ⚠️ **Never use the `Machine` scope** for API keys. That makes them readable by every user and every service account on the box. Always `User`.
+> ⚠️ **Avoid `setx` from `cmd.exe`** — it silently truncates values over 1024 chars and mangles `%` characters. The PowerShell `[Environment]::SetEnvironmentVariable` call above has no such limit.
+
+**Option B — Windows Credential Manager (encrypted at rest, recommended for API keys).** Uses DPAPI so the value is only decryptable by your Windows user:
+
+```powershell
+# One-time: install the helper (run as your user, not Admin)
+Install-Module -Name CredentialManager -Scope CurrentUser -Force
+New-StoredCredential -Target 'AzureOpenAI' -UserName 'api' -Password 'your-api-key-here' `
+                     -Persist LocalMachine
+
+# Then in your PowerShell profile ($PROFILE):
+$env:AZUREOPENAIENDPOINT = 'https://your-resource.openai.azure.com'
+$env:AZUREOPENAIMODEL    = 'gpt-4o-mini'
+$env:AZUREOPENAIAPI      = (Get-StoredCredential -Target 'AzureOpenAI').GetNetworkCredential().Password
+```
+
+To make the same secret available to **Espanso and AHK** (which don't run under your PowerShell profile), either:
+
+1. Also set `AZUREOPENAIAPI` at User scope once (Option A) — simpler, accept the plaintext-on-disk tradeoff; or
+2. Have Espanso call `powershell -NoProfile -Command "..."` that pulls from Credential Manager on each invocation — more secure, adds ~150 ms per expansion.
+
+**Option C — `.env` file loaded by your shell.** Mirror the Linux Option A pattern under your PowerShell `$PROFILE`:
+
+```powershell
+# %USERPROFILE%\.azureopenai.env  (NOT under your dotfiles repo)
+$env:AZUREOPENAIENDPOINT = 'https://your-resource.openai.azure.com'
+$env:AZUREOPENAIAPI      = 'your-api-key-here'
+$env:AZUREOPENAIMODEL    = 'gpt-4o-mini'
+
+# In $PROFILE:
+$envFile = Join-Path $HOME '.azureopenai.env'
+if (Test-Path $envFile) { . $envFile }
+```
+
+Restrict the ACL so only you can read it:
+
+```powershell
+icacls "$HOME\.azureopenai.env" /inheritance:r /grant:r "$env:USERNAME:(R,W)"
+```
+
+As with Option B, Espanso/AHK will **not** inherit `$PROFILE` — they see the Windows User-scope environment only. If you're going to rely on those tools, Option A remains the pragmatic choice.
+
+#### What not to do
+
+- ❌ **Don't commit secrets to a dotfiles repo** — even private ones end up forked, leaked in CI logs, or synced to Copilot-indexed clouds.
+- ❌ **Don't paste into `.azureopenai-cli.json`** — the config file has no credential slot by design.
+- ❌ **Don't use Machine-scope env vars on shared Windows boxes** — every user on the machine reads them.
+- ❌ **Don't put the API key in a terminal title, PS1 prompt, or shell history** — rotate immediately if it leaks.
+- ✅ **Do rotate keys** in the Azure portal if any of the above happens. It takes 10 seconds.
 
 ### 3. Verify It Works
 
