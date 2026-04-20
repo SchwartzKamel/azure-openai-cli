@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
 namespace AzureOpenAI_CLI_V2.Ralph;
@@ -39,10 +40,35 @@ internal static class RalphWorkflow
             Console.Error.WriteLine();
         }
 
-        string currentPrompt = taskPrompt;
+        // Kramer audit M1: build the agent ONCE — instructions and tools are
+        // loop-invariant. Rebuilding every iteration was a v1 port artifact.
+        var agent = chatClient.AsAIAgent(
+            instructions: systemPrompt + "\n\nYou are in Ralph mode (autonomous loop). " +
+                "Complete the task. If there were previous errors, fix them. " +
+                "Use tools to read files, run commands, and verify your work.",
+            tools: AzureOpenAI_CLI_V2.Tools.ToolRegistry.CreateMafTools(
+                tools?.Split(',', StringSplitOptions.RemoveEmptyEntries)));
+
+        // Kramer audit M2: use a single MAF AgentSession ("thread") across all
+        // iterations. Prior art string-concatenated the task text into every
+        // retry prompt, causing unbounded context growth and token waste. The
+        // session carries prior user/assistant turns automatically; retry
+        // prompts now only include the *delta* (validation failure + fix ask).
+        var session = await agent.CreateSessionAsync(ct);
+        var runOpts = new ChatClientAgentRunOptions { ChatOptions = Program.BuildModernChatOptions() };
+
+        // First turn uses the original task text; subsequent turns use short retry feedback.
+        string iterationInput = taskPrompt;
 
         for (int iteration = 1; iteration <= maxIterations; iteration++)
         {
+            // Phase 5: per-iteration span (no-op when telemetry off)
+            using var iterActivity = Observability.Telemetry.ActivitySource.StartActivity(
+                "az.ralph.iteration",
+                ActivityKind.Internal);
+            iterActivity?.SetTag("ralph.iteration", iteration);
+            iterActivity?.SetTag("ralph.max_iterations", maxIterations);
+
             if (showStatus)
                 Console.Error.WriteLine($"━━━ Iteration {iteration}/{maxIterations} ━━━");
 
@@ -55,14 +81,6 @@ internal static class RalphWorkflow
                 return 3;
             }
 
-            // Build agent for this iteration
-            var agent = chatClient.AsAIAgent(
-                instructions: systemPrompt + "\n\nYou are in Ralph mode (autonomous loop). " +
-                    "Complete the task. If there were previous errors, fix them. " +
-                    "Use tools to read files, run commands, and verify your work.",
-                tools: AzureOpenAI_CLI_V2.Tools.ToolRegistry.CreateMafTools(
-                    tools?.Split(',', StringSplitOptions.RemoveEmptyEntries)));
-
             // Capture agent output
             var agentOutput = new StringBuilder();
             int agentExitCode = 0;
@@ -73,8 +91,9 @@ internal static class RalphWorkflow
                 iterCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
 
                 await foreach (var update in agent.RunStreamingAsync(
-                    currentPrompt,
-                    options: new Microsoft.Agents.AI.ChatClientAgentRunOptions { ChatOptions = Program.BuildModernChatOptions() },
+                    iterationInput,
+                    session,
+                    options: runOpts,
                     cancellationToken: iterCts.Token))
                 {
                     if (!string.IsNullOrEmpty(update.Text))
@@ -86,7 +105,7 @@ internal static class RalphWorkflow
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 // User cancelled — save partial state and exit
-                CheckpointManager.WriteCheckpoint(iteration, currentPrompt, -1,
+                CheckpointManager.WriteCheckpoint(iteration, iterationInput, -1,
                     agentOutput.ToString().Trim(), null, null, null);
                 CheckpointManager.WriteFinalEntry($"Cancelled mid-iteration {iteration}");
                 if (showStatus)
@@ -115,7 +134,7 @@ internal static class RalphWorkflow
             // If no validation command, single-pass mode: check agent exit code
             if (validateCommand == null)
             {
-                CheckpointManager.WriteCheckpoint(iteration, currentPrompt, agentExitCode,
+                CheckpointManager.WriteCheckpoint(iteration, iterationInput, agentExitCode,
                     agentResponse, null, null, null);
 
                 if (agentExitCode == 0)
@@ -128,10 +147,8 @@ internal static class RalphWorkflow
                     return 0;
                 }
 
-                // Agent failed — retry with error context
-                currentPrompt = $"{taskPrompt}\n\n[Previous attempt failed]\n" +
-                    $"[Agent response]: {agentResponse}\n\n" +
-                    "Please fix the issues and try again.";
+                // Agent failed — retry with error-only feedback (no task re-send; session carries it).
+                iterationInput = "[Previous attempt failed — please fix the issues and try again.]";
                 continue;
             }
 
@@ -142,7 +159,7 @@ internal static class RalphWorkflow
             var (validationExitCode, validationOutput) = await RunValidationAsync(
                 validateCommand, timeoutSeconds, ct);
 
-            CheckpointManager.WriteCheckpoint(iteration, currentPrompt, agentExitCode,
+            CheckpointManager.WriteCheckpoint(iteration, iterationInput, agentExitCode,
                 agentResponse, validateCommand, validationExitCode, validationOutput);
 
             if (validationExitCode == 0)
@@ -158,17 +175,16 @@ internal static class RalphWorkflow
                 return 0;
             }
 
-            // Validation failed — retry with feedback
+            // Validation failed — retry with delta-only feedback. The agent's
+            // session already carries the task prompt and prior tool calls, so
+            // we send only the new validation output plus a fix request.
             if (showStatus)
                 Console.Error.WriteLine($"❌ FAILED (exit {validationExitCode})");
 
-            currentPrompt = $"{taskPrompt}\n\n" +
-                $"[Iteration {iteration} — validation FAILED]\n" +
-                $"[Validation command: {validateCommand}]\n" +
-                $"[Exit code: {validationExitCode}]\n" +
-                $"[Validation output]:\n{TruncateForPrompt(validationOutput, 4000)}\n\n" +
-                $"[Previous agent response]:\n{TruncateForPrompt(agentResponse, 2000)}\n\n" +
-                "Fix the issues shown in the validation output. Use tools to read and modify files as needed.";
+            iterationInput =
+                $"[validation failed exit={validationExitCode}]\n" +
+                $"{TruncateForPrompt(validationOutput, 4000)}\n" +
+                "Fix and retry.";
         }
 
         // Exhausted iterations
@@ -188,16 +204,21 @@ internal static class RalphWorkflow
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
 
+        // Kramer audit L5: use ArgumentList so the shell receives `command` as a
+        // single argv entry — no fragile quote-escaping, no shell-injection
+        // surprises when the command itself contains quotes or `$`. Matches
+        // the safer pattern already used by ShellExecTool.
         var psi = new ProcessStartInfo
         {
             FileName = "/bin/sh",
-            Arguments = $"-c \"{command.Replace("\"", "\\\"")}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             RedirectStandardInput = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        psi.ArgumentList.Add("-c");
+        psi.ArgumentList.Add(command);
 
         try
         {

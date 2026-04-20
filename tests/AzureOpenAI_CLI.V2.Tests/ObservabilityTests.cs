@@ -192,5 +192,162 @@ public class ObservabilityTests
         // Assert
         Assert.False(opts.EnableOtel);
         Assert.False(opts.EnableMetrics);
+        Assert.False(opts.EnableTelemetry);
+    }
+
+    // ── Phase 5: umbrella --telemetry flag + AZ_TELEMETRY env ──────────────
+
+    [Fact]
+    public void CliOptions_WithTelemetryFlag_SetsEnableTelemetry()
+    {
+        var opts = AzureOpenAI_CLI_V2.Program.ParseArgs(new[] { "--telemetry", "hi" });
+        Assert.True(opts.EnableTelemetry);
+    }
+
+    [Fact]
+    public void CliOptions_AzTelemetryEnvVar_EnablesTelemetry()
+    {
+        var prev = Environment.GetEnvironmentVariable("AZ_TELEMETRY");
+        try
+        {
+            Environment.SetEnvironmentVariable("AZ_TELEMETRY", "1");
+            var opts = AzureOpenAI_CLI_V2.Program.ParseArgs(new[] { "hi" });
+            Assert.True(opts.EnableTelemetry);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AZ_TELEMETRY", prev);
+        }
+    }
+
+    [Fact]
+    public void CliOptions_AzTelemetryEnvVar_Off_LeavesFlagFalse()
+    {
+        var prev = Environment.GetEnvironmentVariable("AZ_TELEMETRY");
+        try
+        {
+            Environment.SetEnvironmentVariable("AZ_TELEMETRY", "0");
+            var opts = AzureOpenAI_CLI_V2.Program.ParseArgs(new[] { "hi" });
+            Assert.False(opts.EnableTelemetry);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AZ_TELEMETRY", prev);
+        }
+    }
+
+    [Fact]
+    public void Telemetry_Initialize_WithNoFlags_IsDisabled()
+    {
+        Telemetry.Initialize(enableOtel: false, enableMetrics: false, enableTelemetry: false);
+        try
+        {
+            Assert.False(Telemetry.IsEnabled);
+            Assert.False(Telemetry.EmitCostToStderr);
+        }
+        finally { Telemetry.Shutdown(); }
+    }
+
+    [Fact]
+    public void Telemetry_Initialize_WithTelemetryFlag_EnablesEmissionAndIsEnabled()
+    {
+        Telemetry.Initialize(enableOtel: false, enableMetrics: false, enableTelemetry: true);
+        try
+        {
+            Assert.True(Telemetry.IsEnabled);
+            Assert.True(Telemetry.EmitCostToStderr);
+        }
+        finally { Telemetry.Shutdown(); }
+    }
+
+    [Fact]
+    public void RecordRequest_Disabled_WritesNothingToStderr()
+    {
+        var sw = new System.IO.StringWriter();
+        Telemetry.StderrWriter = sw;
+        Telemetry.Shutdown(); // ensure disabled
+        try
+        {
+            Telemetry.RecordRequest("gpt-4o-mini", 100, 200, "standard");
+            Assert.Equal(string.Empty, sw.ToString());
+        }
+        finally
+        {
+            Telemetry.StderrWriter = Console.Error;
+        }
+    }
+
+    [Fact]
+    public void RecordRequest_TelemetryEnabled_EmitsJsonCostEventToStderr()
+    {
+        var sw = new System.IO.StringWriter();
+        var prevWriter = Telemetry.StderrWriter;
+        Telemetry.StderrWriter = sw;
+        Telemetry.Initialize(enableOtel: false, enableMetrics: false, enableTelemetry: true);
+        try
+        {
+            Telemetry.RecordRequest("gpt-4o-mini", 1000, 500, "standard");
+            var line = sw.ToString().Trim();
+            Assert.NotEmpty(line);
+            // Single-line JSON
+            Assert.DoesNotContain("\n", line.TrimEnd());
+            using var doc = System.Text.Json.JsonDocument.Parse(line);
+            var root = doc.RootElement;
+            Assert.Equal("cost", root.GetProperty("kind").GetString());
+            Assert.Equal("gpt-4o-mini", root.GetProperty("model").GetString());
+            Assert.Equal(1000, root.GetProperty("input_tokens").GetInt32());
+            Assert.Equal(500, root.GetProperty("output_tokens").GetInt32());
+            Assert.Equal("standard", root.GetProperty("mode").GetString());
+            // usd present and correct: 1000/1000*$0.00015 + 500/1000*$0.00060 = $0.00045
+            Assert.Equal(0.00045, root.GetProperty("usd").GetDouble(), precision: 6);
+            Assert.True(root.TryGetProperty("ts", out _));
+        }
+        finally
+        {
+            Telemetry.Shutdown();
+            Telemetry.StderrWriter = prevWriter;
+        }
+    }
+
+    [Fact]
+    public void RecordRequest_UnknownModel_EmitsNullUsd()
+    {
+        var sw = new System.IO.StringWriter();
+        var prevWriter = Telemetry.StderrWriter;
+        Telemetry.StderrWriter = sw;
+        Telemetry.Initialize(enableOtel: false, enableMetrics: false, enableTelemetry: true);
+        try
+        {
+            Telemetry.RecordRequest("some-unknown-model-xyz", 100, 50, "standard");
+            var line = sw.ToString().Trim();
+            using var doc = System.Text.Json.JsonDocument.Parse(line);
+            var usd = doc.RootElement.GetProperty("usd");
+            Assert.Equal(System.Text.Json.JsonValueKind.Null, usd.ValueKind);
+        }
+        finally
+        {
+            Telemetry.Shutdown();
+            Telemetry.StderrWriter = prevWriter;
+        }
+    }
+
+    [Fact]
+    public void RecordRequest_OtelOnly_DoesNotEmitToStderr()
+    {
+        // --otel without --metrics/--telemetry → no stderr noise (spans only).
+        var sw = new System.IO.StringWriter();
+        var prevWriter = Telemetry.StderrWriter;
+        Telemetry.StderrWriter = sw;
+        Telemetry.Initialize(enableOtel: true, enableMetrics: false, enableTelemetry: false);
+        try
+        {
+            Telemetry.RecordRequest("gpt-4o-mini", 100, 50, "standard");
+            Assert.Equal(string.Empty, sw.ToString());
+        }
+        finally
+        {
+            Telemetry.Shutdown();
+            Telemetry.StderrWriter = prevWriter;
+        }
     }
 }

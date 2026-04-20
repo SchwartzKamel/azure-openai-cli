@@ -27,12 +27,12 @@ internal static class ToolRegistry
     {
         var allToolFactories = new Dictionary<string, Func<AITool>>(StringComparer.OrdinalIgnoreCase)
         {
-            ["shell_exec"] = () => AIFunctionFactory.Create(ShellExecTool.ExecuteAsync),
-            ["read_file"] = () => AIFunctionFactory.Create(ReadFileTool.ReadAsync),
-            ["web_fetch"] = () => AIFunctionFactory.Create(WebFetchTool.FetchAsync),
-            ["get_clipboard"] = () => AIFunctionFactory.Create(GetClipboardTool.GetAsync),
-            ["get_datetime"] = () => AIFunctionFactory.Create(GetDateTimeTool.GetAsync),
-            ["delegate_task"] = () => AIFunctionFactory.Create(DelegateTaskTool.DelegateAsync),
+            ["shell_exec"] = () => AIFunctionFactory.Create(ShellExecTool.ExecuteAsync, name: "shell_exec"),
+            ["read_file"] = () => AIFunctionFactory.Create(ReadFileTool.ReadAsync, name: "read_file"),
+            ["web_fetch"] = () => AIFunctionFactory.Create(WebFetchTool.FetchAsync, name: "web_fetch"),
+            ["get_clipboard"] = () => AIFunctionFactory.Create(GetClipboardTool.GetAsync, name: "get_clipboard"),
+            ["get_datetime"] = () => AIFunctionFactory.Create(GetDateTimeTool.GetAsync, name: "get_datetime"),
+            ["delegate_task"] = () => AIFunctionFactory.Create(DelegateTaskTool.DelegateAsync, name: "delegate_task"),
         };
 
         var enabled = enabledTools?.ToHashSet(StringComparer.OrdinalIgnoreCase);

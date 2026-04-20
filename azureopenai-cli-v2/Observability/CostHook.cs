@@ -90,6 +90,37 @@ internal static class CostHook
     }
 
     /// <summary>
+    /// FR-015: expose input/output per-1K rates for a model for the
+    /// pre-flight estimator. Returns false for unknown models — callers
+    /// must NOT fabricate a default rate (Morty's rule: no faked numbers).
+    /// </summary>
+    public static bool TryGetRates(string model, out double inputPer1K, out double outputPer1K)
+    {
+        LoadCustomPriceTableIfNeeded();
+        var priceTable = _customPriceTable ?? DefaultPriceTable;
+        if (priceTable.TryGetValue(model, out var price))
+        {
+            inputPer1K = price.InputPer1K;
+            outputPer1K = price.OutputPer1K;
+            return true;
+        }
+        inputPer1K = 0;
+        outputPer1K = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// FR-015: enumerate known model names (default + any custom overrides).
+    /// Used by the estimator to produce a helpful "unknown model" error.
+    /// </summary>
+    public static IReadOnlyCollection<string> KnownModels()
+    {
+        LoadCustomPriceTableIfNeeded();
+        var priceTable = _customPriceTable ?? DefaultPriceTable;
+        return priceTable.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>
     /// Format cost for stderr display.
     /// Returns "cost=$0.000123" or "cost=unknown" if null.
     /// </summary>

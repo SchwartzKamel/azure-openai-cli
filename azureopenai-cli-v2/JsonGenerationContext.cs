@@ -31,6 +31,12 @@ internal record ErrorJsonResponse(
 )]
 // ── CLI JSON response types ─────────────────────────────────────
 [JsonSerializable(typeof(ErrorJsonResponse))]
+[JsonSerializable(typeof(AzureOpenAI_CLI_V2.Observability.EstimateResult))]
+// ── Observability (Phase 5) ─────────────────────────────────────
+[JsonSerializable(typeof(AzureOpenAI_CLI_V2.Observability.CostEvent))]
+// ── User configuration (FR-003 / FR-009 / FR-010) ───────────────
+[JsonSerializable(typeof(UserConfig))]
+[JsonSerializable(typeof(UserDefaults))]
 // ── Squad types ─────────────────────────────────────────────────
 [JsonSerializable(typeof(SquadConfig))]
 [JsonSerializable(typeof(TeamConfig))]
@@ -40,6 +46,7 @@ internal record ErrorJsonResponse(
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(List<PersonaConfig>))]
 [JsonSerializable(typeof(List<RoutingRule>))]
+[JsonSerializable(typeof(Dictionary<string, string>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

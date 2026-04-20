@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 
@@ -44,9 +45,13 @@ internal static class CheckpointManager
             // Append to log (create if missing)
             File.AppendAllText(LogFilePath, entry.ToString());
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort logging — don't fail the workflow on I/O errors
+            // Kramer audit M7: best-effort, but surface *something* on the debug
+            // channel so users tailing logs can diagnose a read-only .ralph-log
+            // directory or disk-full condition. Release builds with no listener
+            // pay nothing; Debug.Listeners pick it up when attached.
+            Trace.WriteLine($"[ralph] checkpoint write failed: {ex.Message}");
         }
     }
 
@@ -64,9 +69,10 @@ internal static class CheckpointManager
 
             File.AppendAllText(LogFilePath, entry.ToString());
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort
+            // Kramer audit M7: surface failures on the debug channel.
+            Trace.WriteLine($"[ralph] final-entry write failed: {ex.Message}");
         }
     }
 
@@ -82,9 +88,10 @@ internal static class CheckpointManager
                 File.WriteAllText(LogFilePath, "# Ralph Loop Log\n\n");
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort
+            // Kramer audit M7: surface failures on the debug channel.
+            Trace.WriteLine($"[ralph] log init failed: {ex.Message}");
         }
     }
 
