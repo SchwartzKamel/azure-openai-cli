@@ -46,6 +46,8 @@ Skip an ADR for routine refactors, bug fixes, or reversible choices.
 | ADR-004  | [Speed-gated hybrid adoption of Microsoft Agent Framework](./ADR-004-agent-framework-adoption.md) | Accepted — 2026-04-20 |
 | ADR-005  | [Azure AI Foundry endpoint routing](./ADR-005-foundry-routing.md) | Proposed — 2026-04-20 |
 | ADR-006  | [NVIDIA NIM / NVFP4 Provider Integration](./ADR-006-nvfp4-nim-integration.md) | Proposed — 2026-04-23 |
+| ADR-007  | [Security Guardrails for Third-Party HTTP Inference Providers](./ADR-007-third-party-http-provider-security.md) | Proposed — 2026-04-23 |
+| ADR-008  | [Benchmarking Policy for GPU / Non-CI-Gated Providers](./ADR-008-gpu-provider-bench-policy.md) | Proposed — 2026-04-23 |
 
 ## Who writes them?
 
