@@ -13,9 +13,9 @@ namespace AzureOpenAI_CLI.Tests;
 /// </summary>
 public class FoundryRoutingTests
 {
-    private const string AzureEndpoint   = "https://sierrahackingco.cognitiveservices.azure.com/";
+    private const string AzureEndpoint = "https://sierrahackingco.cognitiveservices.azure.com/";
     private const string FoundryEndpoint = "https://sierrahackingco.services.ai.azure.com/models";
-    private const string ApiKey          = "test-api-key-unused";
+    private const string ApiKey = "test-api-key-unused";
 
     private static UserConfig ConfigFor(string model) => new()
     {
