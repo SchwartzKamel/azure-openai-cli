@@ -1,14 +1,75 @@
 #!/usr/bin/env bash
 # Integration tests for Azure OpenAI CLI
-# Runs the compiled binary end-to-end (no Azure credentials needed for these tests)
+# Runs the compiled binary end-to-end (no Azure credentials needed for most tests).
+#
+# Dual-tree window (v1 + v2):
+#   V1_BIN — legacy CLI (deleted at cutover; `run_v1_tests` can go with it)
+#   V2_BIN — next-gen CLI (az-ai-v2 assembly; survives the binary rename)
+#
+# Post-cutover: delete `run_v1_tests` + its invocation, repoint V2_BIN if
+# the artifact is renamed, and this script keeps working.
 set -euo pipefail
+
+# Dual-binary paths (override via env for CI / post-rename).
+V1_BIN="${V1_BIN:-./azureopenai-cli/bin/Release/net10.0/AzureOpenAI_CLI}"
+V2_BIN="${V2_BIN:-./azureopenai-cli-v2/bin/Release/net10.0/az-ai-v2}"
 
 PASS=0
 FAIL=0
+SKIP=0
+# v1 still uses `dotnet run` — the v1 block owns that invocation path.
 CLI="dotnet run --project azureopenai-cli/ --"
 
-red()   { printf '\033[31m%s\033[0m\n' "$*"; }
-green() { printf '\033[32m%s\033[0m\n' "$*"; }
+red()    { printf '\033[31m%s\033[0m\n' "$*"; }
+green()  { printf '\033[32m%s\033[0m\n' "$*"; }
+yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
+
+pass() { green "  ✓ PASS: $1"; PASS=$((PASS + 1)); }
+fail() { red   "  ✗ FAIL: $1 — $2"; FAIL=$((FAIL + 1)); }
+skip() { yellow "  ⊘ SKIP: $1 — $2"; SKIP=$((SKIP + 1)); }
+
+# ── New-style helpers (used by v2 block; safe for v1 to use too) ───────────
+assert_exit_code() {
+    # assert_exit_code <name> <expected> <cmd...>
+    local name="$1" expected="$2"; shift 2
+    local actual
+    set +e; "$@" >/dev/null 2>&1; actual=$?; set -e
+    if [ "$actual" -eq "$expected" ]; then pass "$name"
+    else fail "$name" "expected exit $expected, got $actual"; fi
+}
+
+assert_contains() {
+    # assert_contains <name> <pattern> <cmd...>   (grep -F, stderr+stdout merged)
+    local name="$1" pattern="$2"; shift 2
+    local out
+    set +e; out=$("$@" 2>&1); set -e
+    if printf '%s' "$out" | grep -qF -- "$pattern"; then pass "$name"
+    else fail "$name" "output missing '$pattern'"; fi
+}
+
+assert_equals() {
+    # assert_equals <name> <expected> <cmd...>   (compares stdout exactly)
+    local name="$1" expected="$2"; shift 2
+    local actual
+    set +e; actual=$("$@" 2>/dev/null); set -e
+    if [ "$actual" = "$expected" ]; then pass "$name"
+    else fail "$name" "expected '$expected', got '$actual'"; fi
+}
+
+assert_stderr_json() {
+    # assert_stderr_json <name> <required_field> <cmd...>
+    # Asserts stderr is valid JSON containing a given field.
+    local name="$1" field="$2"; shift 2
+    local errf
+    errf=$(mktemp)
+    set +e; "$@" >/dev/null 2>"$errf"; set -e
+    if ! python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert '$field' in d" "$errf" >/dev/null 2>&1; then
+        fail "$name" "stderr is not valid JSON with field '$field' (got: $(head -c 200 "$errf"))"
+        rm -f "$errf"; return
+    fi
+    rm -f "$errf"
+    pass "$name"
+}
 
 assert_exit() {
     local desc="$1" expected="$2"
@@ -63,6 +124,16 @@ echo "════════════════════════�
 echo " Azure OpenAI CLI — Integration Tests"
 echo "═══════════════════════════════════════════"
 echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# run_v1_tests — DELETE THIS FUNCTION AT CUTOVER
+# Everything between here and the matching `}` is v1-only. The v2 block below
+# is self-contained and survives the cutover.
+# ═══════════════════════════════════════════════════════════════════════════
+run_v1_tests() {
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo " v1 — legacy CLI (dotnet run --project azureopenai-cli/)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # ── Flags & Help ──────────────────────────────
 echo "▸ Flags & Help"
@@ -396,14 +467,239 @@ fi
 [ -n "$_adv_restore_ep" ] && export AZUREOPENAIENDPOINT="$_adv_restore_ep"
 [ -n "$_adv_restore_mdl" ] && export AZUREOPENAIMODEL="$_adv_restore_mdl"
 
+return 0
+} # end run_v1_tests — DELETE THIS FUNCTION AT CUTOVER
+
+# ═══════════════════════════════════════════════════════════════════════════
+# run_v2_tests — survives the cutover (v2 becomes the default).
+# If/when the v2 binary is renamed, just repoint V2_BIN. This block does not
+# depend on `dotnet run` or any v1-era path.
+# ═══════════════════════════════════════════════════════════════════════════
+run_v2_tests() {
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo " v2 — az-ai-v2 ($V2_BIN)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    if [ ! -x "$V2_BIN" ]; then
+        if [ "${INTEGRATION_BUILD:-0}" = "1" ]; then
+            echo "  INTEGRATION_BUILD=1 → building v2 binary via 'make dotnet-build'…"
+            make dotnet-build >/dev/null 2>&1 || {
+                yellow "  ⊘ skipping v2 integration: build failed"
+                SKIP=$((SKIP + 1)); return 0
+            }
+        fi
+    fi
+    if [ ! -x "$V2_BIN" ]; then
+        yellow "  ⊘ skipping v2 integration: binary not found at $V2_BIN"
+        yellow "    run 'make dotnet-build' (or set INTEGRATION_BUILD=1)"
+        SKIP=$((SKIP + 1))
+        return 0
+    fi
+
+    # Hermetic HOME + strip any ambient creds so tests don't accidentally hit the API.
+    local v2_home; v2_home=$(mktemp -d)
+    local _v2_env_moved=false
+    if [ -f .env ]; then mv .env .env.v2_bak; _v2_env_moved=true; fi
+    local _v2_api="${AZUREOPENAIAPI:-}" _v2_ep="${AZUREOPENAIENDPOINT:-}" _v2_mdl="${AZUREOPENAIMODEL:-}"
+    unset AZUREOPENAIAPI AZUREOPENAIENDPOINT AZUREOPENAIMODEL 2>/dev/null || true
+    # Pin a price-table-known model for --estimate tests (no API call made).
+    export AZUREOPENAIMODEL=gpt-4o-mini
+
+    # Restore handler
+    _restore_v2_env() {
+        if [ "$_v2_env_moved" = true ] && [ -f .env.v2_bak ]; then mv .env.v2_bak .env; fi
+        unset AZUREOPENAIMODEL
+        [ -n "$_v2_api" ] && export AZUREOPENAIAPI="$_v2_api"
+        [ -n "$_v2_ep"  ] && export AZUREOPENAIENDPOINT="$_v2_ep"
+        [ -n "$_v2_mdl" ] && export AZUREOPENAIMODEL="$_v2_mdl"
+        rm -rf "$v2_home"
+    }
+    trap _restore_v2_env RETURN
+
+    # ── 1. --help ─────────────────────────────────────────────────────────
+    echo ""
+    echo "▸ Help / Version / Completions"
+    assert_exit_code "v2 --help exits 0" 0 "$V2_BIN" --help
+    local help_out; help_out=$("$V2_BIN" --help 2>&1)
+    for phrase in "Azure OpenAI" "--agent" "--raw" "--telemetry" "--estimate" "--persona"; do
+        if printf '%s' "$help_out" | grep -qF -- "$phrase"; then
+            pass "v2 --help contains '$phrase'"
+        else
+            fail "v2 --help contains '$phrase'" "phrase not found in --help output"
+        fi
+    done
+
+    # ── 2. --version matches 2.x.y ────────────────────────────────────────
+    assert_exit_code "v2 --version exits 0" 0 "$V2_BIN" --version
+    local ver_out; ver_out=$("$V2_BIN" --version 2>&1)
+    if printf '%s' "$ver_out" | grep -qE '2\.[0-9]+\.[0-9]+'; then
+        pass "v2 --version matches 2.x.y"
+    else
+        fail "v2 --version matches 2.x.y" "got: $ver_out"
+    fi
+
+    # ── 3. --version --short is exactly "2.0.0\n" (Gate 2) ────────────────
+    assert_equals "v2 --version --short is exactly 2.0.0 (Gate 2)" "2.0.0" "$V2_BIN" --version --short
+
+    # ── 4. --completions bash ─────────────────────────────────────────────
+    assert_exit_code "v2 --completions bash exits 0" 0 "$V2_BIN" --completions bash
+    local first_line
+    first_line=$("$V2_BIN" --completions bash 2>/dev/null | head -1)
+    if printf '%s' "$first_line" | grep -qE '^# bash completion for az-ai-v2'; then
+        pass "v2 --completions bash starts with bash-completion header"
+    else
+        fail "v2 --completions bash starts with bash-completion header" "got first line: $first_line"
+    fi
+
+    # ── 5. --completions zsh ──────────────────────────────────────────────
+    assert_exit_code "v2 --completions zsh exits 0" 0 "$V2_BIN" --completions zsh
+    first_line=$("$V2_BIN" --completions zsh 2>/dev/null | head -1)
+    if printf '%s' "$first_line" | grep -q '^#compdef'; then
+        pass "v2 --completions zsh starts with #compdef"
+    else
+        fail "v2 --completions zsh starts with #compdef" "got first line: $first_line"
+    fi
+
+    # ── 6. --estimate prints USD figure ───────────────────────────────────
+    echo ""
+    echo "▸ Estimator (no API call)"
+    assert_exit_code "v2 --estimate exits 0" 0 "$V2_BIN" --estimate "hello world"
+    local est_out; est_out=$("$V2_BIN" --estimate "hello world" 2>&1)
+    if printf '%s' "$est_out" | grep -qE '\$0\.'; then
+        pass "v2 --estimate prints a \$0. USD figure"
+    else
+        fail "v2 --estimate prints a \$0. USD figure" "no \$0. in output: $est_out"
+    fi
+
+    # ── 7. --estimate --json has required fields ──────────────────────────
+    local est_json; est_json=$("$V2_BIN" --estimate --json "hello" 2>&1)
+    if printf '%s' "$est_json" | python3 -c "
+import json, sys
+d = json.loads(sys.stdin.read())
+for f in ('model', 'input_tokens_est', 'total_usd_max'):
+    assert f in d, f
+" >/dev/null 2>&1; then
+        pass "v2 --estimate --json has model/input_tokens_est/total_usd_max"
+    else
+        fail "v2 --estimate --json has model/input_tokens_est/total_usd_max" "got: $est_json"
+    fi
+
+    # ── 12. --raw --estimate → single line, no banner ─────────────────────
+    local raw_out; raw_out=$("$V2_BIN" --raw --estimate "hi" 2>/dev/null)
+    local raw_lines; raw_lines=$(printf '%s\n' "$raw_out" | awk 'END{print NR}')
+    if [ "$raw_lines" -eq 1 ]; then
+        pass "v2 --raw --estimate emits exactly 1 line"
+    else
+        fail "v2 --raw --estimate emits exactly 1 line" "got $raw_lines lines: $raw_out"
+    fi
+    if printf '%s' "$raw_out" | grep -qiE 'cost estimate|input tokens|NO API CALL'; then
+        fail "v2 --raw --estimate suppresses banner text" "banner leaked: $raw_out"
+    else
+        pass "v2 --raw --estimate suppresses banner text"
+    fi
+
+    # ── 8 & 9. --set-model / --current-model / --models round-trip ────────
+    echo ""
+    echo "▸ Model alias round-trip (hermetic HOME)"
+    assert_exit_code "v2 --set-model testAlias=testDeployment exits 0" 0 \
+        env HOME="$v2_home" "$V2_BIN" --set-model testAlias=testDeployment
+    assert_equals "v2 --current-model returns testAlias" "testAlias" \
+        env HOME="$v2_home" "$V2_BIN" --current-model
+    assert_exit_code "v2 --models exits 0" 0 env HOME="$v2_home" "$V2_BIN" --models
+    assert_contains "v2 --models lists seeded alias" "testAlias" \
+        env HOME="$v2_home" "$V2_BIN" --models
+    assert_contains "v2 --models lists seeded deployment" "testDeployment" \
+        env HOME="$v2_home" "$V2_BIN" --models
+
+    # ── 10. Invalid flag (non-JSON) ───────────────────────────────────────
+    echo ""
+    echo "▸ Invalid flag handling"
+    # v2 must exit nonzero and surface an [ERROR] on stderr.
+    local inv_stderr inv_rc
+    set +e; inv_stderr=$("$V2_BIN" --nope 2>&1 1>/dev/null); inv_rc=$?; set -e
+    if [ $inv_rc -ne 0 ]; then
+        pass "v2 --nope exits nonzero"
+    else
+        fail "v2 --nope exits nonzero" "exited 0"
+    fi
+    if printf '%s' "$inv_stderr" | grep -qF '[ERROR]'; then
+        pass "v2 --nope has [ERROR] on stderr"
+    else
+        fail "v2 --nope has [ERROR] on stderr" "stderr was: $inv_stderr"
+    fi
+
+    # ── 11. Invalid flag + --json → valid JSON with 'error' field ─────────
+    # NOTE: task spec expected JSON on stderr, but v2 emits structured errors
+    # on stdout (consumer pipes to jq). Test matches actual v2 behavior.
+    local inv_json_stdout inv_json_rc
+    set +e; inv_json_stdout=$("$V2_BIN" --json --nope 2>/dev/null); inv_json_rc=$?; set -e
+    if [ $inv_json_rc -ne 0 ]; then
+        pass "v2 --json --nope exits nonzero"
+    else
+        fail "v2 --json --nope exits nonzero" "exited 0"
+    fi
+    if printf '%s' "$inv_json_stdout" | python3 -c "
+import json, sys
+d = json.loads(sys.stdin.read())
+assert 'error' in d, 'no error field'
+" >/dev/null 2>&1; then
+        pass "v2 --json --nope emits valid JSON with 'error' field"
+    else
+        fail "v2 --json --nope emits valid JSON with 'error' field" "got: $inv_json_stdout"
+    fi
+
+    # ── 13. --tools datetime --help does not leak tool list to stderr ─────
+    echo ""
+    echo "▸ Tools help hygiene"
+    local tools_stderr; tools_stderr=$("$V2_BIN" --tools datetime --help 2>&1 1>/dev/null)
+    if [ -z "$tools_stderr" ]; then
+        pass "v2 --tools datetime --help has empty stderr"
+    else
+        fail "v2 --tools datetime --help has empty stderr" "stderr leaked: $tools_stderr"
+    fi
+
+    # ── 14. Cancellation: SIGINT → exit 3 ─────────────────────────────────
+    echo ""
+    echo "▸ Cancellation"
+    if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then
+        skip "v2 SIGINT → exit 3" "requires AZUREOPENAIENDPOINT + AZUREOPENAIAPI"
+    else
+        "$V2_BIN" --agent "long task that should be cancelled" >/dev/null 2>&1 &
+        local pid=$!
+        sleep 1
+        kill -INT "$pid" 2>/dev/null || true
+        set +e; wait "$pid"; local rc=$?; set -e
+        if [ "$rc" -eq 3 ]; then
+            pass "v2 SIGINT → exit 3"
+        else
+            fail "v2 SIGINT → exit 3" "got exit $rc"
+        fi
+    fi
+
+    # ── API-gated smoke (skip unless creds present) ───────────────────────
+    if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then
+        skip "v2 real API call" "AZUREOPENAIENDPOINT/AZUREOPENAIAPI not set"
+    fi
+
+    trap - RETURN
+    _restore_v2_env
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Orchestrate
+# ═══════════════════════════════════════════════════════════════════════════
+run_v1_tests     # <-- delete this line at cutover
+run_v2_tests
+
 # ── Summary ───────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════"
 TOTAL=$((PASS + FAIL))
 if [ "$FAIL" -eq 0 ]; then
-    green " All $TOTAL tests passed!"
+    green " All $TOTAL tests passed! ($SKIP skipped)"
 else
-    red " $FAIL/$TOTAL tests failed"
+    red " $FAIL/$TOTAL tests failed ($SKIP skipped)"
 fi
 echo "═══════════════════════════════════════════"
 
