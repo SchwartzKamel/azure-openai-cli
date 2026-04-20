@@ -18,10 +18,10 @@ public class ObservabilityTests
 
         // Assert
         Assert.NotNull(cost);
-        // $0.15 per 1M input = $0.00015 per 1K => 1000 tokens = $0.15
-        // $0.60 per 1M output = $0.00060 per 1K => 500 tokens = $0.30
-        // Total = $0.45
-        Assert.Equal(0.45, cost.Value, precision: 6);
+        // $0.15 per 1M input = $0.00015 per 1K => 1000 tokens = $0.00015
+        // $0.60 per 1M output = $0.00060 per 1K => 500 tokens = $0.00030
+        // Total = $0.00045
+        Assert.Equal(0.00045, cost.Value, precision: 6);
     }
 
     [Fact]
@@ -37,10 +37,10 @@ public class ObservabilityTests
 
         // Assert
         Assert.NotNull(cost);
-        // $0.20 per 1M input = $0.00020 per 1K => 2000 tokens = $0.40
-        // $1.25 per 1M output = $0.00125 per 1K => 1000 tokens = $1.25
-        // Total = $1.65
-        Assert.Equal(1.65, cost.Value, precision: 6);
+        // $0.20 per 1M input = $0.00020 per 1K => 2000 tokens = $0.00040
+        // $1.25 per 1M output = $0.00125 per 1K => 1000 tokens = $0.00125
+        // Total = $0.00165
+        Assert.Equal(0.00165, cost.Value, precision: 6);
     }
 
     [Fact]
@@ -56,10 +56,10 @@ public class ObservabilityTests
 
         // Assert
         Assert.NotNull(cost);
-        // $0.075 per 1M input = $0.000075 per 1K => 10000 tokens = $0.75
-        // $0.300 per 1M output = $0.000300 per 1K => 5000 tokens = $1.50
-        // Total = $2.25
-        Assert.Equal(2.25, cost.Value, precision: 6);
+        // $0.075 per 1M input = $0.000075 per 1K => 10000 tokens = $0.00075
+        // $0.300 per 1M output = $0.000300 per 1K => 5000 tokens = $0.00150
+        // Total = $0.00225
+        Assert.Equal(0.00225, cost.Value, precision: 6);
     }
 
     [Fact]
@@ -75,10 +75,10 @@ public class ObservabilityTests
 
         // Assert
         Assert.NotNull(cost);
-        // $0.080 per 1M input = $0.000080 per 1K => 10000 tokens = $0.80
-        // $0.320 per 1M output = $0.000320 per 1K => 5000 tokens = $1.60
-        // Total = $2.40
-        Assert.Equal(2.40, cost.Value, precision: 6);
+        // $0.080 per 1M input = $0.000080 per 1K => 10000 tokens = $0.00080
+        // $0.320 per 1M output = $0.000320 per 1K => 5000 tokens = $0.00160
+        // Total = $0.00240
+        Assert.Equal(0.00240, cost.Value, precision: 6);
     }
 
     [Fact]
@@ -94,10 +94,10 @@ public class ObservabilityTests
 
         // Assert
         Assert.NotNull(cost);
-        // $2.50 per 1M input = $0.00250 per 1K => 1000 tokens = $2.50
-        // $10.00 per 1M output = $0.01000 per 1K => 500 tokens = $5.00
-        // Total = $7.50
-        Assert.Equal(7.50, cost.Value, precision: 6);
+        // $2.50 per 1M input = $0.00250 per 1K => 1000 tokens = $0.00250
+        // $10.00 per 1M output = $0.01000 per 1K => 500 tokens = $0.00500
+        // Total = $0.00750
+        Assert.Equal(0.00750, cost.Value, precision: 6);
     }
 
     [Fact]
