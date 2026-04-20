@@ -3,28 +3,30 @@
 // Three auth paths gated by --auth:
 //   apikey   → Azure OpenAI direct + key  (preserves current env contract)
 //   aad      → Azure OpenAI direct + DefaultAzureCredential (AAD / Managed Identity)
-//   foundry  → Azure AI Foundry project endpoint + DefaultAzureCredential
+//   foundry  → Azure AI Foundry model catalog endpoint + api-key header
 //
 // Output is intentionally minimal so the bench harness can time it cleanly:
 //   stdout = model text only (raw)
 //   stderr = phase markers (auth-ready, request-sent, first-token, complete)
 //            with monotonic ns timestamps for benchmark parsing.
 //
-// NO retry, NO spinner, NO tool-calling yet. Phase 0 measures the core path only.
-//
 // Env vars (matches current az-ai contract):
-//   AZUREOPENAIENDPOINT   Azure OpenAI endpoint URL (apikey, aad)
-//   AZUREOPENAIAPI        API key (apikey)
-//   AZUREOPENAIMODEL      Deployment name
-//   AZURE_FOUNDRY_PROJECT_ENDPOINT  (foundry)
+//   AZUREOPENAIENDPOINT     Azure OpenAI endpoint URL (apikey, aad)
+//   AZUREOPENAIAPI          API key (apikey)
+//   AZUREOPENAIMODEL        Deployment name
+//   AZURE_FOUNDRY_ENDPOINT  (foundry - model catalog surface)
+//   AZURE_FOUNDRY_API_KEY   API key for Foundry (foundry)
+//   AZURE_FOUNDRY_MODEL     Deployment name for Foundry (foundry)
 
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Diagnostics;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using dotenv.net;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using OpenAI;
 using OpenAI.Chat;
 
 namespace AzAi.Spike.AgentFramework;
@@ -37,12 +39,12 @@ internal static class Program
     {
         DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true, probeForEnv: true));
 
-        var (auth, prompt, system) = ParseArgs(args);
+        var (auth, prompt, system, useTool) = ParseArgs(args);
         Mark("args-parsed");
 
         try
         {
-            var agent = await BuildAgentAsync(auth);
+            var agent = await BuildAgentAsync(auth, useTool);
             Mark("agent-ready");
 
             // Streaming run — measure TTFT.
@@ -70,11 +72,12 @@ internal static class Program
         }
     }
 
-    private static (string auth, string prompt, string? system) ParseArgs(string[] args)
+    private static (string auth, string prompt, string? system, bool useTool) ParseArgs(string[] args)
     {
         string auth = "apikey";
         string? prompt = null;
         string? system = null;
+        bool useTool = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -89,9 +92,12 @@ internal static class Program
                 case "--system":
                     system = args[++i];
                     break;
+                case "--tool":
+                    useTool = true;
+                    break;
                 case "-h":
                 case "--help":
-                    Console.WriteLine("af-spike --auth {apikey|aad|foundry} --prompt <text> [--system <text>]");
+                    Console.WriteLine("af-spike --auth {apikey|aad|foundry} --prompt <text> [--system <text>] [--tool]");
                     Environment.Exit(0);
                     break;
             }
@@ -112,50 +118,103 @@ internal static class Program
             Environment.Exit(2);
         }
 
-        return (auth.ToLowerInvariant(), prompt!, system);
+        return (auth.ToLowerInvariant(), prompt!, system, useTool);
     }
 
-    private static Task<AIAgent> BuildAgentAsync(string auth)
+    private static Task<AIAgent> BuildAgentAsync(string auth, bool useTool)
     {
         var deployment = Env("AZUREOPENAIMODEL") ?? "gpt-4o-mini";
         var systemPrompt = "You are a fast, concise CLI assistant. No fluff.";
 
         return auth switch
         {
-            "apikey" => Task.FromResult(BuildApiKeyAgent(deployment, systemPrompt)),
-            "aad" => Task.FromResult(BuildAadAgent(deployment, systemPrompt)),
-            "foundry" => Task.FromResult(BuildFoundryAgent(deployment, systemPrompt)),
+            "apikey" => Task.FromResult(BuildApiKeyAgent(deployment, systemPrompt, useTool)),
+            "aad" => Task.FromResult(BuildAadAgent(deployment, systemPrompt, useTool)),
+            "foundry" => Task.FromResult(BuildFoundryAgent(deployment, systemPrompt, useTool)),
             _ => throw new ArgumentException($"unknown --auth value: {auth} (apikey|aad|foundry)")
         };
     }
 
-    private static AIAgent BuildApiKeyAgent(string deployment, string systemPrompt)
+    private static AIAgent BuildApiKeyAgent(string deployment, string systemPrompt, bool useTool)
     {
         var endpoint = Env("AZUREOPENAIENDPOINT") ?? throw new InvalidOperationException("AZUREOPENAIENDPOINT not set");
         var key = Env("AZUREOPENAIAPI") ?? throw new InvalidOperationException("AZUREOPENAIAPI not set");
 
         var client = new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(key));
-        return client.GetChatClient(deployment).AsIChatClient().AsAIAgent(instructions: systemPrompt);
+        var chatClient = client.GetChatClient(deployment).AsIChatClient();
+        return useTool ? chatClient.AsAIAgent(instructions: systemPrompt, tools: [AIFunctionFactory.Create(GetDateTime)])
+                       : chatClient.AsAIAgent(instructions: systemPrompt);
     }
 
-    private static AIAgent BuildAadAgent(string deployment, string systemPrompt)
+    private static AIAgent BuildAadAgent(string deployment, string systemPrompt, bool useTool)
     {
         var endpoint = Env("AZUREOPENAIENDPOINT") ?? throw new InvalidOperationException("AZUREOPENAIENDPOINT not set");
         var client = new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential());
-        return client.GetChatClient(deployment).AsIChatClient().AsAIAgent(instructions: systemPrompt);
+        var chatClient = client.GetChatClient(deployment).AsIChatClient();
+        return useTool ? chatClient.AsAIAgent(instructions: systemPrompt, tools: [AIFunctionFactory.Create(GetDateTime)])
+                       : chatClient.AsAIAgent(instructions: systemPrompt);
     }
 
-    private static AIAgent BuildFoundryAgent(string deployment, string systemPrompt)
+    private static AIAgent BuildFoundryAgent(string deployment, string systemPrompt, bool useTool)
     {
-        // NOTE: Microsoft.Agents.AI.AzureAI surface — verify exact factory in Phase 0.
-        // Foundry uses persistent server-side agents; this skeleton treats it like
-        // a fresh ephemeral agent for benchmark parity. Update once we confirm the
-        // package's public API.
-        var endpoint = Env("AZURE_FOUNDRY_PROJECT_ENDPOINT")
-            ?? throw new InvalidOperationException("AZURE_FOUNDRY_PROJECT_ENDPOINT not set");
-        throw new NotImplementedException(
-            "Foundry path is a Phase 0 stub. Wire to PersistentAgentsClient once package surface is confirmed. " +
-            $"Endpoint: {endpoint}, Deployment: {deployment}");
+        // Phase 0 pt2: MAF doesn't expose a Foundry factory for the model catalog
+        // surface (services.ai.azure.com/models) that respects api-key header auth.
+        // We fallback to the same pattern as the main CLI: hand-wire a ChatClient
+        // with a PipelinePolicy that swaps Authorization Bearer → api-key header.
+        var endpoint = Env("AZURE_FOUNDRY_ENDPOINT")
+            ?? throw new InvalidOperationException("AZURE_FOUNDRY_ENDPOINT not set");
+        var apiKey = Env("AZURE_FOUNDRY_API_KEY")
+            ?? throw new InvalidOperationException("AZURE_FOUNDRY_API_KEY not set");
+        var model = Env("AZURE_FOUNDRY_MODEL") ?? deployment;
+
+        var options = new OpenAIClientOptions { Endpoint = new Uri(endpoint) };
+        options.AddPolicy(new FoundryAuthPolicy(apiKey, "2024-05-01-preview"), PipelinePosition.PerCall);
+        var chatClient = new ChatClient(model, new ApiKeyCredential(apiKey), options).AsIChatClient();
+        return useTool ? chatClient.AsAIAgent(instructions: systemPrompt, tools: [AIFunctionFactory.Create(GetDateTime)])
+                       : chatClient.AsAIAgent(instructions: systemPrompt);
+    }
+
+    /// <summary>
+    /// Simple tool for round-trip benchmark: returns current UTC timestamp.
+    /// </summary>
+    [System.ComponentModel.Description("Get the current date and time in UTC")]
+    private static string GetDateTime() => DateTime.UtcNow.ToString("O");
+
+    /// <summary>
+    /// Pipeline policy for Foundry's model catalog surface (services.ai.azure.com/models).
+    /// Swaps OpenAI's Authorization: Bearer for api-key: header + appends api-version query.
+    /// Borrowed from azureopenai-cli/Program.cs ADR-005 (FoundryAuthPolicy).
+    /// </summary>
+    private sealed class FoundryAuthPolicy : PipelinePolicy
+    {
+        private readonly string _apiKey;
+        private readonly string _apiVersion;
+        public FoundryAuthPolicy(string apiKey, string apiVersion)
+        {
+            _apiKey = apiKey;
+            _apiVersion = apiVersion;
+        }
+        public override void Process(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
+        {
+            Apply(message);
+            ProcessNext(message, pipeline, currentIndex);
+        }
+        public override async ValueTask ProcessAsync(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
+        {
+            Apply(message);
+            await ProcessNextAsync(message, pipeline, currentIndex).ConfigureAwait(false);
+        }
+        private void Apply(PipelineMessage message)
+        {
+            var req = message.Request;
+            req.Headers.Set("api-key", _apiKey);
+            req.Headers.Remove("Authorization");
+            if (req.Uri is Uri uri && !uri.Query.Contains("api-version=", StringComparison.OrdinalIgnoreCase))
+            {
+                var sep = string.IsNullOrEmpty(uri.Query) ? "?" : "&";
+                req.Uri = new Uri(uri.AbsoluteUri + sep + "api-version=" + _apiVersion);
+            }
+        }
     }
 
     private static string? Env(string name)
