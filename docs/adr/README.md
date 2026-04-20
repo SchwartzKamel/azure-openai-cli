@@ -41,6 +41,11 @@ Skip an ADR for routine refactors, bug fixes, or reversible choices.
 | ID       | Title                                                        | Status                 |
 | -------- | ------------------------------------------------------------ | ---------------------- |
 | ADR-001  | [Native AOT as the Recommended Publish Mode](./ADR-001-native-aot-recommended.md) | Accepted — 2026-04-19 |
+| ADR-002  | [Squad Persona + Memory Architecture](./ADR-002-squad-persona-memory.md) | Accepted — 2026-04-09 |
+| ADR-003  | [Behavior-Driven Development in xUnit](./ADR-003-behavior-driven-development.md) | Accepted — 2026-04-20 |
+| ADR-004  | [Speed-gated hybrid adoption of Microsoft Agent Framework](./ADR-004-agent-framework-adoption.md) | Accepted — 2026-04-20 |
+| ADR-005  | [Azure AI Foundry endpoint routing](./ADR-005-foundry-routing.md) | Proposed — 2026-04-20 |
+| ADR-006  | [NVIDIA NIM / NVFP4 Provider Integration](./ADR-006-nvfp4-nim-integration.md) | Proposed — 2026-04-23 |
 
 ## Who writes them?
 

@@ -1,6 +1,6 @@
 # Azure OpenAI CLI — Complete Use Cases Guide
 
-> **54+ features** across 6 operational modes, with real-world examples for every one.
+> **54+ features** across 4 operational modes, with real-world examples for every one.
 
 ## Table of Contents
 
@@ -162,63 +162,63 @@ docker run --rm -e AZUREOPENAIENDPOINT -e AZUREOPENAIAPI -e AZUREOPENAIMODEL \
 
 ## Feature Coverage Matrix
 
-| # | Feature | Mode | Flag/Mechanism |
-|---|---------|------|----------------|
-| 1 | Basic prompting | Standard | positional args |
-| 2 | Stdin piping | Standard | pipe `\|` |
-| 3 | Streaming + spinner | Standard | default |
-| 4 | Token tracking | Standard | stderr display |
-| 5 | Raw mode | Standard | `--raw` |
-| 6 | JSON output | Standard | `--json` |
-| 7 | Temperature | Standard | `-t`, `--temperature` |
-| 8 | Max tokens | Standard | `--max-tokens` |
-| 9 | System prompt | Standard | `--system` |
-| 10 | Structured output | Standard | `--schema` |
-| 11 | Timeout | Standard | `AZURE_TIMEOUT` |
-| 12 | Exit codes | Standard | 0/1/2/3/99 |
-| 13 | Prompt size limit | Standard | 32K chars |
-| 14 | Retry logic | Standard | auto backoff |
-| 15 | Agent mode | Agent | `--agent` |
-| 16 | Round limit | Agent | `--max-rounds` |
-| 17 | Tool selection | Agent | `--tools` |
-| 18 | shell_exec | Agent | tool |
-| 19 | read_file | Agent | tool |
-| 20 | web_fetch | Agent | tool |
-| 21 | get_clipboard | Agent | tool |
-| 22 | get_datetime | Agent | tool |
-| 23 | delegate_task | Agent | tool |
-| 24 | Parallel tools | Agent | auto |
-| 25 | Agent status | Agent | stderr |
-| 26 | Ralph mode | Ralph | `--ralph` |
-| 27 | Validation | Ralph | `--validate` |
-| 28 | Task file | Ralph | `--task-file` |
-| 29 | Max iterations | Ralph | `--max-iterations` |
-| 30 | Ralph log | Ralph | `.ralph-log` |
-| 31 | Squad init | Squad | `--squad-init` |
-| 32 | Persona select | Squad | `--persona` |
-| 33 | Auto-routing | Squad | `--persona auto` |
-| 34 | List personas | Squad | `--personas` |
-| 35 | Persona memory | Squad | `.squad/history/` |
-| 36 | Custom personas | Squad | `.squad.json` |
-| 37 | Config show | Config | `--config show` |
-| 38 | List models | Config | `--models` |
-| 39 | Set model | Config | `--set-model` |
-| 40 | Current model | Config | `--current-model` |
-| 41 | User config | Config | `~/.azureopenai-cli.json` |
-| 42 | Env precedence | Config | flags > env > config |
-| 43 | .env support | Config | `.env` file |
-| 44 | Espanso | Integration | YAML triggers |
-| 45 | AutoHotKey | Integration | AHK v2 scripts |
-| 46 | Pipelines | Integration | shell pipes |
-| 47 | Help | Help | `--help`, `-h` |
-| 48 | Version | Help | `--version`, `-v` |
-| 49 | Shell sandbox | Security | blocked cmds |
-| 50 | File sandbox | Security | blocked paths |
-| 51 | SSRF protection | Security | 3-layer defense |
-| 52 | Input validation | Security | size/range limits |
-| 53 | Docker security | Security | non-root + env |
-| 54 | DotEnv resilience | Standard | try-catch |
+| Feature | Mode | Flag/Mechanism |
+|---------|------|----------------|
+| Basic prompting | Standard | positional args |
+| Stdin piping | Standard | pipe `\|` |
+| Streaming + spinner | Standard | default |
+| Token tracking | Standard | stderr display |
+| Raw mode | Standard | `--raw` |
+| JSON output | Standard | `--json` |
+| Temperature | Standard | `-t`, `--temperature` |
+| Max tokens | Standard | `--max-tokens` |
+| System prompt | Standard | `--system` |
+| Structured output | Standard | `--schema` |
+| Timeout | Standard | `AZURE_TIMEOUT` |
+| Exit codes | Standard | 0/1/2/3/99 |
+| Prompt size limit | Standard | 32K chars |
+| Retry logic | Standard | auto backoff |
+| Agent mode | Agent | `--agent` |
+| Round limit | Agent | `--max-rounds` |
+| Tool selection | Agent | `--tools` |
+| shell_exec | Agent | tool |
+| read_file | Agent | tool |
+| web_fetch | Agent | tool |
+| get_clipboard | Agent | tool |
+| get_datetime | Agent | tool |
+| delegate_task | Agent | tool |
+| Parallel tools | Agent | auto |
+| Agent status | Agent | stderr |
+| Ralph mode | Ralph | `--ralph` |
+| Validation | Ralph | `--validate` |
+| Task file | Ralph | `--task-file` |
+| Max iterations | Ralph | `--max-iterations` |
+| Ralph log | Ralph | `.ralph-log` |
+| Squad init | Squad | `--squad-init` |
+| Persona select | Squad | `--persona` |
+| Auto-routing | Squad | `--persona auto` |
+| List personas | Squad | `--personas` |
+| Persona memory | Squad | `.squad/history/` |
+| Custom personas | Squad | `.squad.json` |
+| Config show | Config | `--config show` |
+| List models | Config | `--models` |
+| Set model | Config | `--set-model` |
+| Current model | Config | `--current-model` |
+| User config | Config | `~/.azureopenai-cli.json` |
+| Env precedence | Config | flags > env > config |
+| .env support | Config | `.env` file |
+| Espanso | Integration | YAML triggers |
+| AutoHotKey | Integration | AHK v2 scripts |
+| Pipelines | Integration | shell pipes |
+| Help | Help | `--help`, `-h` |
+| Version | Help | `--version`, `-v` |
+| Shell sandbox | Security | blocked cmds |
+| File sandbox | Security | blocked paths |
+| SSRF protection | Security | 3-layer defense |
+| Input validation | Security | size/range limits |
+| Docker security | Security | non-root + env |
+| DotEnv resilience | Standard | try-catch |
 
 ---
 
-*Generated for Azure OpenAI CLI — 54 features, 6 modes, ~3,600 lines of examples. See [CHANGELOG](../CHANGELOG.md) for the currently released version.*
+*Generated for Azure OpenAI CLI — 54 features, 4 modes, ~3,600 lines of examples. See [CHANGELOG](../CHANGELOG.md) for the currently released version.*

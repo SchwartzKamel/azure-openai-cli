@@ -4,12 +4,8 @@
 
 ## Prerequisites
 
-```bash
-# Required environment variables
-export AZUREOPENAIENDPOINT="https://your-resource.openai.azure.com/"
-export AZUREOPENAIAPI="your-api-key-here"
-export AZUREOPENAIMODEL="gpt-4o"
-```
+See [`prerequisites.md`](prerequisites.md) for the required environment
+variables (`AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`).
 
 ---
 

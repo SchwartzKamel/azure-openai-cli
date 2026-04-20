@@ -56,6 +56,11 @@ Rough order-of-magnitude as of **2026-04** (USD per 1M tokens, global PAYG, conf
 
 ### 3.5 The new kids on the block
 
+> **TL;DR**
+> - **Decision:** Keep `gpt-4o-mini` as the default. Do **not** adopt `gpt-5.4-nano` or `DeepSeek-V3.2` for Espanso workflows.
+> - **Why:** `gpt-5.4-nano` is 4.3× more expensive on input for reasoning you don't need; DeepSeek is a third-party model with a weaker compliance story for clipboard data.
+> - **Revisit when:** a reasoning-required use case lands (nano) or security signs off on non-OpenAI Foundry routing with a documented data-residency story (DeepSeek).
+
 Listen, Kramer came to me with two hot new models and I held his feet to the fire. Let me give it to you straight.
 
 **`gpt-5.4-nano`: The speedster with the price tag**
@@ -75,6 +80,11 @@ The SECURITY.md in this repo caps clipboard at 32 KB for a reason — we assume 
 ---
 
 ### 3.6 The Phi-4-mini twins — finally, something I can endorse
+
+> **TL;DR**
+> - **Decision:** Do **not** swap the Espanso default to `Phi-4-mini-instruct` yet. `gpt-4o-mini` stands.
+> - **Why:** Cost wins are real (~6.5× cheaper per call), but empirical benchmarks (2026-04-20) show HTTP 422 on `--schema`, broken function calling, and 20% instruction-following failure on JSON-constrained prompts.
+> - **Revisit when:** Foundry ships fixes for strict-JSON / tool-call parity — or when a new Phi-family release clears Bania's benchmark gate. Track via ADR-005 (Foundry routing) and the benchmark report linked below.
 
 *[Morty, visibly relieved, loosening his tie]*
 

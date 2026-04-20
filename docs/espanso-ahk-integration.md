@@ -326,49 +326,138 @@ Use the **Linux/macOS Espanso config** from earlier in this doc as-is — `xclip
 
 Windows Espanso shells out to `wsl.exe` to hop the boundary. The WSL2 VM stays warm between invocations, so the boundary adds roughly **20–80 ms** on top of the ~11 ms AOT cold start. Total local overhead is still <100 ms — the Azure round-trip dwarfs it.
 
+#### Which shell: `powershell`, `wsl`, or `cmd`?
+
+Espanso natively supports `shell: powershell`, `shell: wsl`, and `shell: cmd` on Windows (see the [Espanso shell extension docs](https://espanso.org/docs/matches/extensions/#shell-extension)). For Path B, **use `shell: powershell`** (which also happens to be Espanso's Windows default — you can omit it if you like, but setting it explicitly makes the config self-documenting).
+
+Three reasons the PowerShell-direct pattern wins:
+
+| Pattern | Invocation chain | Clipboard source | Verdict |
+|---------|------------------|------------------|---------|
+| **`shell: powershell`** *(recommended)* | PS → `wsl.exe` → `az-ai` | `Get-Clipboard` (native) | ✅ Cleanest. One quoting layer. |
+| `shell: wsl` | `bash` → `powershell.exe`/`clip.exe` → pipe back → `az-ai` | Interop reach-back to Win32 | ⚠️ Works, but clipboard requires hopping *back* to Windows since `xclip` has no `DISPLAY` in headless WSL2. Net: same boundary crossings, reversed, plus fragile interop. |
+| `shell: cmd` wrapping `powershell -Command "…"` | `cmd` → `powershell` → `wsl.exe` → `az-ai` | `Get-Clipboard` | ❌ Extra hop, nested quoting (cmd escapes *and* PS escapes), no upside. |
+
+Why `shell: powershell` is right:
+
+- **One quoting layer.** `cmd` wrapping `powershell -Command "…"` forces you to double-escape every inner double-quote (`\"…\""` in YAML turns into cmd-parsed `"…"`, then PS re-parses). With `shell: powershell`, the whole `cmd:` value *is* a PowerShell expression — YAML handles the outer quoting and PS handles its own strings natively.
+- **Native clipboard, correct encoding.** `Get-Clipboard` reads Windows's clipboard directly as a PowerShell string. `shell: wsl` can't do this without shelling back out to `powershell.exe` or `clip.exe` from inside bash, which is strictly more work for the same result.
+- **Lower latency, same boundary.** You cross the Windows↔WSL boundary exactly once (`wsl.exe -e …`), not twice. Dropping the `cmd` hop saves ~10–20 ms per invocation on cold shell spawns.
+- **When `shell: cmd` is still appropriate:** basically never for this use case. If you ever need to chain `.bat` files or invoke a legacy tool that only parses cmd-style `%VAR%` expansion, that's the time. For `az-ai` + clipboard, it's pure overhead.
+
+#### Full Path B WSL config (copy-paste)
+
+Drop this into `%APPDATA%\espanso\match\ai-wsl.yml` — it mirrors the Linux trigger set 1:1 (`:ai `, `:aifix`, `:aiemail`, `:aiexplain`, `:aisum`, `:aien`, `:aishort`, `:aicommit`), routed through PowerShell → `wsl.exe` → the Linux AOT binary:
+
 ```yaml
 # %APPDATA%\espanso\match\ai-wsl.yml
-# Windows Espanso → WSL → AOT az-ai
+# Windows Espanso → WSL → AOT az-ai (Path B)
+# Clipboard via Get-Clipboard, one boundary crossing via wsl.exe.
 matches:
 
+  # ── Free-form AI prompt (with input form) ─────────────────────
+  # Type ":ai " (with trailing space) → form pops up → AI responds.
+  # No clipboard needed; prompt is passed as an argv to az-ai.
+  - trigger: ":ai "
+    replace: "{{output}}"
+    vars:
+      - name: "form1"
+        type: form
+        params:
+          layout: "AI Prompt: {{prompt}}"
+      - name: output
+        type: shell
+        params:
+          cmd: "wsl.exe -e /usr/local/bin/az-ai --raw '{{form1.prompt}}'"
+          shell: powershell
+
+  # ── Fix grammar & spelling (from clipboard) ───────────────────
   - trigger: ":aifix"
     replace: "{{output}}"
     vars:
       - name: output
         type: shell
         params:
-          # powershell Get-Clipboard -> wsl stdin -> az-ai -> stdout -> Espanso
-          cmd: "powershell -NoProfile -Command \"Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --max-tokens 500 --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'\""
-          shell: cmd
+          cmd: "Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
+          shell: powershell
 
-  - trigger: ":aicommit"
+  # ── Professional email rewrite ─────────────────────────────────
+  - trigger: ":aiemail"
     replace: "{{output}}"
     vars:
       - name: output
         type: shell
         params:
-          # For git diffs copied to clipboard. 100-token cap keeps the bill honest.
-          cmd: "powershell -NoProfile -Command \"Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message. Format: type(scope): description. Output ONLY the commit message.'\""
-          shell: cmd
+          cmd: "Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'"
+          shell: powershell
 
+  # ── Explain code (from clipboard) ──────────────────────────────
   - trigger: ":aiexplain"
     replace: "{{output}}"
     vars:
       - name: output
         type: shell
         params:
-          cmd: "powershell -NoProfile -Command \"Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Output ONLY the explanation.'\""
-          shell: cmd
+          cmd: "Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'"
+          shell: powershell
+
+  # ── Summarize text (from clipboard) ────────────────────────────
+  - trigger: ":aisum"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          cmd: "Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --max-tokens 150 --system 'Summarize in 1-2 sentences. Be concise. Output ONLY the summary.'"
+          shell: powershell
+
+  # ── Translate to English (from clipboard) ──────────────────────
+  - trigger: ":aien"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          cmd: "Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --system 'Translate the following to English. Output ONLY the translation, nothing else.'"
+          shell: powershell
+
+  # ── Make text more concise (from clipboard) ────────────────────
+  - trigger: ":aishort"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          cmd: "Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --system 'Make this text more concise. Cut unnecessary words. Preserve meaning. Output ONLY the shortened text.'"
+          shell: powershell
+
+  # ── Generate commit message (from clipboard) ───────────────────
+  # Copy a git diff → :aicommit → conventional commit message.
+  # 100-token cap keeps the bill honest.
+  - trigger: ":aicommit"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          cmd: "Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'"
+          shell: powershell
 ```
 
 **Gotchas — read these before you spend an hour debugging:**
 
 1. **WSL default distro matters.** `wsl.exe -e` runs in whatever distro is default (`wsl --list --verbose` to check). If you've got multiple distros, pin it: `wsl.exe -d Ubuntu -e /usr/local/bin/az-ai …`
-2. **`.env` must live *inside* WSL** (e.g. `~/.azureopenai-cli.json` or `/etc/environment` or sourced in `~/.bashrc`). The Windows process environment doesn't cross the `wsl.exe` boundary unless you explicitly forward with `WSLENV`. Putting creds in `~/.bashrc` inside WSL is simplest and keeps them off the Windows side entirely — good for the compliance posture.
-3. **Clipboard encoding.** PowerShell `Get-Clipboard` emits UTF-16 by default on some locales; pipe through `[System.Text.Encoding]::UTF8` if you see mojibake: `[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); Get-Clipboard | wsl.exe …`
+2. **Credentials must live *inside* WSL** (e.g. `~/.azureopenai-cli.json`, `/etc/environment`, or sourced in `~/.bashrc`). The Windows process environment doesn't cross the `wsl.exe` boundary unless you explicitly forward with `WSLENV`. Putting creds in `~/.bashrc` inside WSL is simplest and keeps them off the Windows side entirely — good for the compliance posture.
+3. **Clipboard encoding (now easier with `shell: powershell`).** `Get-Clipboard` emits UTF-16 by default on some locales; if you see mojibake in non-ASCII input, force UTF-8 output from PowerShell before piping. Because `shell: powershell` means the whole `cmd:` value is already PowerShell, you can prepend the encoding setup inline — no nested cmd+PS escaping:
+   ```yaml
+   cmd: "[Console]::OutputEncoding = [Text.UTF8Encoding]::new(); Get-Clipboard | wsl.exe -e /usr/local/bin/az-ai --raw --system '…'"
+   shell: powershell
+   ```
+   Under the old `shell: cmd` + `powershell -Command "…"` pattern, this required triple-escaping the inner quotes. Not anymore.
 4. **Path translation.** If you need to pass a Windows file path *to* `az-ai` in WSL, use `wslpath`: `wsl.exe -e az-ai --read-file $(wslpath -a 'C:\temp\file.txt')`. Don't hand raw `C:\…` paths to a Linux binary.
 5. **Keep the binary on the WSL side, not a mounted Windows drive.** Running `az-ai` from `/mnt/c/tools/` adds filesystem-translation overhead on every syscall — that ~11 ms startup becomes ~150 ms. Install to `/usr/local/bin` (native ext4), always.
-6. **Cost note (Morty says):** the WSL path is 2-way text over stdin/stdout. Every byte of piped clipboard is an input token you pay for. A 32 KB clipboard is a 32 KB bill event. The CLI caps clipboard at 32 KB in agent mode (`Tools/GetClipboardTool.cs:12`), but here you're piping directly — *you* enforce the cap with `--max-tokens` on output. Don't let a runaway paste become a runaway invoice.
+6. **Single-quote pitfall in the `:ai ` form.** `{{form1.prompt}}` is templated by Espanso *before* PowerShell sees it. If the user types a prompt containing a single quote (`don't`), it'll break the PS string. Same limitation exists on the Linux side — punt on it or pre-sanitize in a wrapper script if it matters.
+7. **Cost note (Morty says):** the WSL path is 2-way text over stdin/stdout. Every byte of piped clipboard is an input token you pay for. A 32 KB clipboard is a 32 KB bill event. The CLI caps clipboard at 32 KB in agent mode (`Tools/GetClipboardTool.cs:12`), but here you're piping directly — *you* enforce the cap with `--max-tokens` on output. Don't let a runaway paste become a runaway invoice.
 
 **Performance summary — WSL AOT path vs alternatives:**
 

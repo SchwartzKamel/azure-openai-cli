@@ -75,7 +75,7 @@ All work happens on branch `release/2.0.0` cut from `main`.
 | # | Action | Owner | Validation |
 |---|--------|-------|------------|
 | 6 | `git rm -r azureopenai-cli/ tests/AzureOpenAI_CLI.Tests/` | Kramer | `test ! -d azureopenai-cli` |
-| 7 | `git mv azureopenai-cli-v2 azureopenai-cli` and `git mv tests/AzureOpenAI_CLI.V2.Tests tests/AzureOpenAI_CLI.Tests` | Kramer | `test -f azureopenai-cli/AzureOpenAI_CLI_V2.csproj` → then §3.3 step 8 |
+| 7 | `git mv azureopenai-cli-v2 azureopenai-cli` and `git mv tests/AzureOpenAI_CLI.V2.Tests tests/AzureOpenAI_CLI.Tests` | Kramer | File exists at new path with old name (`test -f azureopenai-cli/AzureOpenAI_CLI_V2.csproj`), ready for §3.3 step 8 rename |
 | 8 | Rename `azureopenai-cli/AzureOpenAI_CLI_V2.csproj` → `azureopenai-cli/AzureOpenAI_CLI.csproj`; rename test csproj analogously; rename `AssemblyName` / `RootNamespace` inside the csproj if set | Kramer | `grep -l AzureOpenAI_CLI_V2` must return no csproj hits |
 | 9 | Update [`azure-openai-cli.sln`](../azure-openai-cli.sln): delete the two V2 entries (`{B2C3...}`, `{C3D4...}`), delete the two v1 entries, re-add a single `AzureOpenAI_CLI` + `AzureOpenAI_CLI.Tests` pair pointing at the new paths. Use `dotnet sln` not hand-editing. | Kramer | `dotnet sln list` shows exactly two projects |
 | 10 | Update [`Dockerfile`](../Dockerfile) — path is already `azureopenai-cli/AzureOpenAI_CLI.csproj`, so no change needed after the rename. Confirm: | Jerry | `docker build -t az-ai:cutover-smoke .` succeeds |

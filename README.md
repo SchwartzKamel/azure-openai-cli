@@ -125,16 +125,28 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 
 ## Documentation
 
+### Architecture & decisions
 - [ARCHITECTURE.md](ARCHITECTURE.md) — system design, tool registry, squad internals
 - [AGENTS.md](AGENTS.md) — fleet dispatch pattern and the 25-agent roster
-- [CHANGELOG.md](CHANGELOG.md) — release history
-- [SECURITY.md](SECURITY.md) — threat model and reporting
-- [docs/v2-migration.md](docs/v2-migration.md) — v1 → v2 (Microsoft Agent Framework) migration plan and current status
-- [docs/espanso-ahk-integration.md](docs/espanso-ahk-integration.md) — text expansion setup
+- [docs/adr/](docs/adr/) — Architecture Decision Records
+
+### Operating the CLI
+- [docs/prerequisites.md](docs/prerequisites.md) — required environment variables
 - [docs/use-cases.md](docs/use-cases.md) — end-to-end workflow recipes
-- [docs/verifying-releases.md](docs/verifying-releases.md) — cosign / attestation verification
+- [docs/espanso-ahk-integration.md](docs/espanso-ahk-integration.md) — text expansion setup
 - [docs/cost-optimization.md](docs/cost-optimization.md) — token budgeting and per-persona cost profiles
+
+### Security
+- [SECURITY.md](SECURITY.md) — threat model and reporting
+- [docs/verifying-releases.md](docs/verifying-releases.md) — cosign / attestation verification
+
+### Release & migration
+- [CHANGELOG.md](CHANGELOG.md) — release history
+- [docs/v2-migration.md](docs/v2-migration.md) — v1 → v2 (Microsoft Agent Framework) migration plan and current status
 - [CONTRIBUTING.md](CONTRIBUTING.md) — dev workflow and PR expectations
+
+### Glossary
+- **Ralph mode (autonomous Wiggum loop)** — agentic self-correcting loop: run task → validate → feed errors back → retry. See [use-cases-ralph-squad.md](docs/use-cases-ralph-squad.md).
 
 ## License
 

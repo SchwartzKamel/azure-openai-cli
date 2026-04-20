@@ -1,13 +1,9 @@
 # Azure OpenAI CLI — Standard Mode Use Cases
 
 > Every example on this page uses the binary name **`az-ai`**.
-> Three environment variables must be set before any command will work:
->
-> | Variable | Purpose | Example |
-> |---|---|---|
-> | `AZUREOPENAIENDPOINT` | Your Azure OpenAI resource URL | `https://my-resource.openai.azure.com/` |
-> | `AZUREOPENAIAPI` | API key for authentication | `ab12cd34ef56...` |
-> | `AZUREOPENAIMODEL` | Deployment name of the model | `gpt-4o` |
+> Required environment variables (`AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`,
+> `AZUREOPENAIMODEL`) are documented once in
+> [`prerequisites.md`](prerequisites.md) — set them before running any command.
 
 ---
 

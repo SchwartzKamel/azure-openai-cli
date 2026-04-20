@@ -1,42 +1,21 @@
 # Use Cases: Ralph Mode & Squad/Persona System
 
 > **Binary:** `az-ai`
-> **Required environment variables:**
->
-> | Variable              | Purpose                              |
-> |-----------------------|--------------------------------------|
-> | `AZUREOPENAIENDPOINT` | Azure OpenAI resource endpoint URL   |
-> | `AZUREOPENAIAPI`      | Azure OpenAI API key                 |
-> | `AZUREOPENAIMODEL`    | Deployment name (e.g. `gpt-4o`)      |
+> **Required environment variables:** `AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`,
+> `AZUREOPENAIMODEL` — see [`prerequisites.md`](prerequisites.md).
 
 ---
 
 ## Part 1 — Ralph Mode
 
-Ralph mode is an **autonomous self-correcting loop** (internally called the
-"Wiggum loop"). It runs an agentic task, optionally validates the result with
+Ralph mode (autonomous Wiggum loop) is an **autonomous self-correcting loop**. It runs an agentic task, optionally validates the result with
 an external command, and if validation fails, feeds the error output back into
 the next iteration — repeating until the task passes or the iteration budget is
 exhausted.
 
 ### How the Loop Works
 
-```
-┌──────────────────────────────────────┐
-│ 1. Run agent with task prompt        │
-│ 2. Agent reads/writes files, runs    │
-│    shell commands, etc.              │
-│ 3. If --validate set:                │
-│    └─ Run validation command         │
-│       ├─ Exit 0 → ✅ Done           │
-│       └─ Exit ≠ 0 → feed errors     │
-│          back as context, go to 1    │
-│ 4. If no --validate:                 │
-│    └─ Agent exit 0 → ✅ Done        │
-│       Agent exit ≠ 0 → retry        │
-│ 5. Repeat up to --max-iterations     │
-└──────────────────────────────────────┘
-```
+Ralph runs the agent, then (optionally) runs your `--validate` command. Exit 0 → done. Non-zero → feed stderr back as context, retry. Bounded by `--max-iterations`.
 
 Each iteration is **stateless** — the full task prompt plus accumulated error
 context is sent fresh every time, so the model never inherits a corrupted

@@ -32,13 +32,10 @@
 
 ## Prerequisites
 
-Set these environment variables before running any examples:
-
-```bash
-export AZUREOPENAIENDPOINT="https://your-resource.openai.azure.com"
-export AZUREOPENAIAPI="your-api-key-here"
-export AZUREOPENAIMODEL="gpt-4o,gpt-4o-mini"
-```
+See [`prerequisites.md`](prerequisites.md) for the required environment
+variables (`AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`). For
+multi-model setups on this page, `AZUREOPENAIMODEL` accepts a comma-separated
+list (e.g. `gpt-4o,gpt-4o-mini`).
 
 ---
 
@@ -434,8 +431,8 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "powershell -c \"Get-Clipboard | az-ai --raw --temperature 0.3 --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'\""
-          shell: cmd
+          cmd: "Get-Clipboard | az-ai --raw --temperature 0.3 --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
+          shell: powershell
 ```
 
 #### Trigger 2: Professional Email Rewrite (`:aiemail`)
@@ -879,19 +876,13 @@ Every segment of a pipe chain is checked. A blocked command anywhere in the chai
 
 #### eval/exec and Process Substitution Blocking
 
-```bash
-# Model tries eval:
-#   shell_exec: { "command": "eval 'rm -rf /'" }
-# Response: "Error: process substitution and eval/exec are blocked for safety."
+`eval`, `exec`, and process substitution (`<(…)`, `>(…)`) are all rejected with the same error message: **"Error: process substitution and eval/exec are blocked for safety."**
 
-# Model tries exec:
-#   shell_exec: { "command": "exec rm -rf /" }
-# Response: "Error: process substitution and eval/exec are blocked for safety."
-
-# Process substitution also blocked:
-#   shell_exec: { "command": "cat <(rm -rf /)" }
-# Response: "Error: process substitution and eval/exec are blocked for safety."
-```
+| Input | Behavior | Error |
+|-------|----------|-------|
+| `eval 'rm -rf /'` | Rejected | `Error: process substitution and eval/exec are blocked for safety.` |
+| `exec rm -rf /` | Rejected | `Error: process substitution and eval/exec are blocked for safety.` |
+| `cat <(rm -rf /)` | Rejected | `Error: process substitution and eval/exec are blocked for safety.` |
 
 #### Additional Shell Protections
 
