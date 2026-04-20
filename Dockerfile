@@ -1,7 +1,9 @@
 # ---------- Stage 1: Build ----------
-# For production deployments, pin images to specific SHA256 digests
-# e.g. mcr.microsoft.com/dotnet/sdk:9.0@sha256:<digest>
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Pinned to a specific SHA256 digest for reproducible builds.
+# Dependabot/Renovate can bump these via the `dotnet/sdk:10.0` tag hint.
+# To refresh manually:
+#   docker buildx imagetools inspect mcr.microsoft.com/dotnet/sdk:10.0 | grep Digest
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:adc02be8b87957d07208a4a3e51775935b33bad3317de8c45b1e67357b4c073b AS build
 WORKDIR /src
 
 # Copy only .csproj first for restore-layer caching
@@ -15,6 +17,7 @@ ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8
 
 RUN dotnet publish ./AzureOpenAI_CLI.csproj \
+        --no-restore \
         -c Release \
         -r linux-musl-x64 \
         --self-contained true \
@@ -26,8 +29,10 @@ RUN dotnet publish ./AzureOpenAI_CLI.csproj \
 # Changed runtime identifier to linux-musl-x64 for Alpine compatibility
 
 # ---------- Stage 2: Runtime ----------
-# For production deployments, pin images to specific SHA256 digests
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine AS runtime
+# Pinned to a specific SHA256 digest for reproducible builds.
+# To refresh manually:
+#   docker buildx imagetools inspect mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine | grep Digest
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine@sha256:f8a0978d56136514d1d2f9c893a8797eb47d42f6522da7b8d1b2fcdc51e95198 AS runtime
 # Switched to Alpine variant to drastically reduce attack surface
 
 WORKDIR /app

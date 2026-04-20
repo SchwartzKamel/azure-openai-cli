@@ -46,7 +46,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests publish publish-fast publish-aot publish-r2r setup \
+.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests preflight publish publish-fast publish-aot publish-r2r setup \
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
@@ -166,24 +166,16 @@ docker-test: ## Validate Dockerfile best practices
 smoke-test: clean build
 	make run ARGS="Tell me some unusual facts about cats"
 
-## Lint: check code formatting (for CI)
-lint:
-	$(DOTNET) format --verify-no-changes azure-openai-cli.sln
+## Lint: alias for format-check (single source of truth)
+lint: format-check
 
-## Check: compile and verify the project builds successfully
-check:
-	@CLEANUP_ENV=0; \
-	if [ ! -f azureopenai-cli/.env ]; then \
-		echo ">> Creating placeholder .env for build verification..."; \
-		cp azureopenai-cli/.env.example azureopenai-cli/.env; \
-		CLEANUP_ENV=1; \
-	fi; \
-	$(MAKE) build; \
-	BUILD_RC=$$?; \
-	if [ "$$CLEANUP_ENV" = "1" ] && [ -f azureopenai-cli/.env ]; then \
-		rm azureopenai-cli/.env; \
-	fi; \
-	exit $$BUILD_RC
+## Dotnet-build: compile the solution in Release (no Docker, fast preflight gate)
+dotnet-build:
+	$(DOTNET) build azure-openai-cli.sln -c Release
+
+## Check: compile and verify the project builds successfully (Docker image)
+## .dockerignore already excludes .env, so no env-file dance is needed.
+check: build
 
 ## Format: auto-format code
 format:
@@ -193,8 +185,9 @@ format:
 format-check:
 	$(DOTNET) format --verify-no-changes azure-openai-cli.sln
 
-## Preflight: format-check + build + test + integration (skill: .github/skills/preflight.md)
-preflight: format-check build test integration-test
+## Preflight: format-check + dotnet-build + test + integration (skill: .github/skills/preflight.md)
+## Uses `dotnet-build` (not `build`) — Docker rebuilds are too slow for a pre-commit gate.
+preflight: format-check dotnet-build test integration-test
 	@echo "[preflight] all gates green — safe to commit"
 
 ## Audit: check for vulnerable NuGet packages
