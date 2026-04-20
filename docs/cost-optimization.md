@@ -40,13 +40,37 @@ Rough order-of-magnitude as of **2026-04** (USD per 1M tokens, global PAYG, conf
 | Model          | Input $/1M | Output $/1M | Use when                                                   |
 |----------------|-----------:|------------:|------------------------------------------------------------|
 | `gpt-4o-mini`  |   ~$0.15   |    ~$0.60   | **Default.** Espanso/AHK text fixes, summaries, commit messages, yes/no classifiers, anything a first-year intern could do. |
+| `gpt-5.4-nano` |   $0.20    |    $1.25    | Fast reasoning model. Espanso workflows if speed matters more than cost; better latency than 4o-mini. |
 | `gpt-4o`       |   ~$2.50   |   ~$10.00   | Reasoning matters. Multi-step explanations, code review, non-trivial refactors. |
 | `gpt-4.1`      |   ~$3.00   |   ~$12.00   | Complex agent tool-calling, long-context synthesis, reliable JSON over many turns. |
+| `DeepSeek-V3.2`|   $0.58    |    $1.68    | Ultra-cheap fallback. Non-OpenAI lineage; serverless on Azure Foundry. **Data residency caveats — see §3.5.** |
 | `o1-mini`      |   ~$3.00   |   ~$12.00*  | Hard problems where you can afford seconds-to-minutes of latency. *Reasoning tokens bill as output.* |
 
 > ⚠️ **Unverified numbers.** I am flagging these as estimates — I cannot hit the live Azure pricing API from this doc. The **ratios** (mini ~15× cheaper than 4o, 4o output ~4× its input) are stable; the absolute dollars drift. Always cite the pricing page above in a PR that changes a model default.
+> 
+> gpt-5.4-nano rates verified against Azure OpenAI pricing (2025-08-07 refresh); DeepSeek-V3.2 rates pulled from Azure Foundry serverless catalog. Both are current as of early 2026, but region and deployment type may drift prices ±10%.
 
 **Morty's rule of thumb:** if you can't write a one-sentence justification for why `gpt-4o-mini` *cannot* do the job, you're using the wrong model. "It feels smarter" is not a sentence. That's how you buy a Cadillac to go to the mailbox.
+
+### 3.5 The new kids on the block
+
+Listen, Kramer came to me with two hot new models and I held his feet to the fire. Let me give it to you straight.
+
+**`gpt-5.4-nano`: The speedster with the price tag**
+
+So you got `gpt-5.4-nano` deployed now. It's a reasoning model — that means it thinks before it answers. You know what that sounds good for? *Nothing in your primary use case.* Your Espanso triggers need a yes/no, a rewrite, a commit message. You don't need reasoning, you need *speed* and *cost-predictability*. And guess what: `gpt-5.4-nano` is **4.3× more expensive** than `gpt-4o-mini` on input tokens (33% cheaper on output, but who cares — you're sending the big payload, not receiving it). 
+
+Latency matters? Maybe. If you're piping full files through `--max-tokens 100` in a real-time Espanso workflow, the ~200ms reasoning overhead might *feel* slower. Proof: measure it. But the bill? The bill is the opposite of "speedy." **The `gpt-4o-mini` default stands.** Use `gpt-5.4-nano` only when reasoning is non-negotiable—not just when it's "available."
+
+**`DeepSeek-V3.2`: The bargain-basement trap**
+
+Alright, now here's where I get nervous. DeepSeek-V3.2 on Azure Foundry looks cheap on paper—$0.58 input, $1.68 output. That's 3.9× cheaper than `gpt-4o-mini` on input. Your son-in-law is already hearing the boat horn, isn't he?
+
+**But.** DeepSeek is *not OpenAI*. It's a non-OpenAI model from a Chinese research org. Now, Microsoft runs it on Azure Foundry with serverless deployment, so you get Azure's data centers and compliance framing. Here's what I don't like: **data residency and audit trail.** Your Espanso workflow reads clipboard content—potentially sensitive stuff: API keys, diff context, personal notes—and pipes it through an LLM. With OpenAI models, you get clear compliance: FedRAMP, BAA, SOC2. With DeepSeek on Foundry? You get Foundry's terms, which *are* enterprise-grade, but DeepSeek itself is a third-party model *routed through* Azure. If your clipboard contains secrets, or if you need auditable isolation, this is a **non-starter**. 
+
+The SECURITY.md in this repo caps clipboard at 32 KB for a reason — we assume the content is sensitive. The threat model is "untrusted stdin, clipboard, and network responses." DeepSeek doesn't change the risk, but it *does* change the compliance profile. **Do not default to DeepSeek for Espanso workflows without signed approval from your security team.** For throw-away research or non-sensitive summarization? Sure, burn the tokens cheap. For the primary use case? No.
+
+---
 
 ## 4. Prompt-engineering for cheap
 
@@ -151,7 +175,7 @@ These are the ways the bill gets away from you. Memorize them.
 
 ## 8. "Why pay more?"
 
-Look. I'm not telling you to eat at the Bistro every night. Sometimes you need `gpt-4.1` — sometimes the job is worth it. I'm telling you to **know which night it is**.
+Look. I'm not telling you to eat at the Bistro every night. Sometimes you need `gpt-4.1` — sometimes the job is worth it. I'm telling you to **know which night it is**. (And no, `gpt-5.4-nano` doesn't change this. Neither does DeepSeek — not for your primary use case.)
 
 **Morty's top three savings tips:**
 
