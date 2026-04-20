@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AzureOpenAI_CLI_V2.Squad;
 
 namespace AzureOpenAI_CLI_V2;
 
@@ -28,7 +29,17 @@ internal record ErrorJsonResponse(
     AllowTrailingCommas = true,
     PropertyNameCaseInsensitive = true
 )]
+// ── CLI JSON response types ─────────────────────────────────────
 [JsonSerializable(typeof(ErrorJsonResponse))]
+// ── Squad types ─────────────────────────────────────────────────
+[JsonSerializable(typeof(SquadConfig))]
+[JsonSerializable(typeof(TeamConfig))]
+[JsonSerializable(typeof(PersonaConfig))]
+[JsonSerializable(typeof(RoutingRule))]
+// ── Collection types used by the above ──────────────────────────
+[JsonSerializable(typeof(List<string>))]
+[JsonSerializable(typeof(List<PersonaConfig>))]
+[JsonSerializable(typeof(List<RoutingRule>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

@@ -1,0 +1,8 @@
+検:
+    - topic: check
+      verified: true
+      evidence: make_check
+    - topic: tool_usage
+      verified: true
+      evidence: 37_calls
+信: 1

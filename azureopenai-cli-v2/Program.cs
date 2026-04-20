@@ -31,6 +31,11 @@ internal class Program
         bool Raw,
         bool ShowHelp,
         bool ShowVersion,
+        bool AgentMode,
+        string? Tools,
+        bool SquadInit,
+        string? Persona,
+        bool ListPersonas,
         string? Prompt
     );
 
@@ -50,6 +55,48 @@ internal class Program
         if (opts.ShowVersion)
         {
             ShowVersion();
+            return 0;
+        }
+
+        // Squad init: create .squad.json and .squad/ directory
+        if (opts.SquadInit)
+        {
+            var initialized = AzureOpenAI_CLI_V2.Squad.SquadInitializer.Initialize();
+            if (initialized)
+            {
+                Console.WriteLine("✓ Squad initialized: .squad.json and .squad/ directory created.");
+                Console.WriteLine("  Edit .squad.json to customize personas and routing rules.");
+                return 0;
+            }
+            else
+            {
+                Console.WriteLine("✓ Squad already initialized (found .squad.json).");
+                return 0;
+            }
+        }
+
+        // List personas: show available personas from .squad.json
+        if (opts.ListPersonas)
+        {
+            var config = AzureOpenAI_CLI_V2.Squad.SquadConfig.Load();
+            if (config == null)
+            {
+                return ErrorAndExit("No .squad.json found. Run --squad-init first.", 1, jsonMode: false);
+            }
+
+            var personas = config.ListPersonas();
+            if (personas.Count == 0)
+            {
+                Console.WriteLine("No personas configured in .squad.json");
+                return 0;
+            }
+
+            Console.WriteLine($"Available personas ({personas.Count}):");
+            foreach (var name in personas)
+            {
+                var persona = config.GetPersona(name);
+                Console.WriteLine($"  • {name} — {persona?.Description ?? "(no description)"}");
+            }
             return 0;
         }
 
@@ -96,7 +143,15 @@ internal class Program
         try
         {
             var client = new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(apiKey));
-            var agent = client.GetChatClient(model).AsIChatClient().AsAIAgent(instructions: opts.SystemPrompt);
+            var chatClient = client.GetChatClient(model).AsIChatClient();
+
+            // Agent mode: wire tools if --agent is set
+            var agent = opts.AgentMode
+                ? chatClient.AsAIAgent(
+                    instructions: opts.SystemPrompt,
+                    tools: AzureOpenAI_CLI_V2.Tools.ToolRegistry.CreateMafTools(
+                        opts.Tools?.Split(',', StringSplitOptions.RemoveEmptyEntries)))
+                : chatClient.AsAIAgent(instructions: opts.SystemPrompt);
 
             // Run streaming chat
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(opts.TimeoutSeconds));
@@ -155,6 +210,11 @@ internal class Program
         bool raw = false;
         bool showHelp = false;
         bool showVersion = false;
+        bool agentMode = false;
+        string? tools = null;
+        bool squadInit = false;
+        string? persona = null;
+        bool listPersonas = false;
         var positionalArgs = new List<string>();
 
         for (int i = 0; i < args.Length; i++)
@@ -202,6 +262,27 @@ internal class Program
                     break;
                 case "--raw":
                     raw = true;
+                    break;
+                case "--agent":
+                    agentMode = true;
+                    break;
+                case "--tools":
+                    if (i + 1 < args.Length)
+                    {
+                        tools = args[++i];
+                    }
+                    break;
+                case "--squad-init":
+                    squadInit = true;
+                    break;
+                case "--persona":
+                    if (i + 1 < args.Length)
+                    {
+                        persona = args[++i];
+                    }
+                    break;
+                case "--personas":
+                    listPersonas = true;
                     break;
                 case "--help":
                 case "-h":
@@ -265,6 +346,11 @@ internal class Program
             Raw: raw,
             ShowHelp: showHelp,
             ShowVersion: showVersion,
+            AgentMode: agentMode,
+            Tools: tools,
+            SquadInit: squadInit,
+            Persona: persona,
+            ListPersonas: listPersonas,
             Prompt: prompt
         );
     }
@@ -301,6 +387,8 @@ Options:
   --max-tokens <int>        Max completion tokens (env: AZURE_MAX_TOKENS, default: 10000)
   --timeout <seconds>       Request timeout in seconds (env: AZURE_TIMEOUT, default: 120)
   --system, -s <text>       System prompt (env: SYSTEMPROMPT)
+  --agent                   Enable agent mode with tool calling (requires --tools)
+  --tools <list>            Comma-separated tool list (shell,file,web,clipboard,datetime,delegate)
   --raw                     Suppress all non-content output (for Espanso/AHK)
   --help, -h                Show this help
   --version, -v             Show version
@@ -312,6 +400,7 @@ Environment Variables (required):
 Examples:
   az-ai-v2 ""What is the capital of France?""
   az-ai-v2 --model gpt-4o --temperature 0.7 ""Write a haiku""
+  az-ai-v2 --agent --tools shell,file ""List and summarize the files in this directory""
   echo ""Summarize this"" | az-ai-v2 --raw
 ");
     }
