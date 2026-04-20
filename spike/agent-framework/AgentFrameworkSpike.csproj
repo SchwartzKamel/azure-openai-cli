@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Phase 0 spike: Microsoft Agent Framework benchmark harness.
+    Throwaway code. NOT shipped. NOT covered by main test suite.
+
+    Goal: prove (or disprove) that Microsoft.Agents.AI keeps our Native AOT
+    build green and stays within the speed budget defined in plan.md.
+
+    Three auth paths exposed via the auth flag:
+      apikey   uses AzureOpenAIClient(endpoint, ApiKeyCredential)
+      aad      uses AzureOpenAIClient(endpoint, DefaultAzureCredential)
+      foundry  uses PersistentAgentsClient(foundry endpoint, DefaultAzureCredential)
+
+    See README.md in this folder for build, AOT publish, run, and bench commands.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>AzAi.Spike.AgentFramework</RootNamespace>
+    <AssemblyName>af-spike</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Speed-first: trim + AOT-clean. PublishAot opt-in via Makefile/CLI. -->
+    <IsTrimmable>true</IsTrimmable>
+    <TrimMode>full</TrimMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Versions per plan.md Phase 0 / web research (April 2026):
+        Microsoft.Agents.AI            1.1.0 (core, GA)
+        Microsoft.Agents.AI.OpenAI     1.1.0 (Azure OpenAI + OpenAI direct)
+        Microsoft.Agents.AI.AzureAI    1.0.0-rc5 (Foundry persistent agents)
+        Azure.Identity                 1.13.x (DefaultAzureCredential)
+      If a version drifts on restore, pin here and document in ADR-004.
+    -->
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Agents.AI.AzureAI" Version="1.0.0-rc5" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+    <PackageReference Include="Azure.Identity" Version="1.19.0" />
+    <PackageReference Include="dotenv.net" Version="3.1.2" />
+  </ItemGroup>
+
+</Project>
