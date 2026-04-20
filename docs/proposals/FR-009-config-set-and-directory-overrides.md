@@ -1,5 +1,10 @@
 # FR-009: `--config set` Commands & Per-Directory Config Overrides
 
+> **Status: Superseded by FR-014.** The flag surface and `~/.azureopenai-cli.json`
+> reader shipped in v2.0.0 as part of FR-014's Phase 1 (legacy backward-compat
+> reader). Future work on preferences, aliases, and directory overrides tracks
+> in [FR-014](FR-014-local-preferences-and-multi-provider.md).
+
 **Priority:** P1 — High  
 **Impact:** Eliminates the need to hand-edit JSON for preferences; enables project-specific AI behavior  
 **Effort:** Medium (1–2 days)  

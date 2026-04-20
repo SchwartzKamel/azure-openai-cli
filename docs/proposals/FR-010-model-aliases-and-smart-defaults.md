@@ -1,5 +1,10 @@
 # FR-010: Model Aliases & Smart Defaults
 
+> **Status: Superseded by FR-014.** The flag surface and `~/.azureopenai-cli.json`
+> reader shipped in v2.0.0 as part of FR-014's Phase 1 (legacy backward-compat
+> reader). Future work on preferences, aliases, and directory overrides tracks
+> in [FR-014](FR-014-local-preferences-and-multi-provider.md).
+
 **Priority:** P2 — Medium  
 **Impact:** Reduces daily friction of model selection; makes multi-model workflows ergonomic  
 **Effort:** Small (4–6 hours)  
