@@ -19,6 +19,11 @@ internal class Program
     private const int DEFAULT_MAX_TOKENS = 10000;
     private const string DEFAULT_SYSTEM_PROMPT = "You are a secure, concise CLI assistant. Keep answers factual, no fluff.";
 
+    // SECURITY-AUDIT-001 MEDIUM-001: Bound stdin reads to 1 MB to prevent
+    // unbounded memory allocation from a malicious/unbounded pipe. Ported
+    // from v1 Program.cs:23 — must stay in sync with v1 cap.
+    internal const int MAX_STDIN_BYTES = 1_048_576;
+
     /// <summary>
     /// Safety refusal clause appended to agent and Ralph system prompts to mitigate
     /// prompt-injection via tool results. Ported verbatim from v1 Program.cs:38
@@ -175,15 +180,12 @@ internal class Program
         }
         else if (string.IsNullOrWhiteSpace(prompt) && Console.IsInputRedirected)
         {
-            try
-            {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                prompt = await Console.In.ReadToEndAsync(cts.Token);
-            }
-            catch
-            {
-                return ErrorAndExit("Failed to read stdin within 5 seconds", 1, jsonMode: false);
-            }
+            // SECURITY-AUDIT-001 MEDIUM-001: Bounded stdin read (1 MB cap).
+            // Ported from v1 Program.cs:578-590 to prevent unbounded allocation
+            // from a malicious/unbounded pipe. Error path must match v1 verbatim.
+            int rc = TryReadBoundedStdin(out var stdinContent);
+            if (rc != 0) return rc;
+            prompt = stdinContent;
         }
 
         if (string.IsNullOrWhiteSpace(prompt))
@@ -194,7 +196,18 @@ internal class Program
         // Build chat client
         try
         {
-            var client = new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(apiKey));
+            // SECURITY-AUDIT-001 MEDIUM-002: HTTPS-only endpoint guard.
+            // Ported from v1 Program.cs:383-387 — reject non-HTTPS endpoints
+            // before client construction so API keys cannot be sent in cleartext.
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri)
+                || endpointUri.Scheme != "https")
+            {
+                return ErrorAndExit(
+                    $"Invalid endpoint URL: '{endpoint}'. Must be a valid HTTPS URL.",
+                    1, jsonMode: false);
+            }
+
+            var client = new AzureOpenAIClient(endpointUri, new ApiKeyCredential(apiKey));
             var chatClient = client.GetChatClient(model).AsIChatClient();
 
             // Ralph mode: run autonomous loop
@@ -583,6 +596,34 @@ internal class Program
             EnableOtel: enableOtel,
             EnableMetrics: enableMetrics
         );
+    }
+
+    /// <summary>
+    /// SECURITY-AUDIT-001 MEDIUM-001: Read stdin into a string, capped at
+    /// <see cref="MAX_STDIN_BYTES"/> (1 MB). On overflow, writes the v1-compatible
+    /// error message to stderr and returns exit code 1. On empty input, sets
+    /// <paramref name="content"/> to null and returns 0. Extracted for testability.
+    /// </summary>
+    internal static int TryReadBoundedStdin(out string? content)
+    {
+        content = null;
+        if (Console.In.Peek() == -1)
+        {
+            return 0;
+        }
+        char[] buffer = new char[MAX_STDIN_BYTES];
+        int charsRead = Console.In.ReadBlock(buffer, 0, MAX_STDIN_BYTES);
+        if (Console.In.Peek() != -1)
+        {
+            Console.Error.WriteLine("Error: stdin input exceeds 1 MB limit.");
+            return 1;
+        }
+        content = new string(buffer, 0, charsRead);
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            content = null;
+        }
+        return 0;
     }
 
     /// <summary>
