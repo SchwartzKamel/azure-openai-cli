@@ -61,6 +61,12 @@ tests/
 docs/
 img/
 
+# Exceptions: license + attribution files must be in build context so the
+# runtime stage can COPY them into /licenses/ for redistribution compliance.
+!LICENSE
+!NOTICE
+!THIRD_PARTY_NOTICES.md
+
 # Credentials must never enter build context
 .env
 .env.*

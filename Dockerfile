@@ -35,6 +35,11 @@ RUN dotnet publish ./AzureOpenAI_CLI.csproj \
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine@sha256:f8a0978d56136514d1d2f9c893a8797eb47d42f6522da7b8d1b2fcdc51e95198 AS runtime
 # Switched to Alpine variant to drastically reduce attack surface
 
+# OCI image metadata (see docs/licensing-audit.md)
+LABEL org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.source="https://github.com/SchwartzKamel/azure-openai-cli" \
+      org.opencontainers.image.documentation="https://github.com/SchwartzKamel/azure-openai-cli/blob/main/docs/licensing-audit.md"
+
 WORKDIR /app
 
 # HEALTHCHECK is not applicable for CLI tools that run and exit.
@@ -60,6 +65,10 @@ RUN mkdir -p /tmp/dotnet_bundle && chown -R appuser:appgroup /tmp/dotnet_bundle
 # Copy published self-contained single-file binary last (changes most often)
 COPY --from=build /app/AzureOpenAI_CLI /app/AzureOpenAI_CLI
 RUN chmod +x /app/AzureOpenAI_CLI
+
+# Bundle license + third-party attribution notices into the image so redistribution
+# complies with MIT and the transitive dependency attribution requirements.
+COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md /licenses/
 
 # Drop privileges for runtime
 USER appuser
