@@ -1,0 +1,95 @@
+# syntax=docker/dockerfile:1.7
+#
+# Dockerfile.v2 — v2 (az-ai-v2) container image.
+#
+# This file is intentionally SEPARATE from the v1 Dockerfile. v1 is still
+# shipping (1.9.x line is the stable branch), Bob Sacamano's v1 Homebrew
+# formulae + the v1 release pipeline consume the v1 image, and the v1
+# Dockerfile builds from `azureopenai-cli/`. Do not merge the two until
+# v1 formal EOL.
+#
+# Build locally:
+#   docker build -f Dockerfile.v2 -t az-ai-v2:dev .
+#   docker run --rm --env-file .env az-ai-v2:dev --help
+#
+# Binary: /app/az-ai-v2 (matches AssemblyName in
+# azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj).
+
+# ---------- Stage 1: Build ----------
+# Pinned to match v1 Dockerfile's SDK digest for toolchain parity.
+# Dependabot/Renovate bumps both Dockerfiles together via the `dotnet/sdk:10.0` tag hint.
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:adc02be8b87957d07208a4a3e51775935b33bad3317de8c45b1e67357b4c073b AS build
+WORKDIR /src
+
+# NativeAOT on musl requires clang + the zlib dev headers for ILC to link.
+# The SDK image is Debian-based; install the linker toolchain before publish.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        clang \
+        zlib1g-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copy only .csproj first for restore-layer caching. Must include the test
+# project references transitively — so copy the solution's v2 csproj alone
+# and restore against it with the target RID pinned (avoids NETSDK1047).
+COPY azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj ./azureopenai-cli-v2/
+RUN dotnet restore ./azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj \
+        -r linux-musl-x64
+
+# Then copy source (changes here don't invalidate the restore cache)
+COPY azureopenai-cli-v2/ ./azureopenai-cli-v2/
+
+ENV LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8
+
+# NativeAOT publish. PublishAot=true is already set in the csproj; we pass
+# it explicitly so this Dockerfile documents the contract even if the
+# csproj drifts. InvariantGlobalization=true is also on in the csproj and
+# is why the runtime image does NOT need icu-libs.
+RUN dotnet publish ./azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj \
+        --no-restore \
+        -c Release \
+        -r linux-musl-x64 \
+        -p:PublishAot=true \
+        -o /app
+
+# ---------- Stage 2: Runtime ----------
+# Pinned to match v1 Dockerfile's runtime-deps digest.
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine@sha256:f8a0978d56136514d1d2f9c893a8797eb47d42f6522da7b8d1b2fcdc51e95198 AS runtime
+
+# OCI image metadata — points at v2 artifacts + docs.
+LABEL org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.source="https://github.com/SchwartzKamel/azure-openai-cli" \
+      org.opencontainers.image.documentation="https://github.com/SchwartzKamel/azure-openai-cli/blob/main/docs/licensing-audit.md" \
+      org.opencontainers.image.title="az-ai-v2" \
+      org.opencontainers.image.description="Azure OpenAI CLI v2 — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator"
+
+WORKDIR /app
+
+# NativeAOT + InvariantGlobalization=true means no icu-libs required.
+# Only `apk upgrade` for latest CVE fixes on top of the pinned base.
+RUN apk upgrade --no-cache \
+ && rm -rf /var/cache/apk/*
+
+# Create non-root user and prepare writable config dir.
+RUN addgroup --system appgroup \
+ && adduser --system --ingroup appgroup appuser \
+ && mkdir -p /opt/config \
+ && chown -R appuser:appgroup /app /opt/config
+
+# NativeAOT binary is a self-contained native ELF; no DOTNET_BUNDLE_EXTRACT_BASE_DIR
+# shenanigans required (no apphost, no bundle extract).
+
+COPY --from=build /app/az-ai-v2 /app/az-ai-v2
+RUN chmod +x /app/az-ai-v2
+
+# Bundle license + third-party attribution notices into the image so
+# redistribution complies with MIT + transitive attribution requirements.
+# Matches the tarball bundle contract stage.sh enforces.
+COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md /licenses/
+
+USER appuser
+
+# Credentials injected at runtime, never baked in:
+#   docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2 "your prompt"
+ENTRYPOINT ["/app/az-ai-v2"]
