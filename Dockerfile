@@ -8,7 +8,13 @@ WORKDIR /src
 
 # Copy only .csproj first for restore-layer caching
 COPY azureopenai-cli/AzureOpenAI_CLI.csproj ./
-RUN dotnet restore ./AzureOpenAI_CLI.csproj
+# Restore must match publish flags so --no-restore below succeeds:
+#  - -r linux-musl-x64: avoids NETSDK1047 (RID-agnostic assets vs RID publish)
+#  - PublishReadyToRun=true at restore time: avoids NETSDK1094 (R2R needs the
+#    crossgen2 runtime package pulled during restore)
+RUN dotnet restore ./AzureOpenAI_CLI.csproj \
+        -r linux-musl-x64 \
+        /p:PublishReadyToRun=true
 
 # Then copy source (changes here don't invalidate the restore cache)
 COPY azureopenai-cli/ ./
