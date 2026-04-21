@@ -12,6 +12,7 @@ scripts/*
 !scripts/setup-secrets.sh
 !scripts/setup-secrets.ps1
 !scripts/unlock-secrets.sh
+!scripts/check-color-contract.sh
 
 # env
 azureopenai-cli/.env

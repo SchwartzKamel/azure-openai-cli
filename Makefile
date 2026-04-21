@@ -46,7 +46,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests preflight publish publish-fast publish-aot publish-r2r setup setup-secrets \
+.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight publish publish-fast publish-aot publish-r2r setup setup-secrets \
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
@@ -188,8 +188,14 @@ docker-test: ## Validate Dockerfile best practices
 smoke-test: clean build
 	make run ARGS="Tell me some unusual facts about cats"
 
-## Lint: alias for format-check (single source of truth)
-lint: format-check
+## Color-contract-lint: greps azureopenai-cli-v2/**/*.cs for ConsoleColor /
+## raw ANSI bypasses of Theme.UseColor(). Source of truth:
+## .github/contracts/color-contract.md. See scripts/check-color-contract.sh.
+color-contract-lint:
+	bash scripts/check-color-contract.sh
+
+## Lint: format-check + color-contract gate. Single `make lint` for CI.
+lint: format-check color-contract-lint
 
 ## Dotnet-build: compile the solution in Release (no Docker, fast preflight gate)
 dotnet-build:
@@ -209,7 +215,7 @@ format-check:
 
 ## Preflight: format-check + dotnet-build + test + integration (skill: .github/skills/preflight.md)
 ## Uses `dotnet-build` (not `build`) — Docker rebuilds are too slow for a pre-commit gate.
-preflight: format-check dotnet-build test integration-test
+preflight: format-check color-contract-lint dotnet-build test integration-test
 	@echo "[preflight] all gates green — safe to commit"
 
 ## Audit: check for vulnerable NuGet packages
