@@ -5,9 +5,12 @@
 .roo
 .roomodes
 .ruru
-scripts
+scripts/*
 !docs/demos/scripts/
 !docs/demos/scripts/**
+# User-facing credential setup helpers (referenced from docs + FR-022).
+!scripts/setup-secrets.sh
+!scripts/unlock-secrets.sh
 
 # env
 azureopenai-cli/.env

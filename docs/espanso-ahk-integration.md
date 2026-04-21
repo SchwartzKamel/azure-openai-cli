@@ -102,6 +102,16 @@ make alias
 
 #### Linux / macOS / WSL — secure storage
 
+> **Fast path (recommended):** run the guided setup script from the repo. It detects your shell (bash/zsh), asks for your endpoint + API key + model, lets you pick `chmod 600` plaintext or GPG-encrypted at-rest, installs the auto-source hook into `~/.profile` **and** `~/.zshenv` (so espanso's `wsl.exe bash -lc …` AND your interactive zsh both see the creds), and runs verification probes at the end.
+>
+> ```bash
+> bash scripts/setup-secrets.sh              # interactive walkthrough
+> VERIFY_ONLY=1 bash scripts/setup-secrets.sh  # re-check without prompts
+> bash scripts/unlock-secrets.sh             # GPG tier only — prime cache after reboot
+> ```
+>
+> Re-run anytime to rotate keys or switch tiers — it's idempotent. A native `az-ai setup` subcommand is planned for 2.1 ([FR-022](./proposals/FR-022-native-setup-wizard.md)). Until then, or if you prefer to understand what the script does before running it, the manual options below walk through it step-by-step.
+
 **Don't paste secrets directly into `~/.bashrc` or `~/.zshrc` if those are committed to a dotfiles repo.** Use one of the options below.
 
 **Option A — Separate secrets file (simple, recommended).** Keep the secrets out of your tracked rcfile:
