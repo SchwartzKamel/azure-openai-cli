@@ -120,15 +120,49 @@ runner's bash does not ship Info-ZIP `zip`. Fix in `stage.sh`: branch
 §"Failure #1".
 
 **`docker-publish-v2` fails at `COPY --from=build /app/az-ai-v2 ...: not found`**
-(observed: run 24736776551, v2.0.0 attempt #1). NativeAOT
-cross-compile from the glibc SDK image to `linux-musl-x64` silently
-emits no ELF. Fix in `Dockerfile.v2`: switch build stage to
-`mcr.microsoft.com/dotnet/sdk:10.0-alpine` (host + target both musl,
-no cross-link) OR add `apt-get install -y musl-tools` to the Debian
-base. Prefer alpine. Diagnostic: §"Failure #2". Note: `docker-publish-v2`
-can be re-run via `workflow_dispatch` without a re-tag **once binary
-legs are green** — but if binary legs also failed, the whole release is
-a no-go and the fix ships in the next patch tag.
+(observed: run 24736776551, v2.0.0 attempt #1 — Debian/glibc SDK base;
+**also observed: run 24739184465, v2.0.1 attempt #2 — Alpine/musl SDK
+base**). Original hypothesis (glibc→musl cross-link silently dropping
+the ELF) was **falsified by Round 2**: the Alpine base produced the
+same failure.
+
+Actual root cause (confirmed empirically across two rounds): the
+publish step is running as a framework-dependent managed publish, not
+as NativeAOT, and produces `/app/az-ai-v2.dll` instead of a native
+`/app/az-ai-v2` ELF. Tell-tale in the build log: `dotnet publish` exits
+in ~20s (too fast for ILC/link), the log has no "Generating native
+code" line, and the last output line is `AzureOpenAI_CLI_V2 -> /app/`
+without a trailing filename (as would appear for a native emit).
+
+Most likely culprit is an asset-graph mismatch between
+`dotnet restore /p:PublishReadyToRun=true -r linux-musl-x64` and
+`dotnet publish --no-restore -p:PublishAot=true`: R2R and AOT resolve
+different RID-specific asset sets, and `--no-restore` forbids publish
+from pulling the missing AOT assets at publish time, so publish
+silently falls back to a managed framework-dependent emit rather than
+hard-erroring. Fix candidates for Jerry (v2.0.2 fix-forward, ranked):
+(1) drop `--no-restore` from the publish invocation (cheapest, removes
+the coupling footgun entirely); (2) replace `/p:PublishReadyToRun=true`
+on the restore step with `-p:PublishAot=true` so restore resolves the
+AOT asset graph; (3) add `apk add lld` to the build-stage deps in case
+ILC is silently skipping codegen on a missing linker warning.
+
+Diagnostic: `docs/launch/v2.0.1-release-attempt-diagnostic.md`
+(Round 2), with cross-reference to
+`docs/launch/v2-release-attempt-1-diagnostic.md` §"Failure #2"
+(Round 1, now-falsified hypothesis documented for history).
+
+**Pre-tag gate added (Puddy-owned):** before any future Dockerfile.v2
+change ships behind a tag, run `docker build -f Dockerfile.v2 .`
+locally OR in a throwaway workflow_dispatch branch and verify the
+resulting image has `/app/az-ai-v2` as an ELF (not a .dll). The
+sandbox where this repo's agents live cannot run docker, which is why
+both v2.0.0 and v2.0.1 Dockerfile fixes shipped without local smoke.
+
+Note: `docker-publish-v2` can be re-run via `workflow_dispatch` without
+a re-tag **once binary legs are green** — but if binary legs also
+failed, the whole release is a no-go and the fix ships in the next
+patch tag.
 
 ---
 
