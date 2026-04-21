@@ -195,6 +195,16 @@ Tracked in the issue tracker; not blockers for cutover.
   primary platform, pin `v1.9.1` until 2.0.1 ships.
 - **Multi-provider (FR-014) is a spike, not a feature.** v2.0.0 remains
   Azure-OpenAI-only.
+- **Malformed `.squad.json` persona names surface as an uncaught
+  `ArgumentException`** (exit 134) rather than a clean `[ERROR]` message.
+  Security is intact — the `SanitizePersonaName` validator rejects path
+  traversal, the exception is just cosmetic — but the UX is rough.
+  Patched in 2.0.1 (FR-021). Workaround: keep persona names in
+  `.squad.json` to the documented `[a-z0-9_-]{1,64}` shape.
+- **Homebrew / Scoop / Nix NOTICE bundling lands in 2.0.1.** The
+  tarball and container images ship `NOTICE` + `THIRD_PARTY_NOTICES.md`
+  in-band at 2.0.0. Package-manager channels are manifest-ready but
+  pending real SHA256s at tag time.
 
 ## Upgrading / rolling back
 

@@ -1086,7 +1086,7 @@ internal class Program
         int charsRead = Console.In.ReadBlock(buffer, 0, MAX_STDIN_BYTES);
         if (Console.In.Peek() != -1)
         {
-            Console.Error.WriteLine("Error: stdin input exceeds 1 MB limit.");
+            Console.Error.WriteLine("[ERROR] stdin input exceeds 1 MB limit.");
             return 1;
         }
         content = new string(buffer, 0, charsRead);
