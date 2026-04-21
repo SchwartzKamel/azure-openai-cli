@@ -7,6 +7,162 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-04-20
+
+> Release window opens 2026-04-20 (commit-cutoff date for the 2.0.0 line). See
+> [`docs/release-notes-v2.0.0.md`](docs/release-notes-v2.0.0.md) for the
+> user-facing narrative and [`docs/migration-v1-to-v2.md`](docs/migration-v1-to-v2.md)
+> for upgrade guidance.
+
+v2.0.0 replaces ~2,200 lines of hand-rolled chat / tool / workflow code with
+Microsoft Agent Framework (MAF) primitives and ships alongside v1 as a
+separate binary (`az-ai-v2`) during the dual-tree window. For end users
+invoking `az-ai` from the command line, Espanso, or AutoHotkey, no flag,
+env var, config file, or exit code changes behavior. The major-version bump
+is driven by the public transitive dependency surface — MAF, OpenTelemetry,
+and an Azure SDK bump — not by CLI contract changes.
+
+### Added
+- **Microsoft Agent Framework runtime** ([ADR-004](docs/adr/ADR-004-agent-framework-adoption.md),
+  commit `0b2e655`) — `ChatClientAgent`, `AgentThread`, and MAF function-tool
+  primitives back the chat, agent, and Ralph code paths. The v1 bespoke loop
+  is gone.
+- **Persona routing wired end-to-end** (commits `0b2e655`, `cbcc49b`) —
+  `--persona <name>` and `--persona auto` now overlay the persona's system
+  prompt, tool allow-list, and `.squad/history/<name>.md` memory, force
+  agent mode on, and update memory on session exit. In earlier v2 previews
+  the flag was parsed and silently ignored. Full reference in
+  [`docs/persona-guide.md`](docs/persona-guide.md).
+- **Cost estimator** — [FR-015](docs/proposals/FR-015-pattern-library-and-cost-estimator.md),
+  commit `0b2e655`. `--estimate` (alias `--dry-run-cost`) prints predicted
+  USD for a prompt without making an API call;
+  `--estimate-with-output <n>` adds a worst-case output cost for `n`
+  completion tokens. The estimator short-circuits before credential or
+  endpoint resolution — safe to call from CI budget gates offline.
+- **Opt-in OpenTelemetry observability** (commit `0b2e655`) — `--telemetry`
+  (or `AZ_TELEMETRY=1`) emits spans and per-call cost events to stderr.
+  `--otel` / `--metrics` narrow the export to traces or meters only.
+  Suppressed entirely by `--raw`. Zero allocation on the hot path when
+  disabled.
+- **Connection prewarming** — [FR-007](docs/proposals/FR-007-parallel-startup-and-connection-prewarming.md),
+  commit `8e53851`. `--prewarm` opens the Azure OpenAI connection in
+  parallel with prompt assembly to cut latency on the first interactive
+  token.
+- **Shell + streaming agent parity with v1** — [FR-005](docs/proposals/FR-005-shell-integration-and-output-intelligence.md)
+  and [FR-011](docs/proposals/FR-011-agent-streaming-output.md), verified
+  in commit `8e53851`.
+- **Nine new flags reaching v1 parity plus v2 additions** (commit `0b2e655`):
+  `--estimate`, `--estimate-with-output`, `--telemetry`, `--otel`,
+  `--metrics`, `--prewarm`, `--config <path>`, `--schema <json>` (captured
+  but not yet enforced on the wire — see _Deprecated / deferred_),
+  `--version --short`.
+- **`.azureopenai-cli.json` config reference** (commit `a309154`) — new
+  `docs/configuration-reference.md` with sample file and WSL path gotchas.
+- **v2 user documentation** (commit `cbcc49b`) —
+  [`docs/persona-guide.md`](docs/persona-guide.md) (recreated for v2),
+  [`docs/migration-v1-to-v2.md`](docs/migration-v1-to-v2.md), and a slimmer
+  `docs/use-cases.md`. README refreshed for v2.
+- **Perf baseline harness** (commit `3de364a`) — `scripts/bench.sh` and
+  [`docs/perf-baseline-v2.md`](docs/perf-baseline-v2.md) provide the first
+  v1↔v2 comparison (50 runs, warmup 2, linux-x64 AOT + framework-dependent).
+- **OSS license artifacts** (commit `81a1e3a`) — `NOTICE` and
+  `THIRD_PARTY_NOTICES.md` at the repo root, with an accompanying
+  [`docs/licensing-audit.md`](docs/licensing-audit.md). Every 39-package
+  dependency is MIT, Apache-2.0, or BSD-3-Clause. No copyleft.
+- **ADR-006 split** (commit `cf7901b`) — original roundtable ADR decomposed
+  into three focused ADRs (`ADR-006-nvfp4-nim-integration.md`,
+  `ADR-007-third-party-http-provider-security.md`,
+  `ADR-008-gpu-provider-bench-policy.md`) with verbatim appendix preserved.
+- **v2 integration suite** (commit `488aebd`) — `tests/integration_tests.sh`
+  now exercises v1 and v2 in parallel (29 assertions across 14 cases).
+
+### Changed
+- **Packaged as `az-ai-v2` during the dual-tree window.** The v1 binary
+  continues to install as `az-ai`. Post-cutover, v2 becomes `az-ai`; v1
+  remains available as a pinned version (`azure-openai-cli@1.9.1` on
+  Homebrew / Scoop / manual download). See
+  [`docs/migration-v1-to-v2.md`](docs/migration-v1-to-v2.md) §4.
+- **`--max-rounds` semantics** (migration guide §3) — unchanged as a cap,
+  but the loop termination is now driven by MAF's tool-call accounting.
+  No behavior change is visible at the CLI boundary; logged round counts
+  may differ by ±1 on edge cases.
+- **Ralph retry prompt shape** (migration guide §3) — the task is now
+  carried by `AgentThread`; only the accumulated error context is
+  re-injected on each iteration. v1 re-sent the full original task every
+  round. Output and exit codes are unchanged.
+- **Streaming ordering guarantees** (migration guide §3) — streamed through
+  MAF's `RunStreamingAsync` primitive. Byte-for-byte identical to v1 on
+  `--raw`; banner ordering on interactive stderr may differ by a few
+  microseconds.
+- **Estimator short-circuits before credential resolution** (migration
+  guide §3) — `--estimate` does not read `AZUREOPENAIAPI`, does not touch
+  the network, and works offline. v1 had no estimator.
+- **`OpenAI` transitive bumped 2.1.0 → 2.9.1** (licensing audit, commit
+  `0b2e655`) via the MAF stack. Still MIT.
+- **NOTICE truthfulness** (commit `81a1e3a`) — v1's NOTICE claimed "all
+  dependencies are MIT." v2 introduces Apache-2.0 (OpenTelemetry, 4
+  packages) and BSD-3-Clause (Google.Protobuf, 1 package) via
+  observability and MAF transitive closure. `NOTICE` is updated to
+  reflect that truthfully.
+
+### Deprecated
+- **`--schema <json>` wire enforcement is deferred to 2.1.x.** The flag
+  is parsed and captured in v2.0.0 but is not yet sent as a
+  `response_format` strict schema. Use `--json` + post-validation in the
+  meantime.
+
+### Removed
+- **Handrolled chat / tool / Ralph orchestration** — the ~2,200-line v1
+  loop is replaced by MAF primitives. Not user-visible; called out because
+  extension points that reached into those internals (there are none in
+  the public API, but downstream forks may have relied on them) no longer
+  exist.
+- **`.smith/` scratch directory** (commits `781741f`, `cd5fdc6`, `ce377f6`,
+  `b654d97`) — internal scratch state; never shipped as an API.
+
+### Fixed
+- **[FR-017](docs/proposals/FR-017-max-completion-tokens-compatibility.md)
+  baked in** — `gpt-5.x`, `o1`, and `o3` deployments no longer crash on
+  the `max_completion_tokens` wire property. Originally shipped as a v1.9.1
+  hotfix; v2 incorporates the fix from day one.
+
+### Security
+- **v1 hardening preserved byte-for-byte.** Every `ShellExecTool`,
+  `WebFetchTool`, `ReadFileTool`, `GetClipboardTool`, and `ToolRegistry`
+  defense landed in v1.0.x–v1.9.x carries forward unchanged in v2:
+  command blocklist and metacharacter rejection, `ArgumentList`-based
+  process spawning, HTTPS-only web fetch, private-IP DNS rebinding block,
+  redirect-final-URL validation, symlink-traversal blocking, exact-alias
+  tool matching, CTRL+C signal handling with exit code 130.
+- **License audit: clear** (commit `81a1e3a`,
+  [`docs/licensing-audit.md`](docs/licensing-audit.md)). 39 packages
+  reviewed. 34 MIT, 4 Apache-2.0, 1 BSD-3-Clause. Zero copyleft.
+  Attribution obligations discharged via `NOTICE` +
+  `THIRD_PARTY_NOTICES.md`.
+
+### Performance
+- **Shipping-form (AOT, linux-x64) startup gates pass**
+  ([`docs/perf-baseline-v2.md`](docs/perf-baseline-v2.md)). `--version
+  --short` p95 is 1.12× v1 (12.58 ms mean). `--help` p95 is 1.23× v1.
+  `parse-heavy` is _faster_ than v1 (0.93× mean) — the ParseArgs rework
+  vindicated. Memory RSS is at or below v1 for every scenario.
+- **AOT binary size: 9.29 MB → 15.10 MB (1.62×, +5.8 MB).** Over the
+  proposed 1.5× ratio gate. Cause: MAF host assemblies (whole-subgraph
+  DI), OpenTelemetry API + exporters, and `Azure.AI.OpenAI 2.1.0` trim
+  warnings that prevent full elision. Shipping with a documented waiver;
+  trim pass tracked as a 2.0.1 follow-up (see _Known limitations_ in the
+  release notes).
+- **Framework-dependent (`dotnet <dll>`) startup is ~1.5–1.7× v1.** This
+  is not the shipping form — it exercises the JIT path, where MAF / DI /
+  OTel types pay a one-time compile cost. Documented for completeness;
+  not a gate.
+
+### Verified
+- `488 / 488` v2 unit tests passing; v1 suite continues green in parallel.
+- 29 integration assertions across 14 cases against both binaries.
+- AOT publish clean on `linux-x64`; IL2104 / IL3053 warnings confined to
+  third-party assemblies, tracked for the 2.0.1 trim pass.
+
 ## [1.9.1] - 2026-04-20
 
 ### Fixed
