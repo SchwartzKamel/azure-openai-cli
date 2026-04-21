@@ -27,7 +27,7 @@ case "$RID" in
     *) die "unsupported rid '$RID' (expected linux-*, osx-*, or win-*)" ;;
 esac
 
-VERSION="2.0.1"
+VERSION="2.0.2"
 
 # Resolve repo root relative to this script.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

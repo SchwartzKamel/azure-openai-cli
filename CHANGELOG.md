@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] — 2026-04-21
+
+> **Fix-forward from v2.0.1.** v2.0.1 was tagged on `039e6bd` but did not
+> publish: `docker-publish-v2` failed at
+> `COPY --from=build /app/az-ai-v2 ...: not found` with the same error
+> signature as v2.0.0 attempt #1. v2.0.1's Debian→Alpine SDK swap did
+> **not** address the real root cause — the failure was libc-independent.
+> Post-mortem:
+> [`docs/launch/v2.0.1-release-attempt-diagnostic.md`](docs/launch/v2.0.1-release-attempt-diagnostic.md).
+> The `v2.0.1` tag is retained as an "attempted release" marker alongside
+> `v2.0.0`; v2.0.2 is now the first publicly published v2.x release.
+
+### Fixed
+- **`Dockerfile.v2` AOT asset-graph mismatch (real root cause)** — the
+  v2.0.0/v2.0.1 pattern split build into `dotnet restore -r linux-musl-x64
+  /p:PublishReadyToRun=true` followed by `dotnet publish --no-restore
+  -p:PublishAot=true`. R2R and AOT resolve different RID-specific NuGet
+  asset graphs; `--no-restore` then forbade publish from pulling the AOT
+  assets restore had never fetched. The .NET 10 SDK, rather than
+  hard-erroring, **silently fell back to a framework-dependent managed
+  publish** — emitting `/app/az-ai-v2.dll` (plus runtimeconfig/deps) and
+  no ELF at `/app/az-ai-v2`. Publish exited 0 in ~21s (no ILC/link phase)
+  and the runtime-stage COPY then failed because the expected native
+  binary never existed. Fix in this release: drop the separate restore
+  step and the `--no-restore` flag; a single `dotnet publish` invocation
+  resolves the AOT asset graph in one shot. Libc was never the issue —
+  the Alpine SDK base is retained for cost/size, not correctness. Cites
+  Lippman's Round-2 diagnostic above.
+- **Dockerfile.v2 AOT-output verification gates** — three new `RUN`
+  lines immediately after the publish step (`test -f /app/az-ai-v2`,
+  `file /app/az-ai-v2 | grep -q ELF`, `/app/az-ai-v2 --version`) turn a
+  silent managed-fallback regression into a red build at the publish
+  layer instead of a cryptic COPY miss ~30s later in the runtime stage.
+  Non-negotiable per Lippman's Round-2 playbook update
+  (`docs/launch/release-v2-playbook.md` §Troubleshooting). `apk add file`
+  added to the build stage so the `file(1)` check works on Alpine.
+- **Version strings bumped** — csproj `<Version>`, `Program.cs`
+  `VersionSemver`/`VersionFull`, `Observability/Telemetry.cs`
+  `ServiceVersion`, `packaging/tarball/stage.sh` `VERSION`,
+  `tests/integration_tests.sh` Gate 2 assertion — all rolled
+  `2.0.1 → 2.0.2` in lock-step.
+
+### Packaging
+- **Versioned-pin manifests for 2.0.2** — new frozen siblings:
+  `packaging/homebrew/Formula/az-ai-v2@2.0.2.rb`,
+  `packaging/scoop/versions/az-ai-v2@2.0.2.json`, plus a `"2.0.2"` entry
+  in `packaging/nix/flake.nix` `pinnedHashes`. SHA256 / SRI slots carry
+  `TODO_FILL_AT_RELEASE_TIME` / `lib.fakeHash` sentinels per the tag-time
+  ritual in `packaging/README.md`. Tracking manifests (`az-ai.rb`,
+  `az-ai.json`, flake `version`) rolled to `2.0.2` with sentinels intact
+  — they never got hash-synced for v2.0.1 (release didn't publish), so
+  no prior hash state to reset.
+- **`@2.0.0.rb` + `@2.0.0.json` + flake `"2.0.0"` pinnedHash entry**
+  retained unchanged as historical markers.
+- **`@2.0.1.rb` + `@2.0.1.json` + flake `"2.0.1"` pinnedHash entry**
+  retained unchanged as historical markers — v2.0.1 joins v2.0.0 as a
+  "tagged but never published" marker. Two dead-end markers now.
+
+### Note
+- v2.0.2 supersedes v2.0.1, which was tagged on `039e6bd` but did not
+  publish (same publish-gate failure mode as v2.0.0 attempt #1 — the
+  Alpine SDK swap in v2.0.1 did not address root cause). The immutable
+  `v2.0.1` tag remains in the repo for audit trail; no artifacts were
+  ever uploaded under that tag.
+
 ## [2.0.1] — 2026-04-21
 
 > **Fix-forward from v2.0.0.** The `v2.0.0` tag on `b1fd2cd` is immutable

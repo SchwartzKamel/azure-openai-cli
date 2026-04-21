@@ -3,13 +3,13 @@
     "_comment_bin": "Binary is az-ai-v2.exe during the dual-binary transition. Post-cutover the rename to az-ai.exe lands in a follow-up manifest update.",
     "_comment_notice": "Scoop has no doc directory concept, so the release tarball must place NOTICE + THIRD_PARTY_NOTICES.md + LICENSE at the extraction root next to az-ai-v2.exe. post_install surfaces their paths to the user so Lippman's 'all distributed artifacts include NOTICE' claim holds for Windows installs.",
     "_comment_pin": "Versioned-pin support: sibling versions/ directory holds az-ai-v2@<version>.json manifests so users can `scoop install schwartzkamel/az-ai-v2@2.0.0`. Follows scoopinstaller/versions bucket conventions.",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "description": "Azure OpenAI CLI v2 — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator",
     "homepage": "https://github.com/SchwartzKamel/azure-openai-cli",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.0.1/az-ai-v2-2.0.1-win-x64.zip",
+            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.0.2/az-ai-v2-2.0.2-win-x64.zip",
             "hash": "TODO_FILL_AT_RELEASE_TIME"
         }
     },

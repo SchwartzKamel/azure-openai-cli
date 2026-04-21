@@ -1,7 +1,7 @@
 class AzAiV2 < Formula
   desc "Azure OpenAI CLI v2 — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator"
   homepage "https://github.com/SchwartzKamel/azure-openai-cli"
-  version "2.0.1"
+  version "2.0.2"
   license "MIT"
 
   # SHA256s below are release-time placeholders. Mr. Lippman fills these
@@ -48,6 +48,6 @@ class AzAiV2 < Formula
   # unversioned formula tracks the latest published release.
 
   test do
-    assert_equal "2.0.1", shell_output("#{bin}/az-ai-v2 --version --short").strip
+    assert_equal "2.0.2", shell_output("#{bin}/az-ai-v2 --version --short").strip
   end
 end

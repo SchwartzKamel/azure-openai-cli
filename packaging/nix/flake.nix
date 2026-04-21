@@ -6,7 +6,7 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      version = "2.0.1";
+      version = "2.0.2";
       baseUrlFor = v: "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${v}";
 
       # Build the per-system sources attrset for a given release version.
@@ -52,6 +52,19 @@
           osx-arm64 = nixpkgs.lib.fakeHash;
         };
         "2.0.1" = {
+          # v2.0.1 was tagged but never published (release workflow run
+          # 24739184465 failed in docker-publish-v2 with the same
+          # asset-graph mismatch that broke v2.0.0; the Alpine SDK swap
+          # did not address the real root cause — see
+          # docs/launch/v2.0.1-release-attempt-diagnostic.md). The tag is
+          # immutable but no tarballs were uploaded, so these hashes can
+          # never be filled. Retained as an "attempted release" marker
+          # alongside v2.0.0. v2.0.2 supersedes.
+          linux-x64 = nixpkgs.lib.fakeHash;
+          osx-x64   = nixpkgs.lib.fakeHash;
+          osx-arm64 = nixpkgs.lib.fakeHash;
+        };
+        "2.0.2" = {
           linux-x64 = nixpkgs.lib.fakeHash;
           osx-x64   = nixpkgs.lib.fakeHash;
           osx-arm64 = nixpkgs.lib.fakeHash;

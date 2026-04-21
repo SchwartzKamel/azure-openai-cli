@@ -29,22 +29,25 @@ WORKDIR /src
 
 # NativeAOT on musl needs clang + build-base (binutils/make) + zlib headers
 # for ILC to link. Alpine equivalents of the Debian clang/zlib1g-dev set.
+# `file` is added for the post-publish ELF verification gate below — without
+# it the silent managed-fallback regression (v2.0.0/v2.0.1) can't be
+# detected inside this build stage.
 RUN apk add --no-cache \
         clang \
         build-base \
-        zlib-dev
+        zlib-dev \
+        file
 
-# Copy only .csproj first for restore-layer caching. Must include the test
-# project references transitively — so copy the solution's v2 csproj alone
-# and restore against it with the target RID pinned (avoids NETSDK1047).
-# Retain PublishReadyToRun flag parity with v1 Dockerfile per commit 37127d1
-# so a subsequent `publish --no-restore` resolves the same asset graph.
-COPY azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj ./azureopenai-cli-v2/
-RUN dotnet restore ./azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj \
-        -r linux-musl-x64 \
-        /p:PublishReadyToRun=true
-
-# Then copy source (changes here don't invalidate the restore cache)
+# Copy full source before publish. v2.0.2 drops the split restore + publish
+# --no-restore pattern that caused the v2.0.0/v2.0.1 silent-fallback:
+# restore was invoked with /p:PublishReadyToRun=true (a different RID asset
+# graph than PublishAot=true), and the .NET 10 SDK silently fell back to a
+# framework-dependent managed publish (emitting /app/az-ai-v2.dll only, no
+# ELF at /app/az-ai-v2) because `--no-restore` forbade publish from pulling
+# the AOT assets restore hadn't fetched. A single `dotnet publish`
+# invocation resolves the correct AOT asset graph in one shot and removes
+# the coupling footgun entirely. Cache invalidation cost is ~2s warm —
+# worth it. See docs/launch/v2.0.1-release-attempt-diagnostic.md.
 COPY azureopenai-cli-v2/ ./azureopenai-cli-v2/
 
 ENV LANG=en_US.UTF-8 \
@@ -53,13 +56,24 @@ ENV LANG=en_US.UTF-8 \
 # NativeAOT publish. PublishAot=true is already set in the csproj; we pass
 # it explicitly so this Dockerfile documents the contract even if the
 # csproj drifts. InvariantGlobalization=true is also on in the csproj and
-# is why the runtime image does NOT need icu-libs.
+# is why the runtime image does NOT need icu-libs. Restore happens
+# implicitly here with the AOT asset graph — do NOT re-introduce
+# `--no-restore` + a separate `dotnet restore` step.
 RUN dotnet publish ./azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj \
-        --no-restore \
         -c Release \
         -r linux-musl-x64 \
         -p:PublishAot=true \
         -o /app
+
+# Verification gates (Lippman Round-2 playbook — non-negotiable).
+# These three RUN lines guarantee that a silent managed-fallback
+# (publish exits 0 but emits only az-ai-v2.dll) surfaces as a red build
+# HERE, not as a cryptic COPY miss in the runtime stage. If any of these
+# fails, the publish step above has regressed to framework-dependent
+# emission — fix there, do not weaken the gates.
+RUN test -f /app/az-ai-v2 || (echo "ERROR: NativeAOT ELF /app/az-ai-v2 not found — AOT silently fell back to managed publish?" && ls -la /app/ && exit 1)
+RUN file /app/az-ai-v2 | grep -q 'ELF' || (echo "ERROR: /app/az-ai-v2 is not an ELF binary" && file /app/az-ai-v2 && exit 1)
+RUN /app/az-ai-v2 --version 2>&1 | head -1
 
 # ---------- Stage 2: Runtime ----------
 # Pinned to match v1 Dockerfile's runtime-deps digest.

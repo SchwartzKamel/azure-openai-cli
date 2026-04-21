@@ -539,8 +539,8 @@ run_v2_tests() {
         fail "v2 --version matches 2.x.y" "got: $ver_out"
     fi
 
-    # ── 3. --version --short is exactly "2.0.1\n" (Gate 2) ────────────────
-    assert_equals "v2 --version --short is exactly 2.0.1 (Gate 2)" "2.0.1" "$V2_BIN" --version --short
+    # ── 3. --version --short is exactly "2.0.2\n" (Gate 2) ────────────────
+    assert_equals "v2 --version --short is exactly 2.0.2 (Gate 2)" "2.0.2" "$V2_BIN" --version --short
 
     # ── 4. --completions bash ─────────────────────────────────────────────
     assert_exit_code "v2 --completions bash exits 0" 0 "$V2_BIN" --completions bash
