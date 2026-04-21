@@ -13,6 +13,13 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # workflow_dispatch lets us manually re-trigger against an existing tag
+  # (via `gh workflow run release.yml --ref <tag>`) when a prior run is
+  # blocked on transient infra (e.g., macos-13 runner backlog). Re-dispatching
+  # does NOT re-tag; the tag is immutable. The `--ref <tag>` flag makes
+  # github.ref resolve to refs/tags/<tag>, which preserves all v1.*/v2.*
+  # job-level if: gates. See docs/launch/release-v2-playbook.md §Troubleshooting.
+  workflow_dispatch: {}
 
 # Default to least privilege; individual jobs escalate only what they need.
 permissions:
