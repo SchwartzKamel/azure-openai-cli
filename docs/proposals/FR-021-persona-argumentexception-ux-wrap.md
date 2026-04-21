@@ -53,6 +53,7 @@ Apply the same wrap to any other direct call into `PersonaMemory.*(name, ...)` a
 - [ ] Malformed persona name → exit 1 (not 134), single `[ERROR]` line to stderr, no stack trace.
 - [ ] With `--json`, error emits structured `ErrorJsonResponse` to stderr (consistent with other `ErrorAndExit` paths).
 - [ ] Regression test in `PersonaMemoryHardeningTests` that feeds a bad `.squad.json` persona name through the Program entry point and asserts exit 1 + `[ERROR]` prefix.
+  - **Test prewritten (Puddy, pre-2.0.1):** `tests/integration_tests.sh` lines 698–770 (skipped by default; un-skip with `FR021_FIXED=1`). Forced run against 2.0.0 FAILS as expected (exit 134 + stack trace), proving the test exercises the real failure mode, not a mock of it. The 2.0.1 PR should flip the sentinel default (or drop the `FR021_FIXED` guard) once the wrap lands — no new test code needed.
 - [ ] No change to `PersonaMemory.SanitizePersonaName` behavior — this is a caller-side wrap only.
 
 ## Out of scope

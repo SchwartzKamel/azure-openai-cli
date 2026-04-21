@@ -695,6 +695,81 @@ assert d['error'].get('flag') == '--nope', 'flag must be --nope'
         fi
     fi
 
+    # ── 15. FR-021 regression — malformed persona name in .squad.json ─────
+    #
+    # Pre-written regression test for docs/proposals/FR-021-persona-argumentexception-ux-wrap.md.
+    #
+    # TODAY (2.0.0): the call site at Program.cs:321 invokes
+    #   PersonaMemory.ReadHistory(activePersona.Name)
+    # outside the try/catch. If .squad.json contains a persona whose `name`
+    # field violates [a-z0-9_-]{1,64}, SanitizePersonaName throws an
+    # unhandled ArgumentException → .NET aborts → exit 134 with a stack
+    # trace on stderr. That's the bug FR-021 tracks.
+    #
+    # 2.0.1: Kramer adds the three-line wrap (per FR-021 §Fix). The call site
+    # catches ArgumentException and returns ErrorAndExit(..., 1), producing
+    # exit 1 with a single `[ERROR] ...` line on stderr. No stack trace.
+    #
+    # This test is SKIPPED BY DEFAULT so preflight stays green on 2.0.0.
+    # Flip the sentinel to force-run:
+    #   FR021_FIXED=1 bash tests/integration_tests.sh
+    # On 2.0.0 the forced run FAILS (exit 134, stack trace) — proving the
+    # test actually exercises the bug, not a mock of it. On 2.0.1 the forced
+    # run PASSES. The 2.0.1 PR should set FR021_FIXED=1 as the default (or
+    # remove the guard entirely once the wrap ships) so the test gates
+    # future regressions.
+    #
+    # DO NOT delete this test without Lippman sign-off.
+    echo ""
+    echo "▸ Persona error UX (FR-021 regression)"
+    if [ "${FR021_FIXED:-0}" != "1" ]; then
+        skip "v2 FR-021 malformed persona → exit 1 + [ERROR]" \
+             "pre-written for 2.0.1; un-skip by running with FR021_FIXED=1 once Program.cs:321 wraps ArgumentException"
+    else
+        local fr021_dir; fr021_dir=$(mktemp -d)
+        local fr021_bin; fr021_bin=$(cd "$(dirname "$V2_BIN")" && pwd)/$(basename "$V2_BIN")
+        cat > "$fr021_dir/.squad.json" <<'FR021_JSON'
+{
+  "team": {"name": "fr021-regression"},
+  "personas": [
+    {"name": "bad name!", "role": "adversarial", "description": "FR-021 regression fixture — name violates [a-z0-9_-]{1,64}", "system_prompt": "x"}
+  ]
+}
+FR021_JSON
+        local fr021_stderr fr021_rc
+        set +e
+        fr021_stderr=$(cd "$fr021_dir" && \
+            env HOME="$v2_home" \
+                AZUREOPENAIENDPOINT="https://example.invalid/" \
+                AZUREOPENAIAPI="dummy-key-not-used" \
+                "$fr021_bin" --persona "bad name!" "hi" 2>&1 1>/dev/null)
+        fr021_rc=$?
+        set -e
+
+        # (a) exit code is 1 (clean error), not 134 (unhandled exception abort).
+        if [ "$fr021_rc" -eq 1 ]; then
+            pass "v2 FR-021 malformed persona exits 1 (not 134)"
+        else
+            fail "v2 FR-021 malformed persona exits 1 (not 134)" "got exit $fr021_rc; stderr was: $fr021_stderr"
+        fi
+
+        # (b) stderr contains the [ERROR] prefix ErrorAndExit emits.
+        if printf '%s' "$fr021_stderr" | grep -qF '[ERROR]'; then
+            pass "v2 FR-021 stderr contains [ERROR] prefix"
+        else
+            fail "v2 FR-021 stderr contains [ERROR] prefix" "stderr: $fr021_stderr"
+        fi
+
+        # (c) stderr does NOT leak an unhandled-exception stack trace.
+        if printf '%s' "$fr021_stderr" | grep -qE 'Unhandled exception|System\.ArgumentException|^   at '; then
+            fail "v2 FR-021 stderr has no stack trace / unhandled exception" "stderr leaked: $fr021_stderr"
+        else
+            pass "v2 FR-021 stderr has no stack trace / unhandled exception"
+        fi
+
+        rm -rf "$fr021_dir"
+    fi
+
     # ── API-gated smoke (skip unless creds present) ───────────────────────
     if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then
         skip "v2 real API call" "AZUREOPENAIENDPOINT/AZUREOPENAIAPI not set"
