@@ -23,6 +23,24 @@
     <IsTrimmable>true</IsTrimmable>
     <TrimMode>full</TrimMode>
     <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!--
+      AOT size trim levers (Kenny Bania investigation; see docs/aot-trim-investigation.md).
+      Combined savings: 14.41 MB -> 12.91 MB  (1.625x -> 1.456x vs v1 baseline), clearing the 1.50x gate.
+
+      OptimizationPreference=Size : ILC favors size over speed; ~0.47 MB win, no behavior change.
+      StackTraceSupport=false     : Drops System.Private.StackTraceMetadata init + rich stack frames; ~1.05 MB win.
+                                    Safe because v2 only surfaces ex.Message to users (no ex.StackTrace prints).
+                                    Tradeoff: crash dumps / Trace.WriteLine have minimal stack frames.
+
+      Levers investigated and rejected:
+        * DebuggerSupport=false           — no delta (Debugger.IsSupported=false already set upstream in net10.0 AOT defaults).
+        * IlcGenerateStackTraceData=false — no delta (superseded by StackTraceSupport=false in net10.0).
+        * HttpActivityPropagationSupport=false — 40 KB; rejected, would break OTLP trace propagation.
+        * OTel exporter runtime opt-in        — not viable: trimming is compile-time, no runtime trim possible.
+    -->
+    <OptimizationPreference>Size</OptimizationPreference>
+    <StackTraceSupport>false</StackTraceSupport>
   </PropertyGroup>
 
   <ItemGroup>
