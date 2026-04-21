@@ -25,7 +25,7 @@ digests have been back-filled into `packaging/` by Mr. Lippman.
 | --- | --- |
 | `gh` CLI available in sandbox | ❌ not installed |
 | Phase 1 scaffolds committed locally | ✅ (tap `9e9fd3d`, bucket `efcd0f4`) |
-| Phase 2 (formula/manifest copy) | ⏳ blocked — no hash-sync exists |
+| Phase 2 (formula/manifest copy) | ⏳ blocked — R3 hash-sync never landed |
 | Remote repos created | ❌ needs the person with a `gh` login |
 | Initial push | ❌ (requires remote creation) |
 
@@ -60,6 +60,33 @@ scaffolds are untouched and still valid.
 Todo `bob-tap-standup` is **blocked** in the session DB with reason
 "auth unavailable for gh repo create; handoff doc staged at
 docs/launch/bob-tap-handoff.md".
+
+### Round 3 (v2.0.2) — blocked, hash-sync never landed
+
+Tag `v2.0.2` (`fd4ddc7`) was pushed at 11:59 PDT with Jerry's
+Dockerfile fix-forward (single `dotnet publish` + in-Dockerfile AOT
+verification gates). Bob (`bob-r3`) polled `origin/main` every 90s
+for Lippman's `release: v2.0.2 post-publish hash sync` commit.
+
+Polled 30 times from 12:01:07 through 12:45:16 PDT (45 min, per the
+runbook's max). `origin/main` tip never advanced beyond `83c6be2`
+("bob R2 blocked — v2.0.1 release failed, awaiting v2.0.2"). No
+hash-sync commit observed; Lippman (`lippman-r3`) did not publish.
+
+Implication: either `release.yml` failed again on v2.0.2 (check the
+workflow run for tag `fd4ddc7`), or it succeeded but the post-publish
+hash-sync commit never got pushed to `main`. Either way, Bob's
+paranoia grep of `packaging/homebrew packaging/scoop` for
+`TODO_FILL_AT_RELEASE_TIME` was never run (no pull, no updated tree
+to grep against — the v2.0.2 sibling manifests still carry sentinels
+in-tree), and no copy/push happened. `/tmp/bob-tap-prep/` is
+**unchanged from Round 1**: tap at `9e9fd3d`, bucket at `efcd0f4`,
+no v2.0.2 manifests staged.
+
+Bob's Round-3 todo (`bob-r3`) is **blocked**. `bob-tap-standup`
+stays blocked. No remote repos created, no upstream close-out
+commit. Next release round needs a confirmed Lippman hash-sync on
+`main` before Bob can proceed.
 
 ## Why two phases
 
