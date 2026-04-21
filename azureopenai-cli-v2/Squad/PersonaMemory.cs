@@ -278,6 +278,14 @@ internal sealed class PersonaMemory
 
     /// <summary>
     /// Log a decision to the shared decisions file.
+    ///
+    /// K-5 sibling (2.0.2): enforces the 32 KB cap on the shared decisions log
+    /// with the same rotation contract used by <see cref="AppendHistory"/>. If
+    /// current-size + new-entry-size would exceed <see cref="MaxHistoryBytes"/>,
+    /// the existing file is rotated to <c>decisions.md.old</c> (overwriting
+    /// any previous rotation) and a fresh file is started with only the new
+    /// entry. All I/O uses <see cref="FileShare.Read"/> so concurrent readers
+    /// don't corrupt the rotation.
     /// </summary>
     public void LogDecision(string personaName, string decision)
     {
@@ -289,7 +297,38 @@ internal sealed class PersonaMemory
             Directory.CreateDirectory(_baseDir);
 
         var entry = $"\n### {DateTime.UtcNow:yyyy-MM-dd HH:mm UTC} — {safeName}\n{decision}\n";
-        File.AppendAllText(path, entry);
+        var entryBytes = Encoding.UTF8.GetBytes(entry);
+
+        long currentSize = 0;
+        if (File.Exists(path))
+        {
+            try { currentSize = new FileInfo(path).Length; }
+            catch { currentSize = 0; }
+        }
+
+        bool rotate = currentSize + entryBytes.LongLength > MaxHistoryBytes;
+        if (rotate)
+        {
+            var oldPath = path + ".old";
+            try
+            {
+                // File.Move(overwrite: true) is atomic on the same filesystem
+                // and overwrites any pre-existing .md.old from a prior rotation.
+                File.Move(path, oldPath, overwrite: true);
+            }
+            catch (FileNotFoundException) { /* racy delete — nothing to move */ }
+
+            // Fresh file starts with only the new entry.
+            using var fresh = new FileStream(
+                path, FileMode.Create, FileAccess.Write, FileShare.Read);
+            fresh.Write(entryBytes, 0, entryBytes.Length);
+        }
+        else
+        {
+            using var fs = new FileStream(
+                path, FileMode.Append, FileAccess.Write, FileShare.Read);
+            fs.Write(entryBytes, 0, entryBytes.Length);
+        }
     }
 
     /// <summary>
@@ -333,6 +372,13 @@ internal sealed class PersonaMemory
 
             if (body.Length > MaxHistoryBytes)
                 body = body[^MaxHistoryBytes..];
+
+            // K-5 sibling (2.0.2): surface the truncation marker when a rotated
+            // decisions.md.old sibling exists, mirroring ReadHistory so readers
+            // still see the "there was earlier content" signal even when the
+            // current fresh file is under the tail-window threshold.
+            if (!truncated && !body.StartsWith(DecisionsTruncationMarker) && File.Exists(path + ".old"))
+                body = DecisionsTruncationMarker + body;
 
             return truncated ? DecisionsTruncationMarker + body : body;
         }

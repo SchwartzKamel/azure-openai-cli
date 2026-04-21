@@ -59,8 +59,15 @@ internal static class ShellExecTool
             command.TrimStart().StartsWith("exec ") || command.Contains("; exec "))
             return "Error: process substitution and eval/exec are blocked for safety.";
 
-        // Block dangerous commands
-        var firstToken = command.TrimStart().Split(' ', 2)[0].Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
+        // Block dangerous commands.
+        // K-1 sibling (2.0.2): split on space/tab/newline with RemoveEmptyEntries
+        // so a whitespace-leading invocation (e.g. "\trm -rf /", "\n sudo ...",
+        // " \trm") still reaches the first-token blocklist on the fast path,
+        // not just via the segment rescan below. Defense-in-depth — TrimStart()
+        // already strips leading whitespace, but belt-and-suspenders across
+        // future refactors that might touch it.
+        var firstTokens = command.Split(new[] { ' ', '\t', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var firstToken = (firstTokens.Length > 0 ? firstTokens[0] : "").Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
         if (BlockedCommands.Contains(firstToken))
             return $"Error: command '{firstToken}' is blocked for safety.";
 

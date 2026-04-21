@@ -64,6 +64,8 @@ public sealed class ThemeTests
 
         var originalRawMode = Theme.RawMode;
         Theme.RawMode = false;
+        var originalUseColorOverride = Theme.UseColorOverride;
+        Theme.UseColorOverride = null;
 
         return new Restorer(() =>
         {
@@ -72,6 +74,7 @@ public sealed class ThemeTests
                 Environment.SetEnvironmentVariable(kv.Key, kv.Value);
             }
             Theme.RawMode = originalRawMode;
+            Theme.UseColorOverride = originalUseColorOverride;
         });
     }
 
@@ -206,12 +209,17 @@ public sealed class ThemeTests
 
     // -----------------------------------------------------------------
     // No color + not raw → plain text, zero ANSI bytes.
+    //
+    // 2.0.2 (Mickey flake fix): previously relied on NO_COLOR=1 env mutation,
+    // which races with any cross-collection test that transiently touches
+    // NO_COLOR. Switched to the internal UseColorOverride seam so the test
+    // is deterministic regardless of ambient env state.
     // -----------------------------------------------------------------
     [Fact]
     public void UseColorFalse_WriteColored_EmitsPlainText_NoAnsi()
     {
         using var _ = IsolateEnvironment();
-        Environment.SetEnvironmentVariable("NO_COLOR", "1");
+        Theme.UseColorOverride = false;
         Assert.False(Theme.UseColor());
 
         var sw = new StringWriter();
@@ -224,12 +232,14 @@ public sealed class ThemeTests
 
     // -----------------------------------------------------------------
     // Color on → text is wrapped in an SGR escape + reset.
+    //
+    // 2.0.2: same env-race mitigation via UseColorOverride seam.
     // -----------------------------------------------------------------
     [Fact]
     public void UseColorTrue_WriteColored_EmitsAnsiWrappedText()
     {
         using var _ = IsolateEnvironment();
-        Environment.SetEnvironmentVariable("FORCE_COLOR", "1");
+        Theme.UseColorOverride = true;
         Assert.True(Theme.UseColor());
 
         var sw = new StringWriter();
@@ -240,5 +250,39 @@ public sealed class ThemeTests
         Assert.Contains("hello", output);
         // Reset is mandatory so downstream writes aren't accidentally styled.
         Assert.EndsWith("\u001b[0m", output);
+    }
+
+    // -----------------------------------------------------------------
+    // UseColorOverride seam — 2.0.2 Mickey follow-up.
+    // Overrides the 7-rule precedence entirely. Production never sets it.
+    // -----------------------------------------------------------------
+    [Fact]
+    public void UseColorOverride_True_BeatsNoColor()
+    {
+        using var _ = IsolateEnvironment();
+        Environment.SetEnvironmentVariable("NO_COLOR", "1");
+        Theme.UseColorOverride = true;
+
+        Assert.True(Theme.UseColor());
+    }
+
+    [Fact]
+    public void UseColorOverride_False_BeatsForceColor()
+    {
+        using var _ = IsolateEnvironment();
+        Environment.SetEnvironmentVariable("FORCE_COLOR", "1");
+        Theme.UseColorOverride = false;
+
+        Assert.False(Theme.UseColor());
+    }
+
+    [Fact]
+    public void UseColorOverride_Null_FallsBackToEnvPrecedence()
+    {
+        using var _ = IsolateEnvironment();
+        Theme.UseColorOverride = null;
+        Environment.SetEnvironmentVariable("FORCE_COLOR", "1");
+
+        Assert.True(Theme.UseColor());
     }
 }

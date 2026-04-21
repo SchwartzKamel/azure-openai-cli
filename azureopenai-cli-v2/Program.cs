@@ -1038,8 +1038,17 @@ internal class Program
         if (!timeoutSeconds.HasValue)
         {
             var envTimeout = Environment.GetEnvironmentVariable("AZURE_TIMEOUT");
-            if (!string.IsNullOrWhiteSpace(envTimeout) && int.TryParse(envTimeout, out int to2))
-            { timeoutSeconds = to2; }
+            if (!string.IsNullOrWhiteSpace(envTimeout))
+            {
+                // F-5 sibling (2.0.2): validate bounds the same way --max-tokens
+                // env does — 1..3600 seconds. Silently falling back to the
+                // default masks operator misconfiguration (e.g. `AZURE_TIMEOUT=0`
+                // wedging the CLI into a request that never fires).
+                if (int.TryParse(envTimeout, out int to2) && to2 > 0 && to2 <= 3600)
+                { timeoutSeconds = to2; }
+                else
+                { Fail("AZURE_TIMEOUT must be a positive integer seconds value (1-3600)"); }
+            }
         }
         if (string.IsNullOrWhiteSpace(systemPrompt))
         {

@@ -74,11 +74,37 @@ internal static class Theme
     public static bool RawMode { get; set; }
 
     /// <summary>
+    /// Test-only override for <see cref="UseColor"/>. When non-<see langword="null"/>,
+    /// <see cref="UseColor"/> short-circuits the env-var / TTY precedence and
+    /// returns the stored value directly.
+    ///
+    /// <para>
+    /// Rationale (2.0.2 Mickey follow-up): the color-contract test suite
+    /// serializes within <c>ColorContractCollection</c>, but cross-collection
+    /// parallelism can race on process-global env vars
+    /// (<c>NO_COLOR</c>/<c>FORCE_COLOR</c>/etc.) that tests elsewhere might
+    /// touch transiently. An explicit test seam removes the flakiness
+    /// entirely — tests set the override, exercise the call, and reset in
+    /// <c>try/finally</c>. Kept <c>internal</c> so production code can't
+    /// depend on it; <c>InternalsVisibleTo("AzureOpenAI_CLI.V2.Tests")</c>
+    /// already grants test-project access.
+    /// </para>
+    /// </summary>
+    internal static bool? UseColorOverride { get; set; }
+
+    /// <summary>
     /// Returns <see langword="true"/> if color output is permitted under
     /// the current environment, per the 7-rule precedence.
     /// </summary>
     public static bool UseColor()
     {
+        // Test seam (2.0.2): short-circuit the entire precedence when the
+        // internal override is set. Production never touches this field.
+        if (UseColorOverride is bool forced)
+        {
+            return forced;
+        }
+
         // Rule 1: NO_COLOR > everything. Presence alone is insufficient —
         // the spec requires a non-empty value.
         var noColor = Environment.GetEnvironmentVariable("NO_COLOR");
