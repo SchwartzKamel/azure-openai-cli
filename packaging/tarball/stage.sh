@@ -27,7 +27,7 @@ case "$RID" in
     *) die "unsupported rid '$RID' (expected linux-*, osx-*, or win-*)" ;;
 esac
 
-VERSION="2.0.0"
+VERSION="2.0.1"
 
 # Resolve repo root relative to this script.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -70,8 +70,27 @@ if [[ "$RID" == win-* ]]; then
     OUT="$DIST_DIR/az-ai-v2-$VERSION-$RID.zip"
     echo ">> Creating $OUT"
     rm -f "$OUT"
-    command -v zip >/dev/null 2>&1 || die "'zip' not on PATH — required to stage Windows artifact"
-    (cd "$(dirname "$STAGE_DIR")" && zip -r "$OUT" "$(basename "$STAGE_DIR")" >/dev/null)
+    # windows-latest ships no Info-ZIP `zip` (and neither does the bundled
+    # Git-for-Windows MSYS bash) — v2.0.0 attempt #1 hit this, see
+    # docs/launch/v2-release-attempt-1-diagnostic.md §Failure #1. PowerShell's
+    # Compress-Archive is always present on windows-latest. Point it at the
+    # stage dir (NOT stage/*) so the archive preserves the top-level
+    # `az-ai-v2-<ver>-<rid>/` directory — matches the tar.gz layout enforced
+    # by `zip -r <basename>` on the unix side and by the release-v2 job body.
+    if command -v cygpath >/dev/null 2>&1; then
+        # Git Bash on windows-latest: translate POSIX → Windows paths so
+        # powershell.exe resolves them. MSYS_NO_PATHCONV is unreliable when
+        # paths sit inside single-quoted argument strings.
+        STAGE_WIN="$(cygpath -w "$STAGE_DIR")"
+        OUT_WIN="$(cygpath -w "$OUT")"
+    else
+        STAGE_WIN="$STAGE_DIR"
+        OUT_WIN="$OUT"
+    fi
+    command -v powershell.exe >/dev/null 2>&1 \
+        || die "'powershell.exe' not on PATH — required on windows-latest to stage Windows artifact"
+    powershell.exe -NoProfile -NonInteractive -Command \
+        "Compress-Archive -Path '$STAGE_WIN' -DestinationPath '$OUT_WIN' -Force"
 else
     OUT="$DIST_DIR/az-ai-v2-$VERSION-$RID.tar.gz"
     echo ">> Creating $OUT"

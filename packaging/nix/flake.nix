@@ -41,6 +41,17 @@
       # (e.g. `v2_0_0-1`) rather than mutating an existing one.
       pinnedHashes = {
         "2.0.0" = {
+          # v2.0.0 was tagged but never published (release.yml run
+          # 24736776551 failed pre-publish). The tag is immutable but no
+          # tarballs were uploaded, so these hashes can never be filled.
+          # Retained as an "attempted release" marker for parity with the
+          # Homebrew / Scoop sibling manifests. v2.0.1 supersedes. See
+          # CHANGELOG [2.0.1] and docs/launch/v2-release-attempt-1-diagnostic.md.
+          linux-x64 = nixpkgs.lib.fakeHash;
+          osx-x64   = nixpkgs.lib.fakeHash;
+          osx-arm64 = nixpkgs.lib.fakeHash;
+        };
+        "2.0.1" = {
           linux-x64 = nixpkgs.lib.fakeHash;
           osx-x64   = nixpkgs.lib.fakeHash;
           osx-arm64 = nixpkgs.lib.fakeHash;

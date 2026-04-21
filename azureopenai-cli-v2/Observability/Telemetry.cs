@@ -28,7 +28,7 @@ namespace AzureOpenAI_CLI_V2.Observability;
 internal static class Telemetry
 {
     public const string ServiceName = "azureopenai-cli-v2";
-    public const string ServiceVersion = "2.0.0-alpha.1";
+    public const string ServiceVersion = "2.0.1";
 
     // ActivitySource for distributed tracing
     public static readonly ActivitySource ActivitySource = new(ServiceName, ServiceVersion);

@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] — 2026-04-21
+
+> **Fix-forward from v2.0.0.** The `v2.0.0` tag on `b1fd2cd` is immutable
+> and remains in the repo as an "attempted release" marker, but no
+> artifacts published — `release.yml` run
+> [24736776551](https://github.com/SchwartzKamel/azure-openai-cli/actions/runs/24736776551)
+> failed in `build-binaries-v2 / win-x64` and `docker-publish-v2` before
+> `release-v2` could run. v2.0.1 is the first publicly published v2.x
+> release and supersedes the v2.0.0 tag on every channel (tarballs, GHCR,
+> Homebrew, Scoop, Nix). Post-mortem:
+> [`docs/launch/v2-release-attempt-1-diagnostic.md`](docs/launch/v2-release-attempt-1-diagnostic.md).
+
+### Fixed
+- **`stage.sh` win-x64 packaging** — `packaging/tarball/stage.sh` no
+  longer shells out to Info-ZIP `zip` on `win-*` RIDs. `windows-latest`
+  runners don't ship `zip`, and neither does the bundled Git-for-Windows
+  MSYS bash. The Windows branch now uses PowerShell's always-present
+  `Compress-Archive` (via `powershell.exe -NoProfile`), with `cygpath`
+  translation so the MSYS paths resolve on the Windows side. Archive
+  layout preserved (`az-ai-v2-<ver>-<rid>/` top-level directory) — brew /
+  scoop manifests unchanged.
+- **`Dockerfile.v2` NativeAOT cross-libc mismatch** — build stage
+  switched from Debian-glibc `dotnet/sdk:10.0` to musl-native
+  `dotnet/sdk:10.0-alpine`. Publishing for `linux-musl-x64` from a glibc
+  host was silently emitting no ELF at `/app/az-ai-v2` (ILC cross-link
+  fell through without a diagnostic; `docker-publish-v2` failed at
+  `COPY --from=build /app/az-ai-v2 ...: not found`). With host libc and
+  target RID both musl, no cross-link is required. Build-stage packages
+  updated from `apt-get install clang zlib1g-dev` to `apk add clang
+  build-base zlib-dev`. Runtime-deps stage (`runtime-deps:10.0-alpine`)
+  unchanged. Image is structurally unchanged from the consumer side.
+- **Telemetry `ServiceVersion` drift** — `Observability/Telemetry.cs`
+  still reported `"2.0.0-alpha.1"` on OTel spans and meters even after
+  the 2.0.0 tag. Corrected to `"2.0.1"` on this release. Flagged by
+  Frank in [`docs/ops/telemetry-schema-v2.0.0.md`](docs/ops/telemetry-schema-v2.0.0.md).
+- **AOT size figures reconciled (documentation-only).** Prior
+  `[2.0.0]` entry reported 15.10 MB / 1.62× / shipped-with-waiver. The
+  real shipped AOT size is **12.91 MB / 1.456× / no waiver required**,
+  matching `docs/release-notes-v2.0.0.md`, `docs/perf-baseline-v2.md`,
+  `docs/aot-trim-investigation.md`, and the `OptimizationPreference=Size`
+  + `StackTraceSupport=false` levers landed on the csproj in `056920f`.
+  The 15.10 MB figure was the pre-trim measurement and should never
+  have stayed in the CHANGELOG. Corrected in this release. Ground truth:
+  `docs/aot-trim-investigation.md` §Levers (row 7+8 = 13,533,472 bytes).
+
+### Packaging
+- **Versioned-pin manifests for 2.0.1** — new frozen siblings:
+  `packaging/homebrew/Formula/az-ai-v2@2.0.1.rb`,
+  `packaging/scoop/versions/az-ai-v2@2.0.1.json`, plus a `"2.0.1"` entry
+  in `packaging/nix/flake.nix` `pinnedHashes`. SHA256 / SRI slots carry
+  the `TODO_FILL_AT_RELEASE_TIME` / `lib.fakeHash` sentinels per the
+  tag-time ritual in `packaging/README.md`. Tracking manifests
+  (`az-ai.rb`, `az-ai.json`) already at `version "2.0.1"` from the prior
+  G6 sweep.
+
+### Docs
+- **v2.0.0 release-attempt #1 post-mortem committed** —
+  [`docs/launch/v2-release-attempt-1-diagnostic.md`](docs/launch/v2-release-attempt-1-diagnostic.md)
+  (Lippman). Captures the job-matrix outcome, the two failure roots, and
+  the recommended fix-forward path — what landed in this release.
+- **v2 release playbook §Troubleshooting extended** —
+  [`docs/launch/release-v2-playbook.md`](docs/launch/release-v2-playbook.md)
+  gains the two observed failure-mode recipes so the next red run has a
+  recipe-level fix already on-page.
+- **Release notes carry a v2.0.1 banner** —
+  `docs/release-notes-v2.0.0.md` gets an in-place note that v2.0.0 was
+  tagged but never published; v2.0.1 supersedes it. Filename is
+  preserved to avoid orphaning ~13 inbound CHANGELOG / contract / launch
+  doc references.
+
 ## [2.0.0] — 2026-04-20
 
 > Release window opens 2026-04-20 (commit-cutoff date for the 2.0.0 line). See
@@ -146,12 +216,15 @@ and an Azure SDK bump — not by CLI contract changes.
   --short` p95 is 1.12× v1 (12.58 ms mean). `--help` p95 is 1.23× v1.
   `parse-heavy` is _faster_ than v1 (0.93× mean) — the ParseArgs rework
   vindicated. Memory RSS is at or below v1 for every scenario.
-- **AOT binary size: 9.29 MB → 15.10 MB (1.62×, +5.8 MB).** Over the
-  proposed 1.5× ratio gate. Cause: MAF host assemblies (whole-subgraph
-  DI), OpenTelemetry API + exporters, and `Azure.AI.OpenAI 2.1.0` trim
-  warnings that prevent full elision. Shipping with a documented waiver;
-  trim pass tracked as a 2.0.1 follow-up (see _Known limitations_ in the
-  release notes).
+- **AOT binary size: 8.86 MB → 12.91 MB (1.456×, +4.05 MB).** Inside
+  the proposed 1.5× ratio gate — **passes without a waiver.** Cause:
+  MAF host assemblies (whole-subgraph DI), OpenTelemetry API +
+  exporters, and `Azure.AI.OpenAI 2.1.0` trim warnings that prevent
+  full elision. `OptimizationPreference=Size` and
+  `StackTraceSupport=false` (commit `056920f`) trimmed ~1.5 MB off an
+  initial 14.41 MB / 1.625× build. A further residual-reflection trim
+  pass is tracked for 2.1.x but is not blocking. Full lever analysis in
+  [`docs/aot-trim-investigation.md`](docs/aot-trim-investigation.md).
 - **Framework-dependent (`dotnet <dll>`) startup is ~1.5–1.7× v1.** This
   is not the shipping form — it exercises the JIT path, where MAF / DI /
   OTel types pay a one-time compile cost. Documented for completeness;

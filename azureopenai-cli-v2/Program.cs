@@ -1461,8 +1461,8 @@ Examples:
 ");
     }
 
-    private const string VersionSemver = "2.0.0";
-    private const string VersionFull = "az-ai-v2 2.0.0 (Microsoft Agent Framework)";
+    private const string VersionSemver = "2.0.1";
+    private const string VersionFull = "az-ai-v2 2.0.1 (Microsoft Agent Framework)";
 
     private static void ShowVersion(bool shortForm)
     {

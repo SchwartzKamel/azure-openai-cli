@@ -1,5 +1,18 @@
 # Azure OpenAI CLI v2.0.0 — Release Notes
 
+> **⚠️ v2.0.0 was tagged but never published.** `release.yml` run
+> [24736776551](https://github.com/SchwartzKamel/azure-openai-cli/actions/runs/24736776551)
+> failed in `build-binaries-v2 / win-x64` (missing `zip` on
+> `windows-latest`) and `docker-publish-v2` (NativeAOT cross-libc
+> mismatch). No tarballs, no GHCR image, no manifests bumped. The
+> `v2.0.0` tag on `b1fd2cd` is immutable and remains in-repo as an
+> "attempted release" marker. **`v2.0.1` supersedes this release on
+> every channel** (tarball, GHCR, Homebrew, Scoop, Nix). Post-mortem:
+> [`launch/v2-release-attempt-1-diagnostic.md`](launch/v2-release-attempt-1-diagnostic.md).
+> Notes below describe the v2.0.0 feature set — all of which ship
+> identically under v2.0.1, plus the two packaging fixes captured in
+> [`CHANGELOG.md`](../CHANGELOG.md#201--2026-04-21).
+
 🚀 🎉
 
 > **Release window opens 2026-04-20.** 2026-04-20 is the commit-cutoff date

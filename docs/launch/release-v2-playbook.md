@@ -109,6 +109,27 @@ Red-flag symptoms:
 - Attestation step failing with "no id-token" → verify job's
   `permissions: id-token: write` is present (it is — do not remove).
 
+### Troubleshooting — known failure modes (observed on live runs)
+
+**`build-binaries-v2 / win-x64` fails with `stage.sh: error: 'zip' not on PATH`**
+(observed: run 24736776551, v2.0.0 attempt #1). The `windows-latest`
+runner's bash does not ship Info-ZIP `zip`. Fix in `stage.sh`: branch
+`win-*` RIDs to use `powershell.exe -NoProfile -Command
+"Compress-Archive -Path <stage> -DestinationPath <out>"` instead of
+`zip -r`. Diagnostic: `docs/launch/v2-release-attempt-1-diagnostic.md`
+§"Failure #1".
+
+**`docker-publish-v2` fails at `COPY --from=build /app/az-ai-v2 ...: not found`**
+(observed: run 24736776551, v2.0.0 attempt #1). NativeAOT
+cross-compile from the glibc SDK image to `linux-musl-x64` silently
+emits no ELF. Fix in `Dockerfile.v2`: switch build stage to
+`mcr.microsoft.com/dotnet/sdk:10.0-alpine` (host + target both musl,
+no cross-link) OR add `apt-get install -y musl-tools` to the Debian
+base. Prefer alpine. Diagnostic: §"Failure #2". Note: `docker-publish-v2`
+can be re-run via `workflow_dispatch` without a re-tag **once binary
+legs are green** — but if binary legs also failed, the whole release is
+a no-go and the fix ships in the next patch tag.
+
 ---
 
 ## 4. Post-publish hash sync

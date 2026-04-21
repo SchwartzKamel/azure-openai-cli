@@ -16,25 +16,33 @@
 # azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj).
 
 # ---------- Stage 1: Build ----------
-# Pinned to match v1 Dockerfile's SDK digest for toolchain parity.
-# Dependabot/Renovate bumps both Dockerfiles together via the `dotnet/sdk:10.0` tag hint.
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:adc02be8b87957d07208a4a3e51775935b33bad3317de8c45b1e67357b4c073b AS build
+# Alpine SDK image. v2.0.0 attempt #1 tried the Debian (glibc) SDK base
+# while publishing for `linux-musl-x64` — NativeAOT cross-libc cross-link
+# silently emitted no ELF at /app/az-ai-v2 (docker-publish-v2 job fails at
+# the `COPY --from=build /app/az-ai-v2` step). See
+# docs/launch/v2-release-attempt-1-diagnostic.md §Failure #2. Fix-forward
+# on 2.0.1: switch build stage to sdk:10.0-alpine so host libc (musl) and
+# target RID (linux-musl-x64) match — no cross-link, no silent-emit trap.
+# Dependabot/Renovate bumps `dotnet/sdk:10.0-alpine` via the tag hint.
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine@sha256:732cd42c6f659814c9804ad7b05c7f761e83ef8379c5b2fdc3af673353caff73 AS build
 WORKDIR /src
 
-# NativeAOT on musl requires clang + the zlib dev headers for ILC to link.
-# The SDK image is Debian-based; install the linker toolchain before publish.
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
+# NativeAOT on musl needs clang + build-base (binutils/make) + zlib headers
+# for ILC to link. Alpine equivalents of the Debian clang/zlib1g-dev set.
+RUN apk add --no-cache \
         clang \
-        zlib1g-dev \
- && rm -rf /var/lib/apt/lists/*
+        build-base \
+        zlib-dev
 
 # Copy only .csproj first for restore-layer caching. Must include the test
 # project references transitively — so copy the solution's v2 csproj alone
 # and restore against it with the target RID pinned (avoids NETSDK1047).
+# Retain PublishReadyToRun flag parity with v1 Dockerfile per commit 37127d1
+# so a subsequent `publish --no-restore` resolves the same asset graph.
 COPY azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj ./azureopenai-cli-v2/
 RUN dotnet restore ./azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj \
-        -r linux-musl-x64
+        -r linux-musl-x64 \
+        /p:PublishReadyToRun=true
 
 # Then copy source (changes here don't invalidate the restore cache)
 COPY azureopenai-cli-v2/ ./azureopenai-cli-v2/
