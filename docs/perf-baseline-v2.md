@@ -2,7 +2,7 @@
 
 **Document owner:** Kenny Bania (pre-merge perf gate)
 **Gate covered:** Cutover precondition §1 — performance
-**Status:** ⚠️ **CONDITIONAL GO** — v2 passes shipping-form (AOT) gates on startup and memory; **fails the proposed 1.5× binary-size gate (actual: 1.62×)**. Recommend waiver with follow-up ticket to trim the AOT binary, or raise the size gate to 1.75× for v2.0.0 only. See §Verdict.
+**Status:** ✅ **GO** — v2 passes shipping-form (AOT) gates on startup, memory, and binary size after the AOT trim landed in `056920f`. Initial build measured 1.625× against the 1.5× size gate; `OptimizationPreference=Size` + `StackTraceSupport=false` brought the shipped binary to **1.456× (12.91 MB)**, clearing the gate without a waiver. See §Verdict and `docs/aot-trim-investigation.md`.
 
 ---
 
@@ -111,15 +111,17 @@ AOT tells the true story: v2 is competitive. `--version --short` (the command sp
 
 ### 3.4 Binary size
 
-| Artifact | v1 1.9.1 | v2 2.0.0 | v2/v1 | Gate (1.5×) |
-|---|---:|---:|---:|:---:|
-| Framework-dependent DLL | 188,416 B | 206,336 B | 1.095× | ✅ pass |
-| **AOT single-file linux-x64** | **9,294,968 B** | **15,097,632 B** | **1.624×** | ❌ **fail** |
+| Artifact | v1 1.9.1 | v2 2.0.0 (pre-trim) | v2 2.0.0 (shipped) | v2/v1 shipped | Gate (1.5×) |
+|---|---:|---:|---:|---:|:---:|
+| Framework-dependent DLL | 188,416 B | 206,336 B | 206,336 B | 1.095× | ✅ pass |
+| **AOT single-file linux-x64** | **9,294,968 B** | 15,105,904 B (1.625×) | **13,533,472 B** | **1.456×** | ✅ **pass** |
 
-The AOT binary is the visible user-facing size (chocolatey/homebrew/winget tarball weight, Docker layer, espanso deploy). **1.62× exceeds the 1.5× gate by 0.12×** — about +5.8 MB vs v1. Culprits:
+The AOT binary is the visible user-facing size (chocolatey/homebrew/winget tarball weight, Docker layer, espanso deploy). The initial v2 build landed at 1.625× — 0.12× over the gate — driven by:
 - `Microsoft.Extensions.AI` + MAF host assemblies pulled whole-subgraph through DI.
 - OpenTelemetry.Api + exporters.
 - `Azure.AI.OpenAI 2.1.0` — emits IL2104 (not trim-friendly) and IL3053 (AOT warnings); ILC reports two methods that "will always throw" due to missing getters on `ChatCompletionOptions`. Trimmer cannot fully elide this subgraph.
+
+See `docs/aot-trim-investigation.md` for the investigation and lever analysis that brought v2 from 1.625× → **1.456× (12.91 MB)** via `OptimizationPreference=Size` + `StackTraceSupport=false` in `056920f`. **The shipped binary clears the 1.5× gate without a waiver.**
 
 ### 3.5 Memory
 
@@ -139,12 +141,12 @@ Proposed gates (per task brief) and observed results:
 |---|---|---|:---:|
 | Cold start mean | v2 ≤ 1.25× v1 | 1.16× (`--version --short`), **1.60× (`--help`)** | ⚠️ mixed |
 | Cold start p95 | v2 ≤ 1.25× v1 | 1.12× (`--version --short`), 1.23× (`--help`) | ✅ |
-| Binary size (AOT) | v2 ≤ 1.50× v1 | **1.62×** | ❌ |
+| Binary size (AOT) | v2 ≤ 1.50× v1 | **1.456×** (post-trim, shipped) | ✅ |
 | Memory (RSS) | v2 ≤ 1.50× v1 | 0.88–1.00× | ✅ |
 
 **Recommendation — revise gates for v2.0.0 and beyond:**
 1. **Drop the mean-latency gate, keep p95.** Means are noisy on ms-scale cold starts; p95 is what the user perceives. Proposed: **AOT p95 ≤ 1.25× v1** and **absolute p95 ≤ 25 ms** on reference hardware. v2 passes both.
-2. **Size gate split in two.** A ratio gate (≤ 1.75× for the v1→v2 major-version jump only) plus an absolute ceiling (≤ 20 MB AOT single-file). v2 passes both with the revision; blocks the 1.5× ratio as stated.
+2. **Keep the 1.5× ratio gate as-is.** Shipped v2 clears it at 1.456× post-trim. No waiver required.
 3. **Add a Gate-2 command gate explicitly.** `--version --short` p95 ≤ 20 ms on reference hardware, ≤ 1.25× v1. v2 passes.
 4. **Add noise-aware framework-dependent gate as a warning only**, not a blocker — it's informative for JIT changes but doesn't reflect the user's experience.
 
@@ -154,14 +156,10 @@ Proposed gates (per task brief) and observed results:
 |---|---|---|:---:|
 | Startup (p95, AOT, Gate-2 cmd) | ≤ 1.25× v1 | 1.12× | ✅ GO |
 | Startup (p95, AOT, `--help`) | ≤ 1.25× v1 | 1.23× | ✅ GO (just) |
-| Binary size (AOT) | ≤ 1.50× v1 | 1.62× | ❌ **BLOCKED** |
+| Binary size (AOT) | ≤ 1.50× v1 | **1.456×** (post-trim) | ✅ GO |
 | Memory (RSS) | ≤ 1.50× v1 | ≤ 1.00× | ✅ GO |
 
-**Overall: BLOCKED on binary size only.** Every runtime-behaviour gate passes for the shipping form. Request one of:
-- **Waiver** for the 1.5× size gate at v2.0.0, owned by the MAF integration author, with FR-00X ("AOT binary trim") tracked for v2.1. Rationale: the MAF pivot is the product; users accept a ~5.8 MB increase for agentic orchestration. Document in CHANGELOG.
-- **Fix before merge** by trimming. See §6.
-
-If waived → **GO for cutover.** If not → **NO-GO** until §6.1 / §6.2 land.
+**Overall: GO for cutover.** Every runtime-behaviour gate and the size gate pass in shipping form after the AOT trim (`056920f`). Initial build measured 1.625× — mitigated in-cycle via `OptimizationPreference=Size` + `StackTraceSupport=false`. Residual Azure.AI.OpenAI trim opportunity tracked for v2.1; no v2.0.0 waiver required.
 
 ## 6. Follow-ups
 
