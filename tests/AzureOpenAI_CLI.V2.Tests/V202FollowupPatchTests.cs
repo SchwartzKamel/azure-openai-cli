@@ -1,4 +1,5 @@
 using System.Text;
+using AzureOpenAI_CLI.V2.Tests;
 using AzureOpenAI_CLI_V2;
 using AzureOpenAI_CLI_V2.Squad;
 using AzureOpenAI_CLI_V2.Tools;
@@ -16,6 +17,7 @@ namespace AzureOpenAI_CLI_V2.Tests;
 ///   • K-1 sibling — ShellExec firstToken split tolerates leading tab/newline
 ///                   on the fast path (defense-in-depth over the segment rescan)
 /// </summary>
+[Collection(SafetyPatchCollection.Name)]
 public class V202FollowupPatchTests : IDisposable
 {
     private readonly string _tempDir;
@@ -109,6 +111,68 @@ public class V202FollowupPatchTests : IDisposable
             Environment.SetEnvironmentVariable("AZURE_TIMEOUT", prev);
         }
     }
+
+    // ══════════════════════════════════════════════════════════════════
+    // F-5 flag parity — --timeout flag bounds match AZURE_TIMEOUT env
+    // ══════════════════════════════════════════════════════════════════
+    //
+    // Prior to 2.0.2 the flag only checked `int.TryParse` and would accept
+    // 0, -5, 3601, 99999 — bypassing the bounds AZURE_TIMEOUT just learned.
+    // Closing that gap so CLI flag and env-var validation stay in lockstep.
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("60")]
+    [InlineData("3600")]
+    public void F5Flag_TimeoutInRange_Accepted(string value)
+    {
+        var prev = Environment.GetEnvironmentVariable("AZURE_TIMEOUT");
+        Environment.SetEnvironmentVariable("AZURE_TIMEOUT", null);
+        try
+        {
+            var opts = Program.ParseArgs(["--timeout", value, "prompt"]);
+            Assert.False(opts.ParseError,
+                $"--timeout {value} must be accepted but parser flagged: parseError=true");
+            Assert.Equal(int.Parse(value), opts.TimeoutSeconds);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AZURE_TIMEOUT", prev);
+        }
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-5")]
+    [InlineData("3601")]
+    [InlineData("99999")]
+    [InlineData("abc")]
+    [InlineData("1.5")]
+    [InlineData("")]
+    public void F5Flag_TimeoutInvalid_Rejected(string value)
+    {
+        var prev = Environment.GetEnvironmentVariable("AZURE_TIMEOUT");
+        Environment.SetEnvironmentVariable("AZURE_TIMEOUT", null);
+        var oldErr = Console.Error;
+        using var sw = new StringWriter();
+        Console.SetError(sw);
+        try
+        {
+            var opts = Program.ParseArgs(["--timeout", value, "prompt"]);
+            Assert.True(opts.ParseError,
+                $"--timeout {value} must be rejected but parser accepted it");
+            Assert.Equal(1, opts.ParseErrorExitCode);
+            var err = sw.ToString();
+            Assert.Contains("--timeout must be a positive integer seconds value (1-3600)", err);
+        }
+        finally
+        {
+            Console.SetError(oldErr);
+            Environment.SetEnvironmentVariable("AZURE_TIMEOUT", prev);
+        }
+    }
+
+
 
     // ══════════════════════════════════════════════════════════════════
     // K-5 sibling — PersonaMemory.LogDecision 32 KB cap + rotation

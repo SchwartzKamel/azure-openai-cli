@@ -13,6 +13,7 @@ namespace AzureOpenAI_CLI.V2.Tests;
 /// positive path AND a negative path. Subprocess-driven K-7 exercises the
 /// real entry point, not a mocked ErrorAndExit surface.
 /// </summary>
+[Collection(SafetyPatchCollection.Name)]
 public class V201ProgramPatchTests
 {
     // ═══════════════════════════════════════════════════════════════════

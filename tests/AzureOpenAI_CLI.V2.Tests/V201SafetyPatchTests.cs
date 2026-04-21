@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using AzureOpenAI_CLI.V2.Tests;
 using AzureOpenAI_CLI_V2;
 using AzureOpenAI_CLI_V2.Squad;
 using AzureOpenAI_CLI_V2.Tools;
@@ -13,6 +14,7 @@ namespace AzureOpenAI_CLI_V2.Tests;
 /// which task a test belongs to. Every task asserts both the positive path
 /// AND the negative path (pass-the-pass, fail-the-fail).
 /// </summary>
+[Collection(SafetyPatchCollection.Name)]
 public class V201SafetyPatchTests : IDisposable
 {
     private readonly string _tempDir;

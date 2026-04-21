@@ -775,9 +775,11 @@ internal class Program
                     else { Fail("--max-tokens must be a positive integer"); }
                     break;
                 case "--timeout":
-                    if (i + 1 < args.Length && int.TryParse(args[i + 1], out int to))
+                    // Bounds parity with AZURE_TIMEOUT env-var validation (F-5 sibling, 2.0.2):
+                    // reject non-int, zero, negative, > 3600.
+                    if (i + 1 < args.Length && int.TryParse(args[i + 1], out int to) && to > 0 && to <= 3600)
                     { timeoutSeconds = to; i++; }
-                    else { Fail("--timeout requires an integer"); }
+                    else { Fail("--timeout must be a positive integer seconds value (1-3600)"); }
                     break;
                 case "--system":
                 case "-s":
