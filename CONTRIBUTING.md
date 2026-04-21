@@ -1,217 +1,244 @@
 # Contributing to Azure OpenAI CLI
 
-Welcome! We're glad you're interested in contributing to the Azure OpenAI CLI. Whether you're fixing a bug, adding a feature, improving documentation, or reporting an issue — every contribution matters.
+Hello! Contributor! Hello!
 
-## Prerequisites
+You found the repo, you read this far — that already puts you ahead. This
+doc exists so you can go from `git clone` to a merged PR without guessing.
+It is terse on purpose. If something is unclear, that's a bug in this
+file; open an issue and we'll fix it.
 
-Before you begin, make sure you have the following installed:
+---
 
-- [Docker](https://www.docker.com/) (for containerized builds and running)
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (for local development without Docker)
-- [Make](https://www.gnu.org/software/make/) (for build automation)
+## The 30-second orientation
 
-Verify your setup:
+- **Two source trees live in this repo.** v1 is in [`azureopenai-cli/`](azureopenai-cli/),
+  v2 is in [`azureopenai-cli-v2/`](azureopenai-cli-v2/). **All new work goes in v2.**
+  v1 is maintenance-only: security fixes, P0 regressions, and the handful of
+  v2.0.0 cutover blockers tracked in [`docs/proposals/README.md`](docs/proposals/README.md).
+  If you're not sure which tree to touch, assume v2.
+- **v2 is the new default.** Background, scope, and behavior contracts are in
+  [`docs/release-notes-v2.0.0.md`](docs/release-notes-v2.0.0.md). Migrating from
+  v1? See [`docs/migration-v1-to-v2.md`](docs/migration-v1-to-v2.md).
+- **Preflight is non-negotiable** on any change that touches `.cs`, `.csproj`,
+  `.sln`, or `.github/workflows/`. Details below.
+- **Every PR needs a Conventional Commit subject and the Copilot trailer**
+  if the work was AI-assisted. Details below.
+
+---
+
+## Quickstart
 
 ```bash
-docker --version
-dotnet --version
-make --version
-```
-
-## Getting Started
-
-```bash
-# 1. Fork and clone the repository
+# 1. Fork, clone, enter
 git clone https://github.com/<your-username>/azure-openai-cli.git
 cd azure-openai-cli
 
-# 2. Create your .env file from the template
-cp azureopenai-cli/.env.example .env
-nano .env  # Add your Azure credentials
+# 2. Install the .NET 10 SDK + local tooling (once)
+make setup
 
-# 3. Build the Docker image
-make build
+# 3. Run the unit test suite — this is your "is my tree sane?" check
+dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj
 
-# 4. Run the CLI
-make run ARGS="Hello world!"
+# 4. Before you commit code: the preflight gate (see below)
+#    This is what CI runs. If it's green locally, CI will be green.
+dotnet format azure-openai-cli.sln --verify-no-changes
+dotnet build azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj -c Release --nologo
+dotnet test  tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --nologo
 ```
 
-## Development Workflow
+`make help` lists every target — build, cross-platform publish, AOT,
+benchmarks, Docker, scan, install. Most contributors only need `dotnet test`,
+`make format`, and `make publish-aot`.
 
-### Local build (without Docker)
+`.env` with Azure credentials is only needed if you run the CLI end-to-end
+against a live endpoint. Unit tests don't need it.
 
-For faster iteration during development, you can build and run directly with the .NET SDK:
+---
 
-```bash
-dotnet run --project azureopenai-cli/ -- "your prompt"
-```
+## The preflight gate
 
-### Docker build
+**Non-negotiable.** Read [`.github/skills/preflight.md`](.github/skills/preflight.md)
+and run all four checks locally before `git commit` on any change that
+touches:
 
-The primary build and distribution mechanism uses Docker:
+- `*.cs`, `*.csproj`, `*.sln`, `.editorconfig`
+- `.github/workflows/*.yml`
+- `Dockerfile` or integration test scripts
 
-```bash
-make build
-make run ARGS="your prompt"
-```
+Docs-only PRs (`*.md`) can skip it. If you skip it on a code change, CI will
+catch you and the PR will sit red until you fix it — the skill file exists
+because we already paid for the lesson (`180d64f`, five red runs on `main`).
 
-### Useful Make targets
+---
 
-| Target | Description |
-|--------|-------------|
-| `make build` | Build the Docker image |
-| `make run ARGS="..."` | Run the CLI inside a container |
-| `make clean` | Remove build artifacts and prune Docker cache |
-| `make test` | Clean, build, and run a sample prompt |
-| `make scan` | Run Grype vulnerability scanner on the image |
-| `make check` | Build verification (CI-friendly) |
+## Commits
 
-## Running Tests
+Conventional Commits, lowercase type, imperative subject ≤ 72 chars. Full
+rules and examples in [`.github/skills/commit.md`](.github/skills/commit.md).
 
-```bash
-# Via Make (builds and runs a sample prompt)
-make test
+Accepted types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
+`build`, `ci`, `chore`, `bench`, `security`.
 
-# Via .NET directly
-dotnet test
-```
-
-## Code Style
-
-This project follows standard C# conventions:
-
-- **Target framework:** `net10.0`
-- **Nullable reference types:** enabled
-- **Implicit usings:** enabled
-- Use meaningful, descriptive names for variables, methods, and classes
-- Keep methods focused and short
-- Handle errors explicitly — see the [Architecture](ARCHITECTURE.md) doc for error handling patterns
-- Use `System.Text.Json` for serialization (no Newtonsoft)
-
-## Submitting Changes
-
-### Branch naming
-
-Use descriptive branch names with a prefix:
-
-- `feature/add-streaming-timeout`
-- `fix/model-selection-crash`
-- `docs/update-readme-examples`
-
-### Pull request process
-
-1. **Fork** the repository and create your branch from `main`
-2. **Make your changes** — keep commits focused and atomic
-3. **Test your changes** — run `make test` or `dotnet test`
-4. **Push** your branch to your fork
-5. **Open a Pull Request** against `main` with a clear description of your changes
-6. Fill out the PR template completely
-
-```bash
-git checkout -b feature/my-feature
-# make your changes
-git add .
-git commit -m "Add my feature"
-git push origin feature/my-feature
-```
-
-### What we look for in PRs
-
-- Clear description of what changed and why
-- No breaking changes without discussion
-- Tests pass (`make test`)
-- Documentation updated if behavior changes
-- No credentials or secrets committed
-
-## Reporting Issues
-
-Found a bug or have a feature idea? Please use our issue templates:
-
-- [Bug Report](https://github.com/SchwartzKamel/azure-openai-cli/issues/new?template=bug_report.md)
-- [Feature Request](https://github.com/SchwartzKamel/azure-openai-cli/issues/new?template=feature_request.md)
-
-If your issue doesn't fit a template, feel free to [open a blank issue](https://github.com/SchwartzKamel/azure-openai-cli/issues/new).
-
-## Code of Conduct
-
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior by opening an issue.
-
-## Questions?
-
-Not sure where to start? Open an issue with your question — we're happy to help!
-
-## First Contribution
-
-New here? Welcome. Here's the fastest path from clone to merged PR.
-
-### 1. Set up your environment
-
-```bash
-git clone https://github.com/SchwartzKamel/azure-openai-cli.git
-cd azure-openai-cli
-make setup   # restores dependencies and preps local tooling
-make test    # runs the full test suite
-```
-
-If `make test` is green, you're good. If it isn't, that's already a valuable
-bug report — open an issue with your OS and the output.
-
-### 2. Find something small
-
-Look for issues labeled [`good-first-issue`](https://github.com/SchwartzKamel/azure-openai-cli/labels/good-first-issue).
-These are scoped deliberately small: a docs fix, a single-function change, a
-clear test to add. Comment on the issue saying you're picking it up so no one
-duplicates your work.
-
-Nothing on the board catches your eye? Small PRs we always welcome:
-
-- Typo and grammar fixes in docs
-- A missing `--help` example
-- An extra test for an existing behavior
-- A clearer error message
-
-### 3. Ship the small PR
-
-```bash
-git checkout -b fix/short-description
-# ...make your change...
-make test
-git commit -m "docs: clarify chat --stream flag behavior"
-git push origin fix/short-description
-```
-
-Open the PR. Fill in the template. `make test` should pass in CI. A
-maintainer will review — we try to respond within a few days. Ping the PR
-if a week goes by; we don't mind the nudge.
-
-### A note on AI assistance
-
-Using Copilot, Claude, or similar to help write code is fine and
-encouraged — just disclose it. Add a `Co-authored-by:` trailer to your
-commit message so the assistant shows up as a co-author:
+If Copilot, Claude, or any other assistant helped write the change, add the
+trailer — no exceptions, this is how we trace provenance:
 
 ```
+feat(v2): add --estimate cost preview for chat
+
+Surfaces the FR-015 rate card before the request is sent so
+Espanso users can bail out of expensive prompts.
+
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 ```
 
-Don't be shy. We'd rather have a rough first PR from you than a polished
-one that never leaves your laptop.
+---
+
+## Where to file what
+
+| You have… | File it as… |
+| --- | --- |
+| A bug or regression | [Bug report issue](.github/ISSUE_TEMPLATE/bug_report.yml) |
+| A small feature idea or usage question | [Feature request issue](.github/ISSUE_TEMPLATE/feature_request.yml) or [Question](.github/ISSUE_TEMPLATE/question.yml) |
+| A substantial feature (new flag surface, new provider, new subsystem) | A proposal under [`docs/proposals/`](docs/proposals/) as `FR-XXX-short-slug.md` — match the format of an existing entry (e.g. [FR-014](docs/proposals/FR-014-local-preferences-and-multi-provider.md)) and add your row to [`docs/proposals/README.md`](docs/proposals/README.md) |
+| A new agent archetype | A markdown file in [`.github/agents/`](.github/agents/); see [`AGENTS.md`](AGENTS.md) for the fleet rationale and existing cast |
+| A security vulnerability | **Do not open a public issue.** Use [GitHub Security Advisories](https://github.com/SchwartzKamel/azure-openai-cli/security/advisories/new); see [`SECURITY.md`](SECURITY.md) |
+
+Big features go through a proposal first so Costanza (PM) and Mr. Pitt
+(program) can slot them against the roadmap before you burn a weekend on
+code.
+
+---
+
+## Pull request expectations
+
+Before you open the PR:
+
+- [ ] Preflight is green locally (and will be green in CI)
+- [ ] A test covers the new or changed behavior — unit preferred, integration
+      if the change is at the CLI surface
+- [ ] User-visible docs updated: `README.md`, `docs/…`, `--help` text, man
+      pages, whichever applies
+- [ ] `CHANGELOG.md` gains an entry under `[Unreleased]` unless the change
+      is docs-only
+- [ ] No secrets, endpoints, or tokens in the diff
+- [ ] Commit subject is a Conventional Commit; Copilot trailer present if
+      AI-assisted
+
+The PR template (see [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md))
+walks you through it. Keep the diff focused — one concern per PR reviews
+faster and reverts cleaner.
+
+Reviewers usually respond within a few days. Nudge the PR after a week;
+we don't mind.
+
+---
+
+## Getting help
+
+- Stuck on setup? Open an issue with your OS, `.NET` version, and the
+  exact error. That's already a useful bug report.
+- Design question before you code? Open a
+  [Question issue](.github/ISSUE_TEMPLATE/question.yml) or start a
+  [Discussion](https://github.com/SchwartzKamel/azure-openai-cli/discussions).
+- Maintainer AWOL on your PR? Tag them on the PR. Silence is never the
+  intended signal.
+
+---
+
+## The fleet
+
+You'll see names like **Costanza**, **Kramer**, **Elaine**, **Peterman**,
+**Newman**, **Uncle Leo** turn up in commit bodies, PR comments, and
+review threads. These aren't people — they're
+[agent archetypes](AGENTS.md) this project uses with GitHub Copilot custom
+agents. Each archetype owns a domain (PM, engineering, docs, DevOps,
+security, release, a11y, i18n, …) and the fleet collaborates to drive the
+build.
+
+When a PR comment says "Newman flagged this for supply-chain review" or
+"let Peterman rewrite the marketing blurb," that's a real owner with a
+real scope — just one wearing a persona. The full cast of 25 is listed in
+[`AGENTS.md`](AGENTS.md) and defined in [`.github/agents/`](.github/agents/).
+Contributors are not required to use the archetypes. They're how the
+maintainer team organizes attention.
+
+---
+
+## Color, ANSI, and accessibility
+
+v2.0.0 ships **monochrome-by-construction** — zero ANSI escapes, zero
+`ConsoleColor` calls, no spinner. `NO_COLOR`, `TERM=dumb`, and piped
+stdout are trivially honored because there is nothing to suppress. v2.1
+and beyond may add color; when that happens the contract is **locked in
+now, before the first color byte ships**.
+
+**→ Canonical contract: [`.github/contracts/color-contract.md`](.github/contracts/color-contract.md)**
+
+The short version — if your PR emits ANSI or color anywhere, the same
+PR must:
+
+1. **`NO_COLOR` always wins.** If the env var is set and non-empty, no
+   ANSI SGR escapes. Ever. See <https://no-color.org>.
+2. **`FORCE_COLOR=1` / `CLICOLOR_FORCE=1`** force color on even when
+   stdout is redirected (CI log collectors, `script(1)`, test harnesses).
+   `NO_COLOR` still beats this.
+3. **Auto-detect:** color off unless `Console.IsOutputRedirected == false`.
+4. **`TERM=dumb`:** no ANSI.
+5. **Precedence:** `NO_COLOR` > `TERM=dumb` > `CLICOLOR=0` >
+   `FORCE_COLOR` / `CLICOLOR_FORCE` > auto-detect.
+6. **`--raw` is silent-by-design:** no color, no spinner, no banner,
+   no decoration. Stable machine-readable output contract; breaking it
+   is a SemVer-breaking change.
+7. **`[ERROR]` prefix is mandatory** on every stderr error line — screen
+   readers (Orca, NVDA, VoiceOver) key off the literal token. Not
+   `Error:`, not `ERR:`.
+
+All color output must be gated by a single `Theme.UseColor()` helper.
+PRs that set `Console.ForegroundColor` or emit raw ANSI escapes outside
+that helper will be blocked on review. Every new colorized path ships
+with a `NO_COLOR=1` test asserting zero escape bytes and a
+`FORCE_COLOR=1` test asserting at least one escape byte.
+
+Full test checklist, anti-patterns, and enforcement rules live in the
+contract file linked above. Background rationale is in
+[`docs/accessibility-review-v2.md`](docs/accessibility-review-v2.md) §1.4
+and §7.1.
+
+---
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). By
+participating, you agree to uphold it. Report unacceptable behavior
+through [`SECURITY.md`](SECURITY.md)'s private channel or to a maintainer
+directly — we deal with it privately first, publicly only when necessary,
+and consistently either way.
+
+---
 
 ## Labels
 
-We use a small, boring set of labels. If you're browsing issues, these are
-the ones that matter:
+A small, boring set. If you're browsing issues:
 
 | Label | Meaning |
 | --- | --- |
 | `good-first-issue` | Open, well-scoped, ideal for newcomers. Start here. |
-| `help-wanted` | We'd love help, but the scope assumes some project familiarity. |
+| `help-wanted` | We'd love help; assumes some project familiarity. |
 | `needs-triage` | New, awaiting maintainer review. Auto-applied by issue forms. |
 | `bug` | Confirmed defect or regression. |
 | `enhancement` | Feature request or improvement. |
-| `question` | A usage or design question; often ends up in Discussions. |
+| `question` | Usage or design question; often migrates to Discussions. |
 | `docs` | Documentation-only change. |
-| `security` | Security-sensitive. Prefer [Security Advisories](https://github.com/SchwartzKamel/azure-openai-cli/security/advisories/new) for vulnerabilities. |
+| `security` | Security-sensitive. Prefer Security Advisories for vulnerabilities. |
+| `v1-maintenance` | Touches `azureopenai-cli/` only; bounded scope. |
+| `v2` | Touches `azureopenai-cli-v2/` — the default for new work. |
 
-Maintainers apply labels during triage. If you think a label is wrong,
-say so on the issue — we're not precious about it.
+Maintainers curate these. If a label looks wrong, say so on the issue.
+
+---
+
+Welcome aboard. Ship something small first — a typo fix, a missing
+`--help` example, a clearer error string. That first merged PR is the
+hardest one. Everything after it is easier.
+
+— the maintainers (and the fleet)

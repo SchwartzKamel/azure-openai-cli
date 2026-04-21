@@ -113,6 +113,22 @@ Opens the Azure OpenAI connection in parallel with prompt assembly.
 Recovers most of the MAF cold-start cost on the first interactive call.
 See [FR-007](proposals/FR-007-parallel-startup-and-connection-prewarming.md).
 
+### `--raw` — silent-by-design output contract (§7.1)
+
+`--raw` is a **stable machine-readable output contract** for Espanso,
+AutoHotkey, `jq` pipelines, and shell scripts. Under `--raw`:
+
+- No ANSI escapes, no spinner, no banner, no emoji chrome.
+- No trailing blank line beyond the final content newline.
+- No `[tokens: ...]` footer on stderr; no `[cache]` diagnostics.
+
+Silent-by-design means that on a slow network, the user sees **nothing**
+until the full response streams — this is intentional, not a bug.
+Breaking `--raw` output is a breaking change under SemVer. The full
+rules are locked in at
+[`.github/contracts/color-contract.md`](../.github/contracts/color-contract.md)
+(Rule 6).
+
 ### Cost hook + pricing table
 
 The estimator is backed by a pluggable price table. Set
