@@ -1,0 +1,14 @@
+# License allowlist for azure-openai-cli (az-ai)
+# One SPDX license identifier per line. Lines starting with # are comments.
+# Owner: Jackie Chiles (OSS compliance).
+# See docs/licensing-audit.md for the audit rationale.
+#
+# Project is distributed under MIT. Only MIT-compatible permissive licenses
+# that require no source-disclosure obligation are allowed here.
+
+MIT
+Apache-2.0
+BSD-2-Clause
+BSD-3-Clause
+MIT-0
+0BSD
