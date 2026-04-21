@@ -3,6 +3,7 @@ using AzureOpenAI_CLI_V2.Observability;
 
 namespace AzureOpenAI_CLI.V2.Tests;
 
+[Collection(TelemetryGlobalStateCollection.Name)]
 public class ObservabilityTests
 {
     [Fact]

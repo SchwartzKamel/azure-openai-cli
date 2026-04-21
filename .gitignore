@@ -21,6 +21,7 @@ obj/
 
 # Publish output directories (make publish-fast, publish-aot)
 dist/
+artifacts/
 [Bb]uild[Ll]og.*
 
 # User-specific files

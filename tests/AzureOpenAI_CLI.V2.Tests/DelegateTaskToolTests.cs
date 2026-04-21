@@ -12,6 +12,7 @@ namespace AzureOpenAI_CLI.V2.Tests;
 /// the AsyncLocal depth cap, honors the tool allowlist, emits telemetry,
 /// returns child text, and survives adversarial task strings.
 /// </summary>
+[Collection(TelemetryGlobalStateCollection.Name)]
 public class DelegateTaskToolTests : IDisposable
 {
     public DelegateTaskToolTests()
