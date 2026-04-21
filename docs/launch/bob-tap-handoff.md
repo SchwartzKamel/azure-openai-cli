@@ -24,10 +24,38 @@ digests have been back-filled into `packaging/` by Mr. Lippman.
 | Item | State |
 | --- | --- |
 | `gh` CLI available in sandbox | ❌ not installed |
-| Phase 1 scaffolds committed locally | ✅ |
-| Phase 2 (formula/manifest copy) | ⏳ blocked on hash-sync |
+| Phase 1 scaffolds committed locally | ✅ (tap `9e9fd3d`, bucket `efcd0f4`) |
+| Phase 2 (formula/manifest copy) | ⏳ blocked — no hash-sync exists |
 | Remote repos created | ❌ needs the person with a `gh` login |
 | Initial push | ❌ (requires remote creation) |
+
+### Round 2 (v2.0.1) — blocked, release failed
+
+Tag `v2.0.1` (`039e6bd`) triggered `release.yml` run 24739184465.
+`build-binaries-v2/win-x64` went green (Jerry's `stage.sh`
+Compress-Archive patch verified), but `docker-publish-v2` failed at
+the same `COPY --from=build /app/az-ai-v2` step with the identical
+signature as v2.0.0. **No artifacts published. No hash-sync commit
+landed.** Lippman marked `lippman-r2` blocked in `9995243` with the
+full diagnostic at `docs/launch/v2.0.1-release-attempt-diagnostic.md`.
+
+Root cause (per the diagnostic): `dotnet restore … PublishReadyToRun`
+followed by `dotnet publish --no-restore -p:PublishAot=true` resolved
+different RID asset graphs, so `--no-restore` silently degraded to a
+framework-dependent managed publish emitting only `az-ai-v2.dll`. Not
+a libc issue — the Alpine SDK swap was a false fix.
+
+Jerry's fix-forward to **v2.0.2** is committed (`fd4ddc7`, single
+`dotnet publish` + AOT verification gates in `Dockerfile.v2`), but
+**no `v2.0.2` tag is pushed yet** — that call is with the user.
+Bob's Round-2 todo (`bob-r2`) is blocked pending the v2.0.2 release
+producing published artifacts and a Lippman hash-sync commit.
+
+When v2.0.2 ships, Round-3 workflow is identical to the Round-2
+runbook below with `2.0.1 → 2.0.2` substitutions throughout (source
+files become `packaging/homebrew/Formula/az-ai-v2@2.0.2.rb` and
+`packaging/scoop/versions/az-ai-v2@2.0.2.json`). `/tmp/bob-tap-prep/`
+scaffolds are untouched and still valid.
 
 Todo `bob-tap-standup` is **blocked** in the session DB with reason
 "auth unavailable for gh repo create; handoff doc staged at
