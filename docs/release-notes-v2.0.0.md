@@ -142,15 +142,18 @@ lands at 1.12× v1 (12.58 ms mean p95 18.25 ms), `--help` at 1.23× v1
 (14.64 ms mean p95 18.78 ms), `parse-heavy` is actually _faster_ than v1
 (0.93× mean). RSS is at or below v1 on every scenario.
 
-**Binary size is bigger.** The AOT single-file binary grew from 9.29 MB
-(v1.9.1) to 15.10 MB (v2.0.0) — a 1.62× increase, or about +5.8 MB.
-That is the cost of the MAF host + OpenTelemetry + the Azure SDK bump.
-The proposed 1.5× ratio gate does not pass; we are shipping with a
-documented waiver and an AOT trim pass scheduled for 2.0.1.
+**Binary size is bigger, but inside the gate.** The AOT single-file
+binary grew from 8.86 MB (v1.9.1) to **12.91 MB (v2.0.0)** — a
+**1.456× increase**, or about +4.05 MB. That is the cost of the MAF host
++ OpenTelemetry + the Azure SDK bump, net of a trim pass that reclaimed
+~1.5 MB via `StackTraceSupport=false` and one related ILC flag. The
+proposed 1.5× ratio gate **passes without a waiver**. A further trim
+pass (targeting residual Azure.AI.OpenAI reflection, ~0.3–0.9 MB) is
+tracked for 2.0.1 but is not blocking.
 
 If your use case is latency-critical (Espanso triggers, AHK hotkeys),
 the hot path is safe. If you deploy over metered bandwidth, the extra
-5.8 MB is the honest tradeoff for agentic orchestration.
+4 MB is the honest tradeoff for agentic orchestration.
 
 ## Security
 
@@ -161,9 +164,12 @@ the hot path is safe. If you deploy over metered bandwidth, the extra
 - **Licensing audit: clear.** 39 packages reviewed across the v2 graph —
   34 MIT, 4 Apache-2.0 (OpenTelemetry), 1 BSD-3-Clause (Google.Protobuf).
   Zero GPL / LGPL / AGPL / MPL / SSPL. Attribution obligations are
-  discharged via `NOTICE` and `THIRD_PARTY_NOTICES.md` at the repo root;
-  every distributed artifact (tarball, container, Homebrew/Scoop/Nix
-  bundle) includes all three files. See
+  discharged via `NOTICE` and `THIRD_PARTY_NOTICES.md` at the repo root.
+  The **tarball and container image** (Dockerfile `COPY` of NOTICE /
+  THIRD_PARTY_NOTICES / LICENSE + OCI labels) ship these files in-band
+  at 2.0.0. **Homebrew / Scoop / Nix manifest updates** land in the
+  2.0.1 packaging sweep; the v1.8.1 manifests currently in
+  `packaging/` remain pinned to v1 until then. See
   [`docs/licensing-audit.md`](licensing-audit.md).
 
 ## Known limitations at 2.0.0
@@ -173,10 +179,15 @@ Tracked in the issue tracker; not blockers for cutover.
 - **`--schema <json>` wire enforcement is deferred to 2.1.x.** The flag
   is parsed and captured, but not yet sent as a `response_format` strict
   schema. Use `--json` + post-validation for now.
-- **AOT binary is 1.62× v1 — over the 1.5× ratio gate.** Trim pass
-  scheduled for 2.0.1. Stripping OTel exporters, investigating the
-  `Azure.AI.OpenAI` trim warnings, and tuning `DebuggerSupport` /
-  `EventSourceSupport` are the top candidates.
+- **AOT binary is 1.456× v1 — inside the 1.5× ratio gate, no waiver
+  needed.** A further trim pass (residual `Azure.AI.OpenAI` reflection,
+  est. −0.3 to −0.9 MB additional headroom) is scheduled for 2.0.1 but
+  is not blocking.
+- **Homebrew / Scoop / Nix manifests lag one release.** The
+  `packaging/` manifests still pin v1.8.1; Bob's v2.0.0 bump lands in
+  2.0.1. Until then, install via the GitHub Release tarball or the
+  GHCR container. `brew install --formula` / `scoop install` against
+  a specific pinned JSON still work for v1.
 - **Windows CI is not yet enabled.** Linux (glibc, musl, arm64) and
   macOS (x64, arm64) run per release. Windows binaries are produced and
   manually validated pre-release.
@@ -201,14 +212,24 @@ az-ai-v2 --version --short   # → 2.0.0
 Both read the same env vars and config files. No migration step is
 required; accumulated `.squad/` memory transfers untouched.
 
-**Post-cutover** the v2 binary is installed as `az-ai`. To pin v1:
+**Post-cutover** the v2 binary is installed as `az-ai`. To pin v1 until
+your workflows are migrated, stay on the **v1.9.1 GitHub Release**
+tarball or the `ghcr.io/...:1.9.1` container. Native versioned pins
+(`brew install ...@1.9.1`, `scoop install ...@1.9.1`) require a
+versioned formula / a Scoop versions bucket — those land with the
+2.0.1 packaging sweep. Until then:
 
 ```bash
-# Homebrew:
-brew install schwartzkamel/tap/azure-openai-cli@1.9.1
+# Homebrew — install the v1.8.1 formula directly from the repo ref:
+brew install --formula \
+  https://raw.githubusercontent.com/SchwartzKamel/azure-openai-cli/v1.9.1/packaging/homebrew/Formula/az-ai.rb
 
-# Scoop:
-scoop install azure-openai-cli@1.9.1
+# Scoop — install the v1-pinned manifest directly:
+scoop install \
+  https://raw.githubusercontent.com/SchwartzKamel/azure-openai-cli/v1.9.1/packaging/scoop/az-ai.json
+
+# Container:
+docker pull ghcr.io/schwartzkamel/azure-openai-cli:1.9.1
 
 # Manual: download from the v1.9.1 release page.
 ```
