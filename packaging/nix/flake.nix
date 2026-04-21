@@ -6,45 +6,57 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      version = "2.0.0";
-      baseUrl = "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${version}";
+      version = "2.0.1";
+      baseUrlFor = v: "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${v}";
 
-      # Per-system release artifact metadata.
-      # NOTE: linux-aarch64 is not yet published. Once the release pipeline
-      # emits az-ai-v2-${version}-linux-arm64.tar.gz, wire it in here.
-      #
-      # Hashes below are release-time placeholders: Mr. Lippman replaces each
-      # `lib.fakeHash` with the real SRI digest when cutting v2.0.0, after the
-      # release workflow uploads the tarballs. Do not invent hashes — Nix will
-      # refuse the substitution if it doesn't match the published artifact.
-      sources = {
+      # Build the per-system sources attrset for a given release version.
+      # All frozen versioned-pin derivations go through this helper so the
+      # URL/arch shape stays consistent across releases.
+      sourcesFor = v: hashes: {
         "x86_64-linux" = {
-          url = "${baseUrl}/az-ai-v2-${version}-linux-x64.tar.gz";
-          sha256 = nixpkgs.lib.fakeHash;
+          url = "${baseUrlFor v}/az-ai-v2-${v}-linux-x64.tar.gz";
+          sha256 = hashes.linux-x64;
         };
         "x86_64-darwin" = {
-          url = "${baseUrl}/az-ai-v2-${version}-osx-x64.tar.gz";
-          sha256 = nixpkgs.lib.fakeHash;
+          url = "${baseUrlFor v}/az-ai-v2-${v}-osx-x64.tar.gz";
+          sha256 = hashes.osx-x64;
         };
         "aarch64-darwin" = {
-          url = "${baseUrl}/az-ai-v2-${version}-osx-arm64.tar.gz";
-          sha256 = nixpkgs.lib.fakeHash;
+          url = "${baseUrlFor v}/az-ai-v2-${v}-osx-arm64.tar.gz";
+          sha256 = hashes.osx-arm64;
         };
       };
 
-      supportedSystems = builtins.attrNames sources;
-    in
-    flake-utils.lib.eachSystem supportedSystems (system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-        src = sources.${system};
+      # Hash table for the tracking (latest) release. Lippman replaces each
+      # `lib.fakeHash` with the real SRI digest when cutting v2.0.1.
+      latestHashes = {
+        linux-x64 = nixpkgs.lib.fakeHash;
+        osx-x64   = nixpkgs.lib.fakeHash;
+        osx-arm64 = nixpkgs.lib.fakeHash;
+      };
 
-        az-ai = pkgs.stdenv.mkDerivation {
+      # Frozen hash tables for pinnable releases. These should only ever be
+      # mutated to replace a placeholder with the real SRI at tag time; once
+      # filled, they stay put forever. If a retag is needed, add a new entry
+      # (e.g. `v2_0_0-1`) rather than mutating an existing one.
+      pinnedHashes = {
+        "2.0.0" = {
+          linux-x64 = nixpkgs.lib.fakeHash;
+          osx-x64   = nixpkgs.lib.fakeHash;
+          osx-arm64 = nixpkgs.lib.fakeHash;
+        };
+      };
+
+      sources = sourcesFor version latestHashes;
+      supportedSystems = builtins.attrNames sources;
+
+      mkAzAi = { pkgs, system, v, srcMeta }:
+        pkgs.stdenv.mkDerivation {
           pname = "az-ai-v2";
-          inherit version;
+          version = v;
 
           src = pkgs.fetchurl {
-            inherit (src) url sha256;
+            inherit (srcMeta) url sha256;
           };
 
           sourceRoot = ".";
@@ -74,8 +86,9 @@
           # Lippman's release-notes claim that all distributed artifacts
           # ship NOTICE.
           postInstall = ''
-            mkdir -p $out/share/doc/az-ai-v2
-            cp LICENSE NOTICE THIRD_PARTY_NOTICES.md $out/share/doc/az-ai-v2/
+            install -Dm644 LICENSE              $out/share/licenses/az-ai-v2/LICENSE
+            install -Dm644 NOTICE               $out/share/licenses/az-ai-v2/NOTICE
+            install -Dm644 THIRD_PARTY_NOTICES.md $out/share/licenses/az-ai-v2/THIRD_PARTY_NOTICES.md
           '';
 
           meta = with pkgs.lib; {
@@ -86,14 +99,39 @@
             mainProgram = "az-ai-v2";
           };
         };
+    in
+    flake-utils.lib.eachSystem supportedSystems (system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+
+        az-ai = mkAzAi {
+          inherit pkgs system;
+          v = version;
+          srcMeta = sources.${system};
+        };
+
+        # Versioned-pin derivations. Consumers pin via:
+        #   inputs.az-ai.url = "github:SchwartzKamel/azure-openai-cli?dir=packaging/nix";
+        #   environment.systemPackages = [ inputs.az-ai.packages.${pkgs.system}."az-ai-v2_2_0_0" ];
+        pinnedPackages = nixpkgs.lib.mapAttrs' (v: hashes:
+          nixpkgs.lib.nameValuePair
+            "az-ai-v2_${builtins.replaceStrings ["."] ["_"] v}"
+            (mkAzAi {
+              inherit pkgs system;
+              v = v;
+              srcMeta = (sourcesFor v hashes).${system};
+            })
+        ) pinnedHashes;
       in
       {
-        packages.default = az-ai;
-        packages.az-ai = az-ai;
+        packages = {
+          default = az-ai;
+          az-ai = az-ai;
+        } // pinnedPackages;
 
         apps.default = {
           type = "app";
-          program = "${az-ai}/bin/az-ai";
+          program = "${az-ai}/bin/az-ai-v2";
         };
       });
 }
