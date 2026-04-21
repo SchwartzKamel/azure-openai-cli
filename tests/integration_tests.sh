@@ -612,41 +612,59 @@ for f in ('model', 'input_tokens_est', 'total_usd_max'):
     assert_contains "v2 --models lists seeded deployment" "testDeployment" \
         env HOME="$v2_home" "$V2_BIN" --models
 
-    # ── 10. Invalid flag (non-JSON) ───────────────────────────────────────
+    # ── 10. Invalid flag (non-JSON) — Scope 3 rejects unknown flags ───────
     echo ""
     echo "▸ Invalid flag handling"
-    # v2 must exit nonzero and surface an [ERROR] on stderr.
+    # v2 must exit 2 and surface an [ERROR] on stderr with a 'Run --help' hint.
     local inv_stderr inv_rc
     set +e; inv_stderr=$("$V2_BIN" --nope 2>&1 1>/dev/null); inv_rc=$?; set -e
-    if [ $inv_rc -ne 0 ]; then
-        pass "v2 --nope exits nonzero"
+    if [ $inv_rc -eq 2 ]; then
+        pass "v2 --nope exits 2 (unknown_flag)"
     else
-        fail "v2 --nope exits nonzero" "exited 0"
+        fail "v2 --nope exits 2 (unknown_flag)" "exited $inv_rc"
     fi
-    if printf '%s' "$inv_stderr" | grep -qF '[ERROR]'; then
-        pass "v2 --nope has [ERROR] on stderr"
+    if printf '%s' "$inv_stderr" | grep -qF '[ERROR] unknown flag: --nope'; then
+        pass "v2 --nope has [ERROR] unknown flag on stderr"
     else
-        fail "v2 --nope has [ERROR] on stderr" "stderr was: $inv_stderr"
+        fail "v2 --nope has [ERROR] unknown flag on stderr" "stderr was: $inv_stderr"
+    fi
+    if printf '%s' "$inv_stderr" | grep -qF 'Run --help for usage.'; then
+        pass "v2 --nope stderr includes 'Run --help for usage.' hint"
+    else
+        fail "v2 --nope stderr includes 'Run --help for usage.' hint" "stderr was: $inv_stderr"
     fi
 
-    # ── 11. Invalid flag + --json → valid JSON with 'error' field ─────────
-    # NOTE: task spec expected JSON on stderr, but v2 emits structured errors
-    # on stdout (consumer pipes to jq). Test matches actual v2 behavior.
-    local inv_json_stdout inv_json_rc
-    set +e; inv_json_stdout=$("$V2_BIN" --json --nope 2>/dev/null); inv_json_rc=$?; set -e
-    if [ $inv_json_rc -ne 0 ]; then
-        pass "v2 --json --nope exits nonzero"
+    # ── 11. Invalid flag + --json → valid JSON envelope on STDERR ──────────
+    # Scope 2 + 3 (Puddy): JSON error payloads must land on stderr so
+    # consumers piping stdout to jq don't see them. Unknown-flag emits the
+    # nested {"error":{"code":"unknown_flag",...}} envelope.
+    local inv_json_stderr inv_json_rc
+    set +e; inv_json_stderr=$("$V2_BIN" --json --nope 2>&1 1>/dev/null); inv_json_rc=$?; set -e
+    if [ $inv_json_rc -eq 2 ]; then
+        pass "v2 --json --nope exits 2 (unknown_flag)"
     else
-        fail "v2 --json --nope exits nonzero" "exited 0"
+        fail "v2 --json --nope exits 2 (unknown_flag)" "exited $inv_json_rc"
     fi
-    if printf '%s' "$inv_json_stdout" | python3 -c "
+    if printf '%s' "$inv_json_stderr" | python3 -c "
 import json, sys
 d = json.loads(sys.stdin.read())
 assert 'error' in d, 'no error field'
+assert isinstance(d['error'], dict), 'error must be nested object'
+assert d['error'].get('code') == 'unknown_flag', 'code must be unknown_flag'
+assert d['error'].get('flag') == '--nope', 'flag must be --nope'
 " >/dev/null 2>&1; then
-        pass "v2 --json --nope emits valid JSON with 'error' field"
+        pass "v2 --json --nope emits nested unknown_flag JSON on stderr"
     else
-        fail "v2 --json --nope emits valid JSON with 'error' field" "got: $inv_json_stdout"
+        fail "v2 --json --nope emits nested unknown_flag JSON on stderr" "got: $inv_json_stderr"
+    fi
+
+    # Confirm stdout is empty for the JSON error path.
+    local inv_json_stdout
+    set +e; inv_json_stdout=$("$V2_BIN" --json --nope 2>/dev/null); set -e
+    if [ -z "$inv_json_stdout" ]; then
+        pass "v2 --json --nope stdout empty (errors go to stderr)"
+    else
+        fail "v2 --json --nope stdout empty" "stdout leaked: $inv_json_stdout"
     fi
 
     # ── 13. --tools datetime --help does not leak tool list to stderr ─────

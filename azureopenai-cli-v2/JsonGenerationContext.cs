@@ -1,14 +1,29 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AzureOpenAI_CLI_V2.Cache;
 using AzureOpenAI_CLI_V2.Squad;
 
 namespace AzureOpenAI_CLI_V2;
 
-/// <summary>JSON error response emitted to stdout in JSON mode (future).</summary>
+/// <summary>
+/// JSON error envelope emitted on <b>stderr</b> in <c>--json</c> mode (per
+/// Puddy 2026 audit — happy-path results stay on stdout, errors go to stderr).
+/// </summary>
 internal record ErrorJsonResponse(
     [property: JsonPropertyName("error")] bool Error,
     [property: JsonPropertyName("message")] string Message,
     [property: JsonPropertyName("exit_code")] int ExitCode
+);
+
+/// <summary>Structured envelope for the unknown-flag parse error (Scope 3).</summary>
+internal record UnknownFlagJsonError(
+    [property: JsonPropertyName("error")] UnknownFlagDetail Error
+);
+
+/// <summary>Inner object for <see cref="UnknownFlagJsonError"/>.</summary>
+internal record UnknownFlagDetail(
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("flag")] string Flag
 );
 
 /// <summary>
@@ -31,7 +46,13 @@ internal record ErrorJsonResponse(
 )]
 // ── CLI JSON response types ─────────────────────────────────────
 [JsonSerializable(typeof(ErrorJsonResponse))]
+[JsonSerializable(typeof(UnknownFlagJsonError))]
+[JsonSerializable(typeof(UnknownFlagDetail))]
 [JsonSerializable(typeof(AzureOpenAI_CLI_V2.Observability.EstimateResult))]
+// ── FR-008 prompt/response cache ────────────────────────────────
+[JsonSerializable(typeof(CachedResponse))]
+// ── Primitives used directly by PromptCache.ComputeKey canonicaliser ──
+[JsonSerializable(typeof(string))]
 // ── Observability (Phase 5) ─────────────────────────────────────
 [JsonSerializable(typeof(AzureOpenAI_CLI_V2.Observability.CostEvent))]
 // ── User configuration (FR-003 / FR-009 / FR-010) ───────────────

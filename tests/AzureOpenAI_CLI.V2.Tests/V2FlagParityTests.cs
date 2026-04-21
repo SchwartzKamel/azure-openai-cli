@@ -22,9 +22,9 @@ public class V2FlagParityTests
     }
 
     [Theory]
-    [InlineData(true, "\"error\":")]   // JSON mode: emit structured error on stdout
+    [InlineData(true, "\"error\":")]   // JSON mode: emit structured error on STDERR (Scope 2 / Puddy)
     [InlineData(false, null)]          // Non-JSON: stderr [ERROR] prefix
-    public void ErrorAndExit_HonorsJsonMode(bool jsonMode, string? stdoutSubstring)
+    public void ErrorAndExit_HonorsJsonMode(bool jsonMode, string? stderrJsonSubstring)
     {
         var stdout = new StringWriter();
         var stderr = new StringWriter();
@@ -38,10 +38,11 @@ public class V2FlagParityTests
             Assert.Equal(7, rc);
             if (jsonMode)
             {
-                Assert.Contains(stdoutSubstring!, stdout.ToString());
-                Assert.Contains("\"message\":", stdout.ToString());
-                Assert.Contains("\"exit_code\":", stdout.ToString());
-                Assert.Equal(string.Empty, stderr.ToString());
+                // Stdout stays clean so consumers piping through jq see only happy-path results.
+                Assert.Equal(string.Empty, stdout.ToString());
+                Assert.Contains(stderrJsonSubstring!, stderr.ToString());
+                Assert.Contains("\"message\":", stderr.ToString());
+                Assert.Contains("\"exit_code\":", stderr.ToString());
             }
             else
             {

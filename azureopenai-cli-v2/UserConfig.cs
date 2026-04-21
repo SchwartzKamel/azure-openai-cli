@@ -20,12 +20,15 @@ namespace AzureOpenAI_CLI_V2;
 /// }
 /// </code>
 ///
-/// Precedence (highest wins): env var > CLI flag > project-local config
-/// (<c>./.azureopenai-cli.json</c>) > user config (<c>~/.azureopenai-cli.json</c>)
-/// > hardcoded defaults.
+/// Precedence (highest wins): CLI flag &gt; env var &gt; project-local config
+/// (<c>./.azureopenai-cli.json</c>) &gt; user config (<c>~/.azureopenai-cli.json</c>)
+/// &gt; hardcoded defaults.
 ///
-/// Wait — CLI flag beats env only for model/system/etc where v1 does `CLI > env`.
-/// For booleans like telemetry, env is allowed as an umbrella. See <c>ParseArgs</c>.
+/// Matches the resolver at <c>Program.cs</c> (model/temperature/system/etc.)
+/// and the help text printed under "Configuration" — corrected per Elaine's
+/// 2026 audit (prior comment inverted CLI and env). For boolean umbrellas like
+/// <c>AZ_TELEMETRY</c> / <c>AZ_PREWARM</c>, env can still enable a flag when
+/// the CLI did not explicitly set it. See <c>ParseArgs</c>.
 ///
 /// AOT: serialized via <see cref="AppJsonContext"/> source generator.
 /// </summary>

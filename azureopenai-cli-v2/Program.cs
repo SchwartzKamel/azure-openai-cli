@@ -2,6 +2,7 @@ using System.ClientModel;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using AzureOpenAI_CLI_V2.Cache;
 using Azure.AI.OpenAI;
 using dotenv.net;
 using Microsoft.Agents.AI;
@@ -74,7 +75,13 @@ internal class Program
         string? ConfigSubcommand,   // --config set|get|list|reset|show (FR-009)
         string? ConfigKey,          // key arg for --config set/get
         string? ConfigValue,        // value arg for --config set (parsed from key=value)
-        bool Prewarm                // FR-007: --prewarm / AZ_PREWARM=1 — fire-and-forget TLS/DNS warmup
+        bool Prewarm,                // FR-007: --prewarm / AZ_PREWARM=1 — fire-and-forget TLS/DNS warmup
+                                     // ── FR-008 prompt/response cache (opt-in) ────────────────────────────
+        bool CacheEnabled,           // --cache / AZ_CACHE=1
+        int CacheTtlHours,           // --cache-ttl <hours> / AZ_CACHE_TTL_HOURS
+                                     // ── Parse-error detail (Scope 3 — reject unknown flags) ─────────────
+        int ParseErrorExitCode,      // Exit code for parse errors (default 1; unknown flag = 2)
+        string? UnknownFlag          // Populated when the parse error was an unknown flag
     );
 
     private static async Task<int> Main(string[] args)
@@ -101,10 +108,17 @@ internal class Program
 
     private static async Task<int> RunAsync(CliOptions opts)
     {
+        // Scope 3: unknown-flag parse errors short-circuit with exit 2 and
+        // suppress the help dump (ParseArgs already emitted the terse message).
+        if (opts.ParseError && opts.ParseErrorExitCode != 1)
+        {
+            return opts.ParseErrorExitCode;
+        }
+
         if (opts.ShowHelp)
         {
             ShowHelp();
-            return opts.ParseError ? 1 : 0;
+            return opts.ParseError ? opts.ParseErrorExitCode : 0;
         }
 
         if (opts.ShowVersion)
@@ -379,6 +393,50 @@ internal class Program
                 );
             }
 
+            // FR-008 prompt/response cache — opt-in, only in standard mode.
+            // Never cache when: agent/ralph (tool calls), persona (memory), json
+            // (consumer pipeline), schema (structured output), raw-and-json mix.
+            // Estimate short-circuits upstream so it never reaches this point.
+            bool cacheEligible =
+                opts.CacheEnabled
+                && !opts.AgentMode
+                && !opts.RalphMode
+                && !opts.Json
+                && string.IsNullOrEmpty(opts.Schema)
+                && activePersona == null;
+
+            string? cacheKey = null;
+            if (cacheEligible)
+            {
+                cacheKey = PromptCache.ComputeKey(
+                    model: model,
+                    temperature: opts.Temperature,
+                    maxTokens: opts.MaxTokens,
+                    systemPrompt: opts.SystemPrompt,
+                    userPrompt: prompt);
+
+                var maxAge = TimeSpan.FromHours(opts.CacheTtlHours);
+                var hit = PromptCache.TryGet(cacheKey, maxAge);
+                if (hit != null)
+                {
+                    if (!opts.Raw)
+                    {
+                        Console.Error.WriteLine("  [cache] hit");
+                    }
+                    Console.Out.Write(hit.Response);
+                    if (!opts.Raw)
+                    {
+                        Console.WriteLine();
+                    }
+                    return 0;
+                }
+
+                if (!opts.Raw)
+                {
+                    Console.Error.WriteLine("  [cache] miss");
+                }
+            }
+
             // Standard agent mode: wire tools if --agent is set.
             // Agent mode appends SAFETY_CLAUSE to reduce prompt-injection risk from tool results.
             var agentInstructions = opts.AgentMode
@@ -395,7 +453,7 @@ internal class Program
             using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(opts.TimeoutSeconds));
             int? inputTokens = null;
             int? outputTokens = null;
-            var responseBuffer = activePersona != null ? new StringBuilder() : null;
+            var responseBuffer = (activePersona != null || cacheEligible) ? new StringBuilder() : null;
 
             // FR-017: opt into `max_completion_tokens` serialization so reasoning /
             // Responses-API models (o1, o3, gpt-5.x) accept the token cap. The Chat
@@ -481,6 +539,20 @@ internal class Program
                 catch { /* best-effort — don't fail a successful completion */ }
             }
 
+            // FR-008: write to cache on successful completion (miss path only).
+            // Best-effort: IO failures never fail a completed request.
+            if (cacheEligible && cacheKey != null && responseBuffer != null && responseBuffer.Length > 0)
+            {
+                var entry = new CachedResponse(
+                    Response: responseBuffer.ToString(),
+                    CachedAt: DateTime.UtcNow,
+                    TtlHours: opts.CacheTtlHours,
+                    Model: model,
+                    InputTokens: inputTokens,
+                    OutputTokens: outputTokens);
+                PromptCache.Put(cacheKey, entry);
+            }
+
             return 0;
         }
         catch (OperationCanceledException)
@@ -543,7 +615,11 @@ internal class Program
         ConfigSubcommand: null,
         ConfigKey: null,
         ConfigValue: null,
-        Prewarm: false
+        Prewarm: false,
+        CacheEnabled: false,
+        CacheTtlHours: PromptCache.DefaultTtlHours,
+        ParseErrorExitCode: 1,
+        UnknownFlag: null
     );
 
     /// <summary>Default agent tool-call round cap, matching v1 (<c>--max-rounds</c>).</summary>
@@ -592,15 +668,28 @@ internal class Program
         string? configKey = null;
         string? configValue = null;
         bool prewarm = false;
+        bool cacheEnabled = false;
+        int? cacheTtlHours = null;
+        bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
         bool parseFailed = false;
         string? parseErrorMsg = null;
+        string? unknownFlag = null;
+        int parseErrorExitCode = 1;
         void Fail(string msg)
         {
             if (parseFailed) return; // first error wins
             parseFailed = true;
             parseErrorMsg = msg;
+        }
+        void FailUnknownFlag(string flag)
+        {
+            if (parseFailed) return;
+            parseFailed = true;
+            unknownFlag = flag;
+            parseErrorMsg = $"unknown flag: {flag}";
+            parseErrorExitCode = 2;
         }
 
         // Known --config subcommands. Anything else after --config is treated as
@@ -611,6 +700,21 @@ internal class Program
         for (int i = 0; i < args.Length && !parseFailed; i++)
         {
             var arg = args[i];
+
+            // `--` ends flag parsing — everything after is positional
+            // (per POSIX convention; required for Scope 3 escape hatch so
+            // `-- --weird-prompt-starting-with-dashes` is allowed as a prompt).
+            if (!afterDoubleDash && arg == "--")
+            {
+                afterDoubleDash = true;
+                continue;
+            }
+            if (afterDoubleDash)
+            {
+                positionalArgs.Add(arg);
+                continue;
+            }
+
             switch (arg.ToLowerInvariant())
             {
                 case "--model":
@@ -790,7 +894,24 @@ internal class Program
                 case "--prewarm":
                     prewarm = true;
                     break;
+                case "--cache":
+                    cacheEnabled = true;
+                    break;
+                case "--cache-ttl":
+                    if (i + 1 < args.Length && int.TryParse(args[i + 1], out int cttl) && cttl > 0)
+                    { cacheTtlHours = cttl; i++; }
+                    else { Fail("--cache-ttl requires a positive integer (hours)"); }
+                    break;
                 default:
+                    // Scope 3: reject unknown flags. Anything that looks like a
+                    // flag (starts with '-' but isn't bare '-', which some CLIs
+                    // use as a stdin marker) becomes a parse error. Legitimate
+                    // negative-number prompts should be escaped via `--`.
+                    if (arg.Length > 1 && arg[0] == '-' && arg != "--")
+                    {
+                        FailUnknownFlag(arg);
+                        break;
+                    }
                     positionalArgs.Add(args[i]);
                     break;
             }
@@ -798,8 +919,52 @@ internal class Program
 
         if (parseFailed)
         {
-            Console.Error.WriteLine($"[ERROR] {parseErrorMsg}");
-            return DefaultOptions() with { ParseError = true, ShowHelp = true };
+            // Scope 2 + 3: JSON errors land on stderr. Scan args for --json so
+            // even a parse failure before --json's turn still emits JSON when
+            // the user asked for it (e.g. `--nope --json`).
+            bool jsonMode = args.Any(a => string.Equals(a, "--json", StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrEmpty(unknownFlag))
+            {
+                if (jsonMode)
+                {
+                    var payload = new UnknownFlagJsonError(
+                        new UnknownFlagDetail(Code: "unknown_flag", Flag: unknownFlag));
+                    Console.Error.WriteLine(
+                        JsonSerializer.Serialize(payload, AppJsonContext.Default.UnknownFlagJsonError));
+                }
+                else
+                {
+                    Console.Error.WriteLine($"[ERROR] unknown flag: {unknownFlag}");
+                    Console.Error.WriteLine("Run --help for usage.");
+                }
+                // Unknown-flag errors don't spam the full help dump — stderr
+                // already pointed the user at `--help`.
+                return DefaultOptions() with
+                {
+                    ParseError = true,
+                    ShowHelp = false,
+                    ParseErrorExitCode = parseErrorExitCode,
+                    UnknownFlag = unknownFlag,
+                };
+            }
+
+            if (jsonMode)
+            {
+                var errorObj = new ErrorJsonResponse(Error: true, Message: parseErrorMsg ?? "parse error", ExitCode: parseErrorExitCode);
+                Console.Error.WriteLine(
+                    JsonSerializer.Serialize(errorObj, AppJsonContext.Default.ErrorJsonResponse));
+            }
+            else
+            {
+                Console.Error.WriteLine($"[ERROR] {parseErrorMsg}");
+            }
+            return DefaultOptions() with
+            {
+                ParseError = true,
+                ShowHelp = true,
+                ParseErrorExitCode = parseErrorExitCode,
+            };
         }
 
         // Apply env var fallbacks (CLI > env > default).
@@ -843,6 +1008,24 @@ internal class Program
                 prewarm = true;
         }
 
+        // FR-008: honor AZ_CACHE=1 (strict "1") and AZ_CACHE_TTL_HOURS as env
+        // fallbacks for --cache / --cache-ttl.
+        if (!cacheEnabled)
+        {
+            var envCache = Environment.GetEnvironmentVariable("AZ_CACHE");
+            if (envCache == "1") cacheEnabled = true;
+        }
+        if (!cacheTtlHours.HasValue)
+        {
+            var envTtl = Environment.GetEnvironmentVariable("AZ_CACHE_TTL_HOURS");
+            if (!string.IsNullOrWhiteSpace(envTtl)
+                && int.TryParse(envTtl, out int envTtlVal)
+                && envTtlVal > 0)
+            {
+                cacheTtlHours = envTtlVal;
+            }
+        }
+
         return DefaultOptions() with
         {
             Model = model,
@@ -881,6 +1064,8 @@ internal class Program
             ConfigKey = configKey,
             ConfigValue = configValue,
             Prewarm = prewarm,
+            CacheEnabled = cacheEnabled,
+            CacheTtlHours = cacheTtlHours ?? PromptCache.DefaultTtlHours,
         };
     }
 
@@ -985,8 +1170,11 @@ internal class Program
     {
         if (jsonMode)
         {
+            // Scope 2 (Puddy finding): JSON errors go to stderr so that
+            // `az-ai-v2 --json ... | jq` only sees happy-path results on stdout.
+            // Happy-path JSON (results) stays on stdout at its own call sites.
             var errorObj = new ErrorJsonResponse(Error: true, Message: message, ExitCode: exitCode);
-            Console.WriteLine(JsonSerializer.Serialize(errorObj, AppJsonContext.Default.ErrorJsonResponse));
+            Console.Error.WriteLine(JsonSerializer.Serialize(errorObj, AppJsonContext.Default.ErrorJsonResponse));
         }
         else
         {
@@ -1124,6 +1312,14 @@ Performance (FR-007):
                             at startup so the first chat request hits a warm
                             connection (env: AZ_PREWARM=1)
 
+Prompt Cache (FR-008, opt-in):
+  --cache                   Cache successful responses and serve byte-identical
+                            repeats from local disk (env: AZ_CACHE=1).
+                            Skipped for --agent / --ralph / --persona / --json
+                            / --schema / --estimate.
+  --cache-ttl <hours>       Cache entry lifetime in hours (env: AZ_CACHE_TTL_HOURS,
+                            default: 168 = 7 days).
+
 Cost Estimator (FR-015, no API call):
   --estimate                Print estimated USD cost for the prompt and exit
   --estimate-with-output <n>  Include worst-case output cost for n completion tokens
@@ -1160,7 +1356,7 @@ _az_ai_v2_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl""
 
     case ""${prev}"" in
         --completions)
