@@ -102,15 +102,27 @@ make alias
 
 #### Linux / macOS / WSL — secure storage
 
-> **Fast path (recommended):** run the guided setup script from the repo. It detects your shell (bash/zsh), asks for your endpoint + API key + model, lets you pick `chmod 600` plaintext or GPG-encrypted at-rest, installs the auto-source hook into `~/.profile` **and** `~/.zshenv` (so espanso's `wsl.exe bash -lc …` AND your interactive zsh both see the creds), and runs verification probes at the end.
+> **Fast path (recommended):** one-liner that auto-detects your OS:
 >
 > ```bash
-> bash scripts/setup-secrets.sh              # interactive walkthrough
-> VERIFY_ONLY=1 bash scripts/setup-secrets.sh  # re-check without prompts
-> bash scripts/unlock-secrets.sh             # GPG tier only — prime cache after reboot
+> make setup-secrets
 > ```
 >
-> Re-run anytime to rotate keys or switch tiers — it's idempotent. A native `az-ai setup` subcommand is planned for 2.1 ([FR-022](./proposals/FR-022-native-setup-wizard.md)). Until then, or if you prefer to understand what the script does before running it, the manual options below walk through it step-by-step.
+> That dispatches to the right script for your environment:
+> - **Linux / macOS / WSL** → `scripts/setup-secrets.sh` (bash/zsh; chmod 600 or GPG)
+> - **Windows (git-bash / MSYS / Cygwin)** → `scripts/setup-secrets.ps1` (user-scope env vars or DPAPI-encrypted file)
+>
+> Or call directly if you prefer:
+>
+> ```bash
+> bash scripts/setup-secrets.sh              # Linux / macOS / WSL
+> powershell -ExecutionPolicy Bypass -File scripts/setup-secrets.ps1   # Windows-native
+> VERIFY_ONLY=1 bash scripts/setup-secrets.sh                          # re-check, no prompts
+> .\scripts\setup-secrets.ps1 -VerifyOnly                              # Windows, no prompts
+> bash scripts/unlock-secrets.sh             # Linux GPG tier — prime cache after reboot
+> ```
+>
+> Each wizard detects shell (bash/zsh/pwsh), prompts for endpoint + API key + model, lets you pick a storage tier (plaintext-chmod-600 / GPG-encrypted on Unix; user-scope-env / DPAPI-encrypted on Windows), installs an auto-source hook, and runs verification probes at the end. Re-run anytime to rotate keys or switch tiers — idempotent. Native `az-ai setup` is planned for 2.1 ([FR-022](./proposals/FR-022-native-setup-wizard.md)). The manual walkthroughs below are the long form if you'd rather understand before running.
 
 **Don't paste secrets directly into `~/.bashrc` or `~/.zshrc` if those are committed to a dotfiles repo.** Use one of the options below.
 
@@ -164,6 +176,15 @@ espanso cmd -- bash -lc 'env | grep AZUREOPENAI'
 If nothing prints, see the [Troubleshooting](#environment-variables-not-found) section below.
 
 #### Windows — secure storage
+
+> **Fast path (recommended):** the guided wizard handles both tiers below automatically.
+>
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File scripts\setup-secrets.ps1
+> # Or from any shell in the repo root:  make setup-secrets
+> ```
+>
+> The wizard prompts for endpoint / API key (hidden input) / model, asks you to pick Tier 1 (user-scope registry env vars — same as Option A below) or Tier 2 (DPAPI-encrypted file + PowerShell `$PROFILE` hook — same as Option B below), installs the hook, and verifies that a fresh `powershell.exe` (which is what espanso spawns) sees the vars. Idempotent; re-run to rotate. See [FR-022](./proposals/FR-022-native-setup-wizard.md) for the 2.1 native-subcommand roadmap.
 
 Windows has no `.bashrc`. Pick one of these:
 

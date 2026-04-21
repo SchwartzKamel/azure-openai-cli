@@ -46,7 +46,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests preflight publish publish-fast publish-aot publish-r2r setup \
+.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint format format-check audit all-tests preflight publish publish-fast publish-aot publish-r2r setup setup-secrets \
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
@@ -57,6 +57,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 help:
 	@echo "Available targets:"
 	@echo "  make setup       - Install prerequisites (.NET 10 SDK, Docker, tools)"
+	@echo "  make setup-secrets - Interactive wizard: store Azure OpenAI creds (auto-detects OS)"
 	@echo "  make build       - Build the Docker image"
 	@echo "  make run         - Run the CLI (requires .env file). Use ARGS=\"your prompt\""
 	@echo "  make clean       - Remove build artifacts and dangling images"
@@ -150,6 +151,27 @@ scan:
 ## Setup: install prerequisites (.NET 10, Docker, tools)
 setup:
 	@bash scripts/setup.sh
+
+## Setup-secrets: interactive walkthrough to store Azure OpenAI credentials.
+## Auto-detects OS:
+##   Linux / macOS / WSL  → scripts/setup-secrets.sh   (bash/zsh, chmod 600 or GPG)
+##   Windows (git-bash)   → scripts/setup-secrets.ps1  (env vars or DPAPI)
+## Override by running the right script directly if detection is wrong.
+setup-secrets:
+	@os="$$(uname -s 2>/dev/null || echo unknown)"; \
+	case "$$os" in \
+		Linux|Darwin) \
+			echo "→ Detected $$os — launching Unix setup..."; \
+			bash scripts/setup-secrets.sh ;; \
+		MINGW*|MSYS*|CYGWIN*) \
+			echo "→ Detected Windows shell ($$os) — launching PowerShell setup..."; \
+			powershell.exe -ExecutionPolicy Bypass -File scripts/setup-secrets.ps1 ;; \
+		*) \
+			echo "Could not auto-detect OS ($$os). Run the right script manually:"; \
+			echo "  Linux / macOS / WSL:  bash scripts/setup-secrets.sh"; \
+			echo "  Windows native:       powershell -ExecutionPolicy Bypass -File scripts/setup-secrets.ps1"; \
+			exit 1 ;; \
+	esac
 
 ## Run unit tests
 test: ## Run unit tests

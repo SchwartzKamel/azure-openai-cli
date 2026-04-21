@@ -91,8 +91,8 @@ The shell-hook writer is its own abstraction (`IShellHookWriter`) with implement
 
 ## Rollout
 
-- **2.0.x:** `setup-secrets.sh` + `unlock-secrets.sh` ship in `scripts/`. README mentions them. No native subcommand yet.
-- **2.1.0:** `az-ai setup` lands with Linux + macOS + Windows backends. `setup-secrets.sh` stays in `scripts/` with a deprecation banner pointing to `az-ai setup`; removed in 3.0.
+- **2.0.x:** `scripts/setup-secrets.sh` (Linux/WSL/macOS) + `scripts/setup-secrets.ps1` (Windows-native) + `scripts/unlock-secrets.sh` (Tier 2 GPG cache prime) + `make setup-secrets` auto-dispatcher ship in the repo. README mentions them. No native subcommand yet.
+- **2.1.0:** `az-ai setup` lands with Linux + macOS + Windows backends. Shell scripts stay in `scripts/` with a deprecation banner pointing to `az-ai setup`; removed in 3.0.
 - **2.1.1:** polish based on user reports (common failure modes, better diagnostics).
 
 ## Fleet sign-off
