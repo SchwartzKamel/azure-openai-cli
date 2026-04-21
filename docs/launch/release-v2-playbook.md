@@ -164,6 +164,33 @@ a re-tag **once binary legs are green** — but if binary legs also
 failed, the whole release is a no-go and the fix ships in the next
 patch tag.
 
+**`build-binaries-v2 / osx-x64` stuck in `queued` for 30+ min**
+(observed: run 24740882149, v2.0.2 attempt #3; also observed as a
+nice-to-know on run 24739184465, v2.0.1 attempt #2). GitHub-hosted
+`macos-13` runners are a constrained pool and can backlog 30–120 min
+during peak demand. Diagnosis: not a code issue — the other four binary
+legs (incl. `osx-arm64` on `macos-14`) completed normally; `osx-x64`
+specifically is waiting for runner assignment and has no log because
+it hasn't started.
+
+**Do NOT re-tag** to work around this. Options, in order:
+(1) wait — typical backlogs clear within 120 min;
+(2) cancel the queued `osx-x64` job in the GitHub UI and re-dispatch
+    the workflow on the same tag via `gh workflow run release.yml
+    --ref v2.0.2` — `release.yml` is idempotent on tag, already-green
+    downstreams (`docker-publish-v2`, other binary legs) will re-run
+    cleanly;
+(3) if macos-13 pool is down for maintenance, shelve the release until
+    GitHub status goes green — a queue backlog is not a reason to burn
+    a patch tag.
+
+Diagnostic (if encountered again):
+`docs/launch/v2.0.2-release-attempt-diagnostic.md`. The v2.0.2 run
+demonstrated that `docker-publish-v2` succeeded, GHCR image published
+and attested, and all three AOT verification gates fired — proving the
+release pipeline code is healthy; only `release-v2` (and therefore
+tarball hash-sync) was blocked by the infra backlog.
+
 ---
 
 ## 4. Post-publish hash sync
