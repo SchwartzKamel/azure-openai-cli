@@ -50,19 +50,27 @@ internal sealed class PersonaMemory
     /// </summary>
     public static string SanitizePersonaName(string? name)
     {
+        // K-4 (2.0.1): error message format is "invalid persona name: '<value>'".
+        // Existing callers still assert `Assert.Contains("invalid persona name", ex.Message)`
+        // so the substring contract is preserved.
+        static string Msg(string? raw) => $"invalid persona name: '{raw ?? "<null>"}'";
+
         if (name is null)
-            throw new ArgumentException("invalid persona name — allowed: a-z 0-9 _ -, max 64 chars", nameof(name));
+            throw new ArgumentException(Msg(name), nameof(name));
 
         var trimmed = name.Trim();
         if (trimmed.Length == 0 || trimmed.Length > MaxPersonaNameLength)
-            throw new ArgumentException("invalid persona name — allowed: a-z 0-9 _ -, max 64 chars", nameof(name));
+            throw new ArgumentException(Msg(name), nameof(name));
 
+        // Regex contract: ^[A-Za-z0-9_-]{1,64}$ (spec). We accept mixed-case on
+        // input and normalise via ToLowerInvariant so the on-disk path is
+        // deterministic and case-insensitive across platforms.
         var lowered = trimmed.ToLowerInvariant();
         foreach (var c in lowered)
         {
             bool ok = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
             if (!ok)
-                throw new ArgumentException("invalid persona name — allowed: a-z 0-9 _ -, max 64 chars", nameof(name));
+                throw new ArgumentException(Msg(name), nameof(name));
         }
         return lowered;
     }
@@ -134,7 +142,14 @@ internal sealed class PersonaMemory
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(ReadTimeoutSeconds));
             try
             {
-                return ReadSeekableTail(fs, len, MaxHistoryBytes, cts.Token);
+                var body = ReadSeekableTail(fs, len, MaxHistoryBytes, cts.Token);
+                // K-5 (2.0.1): surface the truncation marker when a rotated
+                // <name>.md.old sibling exists, so readers still see the
+                // "there was earlier history" signal the pre-rotation,
+                // read-side truncation path provided.
+                if (!body.StartsWith(TruncationMarker) && File.Exists(path + ".old"))
+                    body = TruncationMarker + body;
+                return body;
             }
             catch (OperationCanceledException)
             {
@@ -208,6 +223,13 @@ internal sealed class PersonaMemory
 
     /// <summary>
     /// Append a session entry to persona history.
+    ///
+    /// K-5 (2.0.1): enforces the 32 KB per-persona cap atomically.
+    /// If current-size + new-entry-size would exceed <see cref="MaxHistoryBytes"/>,
+    /// the existing file is rotated to <c>&lt;name&gt;.md.old</c> (overwriting
+    /// any previous rotation) and a fresh file is started with only the new
+    /// entry. All I/O uses <see cref="FileShare.Read"/> so concurrent readers
+    /// (e.g. espanso, another squad process) don't corrupt the rotation.
     /// </summary>
     public void AppendHistory(string personaName, string task, string summary)
     {
@@ -220,8 +242,38 @@ internal sealed class PersonaMemory
         var entry = $"\n## Session — {DateTime.UtcNow:yyyy-MM-dd HH:mm UTC}\n" +
                     $"**Task:** {Truncate(task, 200)}\n" +
                     $"**Result:** {Truncate(summary, 500)}\n";
+        var entryBytes = Encoding.UTF8.GetBytes(entry);
 
-        File.AppendAllText(path, entry);
+        long currentSize = 0;
+        if (File.Exists(path))
+        {
+            try { currentSize = new FileInfo(path).Length; }
+            catch { currentSize = 0; }
+        }
+
+        bool rotate = currentSize + entryBytes.LongLength > MaxHistoryBytes;
+        if (rotate)
+        {
+            var oldPath = path + ".old";
+            try
+            {
+                // File.Move(overwrite: true) is atomic on the same filesystem
+                // and overwrites any pre-existing .md.old from a prior rotation.
+                File.Move(path, oldPath, overwrite: true);
+            }
+            catch (FileNotFoundException) { /* racy delete — nothing to move */ }
+
+            // Fresh file starts with only the new entry.
+            using var fresh = new FileStream(
+                path, FileMode.Create, FileAccess.Write, FileShare.Read);
+            fresh.Write(entryBytes, 0, entryBytes.Length);
+        }
+        else
+        {
+            using var fs = new FileStream(
+                path, FileMode.Append, FileAccess.Write, FileShare.Read);
+            fs.Write(entryBytes, 0, entryBytes.Length);
+        }
     }
 
     /// <summary>
@@ -316,8 +368,17 @@ internal sealed class PersonaMemory
         return GetHistoryPathForSafeName(safe);
     }
 
-    private string GetHistoryPathForSafeName(string safeName) =>
-        Path.Combine(_baseDir, HistoryDir, $"{safeName}.md");
+    private string GetHistoryPathForSafeName(string safeName)
+    {
+        // K-4 belt-and-suspenders: SanitizePersonaName has already rejected any
+        // path-separator/traversal input, but run the name through
+        // Path.GetFileName one more time so even if a future refactor loosens
+        // the regex, we can never compose a path that escapes the history dir.
+        var fileOnly = Path.GetFileName(safeName);
+        if (fileOnly != safeName)
+            throw new ArgumentException($"invalid persona name: '{safeName}'", nameof(safeName));
+        return Path.Combine(_baseDir, HistoryDir, $"{fileOnly}.md");
+    }
 
     /// <summary>
     /// Advance the stream past any UTF-8 continuation bytes (0x80–0xBF) so the

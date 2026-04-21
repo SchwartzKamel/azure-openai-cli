@@ -727,13 +727,25 @@ internal class Program
                     if (i + 1 < args.Length && float.TryParse(args[i + 1],
                         System.Globalization.NumberStyles.Float,
                         System.Globalization.CultureInfo.InvariantCulture, out float temp))
-                    { temperature = temp; i++; }
-                    else { Fail("--temperature requires a numeric value"); }
+                    {
+                        // F-5: enforce [0.0, 2.0] inclusive.
+                        if (temp < 0.0f || temp > 2.0f)
+                        { Fail("--temperature must be between 0.0 and 2.0"); }
+                        else
+                        { temperature = temp; i++; }
+                    }
+                    else { Fail("--temperature must be between 0.0 and 2.0"); }
                     break;
                 case "--max-tokens":
                     if (i + 1 < args.Length && int.TryParse(args[i + 1], out int mt))
-                    { maxTokens = mt; i++; }
-                    else { Fail("--max-tokens requires an integer"); }
+                    {
+                        // F-5: reject zero and negatives.
+                        if (mt <= 0)
+                        { Fail("--max-tokens must be a positive integer"); }
+                        else
+                        { maxTokens = mt; i++; }
+                    }
+                    else { Fail("--max-tokens must be a positive integer"); }
                     break;
                 case "--timeout":
                     if (i + 1 < args.Length && int.TryParse(args[i + 1], out int to))
@@ -968,19 +980,33 @@ internal class Program
         }
 
         // Apply env var fallbacks (CLI > env > default).
+        // F-5 (2.0.1): env values are validated with the same bounds as the
+        // flags. A malformed env var is surfaced as a parse error rather than
+        // silently falling back to the default — that masks misconfiguration.
         if (!temperature.HasValue)
         {
             var envTemp = Environment.GetEnvironmentVariable("AZURE_TEMPERATURE");
-            if (!string.IsNullOrWhiteSpace(envTemp) && float.TryParse(envTemp,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out float t))
-            { temperature = t; }
+            if (!string.IsNullOrWhiteSpace(envTemp))
+            {
+                if (float.TryParse(envTemp,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float t)
+                    && t >= 0.0f && t <= 2.0f)
+                { temperature = t; }
+                else
+                { Fail("--temperature must be between 0.0 and 2.0"); }
+            }
         }
         if (!maxTokens.HasValue)
         {
             var envTokens = Environment.GetEnvironmentVariable("AZURE_MAX_TOKENS");
-            if (!string.IsNullOrWhiteSpace(envTokens) && int.TryParse(envTokens, out int mt2))
-            { maxTokens = mt2; }
+            if (!string.IsNullOrWhiteSpace(envTokens))
+            {
+                if (int.TryParse(envTokens, out int mt2) && mt2 > 0)
+                { maxTokens = mt2; }
+                else
+                { Fail("--max-tokens must be a positive integer"); }
+            }
         }
         if (!timeoutSeconds.HasValue)
         {
@@ -991,6 +1017,29 @@ internal class Program
         if (string.IsNullOrWhiteSpace(systemPrompt))
         {
             systemPrompt = Environment.GetEnvironmentVariable("SYSTEMPROMPT");
+        }
+
+        // F-5 (2.0.1): env-var validation above may have called Fail(). Surface
+        // that as a parse error the same way flag-level failures are surfaced.
+        if (parseFailed)
+        {
+            bool jsonMode2 = json || args.Any(a => string.Equals(a, "--json", StringComparison.OrdinalIgnoreCase));
+            if (jsonMode2)
+            {
+                var errorObj = new ErrorJsonResponse(Error: true, Message: parseErrorMsg ?? "parse error", ExitCode: parseErrorExitCode);
+                Console.Error.WriteLine(
+                    JsonSerializer.Serialize(errorObj, AppJsonContext.Default.ErrorJsonResponse));
+            }
+            else
+            {
+                Console.Error.WriteLine($"[ERROR] {parseErrorMsg}");
+            }
+            return DefaultOptions() with
+            {
+                ParseError = true,
+                ShowHelp = true,
+                ParseErrorExitCode = parseErrorExitCode,
+            };
         }
 
         var prompt = positionalArgs.Count > 0 ? string.Join(" ", positionalArgs) : null;

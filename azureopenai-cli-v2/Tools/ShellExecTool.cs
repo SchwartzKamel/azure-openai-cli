@@ -64,10 +64,13 @@ internal static class ShellExecTool
         if (BlockedCommands.Contains(firstToken))
             return $"Error: command '{firstToken}' is blocked for safety.";
 
-        // Block pipe chains to dangerous commands
-        foreach (var segment in command.Split('|', ';', '&'))
+        // Block pipe chains to dangerous commands.
+        // K-1 (2.0.1): include '\t' so `ls\trm -rf /` is rejected the same way
+        // `ls ; rm -rf /` is — tab is a shell-word separator too and the
+        // first-token check above won't catch a tab-delimited second command.
+        foreach (var segment in command.Split('|', ';', '&', '\t', '\n'))
         {
-            var token = segment.Trim().Split(' ', 2)[0].Split('/').LastOrDefault() ?? "";
+            var token = segment.Trim().Split(new[] { ' ', '\t' }, 2)[0].Split('/').LastOrDefault() ?? "";
             if (BlockedCommands.Contains(token))
                 return $"Error: command '{token}' is blocked for safety.";
         }
