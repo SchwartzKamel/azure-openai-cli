@@ -1,27 +1,37 @@
 {
-    "version": "1.8.1",
-    "description": "Azure OpenAI CLI — 5ms native AOT agent for text injection",
+    "_comment_hash": "hash is TODO_FILL_AT_RELEASE_TIME — Mr. Lippman fills this when tagging v2.0.0 once the release artifact is published. Do not invent digests.",
+    "_comment_bin": "Binary is az-ai-v2.exe during the dual-binary transition. Post-cutover the rename to az-ai.exe lands in a follow-up manifest update.",
+    "_comment_notice": "Scoop has no doc directory concept, so the release tarball must place NOTICE + THIRD_PARTY_NOTICES.md + LICENSE at the extraction root next to az-ai-v2.exe. post_install surfaces their paths to the user so Lippman's 'all distributed artifacts include NOTICE' claim holds for Windows installs.",
+    "version": "2.0.0",
+    "description": "Azure OpenAI CLI v2 — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator",
     "homepage": "https://github.com/SchwartzKamel/azure-openai-cli",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v1.8.1/azure-openai-cli-win-x64.zip",
-            "hash": "d3db710084749305dd2524d9ae3e247cbd8116ad40ac92920d9b069239759253"
+            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.0.0/az-ai-v2-2.0.0-win-x64.zip",
+            "hash": "TODO_FILL_AT_RELEASE_TIME"
         }
     },
     "bin": [
         [
-            "AzureOpenAI_CLI.exe",
-            "az-ai"
+            "az-ai-v2.exe",
+            "az-ai-v2"
         ]
     ],
+    "post_install": [
+        "Write-Host 'az-ai-v2 installed. Third-party notices bundled next to the binary:'",
+        "Write-Host \"  $dir\\NOTICE\"",
+        "Write-Host \"  $dir\\THIRD_PARTY_NOTICES.md\"",
+        "Write-Host \"  $dir\\LICENSE\""
+    ],
     "checkver": {
-        "github": "https://github.com/SchwartzKamel/azure-openai-cli"
+        "github": "https://github.com/SchwartzKamel/azure-openai-cli",
+        "regex": "releases/tag/v(2\\.\\d+\\.\\d+)"
     },
     "autoupdate": {
         "architecture": {
             "64bit": {
-                "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v$version/azure-openai-cli-win-x64.zip"
+                "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v$version/az-ai-v2-$version-win-x64.zip"
             }
         },
         "hash": {

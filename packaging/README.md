@@ -1,19 +1,19 @@
-# Packaging — distribution channels for `az-ai`
+# Packaging — distribution channels for `az-ai-v2`
 
 > "You need it on Homebrew? I know a guy. Scoop bucket? Done. Nix flake? Already wired."
 > — Bob Sacamano
 
 This directory holds the third-party packaging manifests that pin a specific
-release of the Azure OpenAI CLI (published as `az-ai`) to each ecosystem's
+release of the Azure OpenAI CLI (published as `az-ai-v2`) to each ecosystem's
 conventions. Manifests are versioned in-repo; the release pipeline is
 expected to update SHA256 digests and version strings as part of each tag.
 Hand-edited drift will be caught at release review.
 
-Current pinned release: **v1.8.1** (GitHub Releases artifacts).
+Current pinned release: **v2.0.0** (GitHub Releases artifacts).
 
 The upstream binary name inside each archive is `AzureOpenAI_CLI`
 (`AzureOpenAI_CLI.exe` on Windows). Every manifest here renames it to
-`az-ai` on install so users get a single, consistent command across
+`az-ai-v2` on install so users get a single, consistent command across
 platforms.
 
 ---
@@ -25,10 +25,21 @@ platforms.
 | Homebrew  | `homebrew/Formula/az-ai.rb`            | macOS arm64/x64, Linux x64              | Tap not yet created     |
 | Scoop     | `scoop/az-ai.json`                     | Windows x64                             | Bucket not yet created  |
 | Nix       | `nix/flake.nix`                        | Linux x64, macOS x64, macOS arm64       | Flake ready             |
+| Tarball   | `tarball/stage.sh`                     | Any .NET RID (linux/osx/win)            | Used by release CI      |
 
 Linux arm64 artifacts are not yet published by the release pipeline; when
 they are, add them to the Homebrew formula (`on_linux do on_arm do ...`)
 and to `sources` in `nix/flake.nix`.
+
+> **Dual-binary transition (v2.0.0):** the v2 binary ships as `az-ai-v2`
+> (`az-ai-v2.exe` on Windows) alongside the v1 `az-ai` binary. All three
+> manifests install as `az-ai-v2` during this transition. Post-cutover, a
+> follow-up manifest update will rename back to plain `az-ai`.
+
+> **NOTICE bundling:** every manifest now stages `LICENSE`, `NOTICE`, and
+> `THIRD_PARTY_NOTICES.md` alongside the binary so Mr. Lippman's
+> release-notes claim — *"all distributed artifacts include NOTICE"* —
+> holds across Homebrew, Scoop, Nix, and the raw tarballs.
 
 ---
 
@@ -46,7 +57,7 @@ brew install --formula ./packaging/homebrew/Formula/az-ai.rb
 
 ```sh
 brew tap SchwartzKamel/tap
-brew install az-ai
+brew install az-ai-v2
 ```
 
 ### Publish (owner action — Lippman TBD)
@@ -64,7 +75,7 @@ brew install az-ai
 ```sh
 brew audit --strict ./packaging/homebrew/Formula/az-ai.rb
 brew install --build-from-source --formula ./packaging/homebrew/Formula/az-ai.rb
-az-ai --version --short   # expect: 1.8.1
+az-ai-v2 --version --short   # expect: 2.0.0
 ```
 
 ---
@@ -81,7 +92,7 @@ scoop install ./packaging/scoop/az-ai.json
 
 ```powershell
 scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-bucket
-scoop install az-ai
+scoop install az-ai-v2
 ```
 
 ### Publish (owner action — Lippman TBD)
@@ -98,7 +109,7 @@ scoop install az-ai
 
 ```powershell
 scoop install ./packaging/scoop/az-ai.json
-az-ai --version --short   # expect: 1.8.1
+az-ai-v2 --version --short   # expect: 2.0.0
 ```
 
 ---
@@ -131,7 +142,7 @@ nix run github:SchwartzKamel/azure-openai-cli?dir=packaging/nix -- --version --s
 cd packaging/nix
 nix flake check
 nix build .#default
-./result/bin/az-ai --version --short   # expect: 1.8.1
+./result/bin/az-ai-v2 --version --short   # expect: 2.0.0
 ```
 
 ---
@@ -140,11 +151,19 @@ nix build .#default
 
 On every tagged release:
 
+- [ ] Run `packaging/tarball/stage.sh <rid>` for each target RID to build
+      the tarballs (binary + LICENSE + NOTICE + THIRD_PARTY_NOTICES.md +
+      README.md).
 - [ ] Update `version` in all three manifests.
-- [ ] Update the three SHA256 lines in `homebrew/Formula/az-ai.rb`.
+- [ ] Update the three SHA256 lines in `homebrew/Formula/az-ai.rb`
+      (replace `TODO_FILL_AT_RELEASE_TIME`).
 - [ ] Update the `hash` in `scoop/az-ai.json` (or let `scoop checkver -u`
       do it in the bucket repo).
-- [ ] Update the three SHA256s in `nix/flake.nix` `sources`.
+- [ ] Update the three SHA256s in `nix/flake.nix` `sources`
+      (replace `lib.fakeHash` — `nix build` will print the real SRI hash
+      on mismatch).
+- [ ] Confirm `NOTICE` + `THIRD_PARTY_NOTICES.md` are present in every
+      staged tarball before upload (Puddy gate).
 - [ ] Verify fresh-machine install on each platform before advertising in
       the top-level README (per Puddy).
 - [ ] If linux-arm64 artifacts start shipping, add them to the Homebrew
