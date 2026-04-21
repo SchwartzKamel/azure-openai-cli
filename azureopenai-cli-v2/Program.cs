@@ -137,6 +137,10 @@ internal class Program
         // first, else project-local, else ~/.azureopenai-cli.json, else defaults.
         var userConfig = UserConfig.Load(opts.ConfigPath);
 
+        // F-6: warn if the loaded user-config is world-writable. Suppressed under
+        // --raw / --json to keep machine-readable surfaces clean.
+        WarnIfWorldWritable(userConfig.LoadedFrom, opts.Raw || opts.Json);
+
         // --config CRUD subcommands (FR-009). All short-circuit before credentials.
         if (!string.IsNullOrEmpty(opts.ConfigSubcommand))
         {
@@ -181,6 +185,9 @@ internal class Program
         // List personas: show available personas from .squad.json
         if (opts.ListPersonas)
         {
+            WarnIfWorldWritable(
+                Path.Combine(Directory.GetCurrentDirectory(), ".squad.json"),
+                opts.Raw || opts.Json);
             var config = AzureOpenAI_CLI_V2.Squad.SquadConfig.Load();
             if (config == null)
             {
@@ -286,6 +293,9 @@ internal class Program
         string? effectiveSystemPrompt = null;
         if (!string.IsNullOrEmpty(opts.Persona))
         {
+            WarnIfWorldWritable(
+                Path.Combine(Directory.GetCurrentDirectory(), ".squad.json"),
+                opts.Raw || opts.Json);
             var squadConfig = AzureOpenAI_CLI_V2.Squad.SquadConfig.Load();
             if (squadConfig == null)
             {
@@ -318,7 +328,24 @@ internal class Program
             {
                 // Override system prompt with persona's prompt + prior-session history.
                 effectiveSystemPrompt = activePersona.SystemPrompt;
-                var history = personaMemory.ReadHistory(activePersona.Name);
+                string history;
+                try
+                {
+                    // FR-021: wrap PersonaMemory call site. A malformed persona
+                    // name in .squad.json (violates [a-z0-9_-]{1,64}) throws
+                    // ArgumentException from SanitizePersonaName. Without this
+                    // wrap, .NET aborts with exit 134 + stack trace. Wrap it
+                    // into the canonical ErrorAndExit path → exit 1 + single
+                    // [ERROR] line. Security posture unchanged — sanitizer
+                    // still rejects, no traversal succeeds.
+                    history = personaMemory.ReadHistory(activePersona.Name);
+                }
+                catch (ArgumentException ex)
+                {
+                    return ErrorAndExit(
+                        $"Invalid persona name in .squad.json: {ex.Message}. Persona names must match [a-z0-9_-]{{1,64}}.",
+                        1, jsonMode: opts.Json);
+                }
                 if (!string.IsNullOrEmpty(history))
                 {
                     effectiveSystemPrompt += "\n\n## Your Memory (from previous sessions)\n" + history;
@@ -1212,6 +1239,37 @@ internal class Program
     }
 
     /// <summary>
+    /// F-6: emit a single `[warn]` line to stderr when <paramref name="path"/>
+    /// exists and has the world-writable bit set (mode &amp; 0o002). Suppressed
+    /// when <paramref name="suppress"/> is true (i.e. --raw or --json — keeps
+    /// machine-readable surfaces clean). Windows is a no-op (no POSIX mode).
+    /// AOT-safe: uses <see cref="File.GetUnixFileMode(string)"/>, no P/Invoke.
+    /// </summary>
+    internal static void WarnIfWorldWritable(string? path, bool suppress)
+    {
+        if (suppress) return;
+        if (string.IsNullOrEmpty(path)) return;
+        if (OperatingSystem.IsWindows()) return;
+        if (!File.Exists(path)) return;
+
+        try
+        {
+            var mode = File.GetUnixFileMode(path);
+            if ((mode & UnixFileMode.OtherWrite) != 0)
+            {
+                // Octal form for the mode helps the user pattern-match to chmod.
+                var octal = Convert.ToString((int)mode & 0b111_111_111, 8).PadLeft(3, '0');
+                Console.Error.WriteLine(
+                    $"[warn] config file {path} is world-writable (mode {octal}); restrict with: chmod 600 {path}");
+            }
+        }
+        catch
+        {
+            // Best-effort advisory — never fail the invocation over a stat hiccup.
+        }
+    }
+
+    /// <summary>
     /// Writes an error message to stderr (with [ERROR] prefix) and returns the specified exit code.
     /// Matches v1 ErrorAndExit semantics.
     /// </summary>
@@ -1312,7 +1370,10 @@ Core Options:
   --timeout <seconds>       Request timeout in seconds (env: AZURE_TIMEOUT, default: 120)
   --system, -s <text>       System prompt (env: SYSTEMPROMPT)
   --schema <json>           Enforce structured JSON output (strict schema)
-  --raw                     Suppress all non-content output (for Espanso/AHK)
+  --raw                     Suppress all non-content output (for Espanso/AHK).
+                            Silent-by-design: no spinner, no color, no [ERROR]
+                            prefix on stderr when combined with --json. See
+                            .github/contracts/color-contract.md rule 6.
   --json                    Emit machine-readable JSON (errors + estimator output)
   --help, -h                Show this help
   --version, -v             Show version (add --short for bare semver)

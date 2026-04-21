@@ -720,9 +720,13 @@ assert d['error'].get('flag') == '--nope', 'flag must be --nope'
     # future regressions.
     #
     # DO NOT delete this test without Lippman sign-off.
+    #
+    # 2.0.1 update: the wrap shipped (Program.cs — FR-021 try/catch at the
+    # persona call site). Default flipped to 1 so the test runs by default
+    # and gates regressions. Force-disable with FR021_FIXED=0 if needed.
     echo ""
     echo "▸ Persona error UX (FR-021 regression)"
-    if [ "${FR021_FIXED:-0}" != "1" ]; then
+    if [ "${FR021_FIXED:-1}" != "1" ]; then
         skip "v2 FR-021 malformed persona → exit 1 + [ERROR]" \
              "pre-written for 2.0.1; un-skip by running with FR021_FIXED=1 once Program.cs:321 wraps ArgumentException"
     else
