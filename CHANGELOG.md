@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Default-model canonicalization (ADR-009).** The "default model" is now
+  formally a resolution chain — CLI flag → `AZUREOPENAIMODEL` env →
+  `UserConfig.default_model` / smart-default → hardcoded fallback
+  (`Program.DefaultModelFallback = "gpt-4o-mini"`). The two duplicated
+  `"gpt-4o-mini"` literals in `Program.cs` have been replaced by the
+  named constant; fallback behavior is unchanged. `cost-optimization.md`
+  §3.5 rewritten to describe the override contract. Operators who prefer
+  `gpt-5.4-nano` continue to set it via env/config. See
+  `docs/adr/ADR-009-default-model-resolution.md`.
+
+## [2.0.5] — unreleased
+
+### Fixed
+- **Shipped-version-string drift (audit finding C-1).** `Program.VersionSemver`,
+  `Program.VersionFull`, and `Telemetry.ServiceVersion` were hardcoded to
+  `"2.0.2"` and never rolled past v2.0.2 — the v2.0.3 and v2.0.4 binaries
+  reported `az-ai-v2 --version --short` → `2.0.2`, which would have failed
+  `brew test az-ai-v2` on install. Version is now single-sourced from the
+  csproj `<Version>` element via `typeof(Program).Assembly.GetName().Version`
+  (AOT-safe). `packaging/tarball/stage.sh` now parses the csproj for tarball
+  filenames (with `STAGE_VERSION` env-var override for exceptional re-stages)
+  instead of the stale hardcoded `VERSION="2.0.2"`.
+
+### Added
+- `tests/AzureOpenAI_CLI.V2.Tests/VersionContractTests.cs` — xUnit contract
+  pin that runs on every PR and hard-fails if (a) `Program.VersionSemver`
+  regresses to `"2.0.2"`, (b) `Telemetry.ServiceVersion` drifts from
+  `Program.VersionSemver`, or (c) either drifts from the csproj `<Version>`.
+
 ## [2.0.4] — 2026-04-22
 
 > **Drop macOS Intel (`osx-x64`) from the release matrix + ship FDR dogfood
@@ -750,3 +780,52 @@ The only remaining AOT publish warnings come from third-party assemblies
 - Switched to Alpine Linux for reduced attack surface (OWASP/Snyk compliance)
 - Fixed 2 critical and several high-severity container vulnerabilities
 - Vulnerability scanning integrated into workflow
+
+---
+
+## Cancelled-release policy
+
+A **cancelled release** is a git tag in the `vX.Y.Z` sequence for which the
+release pipeline started but did **not** complete its full publish contract.
+The tag is immutable — it is never deleted, retagged, or rewritten — but the
+artifacts behind it are partial or absent. This policy defines how the
+project handles those cases so users can tell at a glance whether a tag
+corresponds to a shipped release.
+
+### Taxonomy
+
+| State | Git tag | GitHub Release | Tarballs | GHCR image | Homebrew / Scoop / Nix | User action |
+|---|---|---|---|---|---|---|
+| **Shipped** | ✅ exists | ✅ published | ✅ uploaded | ✅ pushed | ✅ hash-synced | Use it. |
+| **Cancelled — Docker-only** | ✅ exists | ❌ none | ❌ none | ✅ pushed | ❌ not synced | Docker users may pull the image; everyone else skips to the next shipped version. |
+| **Cancelled — nothing published** | ✅ exists | ❌ none | ❌ none | ❌ none | ❌ not synced | Skip the tag entirely; use the next shipped version. |
+| **Attempted** | ✅ exists | ❌ none | ⚠️ partial | ⚠️ partial | ❌ not synced | Skip the tag; treat as historical marker only. |
+
+### Rules
+
+1. **Tags are immutable.** Once pushed, a `vX.Y.Z` tag is never deleted or
+   moved, even if the release pipeline fails. This preserves the git
+   history for post-mortems and keeps third-party references (SBOMs,
+   lockfiles, blog posts) valid.
+2. **Version numbers are not reused.** The next release takes the next
+   SemVer number (`X.Y.(Z+1)`), regardless of how much of the cancelled
+   release actually published. v2.0.3 cancelled → v2.0.4 is next.
+3. **Partial artifacts are not retroactively completed.** If Docker
+   published but binaries did not, the project does **not** go back and
+   upload tarballs under the cancelled tag. The supersede-forward path
+   ([`v2.0.4`](#204--2026-04-22) in the v2.0.3 case) carries the fix.
+4. **Packaging manifests skip cancelled tags.** `az-ai.rb` /
+   `az-ai.json` / flake `latestHashes` roll directly to the next
+   shipped version. Frozen per-version pins
+   (`az-ai-v2@2.0.3.rb`, etc.) are **not** created for cancelled
+   releases.
+5. **Cancelled entries stay in the changelog.** They are labelled
+   `— *Cancelled release*` in the heading, with a callout paragraph
+   explaining what shipped, what did not, and which tag supersedes.
+
+### Known cancelled releases
+
+| Tag | State | Notes |
+|---|---|---|
+| [`v2.0.1`](#201--2026-04-21) | Attempted | Tagged on `039e6bd`; `docker-publish-v2` failed on AOT asset-graph mismatch. Superseded by v2.0.2. |
+| [`v2.0.3`](#203--2026-04-22--cancelled-release) | Cancelled — Docker-only | GHCR `2.0.3` is live; no GitHub Release. Superseded by v2.0.4. |
