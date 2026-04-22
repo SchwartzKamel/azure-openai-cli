@@ -12,7 +12,7 @@ In April 2026, the terminal-AI category has matured into two tiers: **vendor-fla
 
 ### 1. 10.7 ms p50 cold start. AOT-compiled. Zero runtime.
 
-.NET 10 Native AOT produces a **~13 MiB single binary** with a measured **10.73 ms p50 cold start** on linux-x64 (`--help`, N=50, v2.0.6 on the `malachor` laptop reference rig — see [`docs/perf/v2.0.5-baseline.md`](./perf/v2.0.5-baseline.md)). The nearest competitors -- Rust tools like `aichat`, Go tools like `crush`/`fabric` -- clock in at 30-150 ms. Python tools are 10-200× slower. ([Competitive matrix §2](./competitive-analysis.md#2-competitive-matrix))
+.NET 10 Native AOT produces a **~13 MiB single binary** with a measured **10.73 ms p50 cold start** on linux-x64 (`--help`, N=50, v2.0.6 on the `malachor` laptop reference rig -- see [`docs/perf/v2.0.5-baseline.md`](./perf/v2.0.5-baseline.md)). The nearest competitors -- Rust tools like `aichat`, Go tools like `crush`/`fabric` -- clock in at 30-150 ms. Python tools are 10-200× slower. ([Competitive matrix §2](./competitive-analysis.md#2-competitive-matrix))
 
 **Why it matters:** inside Espanso, AutoHotkey, or a shell pipe, cold start is perceived latency. Below ~15 ms, AI text expansion *feels synchronous*. Above 100 ms, users notice the lag and stop using it. We are the only CLI that ships on the right side of that threshold.
 

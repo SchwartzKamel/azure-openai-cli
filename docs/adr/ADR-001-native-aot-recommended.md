@@ -29,7 +29,7 @@ target `make bench`; they are directionally consistent across hosts but
 absolute numbers vary with disk and CPU.
 
 ¹ **Historical at time of decision (v1.8.0 era).** v2.0.6 on a bare-metal laptop
-reference rig measures **10.73 ms p50 / 12.97 MiB** — still decisively the
+reference rig measures **10.73 ms p50 / 12.97 MiB** -- still decisively the
 fastest publish mode by the same ~10× margin over R2R, which is what this ADR
 was deciding on. See [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)
 for current numbers.

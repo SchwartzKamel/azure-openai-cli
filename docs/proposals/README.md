@@ -136,7 +136,7 @@ The original proposal docs remain in-tree as historical context for the v2 port.
 
 ### ✅ FR-006: Unblock Native AOT -- SHIPPED v1.8.0
 
-`OutputJsonError` replaced with source-generated `ErrorJsonResponse`; `SquadConfig.Load/Save/Initialize` migrated off reflection-based `JsonSerializer`. `make publish-aot` produces a self-contained single-file binary (~9 MB / ~5.4 ms cold start at v1.8.0 ship; ~13 MiB / 10.7 ms p50 on current v2.0.6 — see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)).
+`OutputJsonError` replaced with source-generated `ErrorJsonResponse`; `SquadConfig.Load/Save/Initialize` migrated off reflection-based `JsonSerializer`. `make publish-aot` produces a self-contained single-file binary (~9 MB / ~5.4 ms cold start at v1.8.0 ship; ~13 MiB / 10.7 ms p50 on current v2.0.6 -- see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)).
 
 ### 📋 FR-007: Parallel Startup & TLS Pre-warming -- PLANNED
 

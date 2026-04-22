@@ -55,7 +55,7 @@ The `--raw` flag strips all of it:
 | Code explanation (2-3 sentences) | ~2-3s | Depends on code length |
 | Long creative writing | 5-10s+ | Use `--max-tokens` to cap |
 
-Latency is dominated by Azure API round-trip and token generation. The AOT binary itself adds only ~11 ms of process startup (v2.0.6, linux-x64 p50 — see [Performance Tips](#performance-tips)); ReadyToRun adds ~55 ms, and the Docker path adds ~400+ ms of container cold-start.
+Latency is dominated by Azure API round-trip and token generation. The AOT binary itself adds only ~11 ms of process startup (v2.0.6, linux-x64 p50 -- see [Performance Tips](#performance-tips)); ReadyToRun adds ~55 ms, and the Docker path adds ~400+ ms of container cold-start.
 
 ---
 
@@ -449,7 +449,7 @@ matches:
 
 ### WSL Variants (the `:shaka:` build) 🤙
 
-If you're on Windows but do your real work in WSL, you've got two clean paths. Both use the **Linux-native AOT binary** (v2 ships as `az-ai-v2`, ~13 MiB, ~10.7 ms p50 cold start — see [`docs/perf/v2.0.5-baseline.md`](perf/v2.0.5-baseline.md)) -- skip Docker entirely, skip the `.exe`, just run the native ELF. This is the *fastest* setup on any platform: no Docker daemon, no interop translation, pure syscalls.
+If you're on Windows but do your real work in WSL, you've got two clean paths. Both use the **Linux-native AOT binary** (v2 ships as `az-ai-v2`, ~13 MiB, ~10.7 ms p50 cold start -- see [`docs/perf/v2.0.5-baseline.md`](perf/v2.0.5-baseline.md)) -- skip Docker entirely, skip the `.exe`, just run the native ELF. This is the *fastest* setup on any platform: no Docker daemon, no interop translation, pure syscalls.
 
 **Path A -- Espanso running *inside* WSL** (recommended if you do most text work in a Linux GUI app, terminal, VS Code Remote-WSL, etc.)
 
@@ -872,7 +872,7 @@ docker run --rm --env-file .env azure-openai-cli --raw "Hello"
 **Build and install the Native AOT binary (Linux, macOS, WSL):**
 
 ```bash
-make publish-aot      # builds dist/aot/az-ai-v2 (~13 MiB, ~10.7 ms p50 startup — see docs/perf/v2.0.5-baseline.md)
+make publish-aot      # builds dist/aot/az-ai-v2 (~13 MiB, ~10.7 ms p50 startup -- see docs/perf/v2.0.5-baseline.md)
 make install          # copies to ~/.local/bin/az-ai
 make bench            # measures cold-start (10 runs)
 ```

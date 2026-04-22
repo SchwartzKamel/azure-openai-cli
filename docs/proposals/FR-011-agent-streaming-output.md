@@ -29,7 +29,7 @@ between tool invocations.
 
 > **Mr. Pitt:** `--agent` buffers the full turn before printing. At 40+ tokens
 > per turn with multi-round tool-calling, perceived latency eats the 5.4 ms
-> AOT win (v1.8 figure; v2.0.6 is 10.7 ms p50 — see
+> AOT win (v1.8 figure; v2.0.6 is 10.7 ms p50 -- see
 > [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)). Top-priority
 > v1.9 item precisely because it's the last big
 > perceived-latency miss after AOT.
@@ -231,7 +231,7 @@ everything.
 - **FR-004** -- Latency & Startup Optimization (spinner contract,
   showStatus rules, stderr-only status convention).
 - **FR-006** -- Native AOT Compilation (the single-digit-ms cold-start win
-  this proposal is defending — v1.8 shipped at 5.4 ms; v2.0.6 at 10.7 ms p50).
+  this proposal is defending -- v1.8 shipped at 5.4 ms; v2.0.6 at 10.7 ms p50).
 - **FR-005** -- Shell Integration & Output Intelligence (`--raw` contract).
 - `azureopenai-cli/Program.cs:1229-1314` -- current `RunAgentLoop`
   streaming block.

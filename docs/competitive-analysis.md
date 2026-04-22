@@ -38,7 +38,7 @@ Methodology:
 ## 3. Research Question Answers
 
 ### Q1 -- Cold start winner
-**az-ai: 10.73 ms p50** (measured, linux-x64, `--help`, N=50, v2.0.6 on laptop reference rig — see [`docs/perf/v2.0.5-baseline.md`](./perf/v2.0.5-baseline.md)). Nearest competitors: Rust single-binaries like `aichat` and Go binaries (`mods`/`crush`/`fabric`) land in the 30-150 ms range; Python tools (sgpt, llm, chatblade) are 300-1000 ms due to interpreter startup [^8]. Node tools (Gemini CLI, gh copilot) are 200-500 ms.
+**az-ai: 10.73 ms p50** (measured, linux-x64, `--help`, N=50, v2.0.6 on laptop reference rig -- see [`docs/perf/v2.0.5-baseline.md`](./perf/v2.0.5-baseline.md)). Nearest competitors: Rust single-binaries like `aichat` and Go binaries (`mods`/`crush`/`fabric`) land in the 30-150 ms range; Python tools (sgpt, llm, chatblade) are 300-1000 ms due to interpreter startup [^8]. Node tools (Gemini CLI, gh copilot) are 200-500 ms.
 
 ### Q2 -- AOT / single-binary / zero-Python
 az-ai, aichat, mods/crush, fabric, ollama, llama.cpp, Codex CLI, Claude Code. **Not** AOT: sgpt, llm, chatblade, gh copilot cli (Node), Azure AI CLI (Python).
