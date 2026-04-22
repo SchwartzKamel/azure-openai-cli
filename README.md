@@ -22,7 +22,7 @@
 ```bash
 git clone https://github.com/SchwartzKamel/azure-openai-cli && cd azure-openai-cli
 make setup && make install        # installs ~/.local/bin/az-ai
-cp azureopenai-cli/.env.example .env && $EDITOR .env   # add Azure creds
+cp azureopenai-cli/.env.example .env && $EDITOR .env   # add Azure creds (template is shared across v1/v2)
 az-ai --raw "Summarize this file in 5 words: $(cat README.md)"
 ```
 
@@ -61,15 +61,9 @@ Upgrading from v1.9.x? See [docs/migration-v1-to-v2.md](docs/migration-v1-to-v2.
 
 ## Performance
 
-Measured on `linux-x64`, median of 10 runs of `--version`:
+Cold-start and binary-size figures for v2.0.5 are being re-measured on the current release matrix. See [docs/perf/v2.0.5-baseline.md](docs/perf/v2.0.5-baseline.md) for current numbers — v1.8 legacy figures are no longer representative and have been removed here pending that refresh.
 
-| Build | Cold start | Binary size | Notes |
-|-------|-----------:|------------:|-------|
-| **Native AOT** | **5.4 ms** | ~9 MB | Default via `make install`. No .NET runtime required. |
-| ReadyToRun | ~54 ms | ~70 MB | `make publish-r2r`. JIT-assisted, needs runtime. |
-| Docker (Alpine) | ~400 ms | ~120 MB | Container + runtime cold start. |
-
-The AOT binary is ~75× faster to start than the Docker image — the difference between "feels instant in Espanso" and "noticeable lag on every trigger".
+Relative ordering is unchanged: **Native AOT** (`make install`, no .NET runtime) is the fastest and smallest; **ReadyToRun** (`make publish-r2r`) is JIT-assisted and requires the runtime; **Docker (Alpine)** pays container + runtime cold-start overhead on every invocation. The AOT binary remains the only option fast enough to feel synchronous inside text expanders like Espanso and AutoHotkey.
 
 ## Espanso / AutoHotkey
 
@@ -122,15 +116,16 @@ Full threat model and hardening checklist: [SECURITY.md](SECURITY.md). Report vu
 
 ### Pre-built binaries
 
-Download for your platform from [Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases):
+Download for your platform from [Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases). Filenames follow the `az-ai-v2-<version>-<rid>` scheme (v2.0.5 shown):
 
 | Platform | Artifact |
 |----------|----------|
-| Linux x64 (glibc) | `azure-openai-cli-linux-x64.tar.gz` |
-| Linux x64 (musl / Alpine) | `azure-openai-cli-linux-musl-x64.tar.gz` |
-| Linux arm64 | `azure-openai-cli-linux-arm64.tar.gz` |
-| macOS x64 / arm64 | `azure-openai-cli-osx-{x64,arm64}.tar.gz` |
-| Windows x64 / arm64 | `azure-openai-cli-win-{x64,arm64}.zip` |
+| Linux x64 (glibc) | `az-ai-v2-2.0.5-linux-x64.tar.gz` |
+| Linux x64 (musl / Alpine) | `az-ai-v2-2.0.5-linux-musl-x64.tar.gz` |
+| macOS (Apple Silicon) | `az-ai-v2-2.0.5-osx-arm64.tar.gz` |
+| Windows x64 | `az-ai-v2-2.0.5-win-x64.zip` |
+
+> **Note:** `osx-x64` (Intel macOS) was dropped from the release matrix in **v2.0.4** after sustained runner instability. Intel-Mac users should run the Docker image or build from source until the leg is reinstated — see [docs/runbooks/macos-runner-triage.md](docs/runbooks/macos-runner-triage.md) for the triage plan and current status. `linux-arm64` and `win-arm64` are also not built in v2; track the ADR in [docs/adr/](docs/adr/) for plans to reintroduce them.
 
 ### Docker (GHCR)
 
