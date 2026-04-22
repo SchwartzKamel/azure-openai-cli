@@ -11,10 +11,16 @@ permissions:
   contents: read
 
 concurrency:
+  # One in-flight CI run per ref. PR pushes cancel older runs (cheap feedback
+  # loop); `main` pushes do NOT cancel (we want every landed commit verified).
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # build-and-test: format-check, build, and both xUnit projects (v1 + v2) on
+  # ubuntu + macos. Matrix runs in parallel (fail-fast: false — we want to see
+  # all OS failures, not just the first one). Windows intentionally excluded
+  # (see comment below); win-x64 build+smoke is covered in release.yml.
   build-and-test:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
@@ -47,18 +53,29 @@ jobs:
         run: dotnet restore
 
       - name: Check code formatting
+        # dotnet format --verify-no-changes is the canonical style gate. Must
+        # match `make format-check` locally — divergence here is a CI bug, not
+        # a contributor bug (see CONTRIBUTING.md "preflight gate").
         run: dotnet format --verify-no-changes azure-openai-cli.sln
 
       - name: Build
+        # --no-restore reuses the cached NuGet restore from the previous step.
         run: dotnet build --no-restore --configuration Release
 
       - name: Test v1
+        # Both v1 and v2 test projects are run as separate steps (not via the
+        # solution file) so failures attribute cleanly to one tree. Local
+        # `make test` uses the solution file — equivalent coverage, different
+        # failure-attribution trade-off. See Puddy's make-test-both-trees note.
         run: dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --no-build --configuration Release --verbosity normal
 
       - name: Test v2
         run: dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj --no-build --configuration Release --verbosity normal
 
       - name: Check for vulnerable packages
+        # Advisory-only: continue-on-error so a newly-disclosed CVE doesn't
+        # block `main` immediately. Real gate is Trivy in the docker job
+        # below (HIGH/CRITICAL fail). See docs/security/scanners.md.
         shell: bash
         run: |
           dotnet list package --vulnerable --include-transitive 2>&1 | tee vulnerability-report.txt
@@ -116,6 +133,11 @@ jobs:
         run: docker run --rm azure-openai-cli:ci --help
 
       - name: Scan image for vulnerabilities
+        # Trivy is the AUTHORITATIVE scanner (see docs/security/scanners.md).
+        # Aqua's DB; HIGH/CRITICAL severity threshold. Currently exit-code: 0
+        # (advisory) while we stabilize the baseline — flip to exit-code: 1
+        # once the v2.0.x CVE backlog is clean. Grype is the local-dev
+        # convenience scanner (`make scan`); Trivy wins on disagreement.
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0 (only safe version)
         with:
           image-ref: 'azure-openai-cli:ci'

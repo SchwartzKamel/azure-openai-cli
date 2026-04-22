@@ -62,7 +62,7 @@ help:
 	@echo "  make run         - Run the CLI (requires .env file). Use ARGS=\"your prompt\""
 	@echo "  make clean       - Remove build artifacts and dangling images"
 	@echo "  make alias       - Install 'az-ai' shell alias"
-	@echo "  make scan        - Run vulnerability scan with grype"
+	@echo "  make scan        - Run local vulnerability scan with Grype (dev convenience; Trivy in CI is canonical — see docs/security/scanners.md)"
 	@echo "  make test        - Run unit tests (xUnit) — both v1 and v2 projects"
 	@echo "  make test-v1     - Run only v1 xUnit project (faster iteration)"
 	@echo "  make test-v2     - Run only v2 xUnit project (faster iteration)"
@@ -80,6 +80,9 @@ help:
 	@echo "  make publish      - Alias for publish-aot (the new default)"
 	@echo ""
 	@echo "Per-OS cross-builds (portable ReadyToRun, dist/<rid>/):"
+	@echo "  NOTE: local-dev convenience only. The shipped release matrix is"
+	@echo "        enumerated in .github/workflows/release.yml (v2: 4 legs —"
+	@echo "        linux-x64, linux-musl-x64, osx-arm64, win-x64; osx-x64 dropped in v2.0.4)."
 	@echo "  make publish-linux-x64       - Linux glibc x64 (WSL/Ubuntu/Debian/Fedora)"
 	@echo "  make publish-linux-musl-x64  - Linux musl x64 (Alpine)"
 	@echo "  make publish-linux-arm64     - Linux ARM64 (Raspberry Pi, ARM servers)"
@@ -87,7 +90,7 @@ help:
 	@echo "  make publish-osx-arm64       - macOS Apple Silicon (M1/M2/M3)"
 	@echo "  make publish-win-x64         - Windows x64"
 	@echo "  make publish-win-arm64       - Windows ARM64"
-	@echo "  make publish-all             - Build all 7 cross-platform binaries"
+	@echo "  make publish-all             - Build all 7 cross-platform binaries (local-dev; release ships 4)"
 	@echo ""
 	@echo "Native-install & benchmark (drop Docker for speed — ideal for Espanso/AHK):"
 	@echo "  make install      - Install host-AOT binary to ~/.local/bin/az-ai (Linux/macOS/WSL)"
@@ -145,7 +148,15 @@ alias:
 	echo "alias az-ai='$(DOCKER_CMD)'" >> $$RCFILE; \
 	echo "Alias 'az-ai' added to $$RCFILE"
 
-## Run a vulnerability assessment of the compiled image
+## Run a vulnerability assessment of the compiled image.
+##
+## Scanner reconciliation (canonical doc: docs/security/scanners.md):
+##   - Trivy (CI, .github/workflows/ci.yml) is AUTHORITATIVE. Trivy's verdict
+##     gates merges and releases.
+##   - Grype (this target) is a developer-convenience local scanner. Different
+##     CVE DB (Anchore vs Aqua); the two will disagree at the edges. Grype-only
+##     findings get tracked in docs/security/cve-log.md but do NOT block merge.
+##     If Trivy is clean, CI wins.
 scan:
 	@command -v grype >/dev/null 2>&1 || { echo "Error: grype not found. Install: https://github.com/anchore/grype"; exit 1; }
 	grype $(FULL_IMAGE)
@@ -274,6 +285,15 @@ publish: publish-aot
 # ─────────────────────────────────────────────────────────────────────────────
 # Per-OS cross-builds (portable ReadyToRun self-contained, dist/<rid>/)
 #
+# Shipped vs local-dev matrix:
+#   - Shipped release matrix (see .github/workflows/release.yml v2 legs):
+#       linux-x64, linux-musl-x64, osx-arm64, win-x64     (4 legs)
+#   - Local-dev extras provided for contributor convenience only:
+#       linux-arm64, osx-x64, win-arm64                    (3 legs, not shipped)
+#   osx-x64 was dropped from the shipped matrix in v2.0.4 after the macos-13
+#   runner pool became unreliable; the target stays here so Intel Mac
+#   contributors can still smoke-build locally.
+#
 # Why R2R, not AOT, for cross-builds?
 #   Native AOT compilation is host-constrained:
 #     - Linux host: can AOT-build linux-x64, linux-arm64 only
@@ -328,14 +348,19 @@ publish-win-arm64:
 	@$(call _publish_rid,win-arm64)
 	@ls -lh dist/win-arm64/AzureOpenAI_CLI.exe
 
-## Publish all 7 supported RIDs (~7× single-build time).
+## Publish all 7 supported RIDs (~7× single-build time). Local-dev convenience.
+## NOTE: this builds MORE than the shipped release matrix. The release
+## pipeline (.github/workflows/release.yml v2 legs) ships 4 legs: linux-x64,
+## linux-musl-x64, osx-arm64, win-x64. The extra 3 legs here (linux-arm64,
+## osx-x64, win-arm64) exist so contributors can cross-build for their own
+## hardware. See docs/security/supply-chain.md for the shipped-artifact list.
 ## Uses ReadyToRun because AOT is host-OS-constrained. Runs in parallel if
 ## invoked with `make -j7 publish-all`.
 publish-all: publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
              publish-osx-x64 publish-osx-arm64 \
              publish-win-x64 publish-win-arm64
 	@echo ""
-	@echo ">> All 7 binaries built under dist/<rid>/"
+	@echo ">> All 7 binaries built under dist/<rid>/ (4 shipped + 3 local-dev)"
 	@du -sh dist/*/
 
 # ─────────────────────────────────────────────────────────────────────────────
