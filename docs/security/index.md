@@ -140,4 +140,26 @@ report row that closed them.
 
 ---
 
+## 7. Canonical security docs
+
+The operator-facing [`SECURITY.md`](../../SECURITY.md) is the disclosure
+policy. The following documents under `docs/security/` and
+`docs/runbooks/` are the long-form, canonical references. Each is linked
+from the relevant `SECURITY.md` section; this list is the one-stop index.
+
+| Topic | Doc | Closes audit finding |
+|---|---|---|
+| v2 threat model (STRIDE, residual-risk register) | [`../runbooks/threat-model-v2.md`](../runbooks/threat-model-v2.md) | F-5 follow-on |
+| SBOM generation + freshness policy | [`./sbom.md`](./sbom.md) | F-8 |
+| Supply-chain disclosure (NuGet pinning, feeds, provenance) | [`./supply-chain.md`](./supply-chain.md) | F-8 |
+| Scanner reconciliation (Trivy CI / Grype local) | [`./scanners.md`](./scanners.md) | F-3 (doc half) |
+| `UnsafeReplaceSecrets` coverage + edge cases | [`./redaction.md`](./redaction.md) | F-2 follow-on |
+| One-page hardening checklist (PR-ready) | [`./hardening-checklist.md`](./hardening-checklist.md) | I-2/I-3/I-4 rollup |
+| CVE / advisory log | [`./cve-log.md`](./cve-log.md) | F-11 |
+
+If you add a new canonical doc here, also link it from the relevant
+`SECURITY.md` section so the operator entry point stays complete.
+
+---
+
 *Clipboard stored. Paperwork complete. Moving on.*

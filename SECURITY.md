@@ -209,21 +209,27 @@ The process cannot:
 
 ### Self-Contained Binary
 
-The CLI is published as a **single-file, self-contained, trimmed** binary:
+- **v2** (`az-ai-v2`) is published as a **NativeAOT** single-file ELF
+  (`linux-x64`, `linux-musl-x64`, `osx-arm64`, `win-x64`). Build flags:
+  `--self-contained -p:PublishAot=true`
+  (see [`Dockerfile.v2:65`](Dockerfile.v2) and the v2 csproj).
+- **v1** (`az-ai`, 1.8.x / 1.9.x) is published as a **trimmed single-file**
+  managed binary (`/p:PublishSingleFile=true /p:PublishTrimmed=true`).
 
-```
-dotnet publish ... --self-contained true /p:PublishSingleFile=true /p:PublishTrimmed=true
-```
+Both produce a binary that does not need the .NET runtime installed on the
+host; only native OS dependencies (`icu-libs`) are required in the
+container. The AOT output has no managed-fallback path — a reflection
+access that the trimmer dropped will surface as
+`TypeInitializationException` at runtime rather than JIT-compiling on
+demand. Trim-related findings are tracked in
+[`docs/aot-trim-investigation.md`](docs/aot-trim-investigation.md) and the
+unwrap-and-redact chain in [`docs/security/redaction.md`](docs/security/redaction.md)
+is the compensating control against error-path credential leakage.
 
-This means:
-- No .NET runtime is required in the container (only native OS dependencies).
-- The trimmed binary excludes unused framework code, reducing surface area.
-- Only `icu-libs` is installed as an additional runtime dependency.
+### Image Digest Pinning (Default)
 
-### Image Digest Pinning (Production)
-
-For production deployments, pin the base image by digest to prevent supply-chain
-attacks via tag mutation:
+The shipped Dockerfile **already pins the base image by digest** to defeat
+tag-mutation supply-chain attacks:
 
 ```dockerfile
 # Instead of:
@@ -369,6 +375,22 @@ grep '.env' .gitignore
 # Expected: azureopenai-cli/.env
 ```
 
+### `--raw` / `--json` Silent-stderr Contract
+
+Both `--raw` (pipeline-friendly plaintext) and `--json` (machine-readable
+envelope) deliberately suppress **config-parse** warnings on stderr. The
+contract, hardened in v2.0.4 (`UserConfig.Load(quiet:)`), is:
+
+- A successful run under `--raw` / `--json` emits **nothing** on stderr.
+- A failing run still emits a **redacted** error on stderr (see
+  [`docs/security/redaction.md`](docs/security/redaction.md)) — silence
+  applies to advisories, not to genuine errors.
+
+This matters for security-adjacent pipelines — Espanso / AHK hotkeys that
+tee output, CI jobs that treat any stderr byte as a warning signal. The
+contract ensures `az-ai-v2 --raw` never leaks home-dir config paths into
+a shared log surface when the hot path is working correctly.
+
 ---
 
 ## 6. Network Security
@@ -417,7 +439,28 @@ In firewall-restricted environments, allowlist:
 
 ## 7. Dependency Security
 
-### Current Dependencies
+> **Canonical references for this section:**
+> - [`docs/security/sbom.md`](docs/security/sbom.md) — CycloneDX SBOM generation, storage, freshness policy.
+> - [`docs/security/supply-chain.md`](docs/security/supply-chain.md) — NuGet pinning, feed trust, SLSA provenance.
+> - [`docs/security/scanners.md`](docs/security/scanners.md) — Trivy (CI gate) vs Grype (local convenience).
+> - [`docs/security/cve-log.md`](docs/security/cve-log.md) — advisory register.
+>
+> The tables below are the short story for operators skimming the policy.
+> For the full transitive closure that shipped with a given release,
+> **download the SBOM** attached to that release — it is the source of
+> truth, not the list below.
+
+### Current Dependencies (v2, reader convenience)
+
+| Package | Version | Purpose |
+|---|---|---|
+| `Microsoft.Agents.AI` | 1.1.0 | MAF parent agent runtime |
+| `Microsoft.Agents.AI.OpenAI` | 1.1.0 | OpenAI channel for MAF |
+| `Azure.AI.OpenAI` | 2.1.0 (GA) | Azure OpenAI SDK client |
+| `dotenv.net` | 3.1.2 | `.env` file parser |
+| `OpenTelemetry` (+ `Api`, `Exporter.OpenTelemetryProtocol`) | 1.15.2 | Opt-in telemetry (OTLP) |
+
+### Legacy Dependencies (v1, 1.8.x / 1.9.x maintenance)
 
 | Package | Version | Purpose |
 |---|---|---|
@@ -433,26 +476,30 @@ In firewall-restricted environments, allowlist:
 
 ### Vulnerability Scanning
 
-Run the Grype scanner against the built image:
+Two scanners coexist deliberately — see
+[`docs/security/scanners.md`](docs/security/scanners.md) for the long form.
+The short version:
 
-```bash
-make scan
-```
+- **CI gate (authoritative):** Trivy, pinned at
+  `aquasecurity/trivy-action@57a97c7 # v0.35.0` in
+  [`.github/workflows/ci.yml:119`](.github/workflows/ci.yml). Runs on
+  every PR and push to `main`; fails on `HIGH,CRITICAL`.
+- **Local developer convenience:** Grype via `make scan` (not a gate).
+  Useful for a quick local check before opening a PR:
 
-This executes:
+  ```bash
+  make scan    # wraps: grype azureopenai-cli:gpt-5-chat
+  ```
 
-```bash
-grype azureopenai-cli:gpt-5-chat
-```
+  Install Grype locally if you want it:
 
-Grype checks all OS packages and application dependencies against known CVE
-databases.
+  ```bash
+  curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+  ```
 
-**Install Grype** (if not already installed):
-
-```bash
-curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-```
+If Trivy (CI) is clean and Grype (local) disagrees, **CI wins**; log the
+delta in [`docs/security/cve-log.md`](docs/security/cve-log.md) as
+`status: grype-delta-only`.
 
 ### Update Policy Recommendations
 
@@ -545,6 +592,24 @@ The following are **out of scope**:
 - Social engineering attacks.
 - Denial of service via large prompts (rate-limited by Azure).
 
+### Safe Harbor
+
+Good-faith security research conducted in line with this policy will not
+be pursued legally. Specifically, we will not initiate or support legal
+action against researchers who:
+
+- Report vulnerabilities through the channels above (GitHub Security
+  Advisories preferred) before any public disclosure.
+- Avoid privacy violations, destruction of data, or degradation of
+  service for other users.
+- Do not exfiltrate more data than is necessary to prove the issue.
+- Give us a reasonable window — matching the [Response Timeline](#response-timeline)
+  above — to investigate and ship a fix before disclosure.
+
+This clause applies to the code and infrastructure in this repository.
+It does not extend to Azure OpenAI service itself — follow MSRC's rules
+for that surface.
+
 ---
 
 ## 9. Exit Codes Reference
@@ -554,18 +619,28 @@ The CLI uses structured exit codes to distinguish between error categories:
 | Exit Code | Meaning | Example Scenario |
 |---|---|---|
 | `0` | **Success** | Prompt processed and response streamed successfully. |
-| `1` | **Validation / usage error** | Missing arguments, invalid model name, missing environment variables. |
+| `1` | **Validation / usage error** *or* **Ralph `--max-iterations` exhausted without a validation pass** (v2.0.4+). | Missing arguments, invalid model name, missing environment variables; Ralph ran the full iteration budget without the validator returning OK. |
+| `2` | **CLI parse error** | Unknown flag, malformed subcommand (v2 convention). |
 | `99` | **Unhandled error** | Unexpected exception (network failure, SDK error, etc.). |
+| `130` | **SIGINT / user interrupt** (preserved end-to-end by Ralph workflow, v2.0.4+) | Operator hit Ctrl-C mid-run. Always safe to abandon; do **not** retry automatically in CI. |
 
 ### Security Implications of Exit Codes
 
-- **Exit 1** indicates a configuration problem. Scripts should halt and alert
-  the operator — do not retry with the same configuration.
+- **Exit 1** indicates a configuration problem or an exhausted Ralph loop.
+  Scripts should halt and alert the operator — do not retry with the same
+  configuration.
+- **Exit 2** indicates a malformed invocation; re-check the argv before
+  retry.
 - **Exit 99** may indicate a transient error (network timeout) or a
   misconfiguration. Check `stderr` for the `[UNHANDLED ERROR]` message before
   retrying.
+- **Exit 130** is operator intent — **never** retry automatically on this
+  code. A supervisor that re-runs on `130` will loop the operator's
+  Ctrl-C against itself.
 - In CI/CD pipelines, treat any non-zero exit as a failure and avoid logging
-  the full error output to public dashboards (it may contain endpoint URLs).
+  the full error output to public dashboards (it is redacted of API key +
+  endpoint per [`docs/security/redaction.md`](docs/security/redaction.md),
+  but stack frames and file paths remain visible).
 
 ---
 
@@ -634,13 +709,22 @@ Blocked path prefixes:
 
 #### ShellExecTool
 
+Ground truth: [`azureopenai-cli-v2/Tools/ShellExecTool.cs`](azureopenai-cli-v2/Tools/ShellExecTool.cs).
+Proof-of-coverage: `tests/AzureOpenAI_CLI.V2.Tests/ToolHardeningTests.cs`.
+
 | Protection | Detail |
 |---|---|
-| **Destructive command blocklist** | `rm`, `rmdir`, `mkfs`, `dd`, `shutdown`, `reboot`, `halt`, `poweroff`, `kill`, `killall`, `pkill`, `format`, `del`, `fdisk`, `passwd` |
-| **Privilege / interactive blocklist** | `sudo`, `su`, `crontab`, `vi`, `vim`, `nano`, `nc`, `ncat`, `netcat`, `wget` |
+| **Destructive command blocklist** | `rm`, `rmdir`, `mkfs`, `dd`, `shutdown`, `reboot`, `halt`, `poweroff`, `kill`, `killall`, `pkill`, `format`, `del`, `fdisk`, `passwd` (`ShellExecTool.cs:17-18`) |
+| **Privilege / interactive blocklist** | `sudo`, `su`, `crontab`, `vi`, `vim`, `nano`, `nc`, `ncat`, `netcat`, `wget` (`ShellExecTool.cs:19-20`) |
+| **Command-substitution block** | `$(...)` and backticks rejected (`ShellExecTool.cs:53`) |
+| **Process-substitution block** | `<(...)` and `>(...)` rejected (`ShellExecTool.cs:57`) |
+| **`eval` / `exec` prefix block** | Rejected as first token or after pipe/chain (`ShellExecTool.cs:58-59`) |
+| **Tab/newline first-token rescan** | K-1 hardening (v2.0.2) — splits on tabs+newlines, not just spaces, so `"\trm"` does not bypass the blocklist (`ShellExecTool.cs:69`) |
 | **Pipe-chain analysis** | Scans through `\|`, `;`, `&` for blocked commands — prevents bypass via chaining. |
+| **HTTP-write / upload block** | `ContainsHttpWriteForms` rejects `curl`/`wget` bodies + upload verbs (`-X POST/PUT/DELETE`, `--data`, `-T`, `-F`) to defeat exfiltration (`ShellExecTool.cs:79-80, 131-186`) |
+| **Env scrub** | `SensitiveEnvVars` are unset on the child before `execve` so AZUREOPENAIAPI et al. never reach the shelled command (`ShellExecTool.cs:32-42`) |
 | **Output cap** | 64 KB stdout, 16 KB stderr — prevents memory exhaustion from verbose commands. |
-| **Timeout** | 10 seconds — prevents long-running or hanging processes. |
+| **Timeout** | 10 seconds with `Process.Kill(entireProcessTree: true)` — prevents long-running or hanging processes and their children. |
 | **Stdin closed** | Child process stdin is closed immediately to prevent interactive command hanging. |
 
 #### WebFetchTool
