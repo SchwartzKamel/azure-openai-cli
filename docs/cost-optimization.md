@@ -49,8 +49,8 @@ Rough order-of-magnitude as of **2026-04** (USD per 1M tokens, global PAYG, conf
 | `o1-mini`      |   ~$3.00   |   ~$12.00*  | Hard problems where you can afford seconds-to-minutes of latency. *Reasoning tokens bill as output.* |
 
 > ⚠️ **Unverified numbers.** I am flagging these as estimates — I cannot hit the live Azure pricing API from this doc. The **ratios** (mini ~15× cheaper than 4o, 4o output ~4× its input) are stable; the absolute dollars drift. Always cite the pricing page above in a PR that changes a model default.
-> 
-> gpt-5.4-nano rates verified against Azure OpenAI pricing (2025-08-07 refresh); DeepSeek-V3.2 and both Phi-4-mini variants pulled from Azure Foundry serverless catalog (Microsoft Community Hub announcement + cloudprice.net corroboration, April 2026). Region and deployment type may drift prices ±10%.
+>
+> **gpt-5.4-nano pricing is STALE.** Last verified 2025-08-07 — that is **~8 months old** as of this audit (2026-04-20). Nano-tier SKUs have repriced more than once in that window. Treat $0.20/$1.25 as *unverified since 2025-08-07 per https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/ — verify before quoting in a PR or a cost estimate.* DeepSeek-V3.2 and both Phi-4-mini variants: Azure Foundry serverless catalog (Microsoft Community Hub + cloudprice.net, April 2026). Region and deployment type may drift prices ±10%.
 
 **Morty's rule of thumb:** if you can't write a one-sentence justification for why `gpt-4o-mini` *cannot* do the job, you're using the wrong model. "It feels smarter" is not a sentence. That's how you buy a Cadillac to go to the mailbox.
 
@@ -235,27 +235,93 @@ At `--max-tokens 100` on `gpt-4o-mini` you're talking fractions of a cent per ca
 
 `PersonaMemory` tail-truncates at 32,768 bytes (`Squad/PersonaMemory.cs:13`). That's **the right discipline** — don't raise it. Unbounded history = unbounded input tokens = unbounded bill. If you think you need more, you need summarization, not a bigger cap.
 
-## 5. Caching strategies (mostly future work)
+## 5. Caching strategies
 
-The cheapest API call is the one you don't make.
+The cheapest API call is the one you don't make. The *second* cheapest is the one Azure discounts for you without asking. There are **three** caching levers in play, and for 18 months this section pretended there was one. We're fixing that.
 
-### What's safely cacheable
+### 5.1 Azure native prompt cache (free, on by default, 50% off cached input)
+
+**You are probably already eligible and not using it.** Azure OpenAI ships a server-side prompt cache for supported models — the same primitive OpenAI documented in late 2024, exposed through the Azure endpoint. There is no flag to turn it on. You do not pay extra. If your **prompt prefix** matches a recently-seen prefix, the cached portion of *input* tokens bills at a discounted rate.
+
+**What qualifies (as of 2026-04-20; verify before quoting — https://learn.microsoft.com/azure/ai-services/openai/how-to/prompt-caching):**
+
+- **Minimum prefix length:** ~1,024 tokens. Below that, no cache — the whole prompt bills at full rate.
+- **Match must be an exact prefix:** byte-for-byte identical start of the prompt. System prompt + persona memory is the natural match boundary. Reorder one line near the top and you lose the whole cache.
+- **TTL:** measured in minutes (typically 5–10 min idle; longer under load). This is **not** a persistent cache — it rewards burst traffic, not daily cron.
+- **Price ratio:** cached-input tier is typically **~50% of standard input** on gpt-4o/4o-mini and newer families; **always re-confirm on the pricing page before relying on the ratio in a PR.**
+
+**How to check whether you actually got a cache hit:**
+
+The `usage` object on the chat completions response includes `prompt_tokens_details.cached_tokens`. That's the count of input tokens that billed at the cached rate. If it's `0`, you didn't hit. We do **not** currently log this on stderr — FR candidate: extend the `[tokens: X→Y, Z total]` line to include `(cached: N)` when `cached_tokens > 0`. File it.
+
+> Note: in some Azure API versions the cache signal is on the response headers (`x-ms-openai-cached-tokens` or similar) rather than the body. Check the API version you're pinned to. The `usage.prompt_tokens_details` path is the portable one.
+
+**What this means for our workflows:**
+
+- **Squad personas win.** A persona memory file that stays stable across calls *is* the exact prefix-stability pattern the cache rewards. Ordering matters: keep system prompt + persona memory as the opening block, user query last.
+- **Espanso one-shots lose.** Latency-sensitive, sporadic fires — the 5–10 min TTL rarely pays off. No harm, no win.
+- **Ralph loops win hugely.** 10 iterations, same validator system prompt, same growing context — prefix-stable by construction. This is free money on the current bill.
+
+### 5.2 Azure Batch API — 50% off, 24-hour SLA
+
+**If you don't need the answer inside 24 hours, you are overpaying by 50%.** Azure OpenAI Batch API discounts both input *and* output by half on supported models in exchange for async execution with a 24-hour completion SLA (most jobs finish faster; the 24h is the *ceiling*).
+
+**Eligibility (as of 2026-04-20; verify — https://learn.microsoft.com/azure/ai-services/openai/how-to/batch):**
+
+- Supported on most chat/completion Azure OpenAI SKUs (gpt-4o, 4o-mini, 4.1, o-series variants; check the live matrix before committing).
+- Input is a JSONL file of request bodies, uploaded to the deployment; output is a JSONL of responses. No streaming.
+- Per-deployment enqueued-token quotas apply. Large jobs: chunk and pace.
+- Does **not** compose with the prompt cache — batch jobs bill at the batch rate, cache discounts don't stack.
+
+**When to reach for it:**
+
+- Bulk backfills: regenerating commit messages, summaries, classifications across a corpus.
+- Overnight evaluation runs (see `docs/benchmarks/`).
+- Any Ralph-style autonomous sweep that doesn't need a human in the loop.
+
+**When NOT:**
+
+- Espanso, AHK, agent mode, anything interactive. 24-hour latency is a feature, not a bug — do not try to paper over this.
+- Jobs smaller than a few hundred requests. The overhead of JSONL packaging + upload + poll is not worth it below that threshold.
+
+**Current az-ai status:** not implemented. The CLI speaks synchronous chat completions only. A `--batch` flag that emits a JSONL line instead of calling the API — or a separate `az-ai-batch` helper — is an obvious FR. Volume justifies it the day someone does a 10k-row classification sweep on PAYG.
+
+### 5.3 Local cache (FR-008 `--cache-dir`) — real, but much smaller ROI than advertised
+
+**Reality check.** Earlier drafts of the FR-008 proposal cited "~$0.01/hit saved" as the ROI. That number was pulled from a gpt-4.1-era mental model and quietly made it into three places before anyone did the math on the *actual default*. On `gpt-4o-mini` — the hardcoded fallback, per ADR-009 — the real per-hit savings is **one to two orders of magnitude smaller**.
+
+**Show your work:**
+
+A realistic Espanso-shaped call on `gpt-4o-mini` — 500 input tokens (system prompt + persona + short user prompt), 200 output tokens — costs:
+
+- Input: 500 × $0.15 / 1,000,000 = **$0.000075**
+- Output: 200 × $0.60 / 1,000,000 = **$0.00012**
+- **Total per call: ~$0.0002**
+
+A cache hit avoids the *entire* call. So per-hit savings is **~$0.0002**, not $0.01. Even pushing output to 500 tokens (a long paragraph) only reaches ~$0.000375 per hit. **Call it $0.0003–$0.0005/hit on gpt-4o-mini.** The old number was ~20–50× overstated.
+
+**What this means for FR-008 prioritization:**
+
+- At 1,000 Espanso hits/month with a 50% hit rate, the LRU saves **~$0.10/month**. Not a typo. A dime.
+- The same user would save **more** by staying on `gpt-4o-mini` (vs. an accidental `gpt-4.1` default) in a single afternoon.
+- The cache *does* pay off at two scales: (a) Ralph/batch internal loops with high-frequency identical prefixes (and even there, §5.1 already handles it server-side for free); (b) offline regression test suites that replay prompts deterministically — the cache is a dev-loop latency win, not a prod cost win.
+
+**Priority implication:** FR-008 is not cancelled, but it drops below the Azure native cache observability work (§5.1 `(cached: N)` on stderr) and the Batch API wrapper (§5.2). You do not ship an in-memory LRU for $0.10/month before you log the free server-side cache hits you're already getting.
+
+### 5.4 What's safely cacheable (the common rules)
+
+Regardless of which layer:
 
 - **Deterministic tasks** — `temperature=0`, no tools, no clock-dependent input.
 - **Idempotent transforms** — "classify this sentence," "extract the commit type," "is this SQL valid."
-- **Stable system prompt + stable user prompt** — hash them together as the cache key.
+- **Stable system prompt + stable user prompt** — keep the stable bits at the *front* (prefix-match, §5.1) and hash them together as the key for any local layer.
 
-### What's **not** safely cacheable
+### 5.5 What's **not** safely cacheable
 
 - Anything with `temperature > 0` (non-deterministic by design).
 - Agent mode with tool calls (side effects, fresh context each turn).
 - Anything that reads the filesystem, clipboard, or stdin with changing content.
-
-### Proposed: `--cache-dir` flag (future FR)
-
-A file-backed local cache keyed by `sha256(system_prompt || user_prompt || model || temperature || max_tokens)`, with explicit opt-in per invocation. Espanso triggers are the perfect first customer — same snippet, same prompt, same answer, charged once.
-
-> **Open proposal.** Not implemented today. If you want to write the FR, see `docs/proposals/` for the template.
+- Anything touching PII/secrets where a local cache file would become a compliance artifact. The Azure server-side cache is scoped to the resource; a `--cache-dir` on a shared workstation is not. Think before you flag.
 
 ## 6. Monitoring your spend
 
