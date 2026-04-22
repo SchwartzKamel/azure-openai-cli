@@ -12,7 +12,7 @@ code is the implementation of that spec.
 | Doc | Subject |
 |---|---|
 | [`temperature-cookbook.md`](./temperature-cookbook.md) | Recommended `--temperature` per task category (H3). |
-| [`safety-clause.md`](./safety-clause.md) | `SAFETY_CLAUSE` refusal string — what it is, where it's applied, override behavior (H4). |
+| [`safety-clause.md`](./safety-clause.md) | `SAFETY_CLAUSE` refusal string — what it is, where it's applied, override behavior (H4/M1). |
 
 ## Roadmap (tracked in Maestro audit `docs/audits/docs-audit-2026-04-22-maestro.md`)
 
