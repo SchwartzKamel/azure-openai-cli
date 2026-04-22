@@ -1,7 +1,9 @@
 # FR-004: Latency & Startup Optimization
 
 > **✅ Phase 1 largely shipped** -- Spinner (v1.1.0) and Native AOT binary
-> (v1.8.0, ~5.4 ms cold start) are done. Daemon mode and Homebrew/tool
+> (v1.8.0, ~5.4 ms cold start at v1.8.0 ship — current v2.0.6: 10.7 ms p50
+> / 12.97 MiB, see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md))
+> are done. Daemon mode and Homebrew/tool
 > distribution remain deferred. The original proposal below describes the
 > pre-AOT baseline for historical context.
 

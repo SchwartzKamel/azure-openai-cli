@@ -264,7 +264,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > mainline.
 >
 > ## 3. Latency -- THIS is the angle
-> Our brand is 5.4 ms cold start. Local NVFP4 on Blackwell can hit sub-100 ms
+> Our brand is sub-15 ms cold start (10.7 ms p50 on v2.0.6 — see docs/perf/v2.0.5-baseline.md). Local NVFP4 on Blackwell can hit sub-100 ms
 > TTFT for 31B. Combined: **sub-120 ms end-to-end first-token on the user's own
 > iron.** Not a feature -- a different product. Chat loop feels like autocomplete,
 > not a transaction.

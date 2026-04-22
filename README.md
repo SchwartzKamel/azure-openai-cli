@@ -1,6 +1,6 @@
 # Azure OpenAI CLI ⚡
 
-> A **5ms-startup, 9 MB single-binary** Azure OpenAI agent for text injection, shell automation, and scripted AI workflows.
+> A **sub-15 ms cold-start, ~13 MiB single-binary** Azure OpenAI agent for text injection, shell automation, and scripted AI workflows.
 
 [![CI](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/ci.yml)
 [![Release](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/release.yml/badge.svg)](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/release.yml)
@@ -11,7 +11,7 @@
 
 ## Why
 
-- 🚀 **5.4 ms cold start** — Native AOT single-file binary, fast enough to feel synchronous inside text expanders.
+- 🚀 **10.7 ms p50 cold start** — Native AOT single-file binary (12.97 MiB, linux-x64), fast enough to feel synchronous inside text expanders. Measured on v2.0.6, laptop reference rig — see [docs/perf/v2.0.5-baseline.md](docs/perf/v2.0.5-baseline.md).
 - 🧰 **5 execution modes** — one-shot prompts, tool-calling agent, autonomous self-correcting loops, named personas with persistent memory, raw-pipe mode for Espanso/AHK.
 - 🔒 **Security hardened** — shell-injection blocklist, SSRF protection on `web_fetch`, file-read denylist, bounded sub-agent recursion. See [SECURITY.md](SECURITY.md).
 - 🖥️ **Cross-platform** — Pre-built AOT binaries for Linux (glibc/musl/arm64), macOS (x64/arm64), and Windows (x64/arm64).

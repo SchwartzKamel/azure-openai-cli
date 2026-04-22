@@ -17,7 +17,7 @@
 | [FR-003](FR-003-local-user-preferences.md) | Local User Preferences & Config Command | P1 | S-M | 🪦 **SUPERSEDED by [FR-014](FR-014-local-preferences-and-multi-provider.md)** -- Phase 1 (env vars + inline flags) shipped v1.1.0; Phase 2 subsumed into FR-014 | -- |
 | [FR-004](FR-004-latency-and-startup-optimization.md) | Latency & Startup Optimization | P0 | Phased | ✅ LARGELY SHIPPED -- Spinner (v1.1.0) + AOT (v1.8.0); daemon (Phase 2b) + distribution (Phase 3) deferred | -- |
 | [FR-005](FR-005-shell-integration-and-output-intelligence.md) | Shell Integration & Output Intelligence | P1 | M | 🔄 PARTIAL -- `--json`, `--raw` shipped; `--code` / `--shell` / markdown pending | -- |
-| [FR-006](FR-006-unblock-native-aot-compilation.md) | Unblock Native AOT Compilation | P0 | S | ✅ SHIPPED v1.8.0 -- ~5.4 ms cold start | Unblocked FR-008, FR-011 |
+| [FR-006](FR-006-unblock-native-aot-compilation.md) | Unblock Native AOT Compilation | P0 | S | ✅ SHIPPED v1.8.0 -- ~5.4 ms cold start at ship; current v2.0.6: 10.7 ms p50 ([baseline](../perf/v2.0.5-baseline.md)) | Unblocked FR-008, FR-011 |
 | [FR-007](FR-007-parallel-startup-and-connection-prewarming.md) | Parallel Startup & Connection Pre-warming | P1 | S | 📋 PLANNED -- **quick win, 3-5 h, 200-300 ms TTFT** | Independent |
 | [FR-008](FR-008-prompt-response-cache.md) | Prompt Response Cache | P1 | M | 📋 PLANNED -- Espanso/AHK use case | -- |
 | [FR-009](FR-009-config-set-and-directory-overrides.md) | `--config set` Commands & Per-Directory Overrides | P1 | M | 🪦 **SUPERSEDED by [FR-014](FR-014-local-preferences-and-multi-provider.md)** -- directory overrides subsumed into FR-014 precedence chain | -- |
@@ -123,7 +123,7 @@ The original proposal docs remain in-tree as historical context for the v2 port.
 ### ✅ FR-004: Latency & Startup Optimization -- PARTIAL→LARGELY SHIPPED
 
 - ✅ **Phase 1 (v1.1.0):** Braille spinner on stderr; clears on first token; pipe-safe.
-- ✅ **Phase 2a (v1.8.0):** Native AOT via FR-006 -- ~5.4 ms cold start.
+- ✅ **Phase 2a (v1.8.0):** Native AOT via FR-006 -- ~5.4 ms cold start at v1.8.0 ship (current v2.0.6: 10.7 ms p50, see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)).
 - 📋 **Phase 2b (deferred):** Daemon container mode + Unix socket.
 - 📋 **Phase 3 (deferred):** Native install via `dotnet tool install`, GitHub Releases, Homebrew (partial progress via [Bob Sacamano's packaging scaffolds](../../packaging/)).
 
@@ -136,7 +136,7 @@ The original proposal docs remain in-tree as historical context for the v2 port.
 
 ### ✅ FR-006: Unblock Native AOT -- SHIPPED v1.8.0
 
-`OutputJsonError` replaced with source-generated `ErrorJsonResponse`; `SquadConfig.Load/Save/Initialize` migrated off reflection-based `JsonSerializer`. `make publish-aot` produces a ~9 MB single-file self-contained binary with ~5.4 ms cold start on Linux x64.
+`OutputJsonError` replaced with source-generated `ErrorJsonResponse`; `SquadConfig.Load/Save/Initialize` migrated off reflection-based `JsonSerializer`. `make publish-aot` produces a self-contained single-file binary (~9 MB / ~5.4 ms cold start at v1.8.0 ship; ~13 MiB / 10.7 ms p50 on current v2.0.6 — see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)).
 
 ### 📋 FR-007: Parallel Startup & TLS Pre-warming -- PLANNED
 

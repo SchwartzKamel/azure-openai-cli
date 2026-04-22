@@ -19,7 +19,7 @@ noticeable; a 5 ms delay is not.
 | ---------------------- | ------------------------------------ | ---------------- | ---------------- |
 | Framework-dependent    | *not measured*                       | ~1 MB + shared   | Yes              |
 | ReadyToRun (R2R)       | ~54 ms                               | ~80 MB           | Bundled          |
-| **Native AOT**         | **~5.4 ms**                          | **~9 MB**        | No               |
+| **Native AOT**         | **~5.4 ms**¹                         | **~9 MB**¹       | No               |
 | Docker (for reference) | ~400 ms                              | image-dependent  | Container host   |
 
 Native AOT is roughly **10× faster than R2R and ~75× faster than Docker** for
@@ -27,6 +27,12 @@ cold start, while producing the smallest self-contained artifact. These
 measurements were taken on WSL2 (linux-x64) via the repository `Makefile`
 target `make bench`; they are directionally consistent across hosts but
 absolute numbers vary with disk and CPU.
+
+¹ **Historical at time of decision (v1.8.0 era).** v2.0.6 on a bare-metal laptop
+reference rig measures **10.73 ms p50 / 12.97 MiB** — still decisively the
+fastest publish mode by the same ~10× margin over R2R, which is what this ADR
+was deciding on. See [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)
+for current numbers.
 
 ## Decision
 
@@ -42,9 +48,9 @@ absolute numbers vary with disk and CPU.
 
 ### Positive
 
-- **Sub-10 ms cold start** makes Espanso/AutoHotkey integration feel
+- **Sub-15 ms cold start** makes Espanso/AutoHotkey integration feel
   instantaneous.
-- **Single-file distribution** (~9 MB) -- users download one binary, no SDK or
+- **Single-file distribution** (~13 MiB on v2.0.6; ~9 MB at v1.8 time of decision) -- users download one binary, no SDK or
   runtime install required.
 - **Smaller attack surface**: no shared .NET runtime on the host, no JIT at
   runtime, trimmed unused assemblies.

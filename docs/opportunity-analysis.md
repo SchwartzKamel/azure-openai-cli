@@ -5,7 +5,7 @@
 
 ## 1. What az-ai has that nobody else has
 
-1. **Sub-10 ms cold start via .NET Native AOT.** Measured 5.4 ms on linux-x64. No other *chat* CLI in the landscape is under ~30 ms. This is the foundation of the Espanso/AHK text-injection use case.
+1. **Sub-15 ms cold start via .NET Native AOT.** Measured 10.73 ms p50 on linux-x64 (v2.0.6, laptop reference rig — see [`docs/perf/v2.0.5-baseline.md`](./perf/v2.0.5-baseline.md)). No other *chat* CLI in the landscape is under ~30 ms. This is the foundation of the Espanso/AHK text-injection use case.
 2. **Azure OpenAI as the first-class target**, including Azure US Government (FedRAMP High / IL5 reachable via `AzureUSGovernment` cloud endpoints). Every other Azure-capable CLI treats it as an "OpenAI-compatible base URL" hack.
 3. **Persona+Squad memory (`.squad/`)** -- named AI teammates with per-persona tools and persistent memory. Closest analogues (llm's toolboxes, fabric sessions) lack the named-persona + bench-of-25 dispatch model.
 4. **Raw mode (`--raw`)** designed for text-expander injection. No competitor treats in-field text replacement as a first-class use case.

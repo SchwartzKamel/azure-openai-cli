@@ -21,7 +21,7 @@ Microsoft consolidated Semantic Kernel + AutoGen into **Microsoft Agent Framewor
 | Multi-provider auth | api-key only | `Azure.Identity` + provider abstraction |
 | MCP client | none | `McpClientToolProvider` |
 
-Continuing to maintain our own harness for *every* primitive is technical debt. But az-ai's primary use case is **Espanso/AHK text injection**, where every millisecond of cold-start and time-to-first-token (TTFT) is user-visible. The current AOT build delivers **9 MB / 5.4 ms cold start** -- which we cannot regress.
+Continuing to maintain our own harness for *every* primitive is technical debt. But az-ai's primary use case is **Espanso/AHK text injection**, where every millisecond of cold-start and time-to-first-token (TTFT) is user-visible. At the time this ADR was written, the AOT build delivered **9 MB / 5.4 ms cold start** (v1.x, pre-MAF) -- which was the bar we could not regress. For the current v2.0.6 shipping numbers (10.73 ms p50 / 12.97 MiB, laptop rig), see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md); the MAF-adoption deltas relative to that v1.x bar are captured in §6 below.
 
 ## Decision
 

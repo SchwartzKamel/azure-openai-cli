@@ -64,7 +64,7 @@ zero semantic cargo. Add `PASS` / `WARN` / `FAIL` text.
 **Do:**
 
 ```markdown
-- 🚀 **Fast cold start** -- 5.4 ms on `az-ai --version`.
+- 🚀 **Fast cold start** -- 10.7 ms p50 on `az-ai --help`.
 - 🔒 **Security hardened** -- no outbound calls at startup.
 - ⌨️ **Keyboard-only friendly** -- Espanso / AHK / `$EDITOR`.
 ```
@@ -75,7 +75,7 @@ the test.
 **Don't:**
 
 ```markdown
-- 🚀 5.4 ms
+- 🚀 10.7 ms p50
 - 🔒 hardened
 - ⌨️ keyboard
 ```
@@ -92,8 +92,8 @@ Every `![alt](path)` image reference must have substantive alt text.
 Guidelines, in priority order:
 
 1. **Describe the content and purpose, not the filename.** `alt="GIF"`
-   is not alt text; `alt="Animated terminal showing az-ai --version
-   returning in 5.4 ms"` is.
+   is not alt text; `alt="Animated terminal showing az-ai --help
+   returning in 10.7 ms"` is.
 2. **Include any text shown in the image.** If the image is a
    screenshot of output, transcribe the key lines.
 3. **State the demo claim.** A benchmark screenshot's alt text should
@@ -117,17 +117,17 @@ Guidelines, in priority order:
 **Better:**
 
 ```markdown
-![Benchmark chart: az-ai startup is 5.4 ms, v1 was 1300 ms, a 240× speedup](img/fast.png)
+![Benchmark chart: az-ai startup is 10.7 ms p50, v1 was 1300 ms, a 120× speedup](img/fast.png)
 ```
 
 **Best (for a hero image):**
 
 ```markdown
-![Animated terminal recording: `az-ai --version` returns in 5.4 ms,
+![Animated terminal recording: `az-ai --help` returns in 10.7 ms p50,
 then a short prompt streams a response in under one second](img/hero.gif)
 
 > Static frame: [img/hero-still.png](img/hero-still.png).
-> Commands shown: `az-ai --version`, then `az-ai "capital of France?"`.
+> Commands shown: `az-ai --help`, then `az-ai "capital of France?"`.
 ```
 
 Three layers of accessibility: descriptive alt text, a static PNG

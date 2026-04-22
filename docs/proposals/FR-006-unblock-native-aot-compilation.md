@@ -1,9 +1,12 @@
 # FR-006: Unblock Native AOT Compilation
 
-> **✅ Shipped in v1.8.0 (Unreleased).** Native AOT is now the recommended
-> publish mode. `make publish-aot` produces a ~9 MB self-contained binary with
-> **~5.4 ms cold start** on Linux x64 -- ~10× faster than ReadyToRun and
-> ~75× faster than the Docker container path. All app-level `IL2026` / `IL3050`
+> **✅ Shipped in v1.8.0.** Native AOT is now the recommended
+> publish mode. `make publish-aot` produces a self-contained single-file binary.
+> At v1.8.0 ship: ~9 MB, ~5.4 ms cold start on Linux x64 — ~10× faster than
+> ReadyToRun and ~75× faster than the Docker container path. On current
+> **v2.0.6**: ~13 MiB / 10.7 ms p50 (see
+> [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)); the ~10×
+> advantage over R2R holds. All app-level `IL2026` / `IL3050`
 > warnings are fixed via source generators in `JsonGenerationContext.cs`
 > (`AppJsonContext`). The historical proposal below is preserved for context.
 

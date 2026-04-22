@@ -68,8 +68,9 @@ needs careful quoting to avoid argv injection.
 Drop `.dll` files into a plugins dir; load via `AssemblyLoadContext`.
 Max performance, same process. **Fundamentally incompatible with FR-006:**
 AOT binaries cannot `Assembly.LoadFrom` arbitrary managed code. We'd need
-a JIT'd fallback binary (doubles build matrix, regresses the ~5.4 ms cold
-start) or accept plugins don't work in the recommended publish mode.
+a JIT'd fallback binary (doubles build matrix, regresses the sub-15 ms cold
+start — see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md))
+or accept plugins don't work in the recommended publish mode.
 Neither is acceptable.
 
 ### Option C -- WASI-sandboxed plugins (FUTURE)

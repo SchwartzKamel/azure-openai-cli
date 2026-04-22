@@ -17,7 +17,7 @@ Methodology:
 
 | Tool | Latest (Apr 2026) | Language / Runtime | Install Surface | AOT / Single-binary | Plugins / Tools | Azure OpenAI native? | MCP support | Primary USP | Known Weaknesses |
 |------|-------------------|--------------------|-----------------|---------------------|------------------|----------------------|-------------|-------------|------------------|
-| **az-ai** (this repo) | 1.9.1 | .NET 10, Native AOT | Single 9 MB binary; `make install`, GHCR image | ✅ True AOT, zero runtime | Internal tool registry (`shell`, `file`, `web`, `clipboard`, `delegate`); FR-012 external plugins planned | ✅ First-class (only target) | ❌ Not yet (opportunity) | 5.4 ms cold start, Espanso-grade latency, persona+memory `.squad/` | Single-provider lock, no MCP yet, no public package repos, small GH footprint |
+| **az-ai** (this repo) | 2.0.6 | .NET 10, Native AOT | Single ~13 MiB binary; `make install`, GHCR image | ✅ True AOT, zero runtime | Internal tool registry (`shell`, `file`, `web`, `clipboard`, `delegate`); FR-012 external plugins planned | ✅ First-class (only target) | ❌ Not yet (opportunity) | 10.7 ms p50 cold start, Espanso-grade latency, persona+memory `.squad/` | Single-provider lock, no MCP yet, no public package repos, small GH footprint |
 | **shell-gpt / sgpt** [^1] | 1.5.0 (Jan 2026) | Python | `pip install shell-gpt` | ❌ Python cold start (~300-800 ms typical) | Function calling + LiteLLM backends | ⚠️ Via `API_BASE_URL` hack | ❌ No | Shell command suggestion w/ hotkey completion (Bash/Zsh) | Python startup latency [^8], local-model story "not optimized" per own wiki |
 | **llm** (Simon Willison) [^2] | 0.30 (Apr 2026) | Python (pluggy) | `pip` / `uv tool install llm` | ❌ No | ✅ Deepest plugin ecosystem (llm-*) incl. Anthropic, Gemini, Ollama, toolboxes | ⚠️ Community plugin only | ⚠️ Partial via plugins (v0.30 roadmap explores server-side tools) | Richest plugin/tool model of any Python CLI; SQLite log of all calls | Cold start ~0.5-1.0 s, not designed for inline text-injection |
 | **aichat** (sigoden) [^3] | 0.30.0 | Rust | `cargo install`, homebrew, prebuilt | ✅ Single binary | ✅ `llm-functions` repo; 20+ providers; RAG; sessions | ✅ Supported via OpenAI-compatible base URL | ✅ "AI Tools & MCP" first-class | Most complete OSS: CMD + REPL + HTTP server modes; RAG built-in | Heavier than az-ai (~10+ MB Rust binary), RAG requires local embedding setup |
@@ -33,12 +33,12 @@ Methodology:
 | **Claude Code** [^10] | $20 Pro / $100 Max | Proprietary (Rust/TS) | Prebuilt | ✅ Yes | ✅ Agent Teams, MCP | ❌ (Anthropic direct or Bedrock) | ✅ Yes | SWE-bench ~81%, multi-file refactors | Proprietary, no free tier |
 | **Azure AI CLI** (`az cognitiveservices`) [^11] | Built into Azure CLI | Python (azure-cli) | `az` install | ❌ No | ❌ chat -- **management only** | ✅ (management plane) | ❌ No | First-party Microsoft tool | Provisioning tool; **not a chat client**. Gap az-ai fills. |
 
-**Key observation:** Among tools that deliver Azure-OpenAI-native *chat/agent* UX, az-ai is the only one with true AOT, sub-10 ms startup, and a text-injection pipeline. Microsoft's own `az cognitiveservices` is purely control-plane.
+**Key observation:** Among tools that deliver Azure-OpenAI-native *chat/agent* UX, az-ai is the only one with true AOT, sub-15 ms startup, and a text-injection pipeline. Microsoft's own `az cognitiveservices` is purely control-plane.
 
 ## 3. Research Question Answers
 
 ### Q1 -- Cold start winner
-**az-ai: 5.4 ms** (measured, linux-x64, `--version`). Nearest competitors: Rust single-binaries like `aichat` and Go binaries (`mods`/`crush`/`fabric`) land in the 30-150 ms range; Python tools (sgpt, llm, chatblade) are 300-1000 ms due to interpreter startup [^8]. Node tools (Gemini CLI, gh copilot) are 200-500 ms.
+**az-ai: 10.73 ms p50** (measured, linux-x64, `--help`, N=50, v2.0.6 on laptop reference rig — see [`docs/perf/v2.0.5-baseline.md`](./perf/v2.0.5-baseline.md)). Nearest competitors: Rust single-binaries like `aichat` and Go binaries (`mods`/`crush`/`fabric`) land in the 30-150 ms range; Python tools (sgpt, llm, chatblade) are 300-1000 ms due to interpreter startup [^8]. Node tools (Gemini CLI, gh copilot) are 200-500 ms.
 
 ### Q2 -- AOT / single-binary / zero-Python
 az-ai, aichat, mods/crush, fabric, ollama, llama.cpp, Codex CLI, Claude Code. **Not** AOT: sgpt, llm, chatblade, gh copilot cli (Node), Azure AI CLI (Python).
@@ -119,7 +119,7 @@ Plus fixed subscription costs (CLI-licence):
 
 ## 5. Summary -- One-liners Per Tool
 
-- **az-ai** -- 5.4 ms AOT Azure-native with persona memory; Espanso's native speaking partner.
+- **az-ai** -- 10.7 ms p50 AOT Azure-native with persona memory; Espanso's native speaking partner.
 - **sgpt** -- Python veteran for shell-command suggestions; Python tax on every call.
 - **llm** -- Simon Willison's plugin superpower; richest ecosystem, slowest cold start.
 - **aichat** -- Rust swiss-army; CMD+REPL+HTTP, RAG, MCP. Closest functional peer.

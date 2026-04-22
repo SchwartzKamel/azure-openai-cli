@@ -44,9 +44,10 @@ The question is **how** to introduce it.
 ### Constraints from ADR-001 and ADR-002
 
 1. **Zero new dependencies.** The project ships a Native-AOT single-binary
-   (~9 MB) with ~5 ms cold start. Test dependencies don't touch the product
-   binary but they do enter the repo, the CI cache, and the supply chain
-   review.
+   (~13 MiB on v2.0.6; ~9 MB at time of writing) with ~10.7 ms p50 cold start
+   (see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)). Test
+   dependencies don't touch the product binary but they do enter the repo, the
+   CI cache, and the supply chain review.
 2. **AOT-clean production.** Nothing in production can pull new reflection
    surface. This is irrelevant to test-only code but sets the cultural
    norm: prefer source-visible plumbing over framework magic.

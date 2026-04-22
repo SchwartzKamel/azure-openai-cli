@@ -21,7 +21,7 @@ By April 2026, **Model Context Protocol (MCP)** is the de facto integration stan
 - Ship `--mcp-server <name>` client support so az-ai's agent loop can call tools exposed by any spec-compliant MCP server over **stdio** transport.
 - Ship `az-ai mcp serve` so az-ai exposes its built-in tools (shell, read_file, web_fetch, delegate, …) to any MCP-compatible host.
 - Maintain **Native AOT** compatibility: zero new reflection-based JSON, all new types registered in `AppJsonContext`.
-- Preserve the 5.4 ms cold-start advantage on the *non-MCP* path -- MCP wiring is lazy/pay-for-what-you-use.
+- Preserve the sub-15 ms cold-start advantage on the *non-MCP* path (current v2.0.6: 10.7 ms p50 -- see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)) -- MCP wiring is lazy/pay-for-what-you-use.
 
 **Non-Goals (v1)**
 - HTTP/SSE transport (deferred; stdio is what 95% of MCP servers ship today).
@@ -191,7 +191,7 @@ The money quote in the 1.10 release announcement:
 > ```json
 > { "mcpServers": { "az-ai": { "command": "az-ai", "args": ["mcp", "serve"] } } }
 > ```
-> Now Claude can delegate Azure-specific prompts, read_file, web_fetch, and your Espanso text-injection pipeline. 9 MB binary, 5.4 ms startup, Azure-OpenAI-native, MCP-compliant.
+> Now Claude can delegate Azure-specific prompts, read_file, web_fetch, and your Espanso text-injection pipeline. ~13 MiB binary, 10.7 ms p50 startup (v2.0.6), Azure-OpenAI-native, MCP-compliant.
 
 This is the first time az-ai has a **zero-friction on-ramp from a bigger tool's user base**. Peterman writes the blog post. Keith Hernandez demos it on stream. Bob Sacamano adds the snippet to Homebrew formula description. We do not ship Phase 2 without a coordinated launch.
 

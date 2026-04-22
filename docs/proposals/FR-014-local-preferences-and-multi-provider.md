@@ -340,7 +340,7 @@ Routing lives in `Preferences/TriggerRouter.cs`. It is **pure** (no I/O except r
 
 TOML is explicitly out -- see §2. Re-evaluate in v2.2 if a Microsoft-blessed AOT-safe TOML lib ships.
 
-Cold-start budget: the whole preferences load + merge + validate path must stay ≤ 1.5 ms on linux-x64 so we don't eat our 5.4 ms lead. Lazy provider-profile resolution is non-negotiable -- we parse all providers but validate (env-var deref, endpoint check) only the one we actually use.
+Cold-start budget: the whole preferences load + merge + validate path must stay ≤ 1.5 ms on linux-x64 so we don't eat our sub-15 ms cold-start lead (v2.0.6: 10.7 ms p50 -- see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)). Lazy provider-profile resolution is non-negotiable -- we parse all providers but validate (env-var deref, endpoint check) only the one we actually use.
 
 ---
 
