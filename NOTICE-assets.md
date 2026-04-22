@@ -64,6 +64,22 @@ any other bundled location:
 
 ---
 
+## DCO / inbound-license policy (advisory)
+
+The docs-audit 2026-04-22 (F-04) flagged that `CONTRIBUTING.md` does not
+state an inbound license or DCO posture. Pending an owner-of-record edit
+to `CONTRIBUTING.md` (Elaine / Mr. Wilhelm), the operative policy is
+**inbound = outbound**: by submitting a contribution through the project's
+GitHub repository, the contributor agrees that the contribution is
+licensed to the project under the [MIT License](LICENSE), matching
+GitHub ToS §D.6. A formal DCO sign-off (`git commit -s`) is **not yet
+required** but is recommended for contributions originating outside the
+GitHub web UI (email patches, mirrors). This advisory paragraph does not
+substitute for a proper `CONTRIBUTING.md` clause and should be removed
+once that clause lands.
+
+---
+
 ## Cross-references
 
 - [`NOTICE`](NOTICE) — Apache-2.0 §4(d) compliance + trademark posture

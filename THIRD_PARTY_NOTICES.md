@@ -8,6 +8,18 @@ unique license appears once at the bottom of this file.
 This file covers the **v2.x** dependency graph. For the authoritative audit
 and reaffirmation cadence, see [`docs/licensing-audit.md`](docs/licensing-audit.md).
 
+> **Version-vs-holder note.** The versions shown below are the resolved
+> versions observed at the most recent manifest refresh. Transitive versions
+> drift with each direct-pin bump; that drift is a supply-chain concern, not
+> an attribution concern. MIT, Apache-2.0 §4(d), and BSD-3-Clause all bind
+> attribution to the **copyright holder**, not to a specific version number,
+> and the holders listed here are stable across the minor/patch churn typical
+> of NuGet resolution. The **authoritative resolved graph for any given
+> release** lives in the CycloneDX SBOM (see
+> [`docs/security/sbom.md`](docs/security/sbom.md) and the `sbom.cdx.json`
+> asset on each GitHub Release); this document is the human-readable
+> attribution copy derived from that inventory.
+
 ---
 
 ## Manifest

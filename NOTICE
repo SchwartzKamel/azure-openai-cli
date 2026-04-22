@@ -7,6 +7,15 @@ at the repository root. A reproducible audit — including license expression
 sources, verification method, and reaffirmation cadence — is kept in
 docs/licensing-audit.md.
 
+The **authoritative machine-readable dependency inventory** for each release
+is the Software Bill of Materials (SBOM) described in docs/security/sbom.md
+(CycloneDX 1.5 JSON, published alongside release artifacts). THIRD_PARTY_NOTICES.md
+and this NOTICE file are the **human-readable attribution copy** derived from
+that inventory; where the two ever disagree on a resolved version, the SBOM
+wins. For MIT / Apache-2.0 §4(d) / BSD-3-Clause attribution purposes, what
+matters is that the copyright holder for each package is named correctly —
+and those do not drift with version bumps.
+
 As of v2.0.0, the resolved dependency graph uses these licenses:
 
     MIT             - the majority of Microsoft / Azure / .NET / OpenAI /
