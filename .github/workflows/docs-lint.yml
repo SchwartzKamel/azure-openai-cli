@@ -1,0 +1,245 @@
+# docs-lint-ci — The Soup Nazi's line.
+#
+# Three audit-demanded rules + markdownlint standard hygiene.
+# All three core rules ship WARN-ONLY on first run because the current tree
+# red-lines on every one of them. See per-step TODOs to flip to fail.
+#
+# Owner: Soup Nazi. Coordination: Babu (i18n text), Elaine (docs), Jackie (legal).
+name: docs-lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+      - '.markdownlint*'
+      - '.github/workflows/docs-lint.yml'
+    tags-ignore:
+      - '**'
+  pull_request:
+    paths:
+      - '**.md'
+      - '.markdownlint*'
+      - '.github/workflows/docs-lint.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs-lint:
+    name: docs-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ----------------------------------------------------------------------
+      # Rule 1: Smart-quote detection (Babu/Elaine)
+      # Bans: U+2018 U+2019 U+201C U+201D U+2013 U+2014
+      # TODO(soup-nazi): flip continue-on-error to false once docs/ is clean.
+      # Current state: ~148 docs/*.md files contain smart quotes. Follow-up
+      # todo: "docs-smart-quote-sweep" — ASCII-normalize docs/**/*.md.
+      # ----------------------------------------------------------------------
+      - name: Smart-quote detection (warn-only)
+        id: smart-quotes
+        continue-on-error: true
+        run: |
+          set +e
+          echo "::group::Smart-quote scan"
+          # U+2018 ‘  U+2019 ’  U+201C “  U+201D ”  U+2013 –  U+2014 —
+          HITS=$(grep -rn --include='*.md' \
+            --exclude-dir=node_modules \
+            --exclude-dir=.git \
+            --exclude-dir=.smith \
+            --exclude-dir=bin \
+            --exclude-dir=obj \
+            --exclude-dir=archive \
+            -P '[\x{2018}\x{2019}\x{201C}\x{201D}\x{2013}\x{2014}]' . || true)
+          if [ -n "$HITS" ]; then
+            COUNT=$(printf '%s\n' "$HITS" | wc -l)
+            echo "::warning title=Smart quotes detected::$COUNT line(s) contain banned smart quotes/dashes"
+            printf '%s\n' "$HITS" | while IFS= read -r line; do
+              file=$(printf '%s' "$line" | cut -d: -f1)
+              lineno=$(printf '%s' "$line" | cut -d: -f2)
+              echo "::warning file=${file#./},line=${lineno}::Smart quote or en/em dash — use ASCII equivalents"
+            done
+            echo "::endgroup::"
+            echo "smart_quote_hits=$COUNT" >> "$GITHUB_OUTPUT"
+            # TODO(soup-nazi): exit 1 when sweep is complete.
+            exit 0
+          fi
+          echo "Clean: no smart quotes."
+          echo "::endgroup::"
+          echo "smart_quote_hits=0" >> "$GITHUB_OUTPUT"
+
+      # ----------------------------------------------------------------------
+      # Rule 2: Broken local link check (Elaine)
+      # External links intentionally NOT checked (flaky networks).
+      # TODO(soup-nazi): flip continue-on-error to false once docs link-rot
+      # is swept. Follow-up todo: "docs-broken-link-sweep" — fix 44 known
+      # broken local links surfaced by the first run.
+      # ----------------------------------------------------------------------
+      - name: Broken local link check (warn-only)
+        id: link-check
+        continue-on-error: true
+        run: |
+          set +e
+          echo "::group::Local link check"
+          python3 - <<'PY'
+          import os, re, sys
+          broken = []
+          SKIP_DIRS = {'.git', 'node_modules', '.smith', 'bin', 'obj', 'archive'}
+          for root, dirs, files in os.walk('.'):
+              dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+              for f in files:
+                  if not f.endswith('.md'):
+                      continue
+                  p = os.path.join(root, f)
+                  try:
+                      with open(p, encoding='utf-8') as fh:
+                          for i, line in enumerate(fh, 1):
+                              for m in re.finditer(
+                                  r'\[[^\]]*\]\((?!https?://|mailto:|tel:|#)([^)#\s]+)(#[^)]*)?\)',
+                                  line,
+                              ):
+                                  tgt = m.group(1).strip()
+                                  if not tgt or tgt.startswith('<'):
+                                      continue
+                                  resolved = os.path.normpath(
+                                      os.path.join(os.path.dirname(p), tgt)
+                                  )
+                                  if not os.path.exists(resolved):
+                                      broken.append((p, i, tgt))
+                  except Exception:
+                      pass
+          for p, i, t in broken:
+              rel = p[2:] if p.startswith('./') else p
+              print(f"::warning file={rel},line={i}::Broken local link: {t}")
+          print(f"Total broken local links: {len(broken)}")
+          # TODO(soup-nazi): sys.exit(1 if broken else 0)
+          PY
+          echo "::endgroup::"
+
+      # ----------------------------------------------------------------------
+      # Rule 3: Bare-emoji table cell (Mickey)
+      # Lightweight regex: table cell containing only whitespace + emoji +
+      # whitespace, no alphanumerics. False positives expected; tune down.
+      # TODO(soup-nazi): flip continue-on-error to false once table cells are
+      # labeled. Follow-up todo: "docs-bare-emoji-sweep" — add text labels.
+      # ----------------------------------------------------------------------
+      - name: Bare-emoji table cell (warn-only)
+        id: bare-emoji
+        continue-on-error: true
+        run: |
+          set +e
+          echo "::group::Bare-emoji table cell scan"
+          HITS=$(grep -rn --include='*.md' \
+            --exclude-dir=node_modules \
+            --exclude-dir=.git \
+            --exclude-dir=.smith \
+            --exclude-dir=bin \
+            --exclude-dir=obj \
+            --exclude-dir=archive \
+            -P '\|\s*[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2700}-\x{27BF}\x{1F000}-\x{1F2FF}]+\s*\|' . || true)
+          if [ -n "$HITS" ]; then
+            COUNT=$(printf '%s\n' "$HITS" | wc -l)
+            echo "::warning title=Bare emoji in table::$COUNT cell(s) contain only an emoji"
+            printf '%s\n' "$HITS" | while IFS= read -r line; do
+              file=$(printf '%s' "$line" | cut -d: -f1)
+              lineno=$(printf '%s' "$line" | cut -d: -f2)
+              echo "::warning file=${file#./},line=${lineno}::Bare emoji in table cell — add a text label (accessibility)"
+            done
+            # TODO(soup-nazi): exit 1 when sweep complete.
+          else
+            echo "Clean: no bare-emoji table cells."
+          fi
+          echo "::endgroup::"
+
+      # ----------------------------------------------------------------------
+      # markdownlint-cli2 — standard hygiene (warn-only on first run).
+      # TODO(soup-nazi): flip continue-on-error to false once baseline is clean.
+      # ----------------------------------------------------------------------
+      - name: markdownlint-cli2 (warn-only)
+        id: markdownlint
+        continue-on-error: true
+        run: |
+          npx --yes markdownlint-cli2 "**/*.md" "#node_modules" "#.git" "#.smith" "#**/bin/**" "#**/obj/**" "#docs/archive/**" || \
+            echo "::warning title=markdownlint::violations found — see log"
+
+      # ----------------------------------------------------------------------
+      # Filename convention: kebab-case only under docs/ (excluding known
+      # PascalCase/SCREAMING conventions like README.md, ADR-*.md).
+      # Warn-only initially.
+      # ----------------------------------------------------------------------
+      - name: Filename convention — docs/ kebab-case (warn-only)
+        continue-on-error: true
+        run: |
+          set +e
+          echo "::group::Filename convention"
+          BAD=$(find docs -name '*.md' -type f 2>/dev/null | awk -F/ '{
+            name=$NF;
+            if (name ~ /^README\.md$/) next;
+            if (name ~ /^ADR-/) next;
+            if (name ~ /^[a-z0-9]+(-[a-z0-9]+)*\.md$/) next;
+            print $0
+          }')
+          if [ -n "$BAD" ]; then
+            printf '%s\n' "$BAD" | while IFS= read -r f; do
+              echo "::warning file=${f}::Non-kebab-case filename under docs/ (convention)"
+            done
+          else
+            echo "Clean: all docs/ filenames kebab-case."
+          fi
+          echo "::endgroup::"
+
+      # ----------------------------------------------------------------------
+      # CRLF / tabs in .md — .editorconfig compliance. Fails hard (cheap).
+      # ----------------------------------------------------------------------
+      - name: .editorconfig — no CRLF, no tabs in *.md
+        run: |
+          set -e
+          echo "::group::CRLF scan"
+          CRLF=$(grep -rln --include='*.md' \
+            --exclude-dir=node_modules \
+            --exclude-dir=.git \
+            --exclude-dir=.smith \
+            --exclude-dir=bin \
+            --exclude-dir=obj \
+            $'\r' . || true)
+          if [ -n "$CRLF" ]; then
+            echo "::error title=CRLF in markdown::Convert to LF"
+            printf '%s\n' "$CRLF" | while IFS= read -r f; do
+              echo "::error file=${f#./}::CRLF line endings — must be LF"
+            done
+            exit 1
+          fi
+          echo "Clean: no CRLF."
+          echo "::endgroup::"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## docs-lint summary"
+            echo ""
+            echo "| check | status |"
+            echo "|---|---|"
+            echo "| smart-quote (warn-only) | ${{ steps.smart-quotes.outcome }} |"
+            echo "| link-check (warn-only) | ${{ steps.link-check.outcome }} |"
+            echo "| bare-emoji (warn-only) | ${{ steps.bare-emoji.outcome }} |"
+            echo "| markdownlint (warn-only) | ${{ steps.markdownlint.outcome }} |"
+            echo ""
+            echo "Warn-only checks will be flipped to hard-fail once the"
+            echo "follow-up sweep todos close. See TODO comments in the"
+            echo ".github/workflows/docs-lint.yml for owners."
+          } >> "$GITHUB_STEP_SUMMARY"

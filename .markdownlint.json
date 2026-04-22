@@ -1,0 +1,14 @@
+{
+  "default": true,
+  "MD013": false,
+  "MD033": false,
+  "MD041": false,
+  "MD024": { "siblings_only": true },
+  "MD036": false,
+  "MD026": { "punctuation": ".,;:!。，；：！" },
+  "MD040": true,
+  "MD009": { "br_spaces": 2 },
+  "MD010": { "code_blocks": false },
+  "MD029": { "style": "ordered" },
+  "MD046": { "style": "fenced" }
+}

@@ -1,0 +1,11 @@
+node_modules/
+.git/
+**/bin/
+**/obj/
+.smith/
+tests/**/bin/**
+tests/**/obj/**
+docs/archive/
+THIRD_PARTY_NOTICES.md
+NOTICE-assets.md
+CHANGELOG.md
