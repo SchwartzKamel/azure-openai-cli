@@ -19,10 +19,11 @@ class AzAiV2 < Formula
       url "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v#{version}/az-ai-v2-#{version}-osx-arm64.tar.gz"
       sha256 "TODO_FILL_AT_RELEASE_TIME"
     end
-    on_intel do
-      url "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v#{version}/az-ai-v2-#{version}-osx-x64.tar.gz"
-      sha256 "TODO_FILL_AT_RELEASE_TIME"
-    end
+    # NOTE: macOS Intel (osx-x64) dropped from the release pipeline as of
+    # v2.0.4 — GHA `macos-13` runner pool backlog blocked multiple publishes.
+    # Intel-Mac users should install via Rosetta 2 on Apple Silicon, use the
+    # Docker image (`ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`), or
+    # build from source (`dotnet publish -r osx-x64`).
   end
 
   on_linux do

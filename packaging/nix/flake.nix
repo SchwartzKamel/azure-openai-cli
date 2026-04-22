@@ -17,21 +17,20 @@
           url = "${baseUrlFor v}/az-ai-v2-${v}-linux-x64.tar.gz";
           sha256 = hashes.linux-x64;
         };
-        "x86_64-darwin" = {
-          url = "${baseUrlFor v}/az-ai-v2-${v}-osx-x64.tar.gz";
-          sha256 = hashes.osx-x64;
-        };
         "aarch64-darwin" = {
           url = "${baseUrlFor v}/az-ai-v2-${v}-osx-arm64.tar.gz";
           sha256 = hashes.osx-arm64;
         };
+        # NOTE: "x86_64-darwin" (osx-x64) dropped as of v2.0.4 — GHA
+        # macos-13 runner pool backlog blocked multiple publishes. Intel-Mac
+        # users should use Rosetta 2 on aarch64-darwin (set system =
+        # "aarch64-darwin" and pull the osx-arm64 binary), or the OCI image.
       };
 
       # Hash table for the tracking (latest) release. Lippman replaces each
-      # `lib.fakeHash` with the real SRI digest when cutting v2.0.1.
+      # `lib.fakeHash` with the real SRI digest when cutting a new tag.
       latestHashes = {
         linux-x64 = nixpkgs.lib.fakeHash;
-        osx-x64   = nixpkgs.lib.fakeHash;
         osx-arm64 = nixpkgs.lib.fakeHash;
       };
 

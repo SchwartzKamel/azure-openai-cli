@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.4] — 2026-04-22
+
+> **Drop macOS Intel (`osx-x64`) from the release matrix + ship FDR dogfood
+> fixes.** The v2.0.3 release pipeline was blocked for another ~9h on
+> GitHub Actions' `macos-13` runner pool — the same backlog that blocked
+> v2.0.2. macOS Intel is a diminishing platform (Apple's last Intel Macs
+> were 2020; Rosetta 2 gives Intel-Mac users a stable Apple Silicon
+> binary path), and letting infra flakiness on one leg gate every release
+> is not a tenable ship discipline. v2.0.4 cuts macOS Intel from the
+> official artifact matrix so every release can publish against the
+> reliable legs (`linux-x64`, `linux-musl-x64`, `osx-arm64`, `win-x64`).
+>
+> **Intel-Mac paths that still work out-of-the-box:**
+> - **Rosetta 2** — install `az-ai-v2-<version>-osx-arm64.tar.gz` on
+>   macOS 11+; Rosetta 2 handles the translation transparently.
+> - **Docker** — `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:2.0.4`
+>   runs under `linux/amd64` emulation on Docker Desktop for Intel Mac.
+> - **Build from source** — `dotnet publish -r osx-x64 -c Release
+>   --self-contained -p:PublishAot=true` still produces a working Intel
+>   binary; the csproj supports the RID, we just stop *shipping* it.
+
+### Fixed
+- **FDR v2.0.2 dogfood High-severity findings** (report:
+  [`docs/audits/fdr-v2-dogfood-2026-04-22.md`](docs/audits/fdr-v2-dogfood-2026-04-22.md),
+  commit `4842b6a`). Three items, all shipped to v2.0.2/v2.0.3 and now
+  resolved:
+  1. **`fdr-v2-err-unwrap`** — global catch now handles
+     `Azure.RequestFailedException` before generic `Exception`, unwraps
+     up to 5 levels of `InnerException`, and redacts `AZUREOPENAIAPI` +
+     endpoint hostname from every error surface. Users see actionable
+     status + errorCode instead of "A type initializer threw an
+     exception" noise.
+  2. **`fdr-v2-raw-config-warning`** — `UserConfig.Load(bool quiet)`
+     gained a `quiet` gate; `Program.cs` passes `quiet: opts.Raw` so the
+     `--raw` contract (nothing on stderr, ever) holds even when
+     `~/.azureopenai-cli.json` fails to parse.
+  3. **`fdr-v2-ralph-exit-code`** — `RalphWorkflow` now returns exit 1
+     when `--max-iterations` is exhausted without validation passing and
+     when every iteration errored. SIGINT-130 preserved.
+- 16 new tests (`ExceptionUnwrapTests`, `UserConfigQuietTests`,
+  `RalphExitCodeTests`). Full suite: v1 1025/1025 + v2 485/485 = 1510
+  green.
+
+### Changed
+- **Release matrix** (`.github/workflows/release.yml`): removed `osx-x64`
+  from v1 and v2 `build-binaries` matrices + release-body artifact
+  tables. No more `macos-13` jobs.
+- **Packaging manifests:**
+  - `packaging/homebrew/Formula/az-ai.rb` — dropped `on_intel` macOS
+    block; notes Rosetta 2 / Docker / source-build fallbacks.
+  - `packaging/nix/flake.nix` — dropped `x86_64-darwin` from
+    `sourcesFor`; `latestHashes` no longer tracks `osx-x64`. Frozen
+    `pinnedHashes` for 2.0.0/2.0.1/2.0.2/2.0.3 retain `osx-x64` keys as
+    unreferenced historical markers; they are now ignored by
+    `sourcesFor` and can be dropped in a future cleanup.
+- Versioned formulas/manifests for older releases (`@2.0.0`, `@2.0.1`,
+  `@2.0.2`) keep their `osx-x64` URLs as historical records — those
+  releases either never published artifacts at all or never published
+  `osx-x64` specifically.
+
+### Notes
+- **v2.0.3** was tagged and got as far as publishing the Docker image
+  (`ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:2.0.3`) before the
+  same `macos-13` runner pool wedged the binary matrix. The v2.0.3 run
+  was cancelled at cutover; no GitHub Release exists for v2.0.3.
+  v2.0.4 supersedes it.
+
 ## [2.0.3] — 2026-04-22
 
 > **Re-tag to recover from infra-stuck v2.0.2 release.** v2.0.2 (`fd4ddc7`)

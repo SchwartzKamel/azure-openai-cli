@@ -54,8 +54,6 @@ jobs:
             name: azure-openai-cli-linux-musl-x64
           - rid: win-x64
             name: azure-openai-cli-win-x64
-          - rid: osx-x64
-            name: azure-openai-cli-osx-x64
           - rid: osx-arm64
             name: azure-openai-cli-osx-arm64
     steps:
@@ -199,7 +197,6 @@ jobs:
             | Linux (glibc) | `azure-openai-cli-linux-x64.tar.gz` |
             | Linux (musl/Alpine) | `azure-openai-cli-linux-musl-x64.tar.gz` |
             | Windows | `azure-openai-cli-win-x64.zip` |
-            | macOS (Intel) | `azure-openai-cli-osx-x64.tar.gz` |
             | macOS (Apple Silicon) | `azure-openai-cli-osx-arm64.tar.gz` |
 
   # ====================================================================
@@ -230,9 +227,6 @@ jobs:
             ext: tar.gz
           - rid: linux-musl-x64
             os: ubuntu-latest
-            ext: tar.gz
-          - rid: osx-x64
-            os: macos-13
             ext: tar.gz
           - rid: osx-arm64
             os: macos-14
@@ -401,7 +395,6 @@ jobs:
             | Linux (glibc) | `az-ai-v2-${{ github.ref_name }}-linux-x64.tar.gz` |
             | Linux (musl/Alpine) | `az-ai-v2-${{ github.ref_name }}-linux-musl-x64.tar.gz` |
             | Windows | `az-ai-v2-${{ github.ref_name }}-win-x64.zip` |
-            | macOS (Intel) | `az-ai-v2-${{ github.ref_name }}-osx-x64.tar.gz` |
             | macOS (Apple Silicon) | `az-ai-v2-${{ github.ref_name }}-osx-arm64.tar.gz` |
 
             ## Provenance
