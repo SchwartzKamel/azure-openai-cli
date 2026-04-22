@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## [2.0.5] — 2026-04-22
+
+> **Version-string fix + 50+ marathon findings closed.** The headline
+> defect: v2.0.3 and v2.0.4 binaries shipped with `--version --short`
+> reporting `2.0.2` because `Program.VersionSemver` and
+> `Telemetry.ServiceVersion` were hardcoded string literals that nobody
+> rolled forward. v2.0.5 single-sources the version from the csproj
+> `<Version>` element (AOT-safe via `Assembly.GetName().Version`), adds
+> a xUnit contract pin so it can never drift again, and teaches
+> `packaging/tarball/stage.sh` to read the same source of truth.
+> No behavior change beyond the version string itself. The rest of
+> this release is a documentation marathon: release policy, SemVer
+> contract, pre-release checklist, CHANGELOG style guide, runbooks,
+> perf baseline, and 45+ audit/dogfood findings closed across the
+> wave 1/2/3 agent sweeps.
+
 ### Changed
 - **Default-model canonicalization (ADR-009).** The "default model" is now
   formally a resolution chain — CLI flag → `AZUREOPENAIMODEL` env →
@@ -18,24 +41,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `gpt-5.4-nano` continue to set it via env/config. See
   `docs/adr/ADR-009-default-model-resolution.md`.
 
-## [2.0.5] — unreleased
-
 ### Fixed
-- **Shipped-version-string drift (audit finding C-1).** `Program.VersionSemver`,
-  `Program.VersionFull`, and `Telemetry.ServiceVersion` were hardcoded to
-  `"2.0.2"` and never rolled past v2.0.2 — the v2.0.3 and v2.0.4 binaries
-  reported `az-ai-v2 --version --short` → `2.0.2`, which would have failed
-  `brew test az-ai-v2` on install. Version is now single-sourced from the
-  csproj `<Version>` element via `typeof(Program).Assembly.GetName().Version`
-  (AOT-safe). `packaging/tarball/stage.sh` now parses the csproj for tarball
-  filenames (with `STAGE_VERSION` env-var override for exceptional re-stages)
-  instead of the stale hardcoded `VERSION="2.0.2"`.
+- **Shipped-version-string drift (audit findings C-1 / C-2).**
+  `Program.VersionSemver`, `Program.VersionFull`, and
+  `Telemetry.ServiceVersion` were hardcoded to `"2.0.2"` and never
+  rolled past v2.0.2 — the v2.0.3 and v2.0.4 binaries reported
+  `az-ai-v2 --version --short` → `2.0.2`, which would have failed
+  `brew test az-ai-v2` on install and broken the Scoop / Nix install
+  smoke tests. Version is now single-sourced from the csproj
+  `<Version>` element via `typeof(Program).Assembly.GetName().Version`
+  (AOT-safe, no reflection-on-metadata path). `packaging/tarball/stage.sh`
+  now parses the csproj for tarball filenames (with `STAGE_VERSION`
+  env-var override for exceptional re-stages) instead of carrying a
+  stale hardcoded `VERSION="2.0.2"`.
 
 ### Added
-- `tests/AzureOpenAI_CLI.V2.Tests/VersionContractTests.cs` — xUnit contract
-  pin that runs on every PR and hard-fails if (a) `Program.VersionSemver`
-  regresses to `"2.0.2"`, (b) `Telemetry.ServiceVersion` drifts from
-  `Program.VersionSemver`, or (c) either drifts from the csproj `<Version>`.
+- `tests/AzureOpenAI_CLI.V2.Tests/VersionContractTests.cs` — xUnit
+  contract pin that runs on every PR and hard-fails if (a)
+  `Program.VersionSemver` regresses to `"2.0.2"` or any other
+  hardcoded literal, (b) `Telemetry.ServiceVersion` drifts from
+  `Program.VersionSemver`, or (c) either drifts from the csproj
+  `<Version>`. Gate row 4 of `docs/release/pre-release-checklist.md`.
+- Perf baseline for v2.0.5 on bare-metal Linux (`malachor`):
+  [`docs/perf/v2.0.5-baseline.md`](docs/perf/v2.0.5-baseline.md).
+  Supersedes the v2.0.0 WSL2 baseline and the v2.0.2 dogfood bench.
+  No regression vs. v2.0.2 on cold-start, warm-start, or binary size.
+
+### Docs
+- **Release discipline.** New `docs/release/` tree:
+  [`semver-policy.md`](docs/release/semver-policy.md) (how to pick the
+  bump), [`pre-release-checklist.md`](docs/release/pre-release-checklist.md)
+  (20-row gate table, sign-offs, no-go triggers),
+  [`ghcr-tag-lifecycle.md`](docs/release/ghcr-tag-lifecycle.md)
+  (container tag immutability policy),
+  [`artifact-inventory.md`](docs/release/artifact-inventory.md)
+  (the asset list every release must match), and
+  [`docs/CHANGELOG-style-guide.md`](docs/CHANGELOG-style-guide.md)
+  (house style for this file).
+- **Runbooks.** `docs/runbooks/release-runbook.md`,
+  `docs/runbooks/packaging-publish.md`,
+  `docs/runbooks/macos-runner-triage.md`,
+  `docs/runbooks/finops-runbook.md`, and
+  `docs/runbooks/threat-model-v2.md`.
+- **Wave 1/2/3 marathon.** 45+ findings closed across DevRel (speaker
+  bureau, swag brief, livestream checklist, announce template cleanup),
+  legal (LICENSE year refresh, third-party notices sync, demo attribution
+  audit), i18n, accessibility, ethics, QA test-matrix hygiene, and
+  docs polish. Full receipts in `docs/audits/` and per-agent sweep
+  commit range `9a6d54e..0d26566`.
+
+### Packaging
+- Homebrew / Scoop / Nix hash-sync deferred to a T+2h follow-up PR
+  (per [`pre-release-checklist.md`](docs/release/pre-release-checklist.md)
+  row 20 and [`ghcr-tag-lifecycle.md`](docs/release/ghcr-tag-lifecycle.md)) —
+  sha256 digests are computed from the published GitHub Release
+  artifacts, not guessed pre-tag. Install via Homebrew / Scoop will
+  resolve once that PR merges; until then, direct-download from the
+  GitHub Release works.
+
+### Notes
+- This release ships from `main` directly; no release branch. CI
+  green on the tagged commit was the gate.
 
 ## [2.0.4] — 2026-04-22
 
