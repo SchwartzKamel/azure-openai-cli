@@ -25,14 +25,17 @@ for the complete per-package table and verification record.
 
 The blocks below cover only the v1 baseline and are retained for continuity
 while v2 packaging transitions to THIRD_PARTY_NOTICES.md as the authoritative
-manifest.
+manifest. Direct package versions reflect
+azureopenai-cli/AzureOpenAI_CLI.csproj. Transitive versions are
+resolver-dependent and may drift with the direct pins; for the authoritative
+resolved graph see docs/licensing-audit.md and THIRD_PARTY_NOTICES.md.
 
 --------------------------------------------------------------------------------
 Top-level dependencies
 --------------------------------------------------------------------------------
 
 Name:        Azure.AI.OpenAI
-Version:     2.1.0
+Version:     2.9.0-beta.1
 Copyright:   Copyright (c) Microsoft Corporation
 License:     MIT
 SPDX:        MIT
@@ -60,7 +63,7 @@ Transitive dependencies
 --------------------------------------------------------------------------------
 
 Name:        OpenAI
-Version:     2.1.0
+Version:     2.9.1
 Copyright:   Copyright (c) OpenAI
 License:     MIT
 SPDX:        MIT
