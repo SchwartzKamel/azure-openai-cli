@@ -1,0 +1,361 @@
+# Testing Playbook
+
+> **Either it works or it doesn't.** This is the live, executable reference
+> for how we test `azure-openai-cli`. If something here disagrees with the
+> code, the code is right and this doc is wrong — file an issue.
+
+Companion docs:
+
+- [`bdd-guide.md`](./bdd-guide.md) — naming, Given/When/Then structure, one
+  behaviour per test.
+- [`test-sanity-audit.md`](./test-sanity-audit.md) — v1-era audit findings
+  (scope frozen at 925 tests, still useful for the files it covers).
+- [`../adr/ADR-003-behavior-driven-development.md`](../adr/ADR-003-behavior-driven-development.md)
+  — the BDD decision record.
+- [`../../tests/README.md`](../../tests/README.md) — directory-level index
+  of the test trees.
+- [`../../tests/chaos/README.md`](../../tests/chaos/README.md) — chaos /
+  failure-injection harness.
+
+---
+
+## 1. Test inventory
+
+Numbers measured at tip of `main`. `+` absorbs PRs in flight.
+
+| Tree | Location | Type | Count |
+|---|---|---|---:|
+| v1 xUnit | `tests/AzureOpenAI_CLI.Tests/` (28 `*.cs`) | unit + contract + property + security | **1,025** |
+| v2 xUnit | `tests/AzureOpenAI_CLI.V2.Tests/` (38+ `*.cs`) | unit + contract + regression | **490+** |
+| Integration | `tests/integration_tests.sh` | bash, end-to-end binary exec | ~174 assertions |
+| Docker | `tests/docker-image-optimization.sh` | bash, Dockerfile lint | — |
+| Chaos | `tests/chaos/*.sh` | bash, failure injection | 11 scenarios |
+| **xUnit total** | | | **1,510+** |
+
+Rough category breakdown (xUnit, both trees combined):
+
+| Category | Examples | Rationale |
+|---|---|---|
+| Unit | `ToolTests.cs`, `UserConfigTests.cs`, `CostEstimatorTests.cs` | Pure logic, no I/O beyond tempdirs. |
+| Contract | `RalphExitCodeTests.cs`, `ToolHardeningTests.cs`, `RawModeTests.cs`, `VersionContractTests.cs` | Gate user-visible promises — exit codes, `--raw` stderr discipline, `--version` strings. |
+| Regression | `SecurityRegressionTests.cs`, `ErrorAndExitTests.cs` | Pin past bugs so they stay dead. |
+| Property | `CliParserPropertyTests.cs` | Hand-rolled property-style coverage (no FsCheck — see §10). |
+| Security | `SecurityToolTests.cs`, `SecurityDocValidationTests.cs` | SSRF, symlink traversal, DNS rebinding, doc-claim truth-ness. |
+| Observability | `ObservabilityTests.cs`, `PrewarmTests.cs` | Telemetry, cache warm-up. |
+
+---
+
+## 2. Running tests
+
+Four supported entry points — pick the one that matches your loop:
+
+```bash
+# 1. Canonical: runs BOTH v1 and v2 projects via the solution file.
+#    This is what CI runs. `make test` and the solution form are equivalent.
+make test
+dotnet test azure-openai-cli.sln --verbosity minimal
+
+# 2. v1 only — faster loop when working inside tests/AzureOpenAI_CLI.Tests/.
+#    NEVER ship on v1-only green; CI runs both.
+make test-v1
+dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity minimal
+
+# 3. v2 only — same deal, for tests/AzureOpenAI_CLI.V2.Tests/.
+make test-v2
+dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj --verbosity minimal
+
+# 4. Single test or filter — for really tight debug loops.
+dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj \
+  --filter "FullyQualifiedName~RalphExitCode"
+```
+
+Integration + docker + chaos have their own entry points:
+
+```bash
+make integration-test      # bash tests/integration_tests.sh
+make docker-test           # bash tests/docker-image-optimization.sh
+bash tests/chaos/run_all.sh
+```
+
+Full preflight gate (format + color-contract + build + unit + integration):
+
+```bash
+make preflight
+```
+
+---
+
+## 3. TDD workflow
+
+The loop for any behavioural change:
+
+```bash
+# 1. Write the failing test first (v2 example).
+$EDITOR tests/AzureOpenAI_CLI.V2.Tests/MyFeatureTests.cs
+
+# 2. Confirm RED — test exists and fails for the right reason.
+make test-v2
+# Expect: Failed: 1, Passed: ...
+
+# 3. Implement in azureopenai-cli-v2/.
+$EDITOR azureopenai-cli-v2/MyFeature.cs
+
+# 4. Confirm GREEN on the tight loop.
+make test-v2
+
+# 5. Confirm GREEN on the full surface BEFORE commit.
+make test
+# Expect: Failed: 0 on BOTH projects.
+
+# 6. Commit with Conventional Commits prefix.
+git commit -m "test: cover MyFeature edge case X"    # test-only
+git commit -m "feat: implement MyFeature"            # behaviour-changing
+git commit -m "fix: MyFeature regression on empty input"
+```
+
+**Bug fix rule (non-negotiable):** every bug fix ships with the regression
+test that would have caught it. The test lands in the same commit as the
+fix, or in the immediately preceding commit.
+
+---
+
+## 4. `ConsoleCapture` collection
+
+Some xUnit tests swap `Console.Out` / `Console.Error` / environment
+variables to assert on output. Those mutations are process-global — if two
+such tests run in parallel, their stdout streams collide and assertions
+flake.
+
+Invariant (enforced by `tests/AzureOpenAI_CLI.V2.Tests/ConsoleCaptureCollection.cs`):
+
+```csharp
+[CollectionDefinition("ConsoleCapture", DisableParallelization = true)]
+public class ConsoleCaptureCollection { }
+```
+
+Any test class that does **any** of the following MUST carry the
+`[Collection("ConsoleCapture")]` attribute:
+
+- Redirects `Console.Out` or `Console.Error`.
+- Mutates environment variables the CLI reads (e.g. `NO_COLOR`,
+  `AZ_CACHE_DIR`, `AZUREOPENAIMODEL`).
+- Changes `Environment.CurrentDirectory` or reads/writes a shared tempdir
+  path baked into a global.
+- Touches a `static` field mutated at runtime (e.g. `Theme.UseColor`).
+
+Existing membership (non-exhaustive) — treat as the reference set:
+
+```
+tests/AzureOpenAI_CLI.V2.Tests/
+  CostEstimatorTests.cs
+  ErrorAndExitTests.cs
+  PrewarmTests.cs
+  PromptCacheTests.cs
+  RalphExitCodeTests.cs
+  RalphModeTests.cs
+  UserConfigQuietTests.cs
+  V2FlagParityTests.cs
+```
+
+Parallel-safe test classes (no global mutation) must NOT join this
+collection — that needlessly serialises the suite and makes CI slower.
+
+A separate collection, `TelemetryGlobalStateCollection`, exists for the
+same reason but scoped to `OpenTelemetry` singleton state. Don't cross the
+streams — a class joins exactly one serialization collection.
+
+---
+
+## 5. Contract tests
+
+Contract tests gate **user-visible promises**. They fail loudly if a
+public interface drifts. Reviewers: if a PR touches any of these, the
+commit message must call out whether the drift is intentional.
+
+| Contract | File | Promise |
+|---|---|---|
+| Ralph exit codes | `tests/AzureOpenAI_CLI.V2.Tests/RalphExitCodeTests.cs` | `az-ai-v2 --ralph` exit codes stay stable per spec (0/1/2/…); Espanso / CI scripts depend on these. |
+| `--raw` stderr discipline | `tests/AzureOpenAI_CLI.V2.Tests/RawModeTests.cs` | `--raw` writes ONLY model content to stdout; banners, prompts, and warnings go to stderr (or are suppressed). Espanso / AHK pipes would break otherwise. |
+| Tool hardening | `tests/AzureOpenAI_CLI.Tests/ToolHardeningTests.cs` | Built-in tools: `TryGetProperty` is the parse pattern (no throws on missing fields); SSRF redirects are blocked; missing params yield a structured error, not a crash. |
+| `--version` strings | `tests/AzureOpenAI_CLI.V2.Tests/VersionContractTests.cs` | `Program.VersionSemver` / `Program.VersionFull` / `Telemetry.ServiceVersion` all agree with the csproj `<Version>`. Catches the v2.0.2→v2.0.4 hardcoded-version-drift class of bug. |
+| Security doc claims | `tests/AzureOpenAI_CLI.Tests/SecurityDocValidationTests.cs` | Constants in `SECURITY.md` match constants in code (blocklist size, bounded recursion depth, etc.). The doc can't lie. |
+
+Adding a contract test is the right move whenever a PR introduces a
+user-facing promise (flag, exit code, output format, env-var semantics).
+
+---
+
+## 6. Integration tests
+
+Script: `tests/integration_tests.sh`. Bash, `set -euo pipefail`, exercises
+the compiled binary end-to-end.
+
+### Prerequisites
+
+```bash
+# Build the binaries first — the script runs the artifacts, not `dotnet run`
+# (except for the v1 legacy path which still uses `dotnet run`).
+make dotnet-build          # or: dotnet build azure-openai-cli.sln -c Release
+```
+
+### Environment variables
+
+Most tests need no credentials. A handful exercise the real Azure code
+path and are skipped if creds are missing:
+
+| Variable | Required for | Default |
+|---|---|---|
+| `V1_BIN` | locate legacy binary | `./azureopenai-cli/bin/Release/net10.0/AzureOpenAI_CLI` |
+| `V2_BIN` | locate v2 binary | `./azureopenai-cli-v2/bin/Release/net10.0/az-ai-v2` |
+| `AZUREOPENAIENDPOINT` | live-endpoint smoke tests | — (skipped if unset) |
+| `AZUREOPENAIAPIKEY` | live-endpoint smoke tests | — (skipped if unset) |
+
+### Running
+
+```bash
+make integration-test
+# or
+bash tests/integration_tests.sh
+```
+
+Output is `✓ PASS`, `✗ FAIL`, `⊘ SKIP`. Exit code is non-zero iff any
+assertion failed — skips are not failures.
+
+### When to add an integration test
+
+Add one when:
+
+- You're wiring up a new CLI flag or exit-code path that a script will
+  depend on (e.g. Espanso).
+- You've fixed a bug whose root cause was outside the xUnit process model
+  (process exit, signal handling, argv parsing quirks, env-var
+  inheritance).
+- An xUnit test would need too much mocking to be honest.
+
+Do **not** add an integration test when a fast xUnit test can cover the
+same path — integration is slower, less debuggable, and more
+environment-dependent.
+
+---
+
+## 7. Flaky test policy
+
+Flakes are bugs. We do not paper over them with retries.
+
+**Triage order (strict):**
+
+1. **Diagnose.** Re-run the failing test 10× in isolation. If it flakes,
+   reproduce the race. Common causes here: missing `ConsoleCapture`
+   membership (§4), shared tempdir, year-boundary math, unstable stdout
+   ordering under `WriteLineAsync`.
+2. **Fix deterministically.** Pin the clock, isolate the tempdir, add to
+   `ConsoleCapture`, remove the race. A deterministic fix always beats a
+   retry loop.
+3. **If you cannot fix it today:** quarantine. File an issue labelled
+   `flaky` linking the failing CI runs, and mark the test with a `Skip`
+   reason that references the issue number:
+
+   ```csharp
+   [Fact(Skip = "flaky — see #NNN; race on Console.Out under parallel run")]
+   public async Task Feature_Behaviour_ExpectedOutcome() { ... }
+   ```
+
+4. **Never** wrap the test body in a retry loop. Never `[Fact(Timeout=)]`
+   your way out of a race. Never disable the test silently.
+
+### `[Trait]` status (honesty note)
+
+`docs/testing/bdd-guide.md` references `[Trait("type", "slow")]` and a
+`[Trait("flaky", "true")]` quarantine lane. Both are **aspirational** —
+no tests currently carry either trait. Treat these as a design target,
+not a live filter. If you add a trait, also add the CI wiring to honour
+it; otherwise it's decorative.
+
+---
+
+## 8. Coverage
+
+We do not currently gate on coverage numbers. `dotnet test` can emit
+Cobertura if you want a one-off measurement:
+
+```bash
+dotnet test azure-openai-cli.sln \
+  --collect:"XPlat Code Coverage" \
+  --results-directory ./coverage
+```
+
+Coverage is a signal, not a target. Coverage of the **risky** paths
+(security tools, Ralph loop, retry backoff, config merging, exit-code
+contracts) matters. Coverage of trivial getters does not.
+
+If you're adding a test purely to lift a coverage percentage, stop and
+ask whether the test would catch a real regression. If not, don't write
+it.
+
+---
+
+## 9. Chaos tests
+
+Location: `tests/chaos/`. Bash scenarios that inject failures into the
+built binary and assert it degrades cleanly rather than crashing.
+
+Scenarios (see `tests/chaos/README.md` for the full catalog):
+
+```
+01_argv_injection.sh   05_squad_chaos.sh     09_network_chaos.sh
+02_stdin_evil.sh       06_persona_memory.sh  10_ralph_depth.sh
+03_env_chaos.sh        07_tool_chaos.sh      11_persona_live.sh
+04_config_chaos.sh     08_signal_chaos.sh
+```
+
+Run all:
+
+```bash
+bash tests/chaos/run_all.sh
+```
+
+Chaos tests are not part of `make preflight` — they're slower and some
+need a running mock server (`tests/chaos/mock_server.py`). Run them
+before cutting a release and whenever you touch process-level concerns
+(signals, subprocess, network, env parsing).
+
+---
+
+## 10. Property tests
+
+We have one hand-rolled property-style test file:
+`tests/AzureOpenAI_CLI.Tests/CliParserPropertyTests.cs`. It uses a
+seeded `Random` and a generator loop — **not** FsCheck. This is
+deliberate: ADR-003 bans new test dependencies, and the argv parser's
+state space is small enough that a seeded generator is enough.
+
+Good candidates for property-style coverage:
+
+- Input parsing (argv, config keys, env-var names).
+- Commutative / idempotent operations (config merge, theme resolution).
+- Invariants (output never exceeds N chars, exit code always in a known
+  set, `--raw` stdout never contains ANSI).
+
+If you're reaching for FsCheck or similar, open an ADR first — the
+dependency cost must be justified against the AOT / supply-chain budget
+(ADR-001).
+
+---
+
+## 11. PR review checklist (for anyone reviewing a test change)
+
+- [ ] Does the test name describe a **behaviour**, not a method?
+      (`Ralph_ExitsNonZero_OnValidationFailure`, not `TestRalph1`.)
+- [ ] One behaviour per `[Fact]`? No bundled assertions.
+- [ ] If the test mutates `Console.*` or env vars, is it in the
+      `ConsoleCapture` collection?
+- [ ] If this is a bug fix, is there a regression test in the same
+      commit, and does it fail against the pre-fix code?
+- [ ] If this adds a user-visible promise, is there a contract test
+      under §5?
+- [ ] Does the test run deterministically? (No `Thread.Sleep`, no
+      unseeded randomness, no wall-clock dependencies without a clock
+      abstraction.)
+- [ ] Does `make test` still pass on both v1 and v2?
+
+High-five.
