@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Reflection;
 using System.Text.Json;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -28,7 +29,13 @@ namespace AzureOpenAI_CLI_V2.Observability;
 internal static class Telemetry
 {
     public const string ServiceName = "azureopenai-cli-v2";
-    public const string ServiceVersion = "2.0.2";
+
+    // Single-source-of-truth: derived from the assembly version (<Version> in
+    // AzureOpenAI_CLI_V2.csproj). Previously hardcoded as "2.0.2", which
+    // shipped through the v2.0.3 and v2.0.4 tags (audit finding C-1,
+    // docs/audits/docs-audit-2026-04-22-lippman.md). Pinned by VersionContractTests.
+    public static readonly string ServiceVersion =
+        typeof(Telemetry).Assembly.GetName().Version?.ToString(3) ?? "unknown";
 
     // ActivitySource for distributed tracing
     public static readonly ActivitySource ActivitySource = new(ServiceName, ServiceVersion);

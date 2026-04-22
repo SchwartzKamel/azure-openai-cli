@@ -1,3 +1,11 @@
+> ✅ **RESOLVED — 2026-04-22.** Rehearsal for v2.0.0; v2.0.0 shipped
+> and the v2 line has since reached v2.0.4 (commit `afa95fd`, which
+> cut `osx-x64`/`macos-13` from the release matrix). Current release
+> procedure lives in `docs/runbooks/release-runbook.md`; macOS
+> backlog triage in `docs/runbooks/macos-runner-triage.md`. See
+> `docs/audits/docs-audit-2026-04-22-EPISODE.md` §4. Retained as
+> historical record of the tag-time packaging rehearsal.
+
 # v2.0.0 Tag-Time Packaging Rehearsal — Mr. Lippman
 
 **Status:** rehearsal only. No tag cut. No push. No manifest edits applied.

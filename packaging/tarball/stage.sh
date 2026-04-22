@@ -27,7 +27,24 @@ case "$RID" in
     *) die "unsupported rid '$RID' (expected linux-*, osx-*, or win-*)" ;;
 esac
 
-VERSION="2.0.2"
+# Single-source-of-truth: parse <Version> from AzureOpenAI_CLI_V2.csproj so that
+# tarball filenames stay in lock-step with the binary's --version output and the
+# csproj itself. Previously hardcoded as "2.0.2" and never rolled past v2.0.2 —
+# v2.0.3 and v2.0.4 tarballs shipped with `2.0.2` embedded in the filename
+# (audit finding C-1, docs/audits/docs-audit-2026-04-22-lippman.md). Pinned by
+# the VersionContractTests xUnit suite. STAGE_VERSION env var overrides for
+# exceptional re-staging cases (e.g. the v2.0.4 re-release that had to match
+# the already-uploaded filenames).
+SCRIPT_DIR_EARLY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CSPROJ="$SCRIPT_DIR_EARLY/../../azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj"
+if [[ -n "${STAGE_VERSION:-}" ]]; then
+    VERSION="$STAGE_VERSION"
+elif [[ -f "$CSPROJ" ]]; then
+    VERSION="$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' "$CSPROJ" | head -n1)"
+    [[ -n "$VERSION" ]] || die "could not parse <Version> from $CSPROJ"
+else
+    die "csproj not found at $CSPROJ — cannot derive version"
+fi
 
 # Resolve repo root relative to this script.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
