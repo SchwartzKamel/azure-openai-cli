@@ -155,8 +155,30 @@ internal static class Telemetry
     }
 
     /// <summary>
+    /// True when the OTLP tracer pipeline has been constructed (i.e. both
+    /// <c>--otel</c> was requested AND <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> is set).
+    /// Exposed for tests verifying the lazy-init skip path (bania-v2-01).
+    /// </summary>
+    internal static bool TracerProviderConstructed => _tracerProvider is not null;
+
+    /// <summary>
+    /// True when the OTLP meter pipeline has been constructed (i.e. both
+    /// <c>--metrics</c> was requested AND <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> is set).
+    /// Exposed for tests verifying the lazy-init skip path (bania-v2-01).
+    /// </summary>
+    internal static bool MeterProviderConstructed => _meterProvider is not null;
+
+    /// <summary>
     /// Initialize OpenTelemetry exporters based on CLI flags (Phase 5).
     /// Must be called before any Activities or Metrics are emitted.
+    ///
+    /// <para><b>Lazy-init (bania-v2-01):</b> the OTLP SDK pipeline is <i>only</i>
+    /// constructed when <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> is set. With no
+    /// collector endpoint configured, <c>--otel</c>/<c>--metrics</c> would pay
+    /// ~2.7ms / ~4.2ms of cold-start tax building a pipeline that exports to
+    /// nothing. That tax is now zero. The stderr FinOps cost-event channel
+    /// (<see cref="EmitCostToStderr"/>) is independent and continues to fire
+    /// whenever <c>--metrics</c>/<c>--telemetry</c> is set.</para>
     /// </summary>
     /// <param name="enableOtel">Enable OTLP span export (<c>--otel</c>).</param>
     /// <param name="enableMetrics">Enable OTLP metrics + stderr cost events (<c>--metrics</c>).</param>
@@ -181,6 +203,20 @@ internal static class Telemetry
         }
         _enabled = true;
 
+        // Lazy-init gate: skip OTLP pipeline construction entirely when no
+        // collector endpoint is configured. Building a TracerProviderBuilder
+        // + AddOtlpExporter pipeline to export into the void is pure cold-start
+        // tax — measured at ~2.7ms (--otel) and ~4.2ms (--metrics) in
+        // docs/perf/v2.0.5-baseline.md §4 on the reference rig. When the user
+        // sets OTEL_EXPORTER_OTLP_ENDPOINT they opt back into eager build
+        // (so first-span export latency stays predictable).
+        var endpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            return;
+        }
+
+        var endpointUri = new Uri(endpoint);
         var resourceBuilder = ResourceBuilder.CreateDefault()
             .AddService(ServiceName, serviceVersion: ServiceVersion);
 
@@ -189,16 +225,7 @@ internal static class Telemetry
             _tracerProvider = Sdk.CreateTracerProviderBuilder()
                 .SetResourceBuilder(resourceBuilder)
                 .AddSource(ServiceName)
-                .AddOtlpExporter(options =>
-                {
-                    // Default OTLP endpoint (localhost:4317)
-                    // Override via OTEL_EXPORTER_OTLP_ENDPOINT env var
-                    var endpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-                    if (!string.IsNullOrWhiteSpace(endpoint))
-                    {
-                        options.Endpoint = new Uri(endpoint);
-                    }
-                })
+                .AddOtlpExporter(options => options.Endpoint = endpointUri)
                 .Build();
         }
 
@@ -207,14 +234,7 @@ internal static class Telemetry
             _meterProvider = Sdk.CreateMeterProviderBuilder()
                 .SetResourceBuilder(resourceBuilder)
                 .AddMeter(ServiceName)
-                .AddOtlpExporter(options =>
-                {
-                    var endpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-                    if (!string.IsNullOrWhiteSpace(endpoint))
-                    {
-                        options.Endpoint = new Uri(endpoint);
-                    }
-                })
+                .AddOtlpExporter(options => options.Endpoint = endpointUri)
                 .Build();
         }
     }
