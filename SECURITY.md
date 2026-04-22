@@ -2,6 +2,10 @@
 
 > **Azure OpenAI CLI** — Security guidance for developers, operators, and contributors.
 
+**See also:** [`docs/security/index.md`](docs/security/index.md) — full index
+of every security audit, review, and post-release verification. Start there
+before opening a security issue.
+
 ---
 
 ## Table of Contents
@@ -20,6 +24,7 @@
 12. [DelegateTaskTool Security](#12-delegatetasktool-security)
 13. [Ralph Mode Security](#13-ralph-mode-security)
 14. [Subagent Attack Surface](#14-subagent-attack-surface)
+15. [Repository Hardening Recommendations](#15-repository-hardening-recommendations)
 
 ---
 
@@ -122,6 +127,46 @@ secrets:
 
 **Recommendation:** Rotate API keys at least every 90 days, or immediately if a
 compromise is suspected.
+
+### Secret Redaction (v2)
+
+Added in v2.0.4 (commit [`4842b6a`](https://github.com/SchwartzKamel/azure-openai-cli/commit/4842b6a),
+resolving FDR High-severity finding `fdr-v2-err-unwrap` from
+[`docs/audits/fdr-v2-dogfood-2026-04-22.md`](docs/audits/fdr-v2-dogfood-2026-04-22.md)).
+
+The v2 binary (`az-ai-v2`) redacts the `AZUREOPENAIAPI` key value and the
+`AZUREOPENAIENDPOINT` hostname from every user-visible error surface before
+anything is written to `stdout` or `stderr`. The helper is
+`UnsafeReplaceSecrets` in `azureopenai-cli-v2/Program.cs` (line 1348) —
+the `Unsafe` prefix is a caller-side warning that the *input* contains
+secrets; the *output* is the safe form to emit.
+
+| Property | Detail |
+|---|---|
+| **What is redacted** | The full `AZUREOPENAIAPI` value (verbatim substring match) and the `AZUREOPENAIENDPOINT` URL *plus* its parsed hostname. Replacement token: `[REDACTED]`. |
+| **Where it applies** | Every catch block that surfaces an Azure SDK or inner exception to the user — covers standard mode, `--agent`, `--ralph`, and persona code paths (`Program.cs:604`, `Program.cs:616`, and the Ralph workflow). |
+| **Unwrap depth** | Up to 5 levels of `InnerException` are unwrapped before redaction, so AOT-trim error chains (`RequestFailedException` → `TypeInitializationException` → …) surface actionable detail without leaking. |
+| **Verification** | `ExceptionUnwrapTests` (7 cases) + `UserConfigQuietTests` (5 cases) under `tests/AzureOpenAI_CLI.V2.Tests/`. 485/485 v2 green at `4842b6a`. |
+| **Null/empty safety** | Safe on null/empty `apiKey` or `endpoint`; short (< 4 char) API keys are skipped to avoid false-positive substitution of common tokens. |
+
+**Limitation.** Redaction protects *displayed* error messages. It does
+**not** protect:
+
+- API keys passed on the command line with `--set-api-key` — shell history,
+  `ps` output, `/proc/<pid>/cmdline`, and process-monitoring tools will
+  still capture the raw value. **Prefer the `AZUREOPENAIAPI` env var or
+  the UserConfig file (`~/.azureopenai-cli.json`) with `chmod 600`.**
+- Logs written by an upstream proxy, sidecar, or orchestrator that sees
+  the TLS-terminated traffic. Redaction is an application-level control.
+- Arbitrary secrets not matching `AZUREOPENAIAPI` or the endpoint — the
+  blocklist is intentionally narrow to keep the false-positive rate low.
+
+**Threat-model note.** Pre-v2.0.4, `ex.Message` was printed raw in the
+global catch, so an operator debugging a 401 would see their API key
+echoed in a `RequestFailedException` chain. Impact: key exposure in
+terminal scrollback, CI job logs, and shared-screen troubleshooting
+sessions. Mitigation: centralized redaction helper, unit-tested on every
+error path. Residual: command-line and upstream-log exposure (above).
 
 ### Azure RBAC Recommendations
 
@@ -444,14 +489,21 @@ report it responsibly.
 
 ### Supported Versions
 
-Only the latest minor release receives security fixes. Prior lines are best-
-effort and users are strongly encouraged to upgrade.
+The **v2 line** (Microsoft Agent Framework rebuild) is current and receives
+full security support. The **v1 line** (handrolled loop) is in
+security-only maintenance through **2026-10-22** (six months post-v2.0.4
+cutover) to give operators a bounded window to migrate; no v1 feature work
+will be accepted. Older lines are unsupported.
 
-| Version | Supported |
-|---|---|
-| `1.8.x` (current) | ✅ Active security support |
-| `1.7.x` | ⚠️ Critical fixes only, until next minor |
-| `< 1.7` | ❌ Unsupported — please upgrade |
+| Version | Status | Support policy |
+|---|---|---|
+| `2.0.x` (current — v2.0.4, v2.0.5 rolling) | ✅ Active | Full security + feature support. All new fixes land here first. |
+| `1.8.x` | ⚠️ Maintenance | Security-only patches through **2026-10-22**. No new features. Critical fixes backported on a best-effort basis. |
+| `< 1.8` | ❌ Unsupported | Please upgrade. No patches will be issued. |
+
+After 2026-10-22, v1 moves to end-of-life and will receive no further
+patches, regardless of severity. Migration guide:
+[`docs/migration-v1-to-v2.md`](docs/migration-v1-to-v2.md).
 
 ### How to Report
 
@@ -642,94 +694,115 @@ Blocked IP ranges (DNS rebinding protection):
 
 ## 12. DelegateTaskTool Security
 
-> Added in v1.4.0 — documents security hardening for the `delegate_task` tool
-> that enables hierarchical sub-agent delegation.
+> Added in v1.4.0 as an out-of-process design; **rewritten in v2.0.0** as
+> an in-process Microsoft Agent Framework (MAF) child-agent model. This
+> section describes the **v2 reality**. See the bottom of this section for
+> notes on the v1 model and why it was replaced.
 
-The `DelegateTaskTool` spawns child agent processes to handle sub-tasks. Because
-child agents have tool access (shell, file, web), multiple layers of defense
-prevent abuse.
+The `delegate_task` tool spawns a child agent to handle a sub-task. In v2
+the child runs **in-process**, sharing the parent's `IChatClient`, so
+hardening is enforced by language-level invariants (static config,
+`AsyncLocal<int>` depth counter) rather than by OS process boundaries.
+Ground truth: [`azureopenai-cli-v2/Tools/DelegateTaskTool.cs`](azureopenai-cli-v2/Tools/DelegateTaskTool.cs).
+
+### Architecture (v2)
+
+- **In-process MAF child agents.** A child agent is a new MAF agent built
+  from the parent's `IChatClient` (`DelegateTaskTool.cs:10-35`). There is
+  no `Process.Start`, no binary re-locate, no shell-argument quoting, no
+  credential re-plumbing, no subprocess stdout/stderr capture.
+- **Shared memory space.** Parent and child live in the same .NET process
+  and share the managed heap. This is a **trust assumption**, not a
+  weakness: a child agent already operates on behalf of the same user with
+  the same credentials the parent already has. Treat it as "same blast
+  radius as the parent," not as a sandbox boundary.
+- **Tool allowlist, not tool inheritance.** The child receives **only** the
+  tools named in the `tools` parameter (default: `shell_exec, read_file,
+  web_fetch, get_datetime` — mirrors `ToolRegistry.DefaultChildAgentTools`,
+  excludes `get_clipboard` and `delegate_task` itself). The parent's full
+  registry is never passed through.
 
 ### Recursion Depth Cap
 
-The `RALPH_DEPTH` environment variable tracks the current delegation depth.
-Each child process increments this counter. Delegation is rejected when the
-depth reaches the hard-coded maximum of **3 levels**:
+Depth is tracked via an `AsyncLocal<int>` counter
+(`DelegateTaskTool.cs:34`, `s_depth`), **not** an environment variable.
+This replaces the v1 `RALPH_DEPTH` marshalling scheme entirely.
 
 ```csharp
-private const int MaxDepth = 3;
+internal const int MaxDepth = 3;
 // ...
+private static readonly AsyncLocal<int> s_depth = new();
+// ...
+var currentDepth = s_depth.Value;
 if (currentDepth >= MaxDepth)
-    return $"Error: maximum delegation depth ({MaxDepth}) reached.";
+    return $"Error: maximum delegation depth ({MaxDepth}) reached. ...";
 ```
 
-This prevents infinite agent recursion regardless of model behavior.
+**Why `AsyncLocal<T>`?** Nested delegations in the same logical flow see a
+monotonic depth, while parallel delegation roots stay isolated per-flow.
+There is no environment-variable round-trip, no subprocess spawn, and no
+way for a child to forge a lower depth than its parent — the parent
+increments `s_depth.Value` around the child's `RunAsync` call.
 
-### Credential Isolation
+**Hard limit:** 3 levels. Enforced in code, not convention.
 
-Only an explicit allowlist of environment variables is passed to child
-processes — no blanket inheritance:
+### No Credential Re-plumbing
 
-| Variable | Purpose |
-|---|---|
-| `AZUREOPENAIENDPOINT` | Azure resource URL |
-| `AZUREOPENAIAPI` | API key |
-| `AZUREOPENAIMODEL` | Deployment name |
-| `AZURE_DEEPSEEK_KEY` | DeepSeek API key |
-| `RALPH_DEPTH` | Delegation depth counter (set, not inherited) |
+Because the child runs in-process and reuses the parent's `IChatClient`,
+there is nothing to marshal: the Azure SDK handle, the API key, and the
+endpoint already live in process memory. There is no env-var allowlist
+to maintain, no `Process.Start` with a scrubbed `Environment` dictionary,
+and no risk of a stale CI token leaking from an overlooked inherited
+variable.
 
-All other parent environment variables (shell history, user paths, tokens from
-CI systems, etc.) are **not** forwarded.
+**Security property:** child inherits exactly the parent's capability set
+— no more, no less.
 
-### Timeout Enforcement
+### No Subprocess Boundary
 
-Each child agent has a **60-second hard timeout**. On timeout the entire
-process tree is killed:
+There is no `/proc` entry to read, no stdin/stdout to capture, no
+`entireProcessTree: true` kill to perform. Containment comes from:
 
-```csharp
-private const int DefaultTimeoutMs = 60_000;
-// ...
-cts.CancelAfter(DefaultTimeoutMs);
-// ...
-if (!process.HasExited) process.Kill(entireProcessTree: true);
-```
+1. The depth cap (above).
+2. The tool allowlist (above) — a child cannot call `delegate_task`
+   unless the parent explicitly included it.
+3. Each child tool enforces its **own** hardening (see §11):
+   `ShellExecTool` blocklist + 10 s timeout + output cap;
+   `ReadFileTool` path prefix-blocking + symlink resolution + 256 KB cap;
+   `WebFetchTool` HTTPS-only + DNS-rebinding block + redirect limit.
 
-### Output Truncation
+### Configuration Lifecycle
 
-Child process output is capped at **64 KB** (`65,536 bytes`). The read buffer
-is pre-allocated at this size and any excess output is silently dropped with a
-truncation notice appended:
+The tool is wired exactly once at startup via
+`DelegateTaskTool.Configure(chatClient, baseInstructions, model)` in
+`Program.cs` after the parent `IChatClient` is built. The static fields
+(`s_chatClient`, `s_baseInstructions`, `s_model`) are set once; tests may
+call `ResetForTests()` to clear them. A child agent spawned before
+`Configure` has run returns an error and never contacts the model.
 
-```csharp
-private const int MaxOutputBytes = 65_536;
-// ...
-if (read == MaxOutputBytes)
-    output += "\n... (child agent output truncated)";
-```
+### Threat-Model Summary (v2)
 
-### stdin Closure
+| Threat | Mitigation | Residual |
+|---|---|---|
+| Infinite recursion | `AsyncLocal<int>` depth ≤ 3 | Low — enforced at call site, no env-var spoofing path |
+| Tool escalation by child | Explicit tool-name allowlist per call; `delegate_task` excluded from default child toolset | Low — parent must opt in by name |
+| Credential exfiltration via child | In-process shared `IChatClient`; no env var marshalling | **Trust assumption:** child has the parent's full Azure credentials by design |
+| Prompt injection in child response | Child output returned as tool result, not promoted to system prompt | Medium — parent model may trust child text; mitigated by child tool hardening |
+| Resource exhaustion via nested delegation | Depth cap × per-tool timeouts (shell 10 s, web 10 s, read-file 256 KB) | Low |
 
-The child process `stdin` is immediately closed after spawning, preventing any
-interactive exploitation path:
+### v1 → v2 migration note
 
-```csharp
-process.StandardInput.Close();
-```
-
-### Default Tool Restriction
-
-Child agents default to the tool set `shell,file,web,datetime`. The `delegate`
-tool is **excluded** from this default, preventing recursive delegation chains
-unless the parent explicitly opts in via the `tools` parameter:
-
-```csharp
-string toolsArg = "shell,file,web,datetime";
-```
-
-### Process Isolation
-
-Each child runs as a separate OS process via `Process.Start`. There is no
-shared memory, no shared state, and no direct IPC channel between parent and
-child beyond `stdout`/`stderr` capture.
+The v1.4.0 design used `Process.Start` to re-launch the CLI as a child,
+passed credentials through a 5-element env-var allowlist, enforced depth
+via the `RALPH_DEPTH` env var, and applied a 60 s subprocess timeout with
+`process.Kill(entireProcessTree: true)`. That architecture is retired.
+Threat modelers working on v2 should **ignore** references to
+`Process.Start`, `RALPH_DEPTH`, `DefaultTimeoutMs = 60_000`, and env-var
+marshalling — none of those constructs exist in the v2 delegation path.
+Prior Newman audits referencing them (`docs/security-review-v2.md`,
+`docs/security/reaudit-v2-phase5.md`) predate this rewrite; see
+[`docs/security/index.md`](docs/security/index.md) for the full report
+timeline.
 
 ---
 
@@ -837,9 +910,9 @@ from tool outputs:
 
 | Threat | Mitigation | Residual Risk |
 |---|---|---|
-| Infinite recursion | `RALPH_DEPTH` cap (3) | Low — hard limit enforced |
-| Resource exhaustion | 60 s timeout + 64 KB output cap | Low — enforced at process level |
-| Credential leakage to child | Explicit allowlist of env vars | Medium — allowed vars contain API keys |
+| Infinite recursion | `AsyncLocal<int>` depth cap (3) in `DelegateTaskTool` (v2) | Low — hard limit enforced, no env-var spoofing path |
+| Resource exhaustion | Per-tool timeouts (shell 10 s, web 10 s) + output caps | Low — enforced at tool level |
+| Credential leakage to child | In-process shared `IChatClient` (v2) — no env-var marshalling | Trust assumption: child has parent's full capabilities by design |
 | Prompt injection via child response | Child output treated as tool result, not system prompt | Medium — model may trust child output |
 | Ralph loop denial of service | Max 50 iterations, each with timeout | Low — bounded resource use |
 | Validation command injection | Command comes from CLI flags (user-controlled, not model-controlled) | Low — user trusts their own flags |
@@ -857,11 +930,10 @@ from tool outputs:
 │  • Validation subprocess sandboxed           │
 │  • .ralph-log truncated to prevent leaks     │
 ├──────────────────────────────────────────────┤
-│  DelegateTaskTool                            │
-│  • RALPH_DEPTH ≤ 3                           │
-│  • 60 s timeout, 64 KB output cap            │
-│  • Env var allowlist (4 vars + depth)        │
-│  • delegate excluded from child defaults     │
+│  DelegateTaskTool (v2 — in-process MAF)      │
+│  • AsyncLocal<int> depth ≤ 3                 │
+│  • Per-call tool allowlist (delegate excl.)  │
+│  • Shared IChatClient — no cred re-plumb     │
 ├──────────────────────────────────────────────┤
 │  Child Agent Tools                           │
 │  • ShellExecTool: command blocklist, 10 s    │
@@ -943,4 +1015,6 @@ SBOMs (CycloneDX JSON) are attached to each release alongside the binaries.
 
 ---
 
-*Last updated: 2025-07-25*
+*Last updated: 2026-04-22*
+
+*Index of all security audits and reviews: [`docs/security/index.md`](docs/security/index.md).*
