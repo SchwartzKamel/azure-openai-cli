@@ -1,13 +1,13 @@
 # FR-004: Latency & Startup Optimization
 
-> **✅ Phase 1 largely shipped** — Spinner (v1.1.0) and Native AOT binary
+> **✅ Phase 1 largely shipped** -- Spinner (v1.1.0) and Native AOT binary
 > (v1.8.0, ~5.4 ms cold start) are done. Daemon mode and Homebrew/tool
 > distribution remain deferred. The original proposal below describes the
 > pre-AOT baseline for historical context.
 
 ---
 
-**Priority:** P0 — Critical  
+**Priority:** P0 -- Critical  
 **Impact:** Perceived speed is the #1 factor in whether a CLI tool gets habitual use  
 **Effort:** Medium (phased)  
 **Category:** Performance
@@ -29,7 +29,7 @@ User types command
               → First token arrives
 ```
 
-**Estimated time to first token: 1.5–3.0 seconds.**
+**Estimated time to first token: 1.5-3.0 seconds.**
 
 For comparison:
 - `sgpt` (Python, no Docker): ~500ms to first token
@@ -116,7 +116,7 @@ az-ai "prompt" ──► Unix socket/named pipe ──► Warm container ──�
 
 4. `az-ai --daemon stop` shuts it down cleanly.
 
-**Expected latency improvement:** Eliminates Docker startup (~1-1.5s) and binary extraction (~200ms). Time to first token drops to ~500-800ms — competitive with native Go tools.
+**Expected latency improvement:** Eliminates Docker startup (~1-1.5s) and binary extraction (~200ms). Time to first token drops to ~500-800ms -- competitive with native Go tools.
 
 ### Phase 3: Native Install Option (Larger Effort)
 
@@ -134,7 +134,7 @@ chmod +x /usr/local/bin/az-ai
 brew install schwartzkamel/tap/az-ai
 ```
 
-This doesn't replace Docker — it complements it. Docker remains the "secure, zero-trust" mode. Native install is the "fast, daily-driver" mode. Let the user choose.
+This doesn't replace Docker -- it complements it. Docker remains the "secure, zero-trust" mode. Native install is the "fast, daily-driver" mode. Let the user choose.
 
 **Expected latency:** ~200-400ms to first token. Competitive with the fastest tools in the space.
 
@@ -144,19 +144,19 @@ This doesn't replace Docker — it complements it. Docker remains the "secure, z
 
 | Phase | Component | Current | Target |
 |---|---|---|---|
-| — | Shell + Make | ~100ms | ~50ms (direct alias) |
+| -- | Shell + Make | ~100ms | ~50ms (direct alias) |
 | 2 | Docker container create | ~1000ms | 0ms (daemon) |
 | 1c | Binary extraction | ~300ms | 0ms (cached) |
-| — | Config loading | ~20ms | ~20ms |
+| -- | Config loading | ~20ms | ~20ms |
 | 1b | TLS handshake | ~300ms | 0ms (pre-warm) |
-| — | API server processing | ~500ms | ~500ms |
+| -- | API server processing | ~500ms | ~500ms |
 | **Total** | | **~2200ms** | **~570ms** |
 
 ---
 
 ## Why This Is P0
 
-Speed is not a feature — it's *the* feature. Every millisecond of startup time is a micro-decision point where the user asks: "should I just open ChatGPT instead?"
+Speed is not a feature -- it's *the* feature. Every millisecond of startup time is a micro-decision point where the user asks: "should I just open ChatGPT instead?"
 
 The research is clear: tools under 100ms feel instant, under 1s feel responsive, over 1s feel sluggish, over 3s feel broken. We're currently in the "sluggish" zone. Phase 1 gets us to "responsive." Phase 2 gets us to the edge of "instant."
 

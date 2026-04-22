@@ -6,11 +6,11 @@
 > to every rule below; reviewers will block on this file.
 >
 > **Owner:** Mickey Abbott (accessibility / CLI ergonomics)
-> **Status:** locked-in for v2.1 (pre-emptive — v2.0.0 ships monochrome).
+> **Status:** locked-in for v2.1 (pre-emptive -- v2.0.0 ships monochrome).
 
 ## Why this exists
 
-v2.0.0 is **monochrome-by-construction** — zero ANSI SGR escapes, zero
+v2.0.0 is **monochrome-by-construction** -- zero ANSI SGR escapes, zero
 `ConsoleColor` calls, no spinner. That is a feature, not an accident. It
 means `NO_COLOR`, `TERM=dumb`, pipe-safety, and screen-reader compatibility
 are all trivially satisfied today.
@@ -21,7 +21,7 @@ the trivially-clean invariant is gone and we need an enforceable contract
 
 ## The rules
 
-### Rule 1 — `NO_COLOR` always wins
+### Rule 1 -- `NO_COLOR` always wins
 
 If the `NO_COLOR` environment variable is **set** and **non-empty**, the
 binary **MUST NOT** emit any ANSI SGR escape sequences. Ever. No exceptions.
@@ -31,10 +31,10 @@ This rule beats every other rule in this document, including
 Reference: <https://no-color.org>.
 
 Implementation note: check `Environment.GetEnvironmentVariable("NO_COLOR")`
-for a non-null, non-empty string. Presence alone is not sufficient — an
+for a non-null, non-empty string. Presence alone is not sufficient -- an
 empty value (`NO_COLOR=`) does **not** disable color, per the spec.
 
-### Rule 2 — `FORCE_COLOR` / `CLICOLOR_FORCE` force color on (subject to Rule 1)
+### Rule 2 -- `FORCE_COLOR` / `CLICOLOR_FORCE` force color on (subject to Rule 1)
 
 If `FORCE_COLOR=1` **or** `CLICOLOR_FORCE=1` is set, the binary **MUST**
 emit ANSI SGR escapes even when stdout is redirected (pipe, file). This
@@ -44,7 +44,7 @@ that want the color bytes preserved.
 `NO_COLOR` still wins. If both `NO_COLOR=1` and `FORCE_COLOR=1` are set
 simultaneously, color is **off**.
 
-### Rule 3 — Auto-detect: color off unless stdout is a TTY
+### Rule 3 -- Auto-detect: color off unless stdout is a TTY
 
 With no env-var overrides, the default is:
 
@@ -55,13 +55,13 @@ With no env-var overrides, the default is:
 
 Never assume a TTY. Never emit color unconditionally.
 
-### Rule 4 — `TERM=dumb` disables color
+### Rule 4 -- `TERM=dumb` disables color
 
 If `TERM=dumb`, no ANSI. This covers Emacs `M-x shell`, some CI runners,
 and historic `tramp` sessions. It is a weaker signal than `NO_COLOR` but
 a stronger signal than auto-detect.
 
-### Rule 5 — Precedence table (the ordering is the contract)
+### Rule 5 -- Precedence table (the ordering is the contract)
 
 Evaluate top-to-bottom; first match wins:
 
@@ -74,10 +74,10 @@ Evaluate top-to-bottom; first match wins:
 | 5 | Auto-detect: stdout is a TTY | **Color ON** |
 | 6 | (default fallthrough) | **Color OFF** |
 
-The `--raw` flag is **not** in this table — it is handled by Rule 6 and
+The `--raw` flag is **not** in this table -- it is handled by Rule 6 and
 short-circuits everything.
 
-### Rule 6 — `--raw` is silent-by-design
+### Rule 6 -- `--raw` is silent-by-design
 
 The `--raw` flag disables **all** decoration:
 
@@ -96,12 +96,12 @@ breaking change under SemVer.
 When `--raw` is present, all color/TTY logic in Rule 5 is **bypassed**
 and color is unconditionally **OFF**.
 
-### Rule 7 — `[ERROR]` prefix is mandatory on stderr
+### Rule 7 -- `[ERROR]` prefix is mandatory on stderr
 
 Every error line written to `stderr` **MUST** start with the literal
 token `[ERROR]` followed by a space. Not `Error:`, not `ERR:`, not
 `error -`, not unprefixed. Screen readers (Orca, NVDA, VoiceOver) key
-off the literal `[ERROR]` token — `"bracket error bracket"` is parsed
+off the literal `[ERROR]` token -- `"bracket error bracket"` is parsed
 into a recognizable announcement, `"Error colon"` is not.
 
 Correct:
@@ -118,7 +118,7 @@ ERR: bad config
 ```
 
 Reference: v2.0.0 accessibility review §2.4 tracks one stray
-`Error:` at `Program.cs:1089` — that line is the v2.1 normalization
+`Error:` at `Program.cs:1089` -- that line is the v2.1 normalization
 work; every new error path landed after this contract goes live must
 be `[ERROR]` from day one.
 
@@ -130,7 +130,7 @@ All color output **MUST** be gated by a single boolean helper:
 // One place, one decision, one grep target.
 public static class Theme
 {
-    public static bool UseColor() { /* implements Rules 1–5 */ }
+    public static bool UseColor() { /* implements Rules 1-5 */ }
 }
 ```
 
@@ -145,7 +145,7 @@ else
 
 **PRs that add `Console.ForegroundColor = ...` or a raw ANSI string
 literal *without* going through `Theme.UseColor()` will be blocked.**
-This is enforceable via a trivial grep — see the follow-up lint rule
+This is enforceable via a trivial grep -- see the follow-up lint rule
 proposal in the [v2.1 accessibility queue](../../docs/accessibility-review-v2.md).
 
 Rationale: color decisions are policy, not a per-call concern. One
@@ -173,24 +173,24 @@ same PR. No exceptions.
 
 ## Anti-patterns (do NOT do)
 
-1. **Hard-coded ANSI escapes in string literals** — `"\u001b[31m"`,
+1. **Hard-coded ANSI escapes in string literals** -- `"\u001b[31m"`,
    `"\e[1;33m"`, `"\x1b[0m"` scattered through call sites. Every
    escape must come from a helper that already consulted
    `Theme.UseColor()`.
-2. **Bypassing `Theme.UseColor()`** — `Console.ForegroundColor = ...`
+2. **Bypassing `Theme.UseColor()`** -- `Console.ForegroundColor = ...`
    or direct ANSI writes without checking the helper.
-3. **Assuming `isatty`** — emitting color without checking
+3. **Assuming `isatty`** -- emitting color without checking
    `Console.IsOutputRedirected`. Users pipe into `less -R` *and* into
    `jq`; both must work.
-4. **Emitting color to stderr by default** — stderr is for diagnostics;
+4. **Emitting color to stderr by default** -- stderr is for diagnostics;
    colorizing it without explicit opt-in breaks tools that grep stderr
    for the literal `[ERROR]` token.
-5. **Using color as the only signal for state** — a red word and a
+5. **Using color as the only signal for state** -- a red word and a
    green word must still be distinguishable in monochrome. Use
    `✅ PASSED` / `❌ FAILED` / `[ERROR]` / `[WARN]` text tokens,
    and let color be *garnish* on top.
 6. **Spinner that writes raw ANSI cursor codes to stderr without
-   checking `Console.IsErrorRedirected`** — it spams screen-reader
+   checking `Console.IsErrorRedirected`** -- it spams screen-reader
    assistive tech with escape soup.
 7. **Tab characters inside an 80-column help line.** Don't do it. Mickey
    will find it and Mickey will not be nice about it.
@@ -201,17 +201,17 @@ same PR. No exceptions.
   touches output formatting.
 - **Grep gate:** a CI job (proposed, tracked for v2.1) will fail on
   any `.cs` file outside `Theme.cs` containing `\u001b[` or
-  `ConsoleColor\.` — see the lint-rule proposal in the v2.0.0
+  `ConsoleColor\.` -- see the lint-rule proposal in the v2.0.0
   accessibility review follow-up queue.
 - **Release notes:** every release that changes color behavior must
   call out the change in `docs/release-notes-v*.md`.
 
 ## References
 
-Canonical artifacts implementing this contract (keep in sync — any
+Canonical artifacts implementing this contract (keep in sync -- any
 divergence between spec and code is a bug against this document):
 
-- **`scripts/check-color-contract.sh`** — automated lint gate. Greps
+- **`scripts/check-color-contract.sh`** -- automated lint gate. Greps
   `azureopenai-cli-v2/**/*.cs` for `ConsoleColor.`,
   `Console.ForegroundColor` / `Console.BackgroundColor`, and raw ANSI
   escape literals (`\u001b[`, `\x1b[`, `\e[`, `\033[`). Wired into
@@ -219,10 +219,10 @@ divergence between spec and code is a bug against this document):
   pointer to `Theme.cs`. Lines deliberately carrying raw ANSI (e.g. an
   intentional stderr spinner) must carry the trailing marker comment
   `// color-contract: approved-spinner` and be recorded below.
-- **`azureopenai-cli-v2/Theme.cs`** — the canonical helper. New call
+- **`azureopenai-cli-v2/Theme.cs`** -- the canonical helper. New call
   sites **must** route through `Theme.WriteColored(...)` /
   `Theme.WriteLineColored(...)`; these consult `Theme.UseColor()`
-  (Rules 1–5) and honor `Theme.RawMode` (Rule 6 defensive layer). The
+  (Rules 1-5) and honor `Theme.RawMode` (Rule 6 defensive layer). The
   Rule 7 prefixes `[ERROR]` / `[warn]` are exposed as
   `Theme.ErrorPrefix` / `Theme.WarnPrefix` so call sites don't
   hand-roll them. AOT-clean, BCL-only, no reflection.
@@ -235,20 +235,20 @@ a specific line is granted an exception and tagged with the
 `// color-contract: approved-spinner` marker.
 
 <!-- carve-out entries go here, in the form:
-     - `path/to/file.cs:LINE` — rationale (reviewer, date, issue link) -->
+     - `path/to/file.cs:LINE` -- rationale (reviewer, date, issue link) -->
 
 ### Forward-looking: v2.1 migration scope
 
 Existing `azureopenai-cli/` (v1) `ConsoleColor` call sites are
-deliberately **out of scope** for the lint gate — it targets only
+deliberately **out of scope** for the lint gate -- it targets only
 `azureopenai-cli-v2/`. v1 is frozen on its current color story; the
 v2.1 migration wave will port the remaining legitimate colorized paths
 (error highlighting, banner chrome) onto `Theme.WriteColored(...)` so
 the single chokepoint owns every decision. Any new ANSI added to
 `azureopenai-cli-v2/` between now and v2.1 must land through
-`Theme.cs` on day one — the lint will block otherwise.
+`Theme.cs` on day one -- the lint will block otherwise.
 
 ---
 
 *Color is garnish, never the entrée. Information must survive
-monochrome. — Mickey*
+monochrome. -- Mickey*

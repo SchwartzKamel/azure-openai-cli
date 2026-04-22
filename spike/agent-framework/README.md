@@ -1,4 +1,4 @@
-# Phase 0 spike — Microsoft Agent Framework
+# Phase 0 spike -- Microsoft Agent Framework
 
 **Status**: scaffolding only. Awaiting real Azure endpoint via `.env` to run benchmarks.
 
@@ -15,10 +15,10 @@ If MAF passes, we adopt it on the warm/cold paths per the plan's hot-vs-cold mat
 **This is throwaway code.** Not shipped. Not in the main test suite. Lives under `spike/` until decision is made and ADR-004 is written.
 
 ## Layout
-- `AgentFrameworkSpike.csproj` — references `Microsoft.Agents.AI` 1.1.0, `Microsoft.Agents.AI.OpenAI` 1.1.0, `Microsoft.Agents.AI.AzureAI` 1.0.0-rc5, `Azure.Identity` 1.13.1
-- `Program.cs` — minimal CLI: `--auth {apikey|aad|foundry} --prompt <text>` with monotonic `[mark]` stderr timestamps for the bench harness
-- `bench.sh` — Linux benchmark runner; compares handrolled vs spike across cold-start, TTFT, end-to-end latency, binary size
-- `README.md` — this file
+- `AgentFrameworkSpike.csproj` -- references `Microsoft.Agents.AI` 1.1.0, `Microsoft.Agents.AI.OpenAI` 1.1.0, `Microsoft.Agents.AI.AzureAI` 1.0.0-rc5, `Azure.Identity` 1.13.1
+- `Program.cs` -- minimal CLI: `--auth {apikey|aad|foundry} --prompt <text>` with monotonic `[mark]` stderr timestamps for the bench harness
+- `bench.sh` -- Linux benchmark runner; compares handrolled vs spike across cold-start, TTFT, end-to-end latency, binary size
+- `README.md` -- this file
 
 ## Build
 ```bash
@@ -59,8 +59,8 @@ Output:
 - `docs/spikes/af-benchmarks.md`: appended run section with timestamp + binary sizes
 
 ## Known stubs (Phase 0 follow-up)
-- **Foundry path**: `BuildFoundryAgent` throws `NotImplementedException` — requires verifying `Microsoft.Agents.AI.AzureAI` 1.0.0-rc5's exact public surface (`PersistentAgentsClient` factory shape) against an actual Foundry project endpoint
-- **Tool round-trip benchmark**: not yet wired — Phase 0 part 2 will register a single dummy AF function tool and re-time
+- **Foundry path**: `BuildFoundryAgent` throws `NotImplementedException` -- requires verifying `Microsoft.Agents.AI.AzureAI` 1.0.0-rc5's exact public surface (`PersistentAgentsClient` factory shape) against an actual Foundry project endpoint
+- **Tool round-trip benchmark**: not yet wired -- Phase 0 part 2 will register a single dummy AF function tool and re-time
 - **AAD warm path**: token cache lifetime not yet measured across runs
 
 ## Decision criteria

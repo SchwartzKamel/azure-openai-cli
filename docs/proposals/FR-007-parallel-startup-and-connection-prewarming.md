@@ -1,8 +1,8 @@
 # FR-007: Parallel Startup Pipeline & Connection Pre-warming
 
-**Priority:** P1 — High  
-**Impact:** Saves 200–400ms per invocation by overlapping initialization with TLS handshake  
-**Effort:** Small (3–5 hours)  
+**Priority:** P1 -- High  
+**Impact:** Saves 200-400ms per invocation by overlapping initialization with TLS handshake  
+**Effort:** Small (3-5 hours)  
 **Category:** Performance
 
 ---
@@ -15,35 +15,35 @@ Every invocation follows a strictly sequential startup path. Here's what happens
 Program.Main entered
   │
   ├─ [1] ParseCliFlags (line 59)                          ~1ms
-  ├─ [2] DotEnv.Load (line 333)                           ~5–10ms
-  ├─ [3] UserConfig.Load → File.ReadAllText (line 345)    ~2–5ms
+  ├─ [2] DotEnv.Load (line 333)                           ~5-10ms
+  ├─ [3] UserConfig.Load → File.ReadAllText (line 345)    ~2-5ms
   ├─ [4] InitializeFromEnvironment (line 390)             ~<1ms
   ├─ [5] HandleModelCommands check (line 402)             ~<1ms
-  ├─ [6] Build prompt from args/stdin (line 410–449)      ~1–5ms
+  ├─ [6] Build prompt from args/stdin (line 410-449)      ~1-5ms
   ├─ [7] ValidateConfiguration (line 468)                 ~<1ms
   ├─ [8] new AzureOpenAIClient (line 475)                 ~5ms
   ├─ [9] GetChatClient (line 478)                         ~<1ms
   ├─ [10] GetEffectiveConfig (line 481)                   ~<1ms
   ├─ [11] Build ChatCompletionOptions (line 534)          ~<1ms
   │
-  └─ [12] CompleteChatStreaming (line 613)                 ~200–500ms
-           ├─ DNS resolution                               ~50–100ms (first call)
-           ├─ TCP connect                                  ~20–50ms
-           ├─ TLS handshake                                ~100–200ms
-           └─ HTTP/2 negotiation + first byte              ~50–100ms
+  └─ [12] CompleteChatStreaming (line 613)                 ~200-500ms
+           ├─ DNS resolution                               ~50-100ms (first call)
+           ├─ TCP connect                                  ~20-50ms
+           ├─ TLS handshake                                ~100-200ms
+           └─ HTTP/2 negotiation + first byte              ~50-100ms
 ```
 
-**Steps 1–11 total: ~15–25ms.** These are cheap.
-**Step 12 network setup: ~200–500ms.** This dominates.
+**Steps 1-11 total: ~15-25ms.** These are cheap.
+**Step 12 network setup: ~200-500ms.** This dominates.
 
-The critical insight: **steps 1–11 produce no network I/O**, and **step 12 needs nothing from steps 1–6**. The TLS handshake only needs the endpoint URL and API key, which are available as soon as DotEnv loads (step 2). But the current code waits until *everything* is parsed and validated before touching the network.
+The critical insight: **steps 1-11 produce no network I/O**, and **step 12 needs nothing from steps 1-6**. The TLS handshake only needs the endpoint URL and API key, which are available as soon as DotEnv loads (step 2). But the current code waits until *everything* is parsed and validated before touching the network.
 
 ### Why the Azure SDK Doesn't Help
 
-The `AzureOpenAIClient` (line 475–478) creates an internal `HttpClient` with connection pooling — but this pool starts cold. The first `CompleteChatStreaming` call pays the full DNS + TCP + TLS cost. There's no pre-connect or warmup API.
+The `AzureOpenAIClient` (line 475-478) creates an internal `HttpClient` with connection pooling -- but this pool starts cold. The first `CompleteChatStreaming` call pays the full DNS + TCP + TLS cost. There's no pre-connect or warmup API.
 
 ```csharp
-// Line 475–478: Client created but no network activity until line 613
+// Line 475-478: Client created but no network activity until line 613
 AzureOpenAIClient azureClient = new(
     endpoint,
     new AzureKeyCredential(apiKey));
@@ -135,7 +135,7 @@ This ensures the warm connection in the handler's pool is reused by the Azure SD
 While we're restructuring startup, we can also overlap `DotEnv.Load` with `UserConfig.Load`:
 
 ```csharp
-// These have no dependencies on each other — run in parallel
+// These have no dependencies on each other -- run in parallel
 var envTask = Task.Run(() =>
 {
     try { DotEnv.Load(new DotEnvOptions(envFilePaths: new[] { ".env" }, overwriteExistingVars: true, trimValues: true)); }
@@ -147,7 +147,7 @@ await envTask;
 var config = await configTask;
 ```
 
-This saves the slower of the two (~5–10ms for DotEnv, ~2–5ms for UserConfig file read).
+This saves the slower of the two (~5-10ms for DotEnv, ~2-5ms for UserConfig file read).
 
 ---
 
@@ -175,15 +175,15 @@ AFTER (parallel pre-warm):
   Total: ~300ms wall clock (bounded by pre-warm, not sequential sum)
 ```
 
-**Net savings: ~200–300ms** — the TLS cost is hidden behind startup work that was going to happen anyway.
+**Net savings: ~200-300ms** -- the TLS cost is hidden behind startup work that was going to happen anyway.
 
 ---
 
 ## Risk Assessment
 
-**Low risk.** The pre-warm is fire-and-forget with a `catch {}` — if it fails, the real request cold-starts exactly as it does today. Zero change to the happy path.
+**Low risk.** The pre-warm is fire-and-forget with a `catch {}` -- if it fails, the real request cold-starts exactly as it does today. Zero change to the happy path.
 
-**One subtlety:** The `HEAD` request to the Azure endpoint may return 404 or 401 (no valid chat path). That's fine — we only care about the TLS handshake completing. The connection is pooled by (host, port), not by path.
+**One subtlety:** The `HEAD` request to the Azure endpoint may return 404 or 401 (no valid chat path). That's fine -- we only care about the TLS handshake completing. The connection is pooled by (host, port), not by path.
 
 **SDK compatibility:** The `Azure.Core` library (v1.51.1, referenced in `.csproj` line 35) supports custom `HttpClientTransport`. This is the documented extensibility point for sharing handlers.
 
@@ -198,7 +198,7 @@ AFTER (parallel pre-warm):
 | Time to first API byte | ~370ms | ~70ms | **-300ms** |
 | Time to first token (end-to-end, native) | ~500ms | ~200ms | **-300ms** |
 
-Combined with FR-006 (AOT, -85ms startup), the total pipeline drops from ~600ms to ~215ms — approaching the "feels instant" threshold.
+Combined with FR-006 (AOT, -85ms startup), the total pipeline drops from ~600ms to ~215ms -- approaching the "feels instant" threshold.
 
 ---
 
@@ -206,7 +206,7 @@ Combined with FR-006 (AOT, -85ms startup), the total pipeline drops from ~600ms 
 
 | File | Change |
 |---|---|
-| `azureopenai-cli/Program.cs` (lines 330–478) | Restructure startup: parallel DotEnv/Config load, TLS pre-warm task, shared `SocketsHttpHandler` |
+| `azureopenai-cli/Program.cs` (lines 330-478) | Restructure startup: parallel DotEnv/Config load, TLS pre-warm task, shared `SocketsHttpHandler` |
 | `azureopenai-cli/AzureOpenAI_CLI.csproj` | No changes needed |
 
 ---

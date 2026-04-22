@@ -1,4 +1,4 @@
-# Security Audit Report — AUDIT-001
+# Security Audit Report -- AUDIT-001
 
 **Date:** 2026-04-08
 **Auditor:** Newman (Security Inspector)
@@ -8,7 +8,7 @@
 
 The Azure OpenAI CLI project demonstrates a security-conscious design overall. Credentials are not baked into images, the Dockerfile uses multi-stage builds with a non-root Alpine runtime, JSON serialization uses `System.Text.Json` (which auto-escapes output), and environment variable parsing degrades gracefully with safe defaults. Error messages are carefully worded to avoid leaking API keys.
 
-However, the audit identified **10 findings** across the codebase. The most notable are: unbounded stdin reads enabling memory exhaustion before prompt-length validation kicks in, acceptance of plaintext HTTP endpoints (risking credential interception), and CI/Docker supply chain risks from unpinned action and image tags. No critical vulnerabilities were found — all findings are Medium or Low severity, and several have partial mitigations already in place.
+However, the audit identified **10 findings** across the codebase. The most notable are: unbounded stdin reads enabling memory exhaustion before prompt-length validation kicks in, acceptance of plaintext HTTP endpoints (risking credential interception), and CI/Docker supply chain risks from unpinned action and image tags. No critical vulnerabilities were found -- all findings are Medium or Low severity, and several have partial mitigations already in place.
 
 ## Findings
 
@@ -30,7 +30,7 @@ However, the audit identified **10 findings** across the codebase. The most nota
   ```
 - **Status:** Open
 
-### MEDIUM-002: HTTP Endpoints Accepted — API Key Sent in Plaintext
+### MEDIUM-002: HTTP Endpoints Accepted -- API Key Sent in Plaintext
 
 - **Severity:** Medium
 - **File:** `azureopenai-cli/Program.cs:113`
@@ -104,8 +104,8 @@ However, the audit identified **10 findings** across the codebase. The most nota
 
 - **Severity:** Low
 - **File:** `azureopenai-cli/UserConfig.cs:58-59`
-- **Description:** `File.WriteAllText()` creates the config file with default permissions (typically `644` — world-readable). `SetRestrictivePermissions()` is called immediately after to set `600`. In the brief window between creation and chmod, another user on a shared system could read the file contents.
-- **Impact:** Minimal — the config file only stores model preferences (no credentials). But if the config schema ever expands to include sensitive data, this becomes relevant.
+- **Description:** `File.WriteAllText()` creates the config file with default permissions (typically `644` -- world-readable). `SetRestrictivePermissions()` is called immediately after to set `600`. In the brief window between creation and chmod, another user on a shared system could read the file contents.
+- **Impact:** Minimal -- the config file only stores model preferences (no credentials). But if the config schema ever expands to include sensitive data, this becomes relevant.
 - **Remediation:** On Unix, create the file with restrictive permissions atomically, e.g., by writing to a temp file with mode `600` first, then renaming it into place. Alternatively, pre-create the file with correct permissions before writing.
 - **Status:** Open
 
@@ -114,7 +114,7 @@ However, the audit identified **10 findings** across the codebase. The most nota
 - **Severity:** Low
 - **File:** `azureopenai-cli/UserConfig.cs:76-77`
 - **Description:** `SetRestrictivePermissions` is a no-op on Windows. The config file is created with default ACLs, potentially readable by other users in a multi-user Windows environment.
-- **Impact:** Same as LOW-007 — low risk since the config contains only model preferences.
+- **Impact:** Same as LOW-007 -- low risk since the config contains only model preferences.
 - **Remediation:** On Windows, use `System.IO.FileInfo.SetAccessControl()` to restrict the ACL to the current user. Alternatively, document this limitation.
 - **Status:** Open
 
@@ -156,17 +156,17 @@ However, the audit identified **10 findings** across the codebase. The most nota
 
 ## Recommendations
 
-**Priority 1 — Address before next release:**
-1. **Cap stdin reads** (MEDIUM-001) — Straightforward fix, prevents DoS in pipeline contexts
-2. **Enforce HTTPS-only** or warn on HTTP endpoints (MEDIUM-002) — Prevents accidental credential exposure
+**Priority 1 -- Address before next release:**
+1. **Cap stdin reads** (MEDIUM-001) -- Straightforward fix, prevents DoS in pipeline contexts
+2. **Enforce HTTPS-only** or warn on HTTP endpoints (MEDIUM-002) -- Prevents accidental credential exposure
 
-**Priority 2 — Address in upcoming sprint:**
-3. **Pin CI actions to SHA** (MEDIUM-003) — Low effort, high supply-chain protection
-4. **Pin Docker base images to digest** (MEDIUM-004) — Pair with automated digest update tooling
-5. **Add CI permissions block** (LOW-005) — One-line change, significant risk reduction
-6. **Exclude `.env` from Docker build context** (LOW-006) — One-line `.dockerignore` addition
+**Priority 2 -- Address in upcoming sprint:**
+3. **Pin CI actions to SHA** (MEDIUM-003) -- Low effort, high supply-chain protection
+4. **Pin Docker base images to digest** (MEDIUM-004) -- Pair with automated digest update tooling
+5. **Add CI permissions block** (LOW-005) -- One-line change, significant risk reduction
+6. **Exclude `.env` from Docker build context** (LOW-006) -- One-line `.dockerignore` addition
 
-**Priority 3 — Track for future improvement:**
+**Priority 3 -- Track for future improvement:**
 7. Add test cases for: malformed JSON config resilience, HTTP endpoint rejection, oversized stdin handling, and boundary values for `AZURE_MAX_TOKENS`/`AZURE_TIMEOUT`
 8. Consider atomic file creation for config to eliminate TOCTOU gap (LOW-007)
 9. Evaluate Windows ACL support if multi-user deployments are planned (LOW-008)

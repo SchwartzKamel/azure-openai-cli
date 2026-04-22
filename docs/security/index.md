@@ -1,7 +1,7 @@
 # Security Index
 
 > *Hello. Newman.* Clipboard in hand. This page is the index of every
-> security audit, review, and post-release verification we have shipped —
+> security audit, review, and post-release verification we have shipped --
 > indexed so no report ends up orphaned again.
 
 **Last updated:** 2026-04-22
@@ -26,7 +26,7 @@ The index captures:
 - Where to find the disclosure flow.
 
 If a report is not listed here, **it is not considered part of the
-historical record** — open a PR to add it (see §6).
+historical record** -- open a PR to add it (see §6).
 
 ---
 
@@ -57,13 +57,13 @@ raising").
 |------------|-----------------------------------------------------------------------|-------------------------------------------------------------------------|---------------------------------------------------------------------------------|-------------------|
 | 2026-04-22 | v2.0.4 docs + security posture (SECURITY.md, `docs/security/**`, `docs/audits/**`) | 5 High (indexing, version drift, secret-redaction doc gap, v2 DelegateTaskTool drift, HTTPS-only claim) | [`docs/audits/docs-audit-2026-04-22-newman.md`](../audits/docs-audit-2026-04-22-newman.md) | *this change + follow-ups (see §5)* |
 | 2026-04-22 | v2.0.2 AOT binary, live-endpoint red team (errors, `--raw`, Ralph)    | 3 High (error-surface leak, `--raw` stderr noise, Ralph exit code)      | [`docs/audits/fdr-v2-dogfood-2026-04-22.md`](../audits/fdr-v2-dogfood-2026-04-22.md) | [`4842b6a`](https://github.com/SchwartzKamel/azure-openai-cli/commit/4842b6a) |
-| 2025-07-25 | v1.8.0 release pipeline, supply-chain posture, workflow permissions   | 🔴 RED — release pipeline failed, no binaries/attestations published    | [`docs/audits/security-v1.8-post-release.md`](../audits/security-v1.8-post-release.md) | [`e188837`](https://github.com/SchwartzKamel/azure-openai-cli/commit/e188837) (audit) → fix landed in v1.8.1 re-release |
+| 2025-07-25 | v1.8.0 release pipeline, supply-chain posture, workflow permissions   | 🔴 RED -- release pipeline failed, no binaries/attestations published    | [`docs/audits/security-v1.8-post-release.md`](../audits/security-v1.8-post-release.md) | [`e188837`](https://github.com/SchwartzKamel/azure-openai-cli/commit/e188837) (audit) → fix landed in v1.8.1 re-release |
 
 ### Historical v1 Newman audits
 
 Older v1 hardening commits (e.g. `b704e9d` ReadFileTool blocklist, `ecbcc15`
 env-var scrub, `45b78ee` shell upload blocks, `d8e49a4` refusal clause) were
-not accompanied by a standalone report — they ship as commit-message audits
+not accompanied by a standalone report -- they ship as commit-message audits
 and are referenced from [`SECURITY.md § 11 Tool Security`](../../SECURITY.md#11-tool-security).
 
 ---
@@ -88,7 +88,7 @@ a specific release tag.
 5. CI posture (workflow permissions, branch protection, private vuln
    reporting).
 
-Any reaudit must re-run this matrix — partial reviews are not sufficient
+Any reaudit must re-run this matrix -- partial reviews are not sufficient
 for release sign-off.
 
 ---
@@ -100,7 +100,7 @@ accept residual risk is recorded.
 
 | Identifier | Date opened | Severity | Summary | Status | Link |
 |------------|-------------|----------|---------|--------|------|
-| — | — | — | No open security issues as of 2026-04-22. | — | — |
+| -- | -- | -- | No open security issues as of 2026-04-22. | -- | -- |
 
 If a security issue is accepted, add a row above with:
 
@@ -130,7 +130,7 @@ Future auditors and maintainers:
    date, scope, severity headline, link to report, resolution commit SHA
    (short, hyperlinked).
 4. **Cross-link from `SECURITY.md`** only if the report drives a policy
-   change — otherwise this index is the canonical entry point.
+   change -- otherwise this index is the canonical entry point.
 5. **Never leave a report orphaned.** If the report is published without an
    index entry, Newman will find it. Newman will file the PR. Newman will
    *also* file the finding against whoever forgot.

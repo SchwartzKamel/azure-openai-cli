@@ -1,7 +1,7 @@
-# SemVer policy — Azure OpenAI CLI
+# SemVer policy -- Azure OpenAI CLI
 
 > "We ship with discipline. The version number is a contract. Break it,
-> and we hear about it for the next three releases." — Mr. Lippman
+> and we hear about it for the next three releases." -- Mr. Lippman
 
 Audience: anyone cutting a tag or reviewing a release PR. This page
 makes [SemVer](https://semver.org/spec/v2.0.0.html) concrete for
@@ -13,16 +13,16 @@ conservative bump and note it in the release PR.
 maintenance mode; see [§7](#7-v1-line-maintenance-mode).
 
 Companion docs:
-- [`pre-release-checklist.md`](pre-release-checklist.md) — the gate
+- [`pre-release-checklist.md`](pre-release-checklist.md) -- the gate
   every release runs through.
-- [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) — OCI tag policy.
-- [`artifact-inventory.md`](artifact-inventory.md) — what ships per RID.
-- [`../CHANGELOG-style-guide.md`](../CHANGELOG-style-guide.md) — prose
+- [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) -- OCI tag policy.
+- [`artifact-inventory.md`](artifact-inventory.md) -- what ships per RID.
+- [`../CHANGELOG-style-guide.md`](../CHANGELOG-style-guide.md) -- prose
   rules for the CHANGELOG entries that document each bump.
-- [`../runbooks/release-runbook.md`](../runbooks/release-runbook.md) —
+- [`../runbooks/release-runbook.md`](../runbooks/release-runbook.md) --
   how to actually cut the tag.
 - [`../runbooks/packaging-publish.md`](../runbooks/packaging-publish.md)
-  — Bob's tap/bucket publish flow (runs after the tag).
+  -- Bob's tap/bucket publish flow (runs after the tag).
 
 ---
 
@@ -30,11 +30,11 @@ Companion docs:
 
 Given `MAJOR.MINOR.PATCH`:
 
-- **MAJOR** — we broke a user-visible contract on purpose. Users must
+- **MAJOR** -- we broke a user-visible contract on purpose. Users must
   read the migration note before upgrading.
-- **MINOR** — we added a user-visible capability. Existing invocations,
+- **MINOR** -- we added a user-visible capability. Existing invocations,
   configs, and scripts keep working unchanged.
-- **PATCH** — we fixed a bug, rolled a dependency, or shipped docs.
+- **PATCH** -- we fixed a bug, rolled a dependency, or shipped docs.
   No new capability, no contract change.
 
 When in doubt, bump higher. A too-high bump costs us a line in the
@@ -47,35 +47,35 @@ CHANGELOG; a too-low bump costs us a user's trust.
 The following surfaces are **load-bearing**. A breaking change to any
 of them is a MAJOR bump.
 
-1. **CLI flag set and semantics** — flag names, short forms, required
+1. **CLI flag set and semantics** -- flag names, short forms, required
    vs. optional, default values, accepted value grammar.
-2. **Exit codes** — `0` success, `1` generic failure, `2` usage error,
+2. **Exit codes** -- `0` success, `1` generic failure, `2` usage error,
    `130` SIGINT, and any documented per-command code (e.g. Ralph's
    iteration-exhausted `1`).
 3. **Output format on stdout** when a machine-oriented flag is in
-   effect — `--raw`, `--json`, `--short`. Output when no such flag is
+   effect -- `--raw`, `--json`, `--short`. Output when no such flag is
    set is best-effort prose; we can tighten it at MINOR.
-4. **Persisted config schema** — `~/.azureopenai-cli.json`
+4. **Persisted config schema** -- `~/.azureopenai-cli.json`
    (`UserConfig`). Field renames, type changes, required-vs-optional
    flips, and removal are all MAJOR.
-5. **Environment variables we read** — `AZUREOPENAIAPI`,
+5. **Environment variables we read** -- `AZUREOPENAIAPI`,
    `AZUREOPENAIENDPOINT`, `AZUREOPENAIMODEL`, and any documented
    `AZUREOPENAI_*` / `AZ_AI_*` knob. Removing or renaming is MAJOR.
 6. **Persona / squad / prompt YAML schema** under
-   `docs/prompts/` and friends — field names, required keys, resolution
+   `docs/prompts/` and friends -- field names, required keys, resolution
    order. Personality wording changes are NOT schema changes (see §4).
-7. **Telemetry schema** — OTel attribute names and semantics
+7. **Telemetry schema** -- OTel attribute names and semantics
    (`service.name`, `service.version`, Ralph span names, cost
    attributes). Renames are MAJOR; new additive attributes are MINOR.
-8. **OCI image tag scheme and image entrypoint** — see
+8. **OCI image tag scheme and image entrypoint** -- see
    [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md). Changing
    `ENTRYPOINT` in a way that breaks `docker run …/az-ai-v2 --help` is
    MAJOR.
-9. **Release-artifact naming** — the
+9. **Release-artifact naming** -- the
    `az-ai-v2-<version>-<rid>.{tar.gz,zip}` pattern. Downstream
    consumers (Homebrew, Nix, Scoop) derive URLs from this. Renaming is
    MAJOR. (See also audit C-1.)
-10. **Binary name(s)** — `az-ai-v2`, `az-ai` (v1). Renaming the binary
+10. **Binary name(s)** -- `az-ai-v2`, `az-ai` (v1). Renaming the binary
     is MAJOR.
 
 Anything **not** on this list is internal and can change at PATCH or
@@ -87,7 +87,7 @@ MINOR at the author's discretion, subject to review.
 
 | Change type                                                       | Bump  | Notes                                                                        |
 |-------------------------------------------------------------------|:-----:|------------------------------------------------------------------------------|
-| Remove a CLI flag                                                 | MAJOR | Even if deprecated first — the removal is the MAJOR.                         |
+| Remove a CLI flag                                                 | MAJOR | Even if deprecated first -- the removal is the MAJOR.                         |
 | Rename a CLI flag (alias the old name for ≥1 MINOR)               | MINOR | Removal later is MAJOR. Deprecation notice in CHANGELOG `### Deprecated`.    |
 | Add a CLI flag (additive, default preserves old behavior)         | MINOR |                                                                              |
 | Change a flag's default value in a user-observable way            | MAJOR | Call out loudly. Migration note required.                                    |
@@ -97,7 +97,7 @@ MINOR at the author's discretion, subject to review.
 | Tighten prose output wording (default mode, no machine flag)      | PATCH | Users should not be parsing default prose.                                   |
 | Add a field to `--json` output                                    | MINOR | Additive only. Readers must tolerate unknown fields.                         |
 | Add a field to `UserConfig` (optional, default preserves old)     | MINOR | Document the default. PATCH if purely internal and never serialized.         |
-| Rename/retype a `UserConfig` field                                | MAJOR | Provide a migration path — upgrade-on-load or a migration command.           |
+| Rename/retype a `UserConfig` field                                | MAJOR | Provide a migration path -- upgrade-on-load or a migration command.           |
 | Read a new env var (additive)                                     | MINOR |                                                                              |
 | Stop reading an env var / change its semantics                    | MAJOR |                                                                              |
 | Add a persona / squad / prompt                                    | MINOR | New YAML file, schema unchanged.                                             |
@@ -109,7 +109,7 @@ MINOR at the author's discretion, subject to review.
 | Rename / remove an OTel attribute                                 | MAJOR | Dashboards break.                                                            |
 | Bump a dependency, patch range (`X.Y.Z` → `X.Y.Z+1`)              | PATCH | Default. Exception: if the bump ships a visible behavior change, treat as the visible change demands.  |
 | Bump a dependency, minor range                                    | PATCH | Same as above.                                                               |
-| Bump a dependency, major range                                    | MINOR | Unless the dep change cascades into our own contract — then MAJOR.           |
+| Bump a dependency, major range                                    | MINOR | Unless the dep change cascades into our own contract -- then MAJOR.           |
 | Bump .NET runtime (e.g. `net10.0` → `net11.0`)                    | MAJOR | Affects AOT binary, image base, RID matrix. Always MAJOR.                    |
 | Bump Docker base image tag within the same distro/libc            | PATCH |                                                                              |
 | Switch Docker base image distro or libc                           | MINOR | e.g. Debian → Alpine musl. User-visible ABI shift for volume-mounted tools.  |
@@ -126,19 +126,19 @@ MINOR at the author's discretion, subject to review.
 
 ---
 
-## 4. Persona / prompt-text changes — the squishy case
+## 4. Persona / prompt-text changes -- the squishy case
 
 Persona prompts live in `docs/prompts/` and are loaded at runtime.
 Wording changes behave, from the outside, like a model change: the
 same flags produce subtly different output. Formal rule:
 
-- **Tone, examples, and clarifications** — MINOR. Document the diff
+- **Tone, examples, and clarifications** -- MINOR. Document the diff
   in `### Changed` with a one-line summary; do not paste the full
   prompt diff into the CHANGELOG.
-- **Adding a new tool callout or workflow step** — MINOR.
+- **Adding a new tool callout or workflow step** -- MINOR.
 - **Removing a workflow step that users might script against**
-  (e.g. "persona always emits a `--- SUMMARY ---` block") — MAJOR.
-- **Renaming a persona** — MAJOR. Alias the old name at MINOR first
+  (e.g. "persona always emits a `--- SUMMARY ---` block") -- MAJOR.
+- **Renaming a persona** -- MAJOR. Alias the old name at MINOR first
   if you have the runway.
 
 A prompt edit that only changes punctuation or fixes a typo is PATCH.
@@ -149,7 +149,7 @@ A prompt edit that only changes punctuation or fixes a typo is PATCH.
 
 These are real entries you can cross-reference to calibrate.
 
-### 5.1 MAJOR — v2.0.0
+### 5.1 MAJOR -- v2.0.0
 
 The v2 cutover bumped MAJOR because it:
 
@@ -164,10 +164,10 @@ The v2 cutover bumped MAJOR because it:
 Anything one of those on its own would have justified MAJOR; all four
 together was obvious.
 
-### 5.2 MAJOR — v2.0.4 dropping `osx-x64`
+### 5.2 MAJOR -- v2.0.4 dropping `osx-x64`
 
 Per the [2.0.4] entry, we dropped `osx-x64` from the official artifact
-matrix. That is a RID-matrix removal — per §3, MAJOR. We shipped it
+matrix. That is a RID-matrix removal -- per §3, MAJOR. We shipped it
 at PATCH (`2.0.3 → 2.0.4`) because:
 
 1. The functional fallback is excellent (Rosetta 2, Docker,
@@ -181,31 +181,31 @@ at PATCH (`2.0.3 → 2.0.4`) because:
 story. Do not use this as a precedent; the bar for bending is
 "no user of the removed thing can possibly have shipped yet."
 
-### 5.3 MINOR — additive CLI flags and personas
+### 5.3 MINOR -- additive CLI flags and personas
 
 Any release that added a new persona (e.g. the Ralph squad additions
 across 1.x) or a new additive flag should have been MINOR. The v1
-line batched a lot of these into 1.5 / 1.6 / 1.7 MINORs — that is the
+line batched a lot of these into 1.5 / 1.6 / 1.7 MINORs -- that is the
 correct cadence.
 
-### 5.4 PATCH — v2.0.2 Dockerfile AOT fix
+### 5.4 PATCH -- v2.0.2 Dockerfile AOT fix
 
 [2.0.2] fixed the Dockerfile `--no-restore` AOT asset-graph bug. No
 flag changed, no config changed, no OTel attribute moved. The only
 user-visible effect was "the GHCR image now exists." PATCH.
 
-### 5.5 PATCH — v2.0.5 version-string drift fix
+### 5.5 PATCH -- v2.0.5 version-string drift fix
 
 [2.0.5] rolls `Program.VersionSemver`, `Telemetry.ServiceVersion`,
 and `stage.sh:VERSION` to match the tag, and adds a contract test.
 The **fix** is a behavior change (`--version` reports the right
 string), but the **contract** is "`--version` reports what the tag
-says" — which was always the intent. PATCH.
+says" -- which was always the intent. PATCH.
 
-### 5.6 PATCH — dependency bumps
+### 5.6 PATCH -- dependency bumps
 
 `.NET` SDK patch bumps, Azure SDK patch bumps, CycloneDX tool bumps
-— all PATCH unless they cascade into a visible change in our own
+-- all PATCH unless they cascade into a visible change in our own
 surface.
 
 ---
@@ -223,7 +223,7 @@ a MAJOR. Rules:
 - Pre-release tags do **not** move the `latest` GHCR tag (see
   [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md)).
 - Pre-release CHANGELOG entries live under `[X.Y.Z-rc.N]` and are
-  collapsed into the final `[X.Y.Z]` entry at GA — do not duplicate
+  collapsed into the final `[X.Y.Z]` entry at GA -- do not duplicate
   line items.
 - The pre-release tag's GitHub Release is marked "Pre-release" in
   the UI.
@@ -233,17 +233,17 @@ without reading this section twice.
 
 ---
 
-## 7. v1 line — maintenance mode
+## 7. v1 line -- maintenance mode
 
 The v1 line (`azureopenai-cli/`, `az-ai`, image `…/azure-openai-cli`)
 is **PATCH-only** as of v2.0.0. Policy:
 
-- Security fixes, runtime fixes, and docs — PATCH (`1.9.1 → 1.9.2`).
+- Security fixes, runtime fixes, and docs -- PATCH (`1.9.1 → 1.9.2`).
 - No new features, no new flags, no new personas on v1.
 - Anything that would be a MINOR on v2 gets declined on v1 with a
   pointer to the v2 migration guide (`docs/migration-v1-to-v2.md`).
 - If a v1 change would be MAJOR on v2's rules, we do not ship it on
-  v1 at all — we end-of-life v1 first.
+  v1 at all -- we end-of-life v1 first.
 
 ---
 
@@ -255,10 +255,10 @@ is **PATCH-only** as of v2.0.0. Policy:
 3. If the two disagree, Lippman casts the tie-break and writes a note
    in the release PR explaining which rule applied.
 4. The chosen bump, the justification, and any bent rule land in the
-   CHANGELOG entry — either inline in the release-note banner
+   CHANGELOG entry -- either inline in the release-note banner
    (for MAJOR / notable MINOR) or in the commit message for PATCH.
 
 There is no SemVer bureaucracy beyond this. The table is the law;
 the tie-break is documented; we move on.
 
-— Mr. Lippman, release management
+-- Mr. Lippman, release management

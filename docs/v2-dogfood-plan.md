@@ -1,12 +1,12 @@
 # v2 Dogfood Plan (Phase 7)
 
 **Owners:** FDR (chaos / adversarial) + Kenny Bania (perf / regression gating) + all agents (usage validation)
-**Status:** Pending — runs after Phase 5 (Observability) and before Phase 6 (Cutover)
+**Status:** Pending -- runs after Phase 5 (Observability) and before Phase 6 (Cutover)
 **Companion docs:** [`v2-migration.md`](v2-migration.md) · [`v2-cutover-checklist.md`](v2-cutover-checklist.md) · [`adr/ADR-004-agent-framework-adoption.md`](adr/ADR-004-agent-framework-adoption.md)
 
-> I fuzzed the CLI flag parser for six hours. I found a crash on `--max-tokens=1e999`. Your move. — FDR
+> I fuzzed the CLI flag parser for six hours. I found a crash on `--max-tokens=1e999`. Your move. -- FDR
 >
-> It's gold, Jerry! *Gold!* Unless the p99 moved. Did the p99 move? *Did you check the p99?* — Bania
+> It's gold, Jerry! *Gold!* Unless the p99 moved. Did the p99 move? *Did you check the p99?* -- Bania
 
 This plan is the speed-gate between "v2 passes its own tests" and "v2 replaces v1 on `main`." It is adversarial by design and measurement-obsessed by policy. A green dogfood window is a **precondition** for the cutover checklist ([`v2-cutover-checklist.md`](v2-cutover-checklist.md) §1).
 
@@ -14,7 +14,7 @@ This plan is the speed-gate between "v2 passes its own tests" and "v2 replaces v
 
 ## 1. Objectives
 
-1. **Zero-regression on the hot path.** Cold start, TTFT, streaming throughput, and AOT binary size must stay within budget vs 1.9.1. A user of v1.9.1 cannot feel v2.0.0 — except where we intentionally added opt-in features.
+1. **Zero-regression on the hot path.** Cold start, TTFT, streaming throughput, and AOT binary size must stay within budget vs 1.9.1. A user of v1.9.1 cannot feel v2.0.0 -- except where we intentionally added opt-in features.
 2. **Exhaustive persona coverage.** All 25 personas render and round-trip correctly through MAF's `AgentSession` + `AIContextProvider`. `.squad/history/<name>.md` files remain byte-identical in format.
 3. **Edge-case surfacing.** FDR's evil-input catalogs and chaos scenarios must run against the real v2 build, not a mock.
 4. **Real-endpoint validation.** Run against actual Azure OpenAI and Azure AI Foundry deployments, not just recorded fixtures. WSL is a first-class target because that is the primary user environment.
@@ -36,8 +36,8 @@ Every mode must run against at least one model from each family.
 |------|-------------|--------|--------------|---------|
 | `standard` (single response) | ✅ | ✅ | ✅ | ✅ |
 | `--agent` (tool-calling loop) | ✅ | ✅ | ✅ | ✅ |
-| `--ralph` (autonomous) | ✅ | — | ✅ | ✅ |
-| `--persona <name>` | ✅ | — | ✅ | — |
+| `--ralph` (autonomous) | ✅ | -- | ✅ | ✅ |
+| `--persona <name>` | ✅ | -- | ✅ | -- |
 
 `--ralph` uses `RALPH_DEPTH=2` and a seeded validator script. `--persona` runs all 25 personas against at least one model (§2.2).
 
@@ -58,19 +58,19 @@ Per persona, validate:
 
 | Auth mode | Coverage |
 |-----------|----------|
-| `AZUREOPENAIAPI` env (API key) | Required — primary user path |
-| `DefaultAzureCredential` (AAD) | Required — Costanza's directive post-MAF adoption |
-| Azure AI Foundry endpoint (`PersistentAgentsClient`) | Required — open question Q1 in [`v2-migration.md`](v2-migration.md) §Open questions |
-| Invalid/expired creds | Required — must fail cleanly with no secret leak (Newman reviews error output) |
+| `AZUREOPENAIAPI` env (API key) | Required -- primary user path |
+| `DefaultAzureCredential` (AAD) | Required -- Costanza's directive post-MAF adoption |
+| Azure AI Foundry endpoint (`PersistentAgentsClient`) | Required -- open question Q1 in [`v2-migration.md`](v2-migration.md) §Open questions |
+| Invalid/expired creds | Required -- must fail cleanly with no secret leak (Newman reviews error output) |
 
 ### 2.4 Platforms
 
 | Platform | Build | Priority | Notes |
 |----------|-------|----------|-------|
 | **Linux AOT** (`make publish-aot`) | x64 musl + glibc | P0 | Published artifact; Bania's primary bench target |
-| **Linux JIT** (`dotnet run`) | — | P0 | Developer loop |
-| **Docker** (Alpine `linux-musl-x64`) | — | P0 | Published container |
-| **WSL** (Ubuntu 22.04 on Windows 11) | linux-x64 glibc | **P0 — critical** | Maintainer's daily-driver environment; surfaces CRLF, path, and clock-skew bugs that pure Linux CI misses |
+| **Linux JIT** (`dotnet run`) | -- | P0 | Developer loop |
+| **Docker** (Alpine `linux-musl-x64`) | -- | P0 | Published container |
+| **WSL** (Ubuntu 22.04 on Windows 11) | linux-x64 glibc | **P0 -- critical** | Maintainer's daily-driver environment; surfaces CRLF, path, and clock-skew bugs that pure Linux CI misses |
 | macOS AOT | arm64 + x64 | P1 | Release artifact, lower user volume |
 | Windows AOT | x64 | P1 | Pre-existing POSIX-path test gaps (see CHANGELOG 1.9.1); do not regress |
 
@@ -87,11 +87,11 @@ All deltas measured against a locked 1.9.1 baseline captured at commit of the `v
 > `--endpoint`, `--stream`, `--duration`) are the target CLI surface
 > once [`bania-v2-03`] promotes the current harness. Today's
 > `scripts/bench.py` is a positional cold-start timer
-> (`bench.py <binary> [-n RUNS] [-w WARMUP] [--args ...]`) — no TTFT,
+> (`bench.py <binary> [-n RUNS] [-w WARMUP] [--args ...]`) -- no TTFT,
 > no streaming, no budget mode. Track:
 > [`docs/audits/docs-audit-2026-04-22-bania.md`](audits/docs-audit-2026-04-22-bania.md) C2.
 
-| Metric | Budget vs 1.9.1 | Measurement (planned — see note above) |
+| Metric | Budget vs 1.9.1 | Measurement (planned -- see note above) |
 |--------|-----------------|-------------|
 | Cold start (AOT, p95) | Δ ≤ **+10%** | `scripts/bench.py --cold --iterations 100` |
 | TTFT (time-to-first-token, p95) | Δ ≤ **+5 ms** (absolute, not percent) | `scripts/bench.py --ttft --endpoint $AZUREOPENAIENDPOINT` |
@@ -102,7 +102,7 @@ All deltas measured against a locked 1.9.1 baseline captured at commit of the `v
 
 **Regression policy:** any metric over budget blocks cutover. A waiver requires Costanza + Bania + Lippman triple-sign and a named remediation ticket with a date.
 
-Every PR into `azureopenai-cli-v2/` during the dogfood window must produce a PR-diff bench comment — no silent perf changes.
+Every PR into `azureopenai-cli-v2/` during the dogfood window must produce a PR-diff bench comment -- no silent perf changes.
 
 ---
 
@@ -159,7 +159,7 @@ All scenarios are scripted and seeded. Harnesses live in `tests/adversarial/` an
 | `web_fetch` → `file:///etc/passwd` | File scheme | Scheme allowlist rejects |
 | Evil URL with embedded creds | `http://user:pass@example.com` | Creds stripped from logs |
 
-**Triage rule:** every chaos finding gets severity-scored and routed — Newman (security), Frank (reliability), Bania (perf), Kramer (implementation). FDR writes the failing test; FDR does **not** patch.
+**Triage rule:** every chaos finding gets severity-scored and routed -- Newman (security), Frank (reliability), Bania (perf), Kramer (implementation). FDR writes the failing test; FDR does **not** patch.
 
 ---
 
@@ -197,7 +197,7 @@ Dogfood exits green only when **all** are true:
 
 ## 7. Findings log
 
-All findings land in a single GitHub project board: **"v2 Dogfood — Findings"**. Each card has:
+All findings land in a single GitHub project board: **"v2 Dogfood -- Findings"**. Each card has:
 
 - **Title:** one-line reproduction.
 - **Severity:** P0 / P1 / P2 / P3 per the table below.
@@ -211,9 +211,9 @@ All findings land in a single GitHub project board: **"v2 Dogfood — Findings"*
 
 | Severity | Definition | Blocks cutover? |
 |----------|------------|-----------------|
-| **P0** | Data loss, credential leak, security regression, crash on `--raw` hot path | Yes — immediate rollback of the offending change |
-| **P1** | Regression on any §3 perf budget, `.squad/` corruption, any mode broken vs v1.9.1 | **Yes** — must be fixed before tag |
-| **P2** | Non-hot-path defect, cosmetic regression, missing error clarity | No — fix in 2.0.1 with owner + date |
+| **P0** | Data loss, credential leak, security regression, crash on `--raw` hot path | Yes -- immediate rollback of the offending change |
+| **P1** | Regression on any §3 perf budget, `.squad/` corruption, any mode broken vs v1.9.1 | **Yes** -- must be fixed before tag |
+| **P2** | Non-hot-path defect, cosmetic regression, missing error clarity | No -- fix in 2.0.1 with owner + date |
 | **P3** | Quality-of-life, doc gap, nice-to-have | Tracked, not blocking |
 
 ### 7.2 Rollback trigger thresholds
@@ -222,8 +222,8 @@ During the dogfood window itself (pre-tag), these trigger a Phase-5 hold and for
 
 - Any **P0** finding.
 - **≥ 2 P1** findings with no plausible fix in the remaining window.
-- Any **cost parity miss > 10%** on the `standard` mode — that is an architectural regression, not a tuning exercise.
-- Any **perf metric over budget by > 2×** (e.g., cold start Δ > 20%) — indicates wrong-shape change, not tunable noise.
+- Any **cost parity miss > 10%** on the `standard` mode -- that is an architectural regression, not a tuning exercise.
+- Any **perf metric over budget by > 2×** (e.g., cold start Δ > 20%) -- indicates wrong-shape change, not tunable noise.
 
 Post-tag rollback triggers are defined in [`v2-cutover-checklist.md`](v2-cutover-checklist.md) §5.1.
 
@@ -233,7 +233,7 @@ Post-tag rollback triggers are defined in [`v2-cutover-checklist.md`](v2-cutover
 
 ### 8.1 Entry (can dogfood start?)
 
-- [ ] Phase 5 (Observability) merged — OTel + cost hook available for §5 measurements.
+- [ ] Phase 5 (Observability) merged -- OTel + cost hook available for §5 measurements.
 - [ ] v2 project builds green across the platform matrix (§2.4).
 - [ ] 1.9.1 baseline snapshots captured and locked:
   - [ ] Bench artifacts (`docs/benchmarks/1.9.1/`)
@@ -247,8 +247,8 @@ Post-tag rollback triggers are defined in [`v2-cutover-checklist.md`](v2-cutover
 
 - [ ] All §6 success criteria green.
 - [ ] Bania publishes final "Dogfood bench report" with 1.9.1 vs 2.0.0 tables.
-- [ ] FDR publishes "Dogfood chaos report" — scenarios run, outcomes, regression tests landed.
-- [ ] Morty publishes "Dogfood cost parity report" — per-mode deltas.
+- [ ] FDR publishes "Dogfood chaos report" -- scenarios run, outcomes, regression tests landed.
+- [ ] Morty publishes "Dogfood cost parity report" -- per-mode deltas.
 - [ ] Newman sign-off on security findings lane.
 - [ ] Frank sign-off on reliability / SLO posture.
 - [ ] Costanza final go/no-go for cutover.

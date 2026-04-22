@@ -18,7 +18,7 @@ All four must be green. Exit code 0 or the soup is closed.
 cd "$(git rev-parse --show-toplevel)"
 export PATH="$HOME/.dotnet:$PATH"
 
-# 1. Format gate — the one Kramer skipped
+# 1. Format gate -- the one Kramer skipped
 dotnet format azure-openai-cli.sln --verify-no-changes
 
 # 2. Build gate
@@ -43,7 +43,7 @@ If `dotnet format` wants to change anything that isn't whitespace or trivial ord
 
 ## If tests fail
 
-Do not push. Fix the test or fix the code. If the test is flaky, file the flake under the `puddy` agent's triage flow — do not retry-and-hope.
+Do not push. Fix the test or fix the code. If the test is flaky, file the flake under the `puddy` agent's triage flow -- do not retry-and-hope.
 
 ## Shortcut
 
@@ -51,4 +51,4 @@ Do not push. Fix the test or fix the code. If the test is flaky, file the flake 
 
 ## Escape hatches
 
-There are none. If you genuinely cannot run .NET locally (you're on a constrained shell, you're debugging CI from an SSH jumpbox), push to a branch and let CI run preflight for you — but do **not** push directly to `main`.
+There are none. If you genuinely cannot run .NET locally (you're on a constrained shell, you're debugging CI from an SSH jumpbox), push to a branch and let CI run preflight for you -- but do **not** push directly to `main`.

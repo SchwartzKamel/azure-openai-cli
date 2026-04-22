@@ -1,6 +1,6 @@
 # FR-012: Plugin/Tool Registry System
 
-**Priority:** P2 — Strategic
+**Priority:** P2 -- Strategic
 **Effort:** Medium-Large (phased)
 **Category:** Extensibility / Platform
 **Status:** 📋 PLANNED
@@ -26,7 +26,7 @@ forking, without runtime reflection, and without opening an RCE hole.**
 
 Three viable paths, roughly in order of security/complexity tradeoff.
 
-### Option A — Manifest-declared shell-out plugins (RECOMMENDED)
+### Option A -- Manifest-declared shell-out plugins (RECOMMENDED)
 
 Plugins are **external executables** described by a JSON/TOML manifest
 discovered at a well-known location
@@ -60,10 +60,10 @@ agnostic (Bash, Python, Go, Rust); security surface is the same
 `ShellExecTool` surface we already ship; easy to audit. Composes with
 FR-009's per-directory override story.
 
-**Cons:** Subprocess overhead (~1–5 ms per call). Placeholder substitution
+**Cons:** Subprocess overhead (~1-5 ms per call). Placeholder substitution
 needs careful quoting to avoid argv injection.
 
-### Option B — .NET Assembly Load (REJECTED for AOT mode)
+### Option B -- .NET Assembly Load (REJECTED for AOT mode)
 
 Drop `.dll` files into a plugins dir; load via `AssemblyLoadContext`.
 Max performance, same process. **Fundamentally incompatible with FR-006:**
@@ -72,11 +72,11 @@ a JIT'd fallback binary (doubles build matrix, regresses the ~5.4 ms cold
 start) or accept plugins don't work in the recommended publish mode.
 Neither is acceptable.
 
-### Option C — WASI-sandboxed plugins (FUTURE)
+### Option C -- WASI-sandboxed plugins (FUTURE)
 
 `.wasm` modules invoked via an embedded WASI host (Wasmtime.NET). True
 capability-scoped sandboxing, cross-language, deterministic. **Cons:**
-+10–20 MB to the AOT binary; Wasmtime.NET's AOT story is immature.
++10-20 MB to the AOT binary; Wasmtime.NET's AOT story is immature.
 Probably 2027 territory.
 
 ---
@@ -119,7 +119,7 @@ Plugins execute arbitrary code on behalf of the LLM. Threat model:
    (not shell string); `{placeholder}` tokens map one-to-one to argv
    entries. No `/bin/sh -c`. No shell interpolation.
 2. **Manifest trust.** Any JSON in `./.azureopenai-cli/tools/` runs with
-   full user privileges — `git clone` + `az-ai --agent` would own the
+   full user privileges -- `git clone` + `az-ai --agent` would own the
    user. Mitigation: **project-local plugins OFF by default**; require
    `--allow-local-plugins` or explicit per-directory opt-in (VS Code
    workspace-trust model). Optional Ed25519 manifest signing in v2.
@@ -127,7 +127,7 @@ Plugins execute arbitrary code on behalf of the LLM. Threat model:
    `max_memory_mb` must be enforceable, not advisory. Use
    `Process.Kill(entireProcessTree: true)` on timeout.
 4. **Environment leakage.** Default to minimal env (`PATH`, `HOME`,
-   `LANG`) — not the full parent env which contains `AZURE_OPENAI_KEY`.
+   `LANG`) -- not the full parent env which contains `AZURE_OPENAI_KEY`.
    Manifests opt in via `env_passthrough: ["FOO", "BAR"]`.
 5. **Network/FS scoping.** Option A cannot enforce these (subprocess is
    unconstrained). Document clearly; this is the motivating reason to
@@ -142,7 +142,7 @@ Plugins execute arbitrary code on behalf of the LLM. Threat model:
 - `ToolManifest` is a plain record; register in `AppJsonContext` with
   `[JsonSerializable(typeof(ToolManifest))]`. No reflection.
 - `ManifestTool.ParametersSchema` built at load-time by re-serializing the
-  manifest's `parameters` node to `BinaryData` — same pattern existing
+  manifest's `parameters` node to `BinaryData` -- same pattern existing
   tools use.
 - `System.Diagnostics.Process` is fully AOT-supported.
 - **Explicitly NOT supported in AOT mode:** loading `.dll` plugins. If
@@ -174,7 +174,7 @@ Plugins execute arbitrary code on behalf of the LLM. Threat model:
 
 ## Open Questions
 
-1. **Manifest format — JSON or TOML?** JSON is cheaper (source generator
+1. **Manifest format -- JSON or TOML?** JSON is cheaper (source generator
    already in the binary). Start JSON; revisit if users complain.
 2. **Per-project trust UX.** Store decision in
    `~/.config/azureopenai-cli/trusted-dirs.json` (VS Code model) or

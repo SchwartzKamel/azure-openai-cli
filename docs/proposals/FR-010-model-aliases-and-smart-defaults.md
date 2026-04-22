@@ -5,9 +5,9 @@
 > reader). Future work on preferences, aliases, and directory overrides tracks
 > in [FR-014](FR-014-local-preferences-and-multi-provider.md).
 
-**Priority:** P2 — Medium  
+**Priority:** P2 -- Medium  
 **Impact:** Reduces daily friction of model selection; makes multi-model workflows ergonomic  
-**Effort:** Small (4–6 hours)  
+**Effort:** Small (4-6 hours)  
 **Category:** Configuration UX / Developer Experience
 
 ---
@@ -22,10 +22,10 @@ Azure OpenAI deployment names are set by the administrator, not the user. They c
 az-ai --set-model gpt-4o-2024-08-06-global-standard
 ```
 
-The current model management commands (Program.cs lines 756–863) require exact matches against `AvailableModels`:
+The current model management commands (Program.cs lines 756-863) require exact matches against `AvailableModels`:
 
 ```csharp
-// Line 126–128 in UserConfig.cs
+// Line 126-128 in UserConfig.cs
 if (AvailableModels.Contains(modelName, StringComparer.OrdinalIgnoreCase))
 {
     ActiveModel = AvailableModels.First(m => m.Equals(modelName, StringComparison.OrdinalIgnoreCase));
@@ -53,7 +53,7 @@ az-ai "Normal question"                 # Still uses gpt-4o
 
 ### Problem 3: Environment Variable Naming Is Inconsistent
 
-The `.env.example` (line 1–11) shows two naming conventions:
+The `.env.example` (line 1-11) shows two naming conventions:
 
 ```env
 AZUREOPENAIENDPOINT=...    # No separators (legacy)
@@ -64,7 +64,7 @@ AZURE_TEMPERATURE=0.55     # Underscored (newer)
 AZURE_TIMEOUT=120          # Underscored (newer)
 ```
 
-A user seeing `AZURE_TEMPERATURE` would reasonably guess the endpoint variable is `AZURE_ENDPOINT` — but it's `AZUREOPENAIENDPOINT`. This causes silent misconfiguration. The code in `Program.cs` (lines 384–387) hardcodes the legacy names:
+A user seeing `AZURE_TEMPERATURE` would reasonably guess the endpoint variable is `AZURE_ENDPOINT` -- but it's `AZUREOPENAIENDPOINT`. This causes silent misconfiguration. The code in `Program.cs` (lines 384-387) hardcodes the legacy names:
 
 ```csharp
 string? azureOpenAiEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
@@ -301,7 +301,7 @@ az-ai --models
 | Before | After |
 |---|---|
 | `--set-model gpt-4o-2024-08-06-global-standard` | `--set-model 4o` |
-| Switching models requires two commands | `--model mini "question"` — one-off, no persistence |
+| Switching models requires two commands | `--model mini "question"` -- one-off, no persistence |
 | Guessing env var names | Consistent `AZURE_OPENAI_*` + legacy fallback |
 | No aliases | Auto-generated + user-defined aliases |
 | `--models` shows raw deployment names | Shows aliases alongside deployment names |
@@ -315,9 +315,9 @@ az-ai --models
 | `azureopenai-cli/UserConfig.cs` | Add `ModelAliases` dict, `ResolveModel()`, auto-alias generation |
 | `azureopenai-cli/JsonGenerationContext.cs` | Add `[JsonSerializable(typeof(Dictionary<string, string>))]` |
 | `azureopenai-cli/Program.cs` (ParseCliFlags) | Add `--model`/`-m` flag |
-| `azureopenai-cli/Program.cs` (Main, line 468–478) | Apply model override via `ResolveModel` |
-| `azureopenai-cli/Program.cs` (ListModels, line 797–818) | Display aliases next to model names |
-| `azureopenai-cli/Program.cs` (lines 384–387) | Accept normalized env var names with legacy fallback |
+| `azureopenai-cli/Program.cs` (Main, line 468-478) | Apply model override via `ResolveModel` |
+| `azureopenai-cli/Program.cs` (ListModels, line 797-818) | Display aliases next to model names |
+| `azureopenai-cli/Program.cs` (lines 384-387) | Accept normalized env var names with legacy fallback |
 | `azureopenai-cli/.env.example` | Update to canonical names |
 
 ---

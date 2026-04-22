@@ -9,9 +9,9 @@
 ## 0. Not legal advice
 
 This document is a **policy statement**, not legal advice. It is drafted by
-project maintainers — not your counsel. Nothing here creates an attorney-client
+project maintainers -- not your counsel. Nothing here creates an attorney-client
 relationship, waives any third party's rights, or binds any trademark owner.
-If you need a legal opinion about your specific situation — consult your own
+If you need a legal opinion about your specific situation -- consult your own
 lawyer. We disclaim, we decline, we defer to counsel.
 
 This policy governs use of the project's own naming only. It does **not**
@@ -27,7 +27,7 @@ This policy covers:
 - Any logos, wordmarks, or graphical identifiers distributed from this
   repository (collectively, the "Project Marks")
 
-It does **not** cover the code itself — the code is governed by the MIT
+It does **not** cover the code itself -- the code is governed by the MIT
 `LICENSE`. A copyright license is not a trademark license. Different beasts.
 
 ---
@@ -41,15 +41,15 @@ no federal registration is pleaded, no state-level protection is invoked
 beyond what the law supplies by default.
 
 The project is licensed MIT. The **code** may be freely copied, modified, and
-redistributed under that license. The **name** may not — naming a derivative
+redistributed under that license. The **name** may not -- naming a derivative
 or downstream work is governed by §5 and §6 below.
 
 ---
 
-## 3. Third-party marks — nominative use only
+## 3. Third-party marks -- nominative use only
 
 This project references marks owned by third parties. We use them **only
-nominatively** — that is, to honestly identify the upstream products this
+nominatively** -- that is, to honestly identify the upstream products this
 software interoperates with. Specifically:
 
 - **"Azure"** and **"Microsoft"** are trademarks of Microsoft Corporation.
@@ -65,7 +65,7 @@ Nominative use in this repository follows the classical three-factor test:
 (a) the referenced product is not reasonably identifiable without the mark;
 (b) only so much of the mark is used as is necessary; (c) nothing is done to
 suggest sponsorship or endorsement. If you spot a usage that strays from that
-posture — file an issue. We'll fix it.
+posture -- file an issue. We'll fix it.
 
 For attribution, see the `NOTICE` file at the repository root.
 
@@ -76,14 +76,14 @@ For attribution, see the `NOTICE` file at the repository root.
 You may, without asking:
 
 - **Refer to the project by name** in articles, tutorials, blog posts, talks,
-  social media, bug reports, and academic work — that's descriptive, that's
+  social media, bug reports, and academic work -- that's descriptive, that's
   honest, that's fine.
 - State factual compatibility: *"works with Azure OpenAI CLI,"* *"tested
   against `az-ai` v1.x,"* *"a plugin for Azure OpenAI CLI."*
 - Link to the repository, releases, or documentation using the project name.
 - Quote the name in package manifests, dependency lists, `README` files, and
   bill-of-materials output.
-- Use the name in unmodified redistribution — shipping the project as-is,
+- Use the name in unmodified redistribution -- shipping the project as-is,
   under its own name, is exactly what the MIT license contemplates.
 
 ---
@@ -92,12 +92,12 @@ You may, without asking:
 
 You may **not**:
 
-- Imply this is an **official Microsoft**, **Azure**, or **OpenAI** product —
+- Imply this is an **official Microsoft**, **Azure**, or **OpenAI** product --
   it is not, it has never been, it is not becoming one.
 - Imply the project **endorses** your product, service, company, or fork when
   it does not.
-- Use the Project Marks — or confusingly similar variants (`az-ai-pro`,
-  `AzureOpenAI-CLI-Plus`, `az_ai`, and similar near-misses) — as the **primary
+- Use the Project Marks -- or confusingly similar variants (`az-ai-pro`,
+  `AzureOpenAI-CLI-Plus`, `az_ai`, and similar near-misses) -- as the **primary
   identifier of a fork or derivative** whose behavior materially diverges
   from upstream (see §6).
 - Reproduce any logo, wordmark, or graphical identifier from this repository
@@ -113,11 +113,11 @@ You may **not**:
 
 ## 6. Forks and derivatives
 
-Forking is encouraged — that's the MIT license working as intended. But:
+Forking is encouraged -- that's the MIT license working as intended. But:
 
 - If your fork's behavior **materially diverges** from upstream (incompatible
   CLI surface, different auth model, different output formats, different
-  security posture) — **rename it.** Pick a name that does not begin with
+  security posture) -- **rename it.** Pick a name that does not begin with
   `az-ai-`, does not include "Azure OpenAI CLI" as the leading phrase, and
   does not invite confusion with the upstream project.
 - Unmodified or near-unmodified redistributions may retain the name,

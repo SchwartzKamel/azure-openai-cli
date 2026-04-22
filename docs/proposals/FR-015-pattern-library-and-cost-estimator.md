@@ -1,4 +1,4 @@
-# FR-015 — Curated Pattern Library + Pre-Flight Cost Estimator
+# FR-015 -- Curated Pattern Library + Pre-Flight Cost Estimator
 
 **Status:** Stub (Costanza + Morty, 2026-04-20)
 **Related:** FR-008 (response cache), `docs/cost-optimization.md`
@@ -7,7 +7,7 @@
 
 Two user-facing wins, shippable as one thematic release:
 
-1. **Pattern library.** fabric's hundreds of curated prompts are the single biggest "why would I switch?" moment users cite when comparing CLIs. az-ai ships zero. A small, Azure-tuned, opinionated set (`summarize`, `fix-grammar`, `commit-message`, `explain-code`, `shell-oneliner`, ~15 patterns) invoked via `az-ai pattern run <name>` would close the "out-of-the-box usefulness" gap without requiring the user to compose a prompt — which is perceived latency we can eliminate entirely.
+1. **Pattern library.** fabric's hundreds of curated prompts are the single biggest "why would I switch?" moment users cite when comparing CLIs. az-ai ships zero. A small, Azure-tuned, opinionated set (`summarize`, `fix-grammar`, `commit-message`, `explain-code`, `shell-oneliner`, ~15 patterns) invoked via `az-ai pattern run <name>` would close the "out-of-the-box usefulness" gap without requiring the user to compose a prompt -- which is perceived latency we can eliminate entirely.
 2. **Pre-flight cost estimator.** `--estimate` / `--dry-run-cost` prints predicted tokens × current rate card before the request fires, and a running daily/monthly total lives at `az-ai budget`. This turns our FinOps annex from a README claim into a UX feature, directly defending Sue Ellen's "cheapest in class" pitch and giving Morty telemetry-free budget enforcement.
 
 ## Competitive Gap Justification

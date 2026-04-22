@@ -1,6 +1,6 @@
 # ADR-002: Squad Persona + Memory Architecture
 
-- **Status**: Accepted — 2026-04-09
+- **Status**: Accepted -- 2026-04-09
 - **Deciders**: Core maintainers
 - **Related**: [`ADR-001-native-aot-recommended.md`](./ADR-001-native-aot-recommended.md),
   CHANGELOG v1.5.0, [bradygaster/squad](https://github.com/bradygaster/squad)
@@ -9,8 +9,8 @@
 
 `azure-openai-cli` is positioned as a **one-process, one-binary** agent runtime
 for Espanso/AutoHotkey-style workflows (see [ADR-001](./ADR-001-native-aot-recommended.md)).
-Users frequently asked for multiple specialized assistants — a coder, a
-reviewer, a security auditor — each with its own system prompt, tool set, and
+Users frequently asked for multiple specialized assistants -- a coder, a
+reviewer, a security auditor -- each with its own system prompt, tool set, and
 accumulated project knowledge.
 
 The reference point was [`bradygaster/squad`](https://github.com/bradygaster/squad),
@@ -19,7 +19,7 @@ members. The concept fit our use case; the implementation did not:
 
 - **npm runtime** contradicts ADR-001's single-binary, ~5 ms cold-start target.
 - **Cloud-side routing** (LLM-decided dispatch) adds a full round-trip before
-  the actual task even begins — unacceptable for interactive injection.
+  the actual task even begins -- unacceptable for interactive injection.
 - **Stateless agents** reset their knowledge every session; users wanted
   context that *compounds* across runs and survives in version control.
 
@@ -29,11 +29,11 @@ The hard requirements we needed to satisfy:
    and optional model overrides.
 2. **Persistent memory per persona** that lives in the repo, is committable,
    and is readable by humans.
-3. **Deterministic routing** — given the same prompt, the same persona is
+3. **Deterministic routing** -- given the same prompt, the same persona is
    selected, with no cloud round-trip and no perceptible latency.
-4. **AOT-clean** — no reflection-based JSON, no dynamic code generation,
+4. **AOT-clean** -- no reflection-based JSON, no dynamic code generation,
    no runtime assembly loading.
-5. **Zero new dependencies** — everything must build with the existing
+5. **Zero new dependencies** -- everything must build with the existing
    `System.Text.Json` + .NET 10 BCL surface.
 6. **Shared decision log** that any persona can append to, giving the team
    a single audit trail.
@@ -88,7 +88,7 @@ dependency, and produces the same answer on every machine.
   `...(earlier history truncated)...`. Most-recent wins.
 - Decisions follow the same 32 KB tail-truncation rule via
   `PersonaMemory.ReadDecisions`.
-- All writes use `File.AppendAllText` — no locking, no database, no cache.
+- All writes use `File.AppendAllText` -- no locking, no database, no cache.
 
 ### JSON contract
 
@@ -102,7 +102,7 @@ as part of the v1.8.0 AOT-cleanup pass (see CHANGELOG).
 ### Positive
 
 - **Zero new dependencies.** The entire Squad subsystem uses
-  `System.Text.Json`, `System.IO`, and LINQ — already present for other
+  `System.Text.Json`, `System.IO`, and LINQ -- already present for other
   reasons.
 - **AOT-clean.** Source-generated JSON + no reflection means Squad adds zero
   AOT warnings and no runtime-codegen risk (preserves ADR-001's guarantees).
@@ -110,7 +110,7 @@ as part of the v1.8.0 AOT-cleanup pass (see CHANGELOG).
   any network call; repeated prompts always pick the same persona, which is
   testable and debuggable.
 - **Memory survives across runs and is Git-friendly.** `.squad/` is plain
-  Markdown — diffable, reviewable in PRs, auditable long after a session.
+  Markdown -- diffable, reviewable in PRs, auditable long after a session.
 - **One process, one binary.** Nothing in Squad requires a background
   service, a database, or an external indexer.
 - **Per-persona model override.** `PersonaConfig.Model` lets the architect
@@ -134,7 +134,7 @@ as part of the v1.8.0 AOT-cleanup pass (see CHANGELOG).
 - **Write-path is not concurrent-safe.** `File.AppendAllText` on two
   simultaneous `az-ai` invocations against the same persona can interleave
   entries. Acceptable for interactive single-user CLI use; not acceptable
-  for a shared daemon (which we explicitly do not build — see ADR-001).
+  for a shared daemon (which we explicitly do not build -- see ADR-001).
 - **Default personas are opinionated.** Five personas with English
   system prompts are scaffolded by `SquadInitializer.CreateDefaultConfig`.
   Users with different team shapes must edit `.squad.json` after
@@ -148,7 +148,7 @@ Full agent/graph frameworks (LangChain, CrewAI, AutoGen) provide
 persona orchestration, tool routing, and memory out of the box. **Rejected**
 because:
 
-- Primary ecosystems are Python/TypeScript — incompatible with a single
+- Primary ecosystems are Python/TypeScript -- incompatible with a single
   AOT-compiled .NET binary.
 - Bring heavyweight transitive dependency graphs that would dwarf the rest
   of the CLI.
@@ -163,7 +163,7 @@ that could drive persona selection. **Rejected** because:
 - Adds a substantial `Microsoft.SemanticKernel.*` dependency surface,
   several of which pull `Microsoft.Extensions.*` host abstractions the
   CLI otherwise avoids.
-- Planner-based routing is LLM-driven — it requires at least one extra
+- Planner-based routing is LLM-driven -- it requires at least one extra
   cloud round-trip per dispatch, which we explicitly did not want.
 - Measurably slower startup due to DI container construction.
 
@@ -173,7 +173,7 @@ Route by embedding the prompt and computing cosine similarity against
 per-persona descriptor embeddings. **Rejected** because:
 
 - Requires shipping an embedding model (ONNX runtime, model weights) or
-  making a cloud embedding call — both break the single-binary, zero-
+  making a cloud embedding call -- both break the single-binary, zero-
   cold-start story.
 - ONNX runtime is not trivially AOT-compatible on all target RIDs.
 - The observed accuracy gain over keyword scoring did not justify the
@@ -196,7 +196,7 @@ because:
 - [`azureopenai-cli/Squad/SquadCoordinator.cs`](../../azureopenai-cli/Squad/SquadCoordinator.cs)
 - [`azureopenai-cli/Squad/SquadInitializer.cs`](../../azureopenai-cli/Squad/SquadInitializer.cs)
 - [`azureopenai-cli/Squad/PersonaMemory.cs`](../../azureopenai-cli/Squad/PersonaMemory.cs)
-- [`CHANGELOG.md`](../../CHANGELOG.md) v1.5.0 — Squad introduction;
-  v1.8.0 — AOT cleanup of Squad JSON path.
-- [`ADR-001-native-aot-recommended.md`](./ADR-001-native-aot-recommended.md) —
+- [`CHANGELOG.md`](../../CHANGELOG.md) v1.5.0 -- Squad introduction;
+  v1.8.0 -- AOT cleanup of Squad JSON path.
+- [`ADR-001-native-aot-recommended.md`](./ADR-001-native-aot-recommended.md) --
   startup/size constraints that shaped this design.

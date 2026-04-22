@@ -4,7 +4,7 @@
 > [`docs/archive/ARCHITECTURE-v1.md`](docs/archive/ARCHITECTURE-v1.md). That
 > document describes the v1 source tree (`azureopenai-cli/`), single-`Program.cs`
 > layout, Alpine `runtime-deps:9.0-preview` base, and `Azure.AI.OpenAI 2.1.0`
-> dependency — **none of which match v2**. It is kept for historical reference
+> dependency -- **none of which match v2**. It is kept for historical reference
 > only; do not treat it as authoritative for the current release.
 
 ## Where the v2 architecture lives
@@ -26,14 +26,14 @@ several focused files rather than a single monolith. Start here:
 
 ## Quick orientation (v2)
 
-- **Source tree:** `azureopenai-cli-v2/` — `Program.cs`, `Ralph/`, `Squad/`,
+- **Source tree:** `azureopenai-cli-v2/` -- `Program.cs`, `Ralph/`, `Squad/`,
   `Tools/`, `Observability/`, `Cache/`, `Theme.cs`, `UserConfig.cs`,
   `JsonGenerationContext.cs`. The v1 tree (`azureopenai-cli/`) is
   maintenance-only per [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **Distribution:** self-contained AOT binaries (`linux-x64`,
   `linux-musl-x64`, `osx-arm64`, `win-x64`) via GitHub Releases; Docker
   image at `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`. macOS Intel
-  (`osx-x64`) is no longer in the release matrix as of v2.0.4 — see
+  (`osx-x64`) is no longer in the release matrix as of v2.0.4 -- see
   [`CHANGELOG.md`](CHANGELOG.md).
 - **Credentials:** `.env` is **never baked into images**. It is injected at
   runtime via `--env-file` or bind-mount. See
@@ -41,13 +41,13 @@ several focused files rather than a single monolith. Start here:
   [`README.md`](README.md) §Security.
 - **Agent framework:** v2 uses **Microsoft Agent Framework**
   (`Microsoft.Agents.AI`) in-process for tool-calling and Ralph
-  iterations — it does **not** shell out to child CLIs via `Process.Start`
+  iterations -- it does **not** shell out to child CLIs via `Process.Start`
   for subagent delegation. See
   [`docs/release-notes-v2.0.0.md`](docs/release-notes-v2.0.0.md).
 
 ## Contributing new architecture content
 
 New architecturally significant decisions land as ADRs in
-[`docs/adr/`](docs/adr/) — see the ADR index there for format and examples.
+[`docs/adr/`](docs/adr/) -- see the ADR index there for format and examples.
 Deep-dive design docs go under `docs/` next to the topic-specific files
 above, not into this stub.

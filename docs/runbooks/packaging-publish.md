@@ -1,6 +1,6 @@
-# Packaging publish runbook — Homebrew tap + Scoop bucket
+# Packaging publish runbook -- Homebrew tap + Scoop bucket
 
-> "I know a guy." — Bob Sacamano
+> "I know a guy." -- Bob Sacamano
 
 Audience: whoever holds push access to `SchwartzKamel/*`. This runbook
 takes the canonical, in-repo packaging manifests and mirrors them into
@@ -12,7 +12,7 @@ and manifests in `packaging/` are pinned to **v2.0.4**; **v2.0.5** is
 queued as a fix-forward (rolling the `stage.sh` VERSION drift called
 out in C-1 of `docs/audits/docs-audit-2026-04-22-lippman.md`). The
 steps below apply to whichever version Lippman has most recently
-signed off — do not hard-code a version into muscle memory.
+signed off -- do not hard-code a version into muscle memory.
 
 **Out of scope.** Creating formulae/manifests, bumping versions,
 filling SHA256s. Those happen as part of the tag-time ritual in
@@ -21,7 +21,7 @@ starts from the moment the in-repo manifests are green.
 
 ---
 
-## 0. Reality check — execution vs documentation
+## 0. Reality check -- execution vs documentation
 
 > **This runbook documents the process. Actual publishing requires
 > push access to external `SchwartzKamel/homebrew-az-ai` and
@@ -45,7 +45,7 @@ add …` in user-facing docs before §6 is green.
 | `SchwartzKamel/homebrew-az-ai`         | Homebrew tap         | `schwartzkamel/az-ai` |
 | `SchwartzKamel/scoop-az-ai`            | Scoop bucket         | `schwartzkamel`     |
 
-Homebrew's naming convention requires the `homebrew-` prefix —
+Homebrew's naming convention requires the `homebrew-` prefix --
 `brew tap schwartzkamel/az-ai` resolves to
 `github.com/SchwartzKamel/homebrew-az-ai` automatically.
 
@@ -71,7 +71,7 @@ gh repo create SchwartzKamel/scoop-az-ai --public \
 own credentials via `gh`/`git`. If this is ever automated from CI
 (future work), a fine-grained PAT scoped to **contents:write** on
 just `homebrew-az-ai` + `scoop-az-ai` should be stored as
-`PACKAGING_PUBLISH_TOKEN` — never reuse `GITHUB_TOKEN` from
+`PACKAGING_PUBLISH_TOKEN` -- never reuse `GITHUB_TOKEN` from
 `release.yml`, which is scoped to this repo only.
 
 ### Tools
@@ -116,7 +116,7 @@ git push origin main
 `--delete` is intentional: the tap repo is a pure mirror. If a pinned
 formula disappears from `packaging/homebrew/Formula/`, it must
 disappear from the tap. **Exception:** never delete a pinned
-`@<version>.rb` unless Lippman + Jackie sign off — users may have
+`@<version>.rb` unless Lippman + Jackie sign off -- users may have
 Brewfiles that pin that version.
 
 ### 2.3 Test before announcing
@@ -148,7 +148,7 @@ arch -arm64e brew install schwartzkamel/az-ai/az-ai-v2
 ```
 
 The `osx-arm64` bottle runs under Rosetta 2 on Intel. This is a
-stop-gap, not a supported configuration — if Intel users report
+stop-gap, not a supported configuration -- if Intel users report
 issues, route to `docs/runbooks/macos-runner-triage.md` §5.
 
 ---
@@ -187,7 +187,7 @@ git push origin main
 
 **Rename note.** The in-repo file is `packaging/scoop/az-ai.json`
 (historical name), but Scoop resolves the **filename** as the package
-name — so it lands as `bucket/az-ai-v2.json` in the bucket. The
+name -- so it lands as `bucket/az-ai-v2.json` in the bucket. The
 `versions/az-ai-v2@<version>.json` files already match their resolved
 names and are copied as-is.
 
@@ -196,7 +196,7 @@ names and are copied as-is.
 The `bucket/versions/` layout matches the upstream
 [`scoopinstaller/versions`](https://github.com/ScoopInstaller/Versions)
 bucket so `scoop install schwartzkamel/az-ai-v2@2.0.4` resolves
-natively. Never mutate a pinned manifest — if a digest is wrong,
+natively. Never mutate a pinned manifest -- if a digest is wrong,
 publish a follow-up pin (`@2.0.4-1.json`) rather than editing in
 place.
 
@@ -254,7 +254,7 @@ grep -E '^\s*sha256 ' packaging/homebrew/Formula/az-ai-v2@${VERSION}.rb
 ```
 
 Every `sha256 "…"` line must appear in the output of §4.1. If any
-digest disagrees, **the release is broken, not the formula** — stop
+digest disagrees, **the release is broken, not the formula** -- stop
 the publish, file a fix-forward tag, and re-run §2.
 
 ### 4.3 Compare against the Scoop manifest
@@ -266,7 +266,7 @@ jq -r '.architecture."64bit".hash' packaging/scoop/versions/az-ai-v2@${VERSION}.
 
 Same rule as §4.2. `autoupdate.hash.url` pointing at `$url.sbom.json`
 means `scoop checkver -u` will re-derive the hash from CycloneDX at
-the next bump — but the currently-pinned `hash` must still match
+the next bump -- but the currently-pinned `hash` must still match
 §4.1 output today.
 
 ### 4.4 Cross-check with SLSA provenance (optional but recommended)
@@ -277,29 +277,29 @@ gh attestation verify az-ai-v2-${VERSION}-linux-x64.tar.gz \
 ```
 
 If attestation fails, the release artifact was tampered with or the
-Sigstore bundle is missing — do **not** publish the tap/bucket
+Sigstore bundle is missing -- do **not** publish the tap/bucket
 mirror. Route to Newman.
 
 ---
 
-## 5. Announce — what to update after tap/bucket go live
+## 5. Announce -- what to update after tap/bucket go live
 
 Only after §2.3 and §3.4 are both green on a fresh machine (Puddy
 gate):
 
-- [ ] **`README.md`** top-level install section — replace "install from
+- [ ] **`README.md`** top-level install section -- replace "install from
       local manifest" with the `brew tap` / `scoop bucket add` lines.
-- [ ] **`packaging/README.md`** — flip the status column for Homebrew
+- [ ] **`packaging/README.md`** -- flip the status column for Homebrew
       and Scoop from "not yet created" to "live".
-- [ ] **`packaging/homebrew/README.md`** — drop the "before the tap is
+- [ ] **`packaging/homebrew/README.md`** -- drop the "before the tap is
       live" fallback block.
-- [ ] **`packaging/scoop/README.md`** — drop the "before the bucket is
+- [ ] **`packaging/scoop/README.md`** -- drop the "before the bucket is
       live" fallback block.
-- [ ] **`docs/runbooks/release-runbook.md`** — add a post-release step
+- [ ] **`docs/runbooks/release-runbook.md`** -- add a post-release step
       pointing at this runbook.
-- [ ] **`CHANGELOG.md`** — under the current in-flight version, add an
+- [ ] **`CHANGELOG.md`** -- under the current in-flight version, add an
       entry under *Packaging*: "Homebrew tap + Scoop bucket now live".
-- [ ] **Release notes** for the next tag — Mr. Lippman adds a
+- [ ] **Release notes** for the next tag -- Mr. Lippman adds a
       "Package manager install" callout pointing at the tap/bucket.
 - [ ] Close the corresponding tracking ticket (`v202-tap-bucket-publish`
       or its successor).
@@ -314,9 +314,9 @@ name. Sacamano will chase that separately.
 
 | Symptom                                              | Likely cause                                                      | Fix |
 |------------------------------------------------------|-------------------------------------------------------------------|-----|
-| `brew install` reports `SHA256 mismatch`             | Formula digest disagrees with release artifact                    | §4.2 — if mismatch is real, fix-forward a new tag |
+| `brew install` reports `SHA256 mismatch`             | Formula digest disagrees with release artifact                    | §4.2 -- if mismatch is real, fix-forward a new tag |
 | `scoop install` reports `Hash check failed`          | Manifest `hash` disagrees with release zip                        | §4.3 |
-| `brew audit` warns about `keg_only`                  | Expected for pinned `@<version>` formulae                         | Ignore — that's the whole point |
+| `brew audit` warns about `keg_only`                  | Expected for pinned `@<version>` formulae                         | Ignore -- that's the whole point |
 | `scoop checkver -u` mutates a pinned `versions/*`    | Ran `checkver` inside `versions/`                                 | Revert; only run against `bucket/az-ai-v2.json` |
 | Intel-Mac user reports "bad CPU type in executable"  | Rosetta 2 not installed                                           | §2.4 |
 | Tap tracking formula reports stale version           | `packaging/homebrew/Formula/az-ai.rb` not bumped at tag time      | Run the tag-time ritual in `packaging/README.md` |
@@ -325,11 +325,11 @@ name. Sacamano will chase that separately.
 
 ## 7. Status
 
-- `SchwartzKamel/homebrew-az-ai` — **not yet created** (blocked on
+- `SchwartzKamel/homebrew-az-ai` -- **not yet created** (blocked on
   maintainer action per §0)
-- `SchwartzKamel/scoop-az-ai` — **not yet created** (blocked on
+- `SchwartzKamel/scoop-az-ai` -- **not yet created** (blocked on
   maintainer action per §0)
 
-Once both repos exist and §2–§5 have been exercised once end-to-end
+Once both repos exist and §2-§5 have been exercised once end-to-end
 on a live release, update this section to "live" and remove §0's
 reality-check banner.

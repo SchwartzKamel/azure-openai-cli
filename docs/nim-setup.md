@@ -1,18 +1,18 @@
-# NIM Setup — Gemma-4-2B-NVFP4 (WSL2 + Blackwell)
+# NIM Setup -- Gemma-4-2B-NVFP4 (WSL2 + Blackwell)
 
 This guide gets you from a fresh WSL2 Ubuntu 24.04 on a Blackwell laptop to
 `:aifix` working locally against NVIDIA NIM in under 10 minutes.
 
-- Design rationale: [ADR-006 — NVIDIA NIM / NVFP4 integration](adr/ADR-006-nvfp4-nim-integration.md)
-- Provider spec: [FR-020 — NVIDIA NIM provider + per-trigger routing](proposals/FR-020-nvidia-nim-provider-per-trigger-routing.md)
+- Design rationale: [ADR-006 -- NVIDIA NIM / NVFP4 integration](adr/ADR-006-nvfp4-nim-integration.md)
+- Provider spec: [FR-020 -- NVIDIA NIM provider + per-trigger routing](proposals/FR-020-nvidia-nim-provider-per-trigger-routing.md)
 - Companion integration: [Espanso / AHK kit](../examples/espanso-ahk-wsl/README.md)
 
 > **You probably do not need this page.** If you don't have a Blackwell /
 > Ada / Hopper GPU with ≥ 8 GB VRAM, or you just want the CLI working
 > today, **skip this entirely**. Install the AOT binary, export your Azure
 > creds, and drop in the [Espanso/AHK kit](../examples/espanso-ahk-wsl/README.md)
-> — every trigger (`:aifix`, `:airw`, `:aitldr`, `:aiexp`, `:aic`, `:ai`)
-> routes to Azure out of the box with a 2–3 s budget. This page is the
+> -- every trigger (`:aifix`, `:airw`, `:aitldr`, `:aiexp`, `:aic`, `:ai`)
+> routes to Azure out of the box with a 2-3 s budget. This page is the
 > **opt-in upgrade** for users who want sub-second `:aifix` and `:airw`
 > against a local NVFP4 model. See FR-020 §4.8 for the cloud-only guarantee.
 
@@ -27,8 +27,8 @@ This guide gets you from a fresh WSL2 Ubuntu 24.04 on a Blackwell laptop to
 | CUDA driver ≥ 12.0 | Top-right of `nvidia-smi` output |
 | GPU with NVFP4 support (native or TRT-LLM emulation) | Blackwell sm_10x/sm_11x (native), Ada sm_89, or Hopper sm_9x |
 | ≥ 8 GB VRAM (12 GB recommended) | `nvidia-smi --query-gpu=memory.total --format=csv` |
-| `curl`, `sudo`, and an internet connection | — |
-| An NGC API key (free): https://ngc.nvidia.com/setup | — |
+| `curl`, `sudo`, and an internet connection | -- |
+| An NGC API key (free): https://ngc.nvidia.com/setup | -- |
 
 **Ampere (sm_80/sm_86) is not supported.** NVFP4 requires Ada or newer.
 
@@ -57,7 +57,7 @@ The script runs 9 banner-labeled steps:
 8. Smoke test: `POST /v1/chat/completions`
 9. Success banner with next steps
 
-Every step is idempotent — re-running the installer skips work already done.
+Every step is idempotent -- re-running the installer skips work already done.
 
 ### Unattended (CI / advanced users)
 
@@ -164,7 +164,7 @@ az-ai --trigger grammar "their going home"
 ```
 
 Because the endpoint is bound to `127.0.0.1`, the NIM server is not reachable
-from the LAN or from Windows — Newman's default-deny posture. If you need
+from the LAN or from Windows -- Newman's default-deny posture. If you need
 cross-host access, put a reverse proxy in front; do not expose port 8000
 directly.
 
@@ -197,9 +197,9 @@ fixes on a warm NIM. If your first-token latency exceeds that, see
 
 ### NIM fails to load / health check never passes
 
-1. `docker logs az-ai-nim` — look for CUDA errors, OOM, or missing NGC auth.
-2. `nvidia-smi` — confirm the GPU is idle (another process may hold VRAM).
-3. `systemctl --user status az-ai-nim.service` — confirm the unit is active.
+1. `docker logs az-ai-nim` -- look for CUDA errors, OOM, or missing NGC auth.
+2. `nvidia-smi` -- confirm the GPU is idle (another process may hold VRAM).
+3. `systemctl --user status az-ai-nim.service` -- confirm the unit is active.
 4. First run downloads weights into `~/.cache/nim`. Expect a multi-minute delay
    on a cold cache; warm restarts should be under 10 s.
 
@@ -207,7 +207,7 @@ fixes on a warm NIM. If your first-token latency exceeds that, see
 
 - Stop Windows-side GPU hogs (Chrome hardware accel, games, Stable Diffusion).
 - Confirm no other containers hold the GPU: `docker ps --filter ancestor=...`.
-- Gemma-4-2B-NVFP4 needs ~2–3 GB VRAM at idle; KV cache grows with context.
+- Gemma-4-2B-NVFP4 needs ~2-3 GB VRAM at idle; KV cache grows with context.
   Reduce `max_tokens` and context length if you see OOM under load.
 
 ### Wrong architecture ("NVFP4 not supported")
@@ -220,11 +220,11 @@ fixes on a warm NIM. If your first-token latency exceeds that, see
 - Key must be NGC API **key**, not a personal access token.
 - Username is literally `$oauthtoken` (dollar sign included, quoted to prevent
   shell expansion).
-- `cat ~/.config/az-ai/providers/ngc_api_key | wc -c` — should be > 40 chars.
+- `cat ~/.config/az-ai/providers/ngc_api_key | wc -c` -- should be > 40 chars.
 
 ### Docker Desktop interference
 
-- `docker context ls` — if the current context points at `desktop-linux`, that's
+- `docker context ls` -- if the current context points at `desktop-linux`, that's
   Docker Desktop, not the WSL-native engine. Switch: `docker context use default`.
 - Or uninstall Docker Desktop WSL integration for this distro in Docker Desktop
   settings → Resources → WSL Integration.
@@ -240,7 +240,7 @@ fixes on a warm NIM. If your first-token latency exceeds that, see
 
 ### Port 8000 already in use
 
-- `sudo ss -lntp | grep :8000` — find the other process.
+- `sudo ss -lntp | grep :8000` -- find the other process.
 - Edit `~/.config/systemd/user/az-ai-nim.service` to use a different host port
   (keep `127.0.0.1:` prefix).
 
@@ -254,7 +254,7 @@ make uninstall-nim-gemma-2b ARGS="--yes"              # keep image + ack
 make uninstall-nim-gemma-2b ARGS="--yes --purge-image --purge-ack"
 ```
 
-Docker and the NVIDIA Container Toolkit are intentionally left in place — you
+Docker and the NVIDIA Container Toolkit are intentionally left in place -- you
 may want them for other workloads. Remove them manually with `apt-get purge` if
 desired.
 
@@ -262,9 +262,9 @@ desired.
 
 ## References
 
-- [ADR-006 — NVIDIA NIM / NVFP4 integration](adr/ADR-006-nvfp4-nim-integration.md) — decision history, risk register, security posture
-- FR-020 — NVIDIA NIM provider spec (pending)
-- [FR-018 — Local-model provider (llama.cpp / Ollama)](proposals/FR-018-local-model-provider-llamacpp.md) — dependency: provider abstraction
-- [Espanso / AHK integration](espanso-ahk-integration.md) — downstream consumer
+- [ADR-006 -- NVIDIA NIM / NVFP4 integration](adr/ADR-006-nvfp4-nim-integration.md) -- decision history, risk register, security posture
+- FR-020 -- NVIDIA NIM provider spec (pending)
+- [FR-018 -- Local-model provider (llama.cpp / Ollama)](proposals/FR-018-local-model-provider-llamacpp.md) -- dependency: provider abstraction
+- [Espanso / AHK integration](espanso-ahk-integration.md) -- downstream consumer
 - NGC setup: https://ngc.nvidia.com/setup
 - Gemma Terms of Use: https://ai.google.dev/gemma/terms

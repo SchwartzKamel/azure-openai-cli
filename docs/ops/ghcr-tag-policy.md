@@ -1,16 +1,16 @@
-# GHCR Tag Policy — azure-openai-cli
+# GHCR Tag Policy -- azure-openai-cli
 
 **Status:** Canonical
 **Owner:** Jerry (ops/DevOps) + Mr. Lippman (release management)
 **Last reviewed:** 2026-04-22 (jerry-medium-sweep)
 **Related:**
-- [`docs/security/supply-chain.md`](../security/supply-chain.md) — pinning + provenance.
-- [`docs/runbooks/release-runbook.md`](../runbooks/release-runbook.md) — the ritual that produces these tags.
-- [`.github/workflows/release.yml`](../../.github/workflows/release.yml) — the workflow that writes the tags.
+- [`docs/security/supply-chain.md`](../security/supply-chain.md) -- pinning + provenance.
+- [`docs/runbooks/release-runbook.md`](../runbooks/release-runbook.md) -- the ritual that produces these tags.
+- [`.github/workflows/release.yml`](../../.github/workflows/release.yml) -- the workflow that writes the tags.
 
 > *You ever notice how nobody writes down the tag policy until someone
 > pulls `:latest` in production and gets a v2 image against a v1 brew
-> formula? Yeah. Me neither.* — Jerry
+> formula? Yeah. Me neither.* -- Jerry
 
 ---
 
@@ -36,11 +36,11 @@ Resulting tags for a `v1.8.1` release:
 
 | Tag | Floats? | Meaning |
 |---|---|---|
-| `1.8.1` | No — immutable | Exact release. Pin this in production. |
-| `1.8` | Yes — within minor line | Latest `1.8.z` patch. |
-| `1` | Yes — within major line | Latest `1.y.z` release. |
-| `<sha>` | No — immutable | Commit digest reference (git-SHA short form). |
-| `latest` | Yes — v1 line only | The most recently pushed `v1.*` tag. **Does NOT include v2.** |
+| `1.8.1` | No -- immutable | Exact release. Pin this in production. |
+| `1.8` | Yes -- within minor line | Latest `1.8.z` patch. |
+| `1` | Yes -- within major line | Latest `1.y.z` release. |
+| `<sha>` | No -- immutable | Commit digest reference (git-SHA short form). |
+| `latest` | Yes -- v1 line only | The most recently pushed `v1.*` tag. **Does NOT include v2.** |
 
 ### 1.2 v2 image: `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`
 
@@ -59,11 +59,11 @@ Resulting tags for a `v2.0.5` release:
 
 | Tag | Floats? | Meaning |
 |---|---|---|
-| `2.0.5` | No — immutable | Exact release. Pin this in production. |
-| `2.0` | Yes — within minor line | Latest `2.0.z` patch. |
-| `2` | Yes — within major line | Latest `2.y.z` release. |
-| `<sha>` | No — immutable | Commit digest reference. |
-| `latest` | Yes — v2 line only | The most recently pushed `v2.*` tag. |
+| `2.0.5` | No -- immutable | Exact release. Pin this in production. |
+| `2.0` | Yes -- within minor line | Latest `2.0.z` patch. |
+| `2` | Yes -- within major line | Latest `2.y.z` release. |
+| `<sha>` | No -- immutable | Commit digest reference. |
+| `latest` | Yes -- v2 line only | The most recently pushed `v2.*` tag. |
 
 ### 1.3 Why two images and not one?
 
@@ -86,7 +86,7 @@ This is spelled out in `release.yml:315-319`.
 ## 2. When `:latest` moves
 
 `:latest` is **not** emitted by this pipeline's `docker/metadata-action`
-config directly — it is moved by GHCR when the action pushes a tag that
+config directly -- it is moved by GHCR when the action pushes a tag that
 the action considers "latest-eligible."
 
 Rules in practice:
@@ -96,7 +96,7 @@ Rules in practice:
 2. **Every successful `v2.*` tag push** → `ghcr.io/…/az-ai-v2:latest`
    points at that image.
 3. **Pre-release tags** (anything with a `-alpha`, `-beta`, `-rc`
-   suffix — none shipped today) would NOT move `:latest`. If you
+   suffix -- none shipped today) would NOT move `:latest`. If you
    introduce a pre-release tag, verify `docker/metadata-action`'s
    `flavor: latest=false` behavior before pushing.
 4. **`workflow_dispatch` re-runs against an existing tag** do not create
@@ -123,11 +123,11 @@ delete release tags.** Deletion policy:
 | Untagged manifests (cleanup debris) | Prune after 90 days. | Jerry, monthly sweep. |
 
 **Never rewrite an exact semver tag.** If `2.0.5` shipped broken, fix-forward
-with `2.0.6`. Never delete-and-repush `2.0.5` — it breaks every pinned
+with `2.0.6`. Never delete-and-repush `2.0.5` -- it breaks every pinned
 consumer silently. This is not negotiable.
 
-For the CVE case — if a published image contains a secret or actively
-harmful content — deletion is authorized by Newman (security) AND Mr.
+For the CVE case -- if a published image contains a secret or actively
+harmful content -- deletion is authorized by Newman (security) AND Mr.
 Lippman (release) jointly, and the deletion must be logged in
 [`docs/security/cve-log.md`](../security/cve-log.md) with a published
 advisory. A post-incident ADR is required.
@@ -185,7 +185,7 @@ only if nobody touches them. For anything that matters, use a digest.
 ### 5.3 Floating tag (development / CI on `main` only)
 
 ```bash
-# Track the 2.0.z line — automatically picks up patch releases
+# Track the 2.0.z line -- automatically picks up patch releases
 docker pull ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:2.0
 ```
 
@@ -194,11 +194,11 @@ for production.**
 
 ### 5.4 `:latest` is acceptable where?
 
-- Quickstart docs (README, getting-started) — yes, with a warning.
-- CI pipelines that need deterministic behavior — **no.**
-- Downstream distribution manifests (Homebrew / Scoop / Nix) — **no**,
+- Quickstart docs (README, getting-started) -- yes, with a warning.
+- CI pipelines that need deterministic behavior -- **no.**
+- Downstream distribution manifests (Homebrew / Scoop / Nix) -- **no**,
   always pin to exact semver + digest.
-- Examples in `docs/runbooks/` — no; always show the semver form so
+- Examples in `docs/runbooks/` -- no; always show the semver form so
   copy-paste into production is safe.
 
 ---
@@ -217,7 +217,7 @@ docker inspect ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:latest \
 # → semver
 ```
 
-If either is empty, the image pre-dates the OCI-labels policy — pull a
+If either is empty, the image pre-dates the OCI-labels policy -- pull a
 newer tag.
 
 ---
@@ -227,7 +227,7 @@ newer tag.
 - [ ] Verify `docker/metadata-action`'s default `flavor` for pre-release
       handling before we ship a `-rc` tag for the first time.
 - [ ] Add a monthly "untagged manifest prune" to Jerry's modernization
-      cadence — track in `docs/audits/` when that sweep lands.
+      cadence -- track in `docs/audits/` when that sweep lands.
 - [ ] Once v1 formally EOLs, publish an ADR for consolidating the image
       name back to `ghcr.io/schwartzkamel/azure-openai-cli` and aliasing
       the `/az-ai-v2` path for one major cycle.
@@ -235,4 +235,4 @@ newer tag.
 ---
 
 *One policy. Two images. Five tag shapes. All documented. Don't pin to
-`:latest` in production.* — Jerry
+`:latest` in production.* -- Jerry

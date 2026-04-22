@@ -1,14 +1,14 @@
 # Persona prompt change management
 
 > *"'Trust me, I only tweaked one word' is the sentence that precedes every
-> regression I have ever seen in this library. Again — from the top, with
-> documentation."* — Maestro
+> regression I have ever seen in this library. Again -- from the top, with
+> documentation."* -- Maestro
 
 ## The trust-me-bro problem
 
 Persona system prompts are **production text**. They ship to the model on
-every invocation. A seemingly trivial edit — swapping "always" for "often",
-reordering two clauses, dropping a sentence that "felt redundant" — can
+every invocation. A seemingly trivial edit -- swapping "always" for "often",
+reordering two clauses, dropping a sentence that "felt redundant" -- can
 silently change:
 
 - **Voice.** Users rely on persona X sounding like persona X.
@@ -24,11 +24,11 @@ evidence. This document exists so that assertion gets evidence attached.
 
 ## The contract
 
-Any PR that modifies a persona system prompt — defined as any change to the
+Any PR that modifies a persona system prompt -- defined as any change to the
 `SystemPrompt` field of a persona in
 `azureopenai-cli-v2/Squad/SquadInitializer.cs`, or any change to
 `SAFETY_CLAUSE` / `PERSONA_SAFETY_LINE` in `azureopenai-cli-v2/Program.cs`
-— **must** do all four of the following:
+-- **must** do all four of the following:
 
 ### 1. Version-bump the persona
 
@@ -38,7 +38,7 @@ bump gives reviewers a single line in the diff that says "this prompt is
 not the same prompt anymore."
 
 Minor grammatical fixes that demonstrably don't change semantics (typo, a
-missing article) may keep the version but must still pass items 2–4.
+missing article) may keep the version but must still pass items 2-4.
 
 ### 2. Update the fixture file
 
@@ -54,8 +54,8 @@ Open `docs/prompts/fixtures/<persona>.json`. Do **one** of:
   and the harness will flag them.
 
 A persona prompt change with *no fixture change* means you are either
-asserting the change is invisible (in which case — why make it?) or you
-are skipping the test (in which case — no).
+asserting the change is invisible (in which case -- why make it?) or you
+are skipping the test (in which case -- no).
 
 ### 3. Pass the eval harness
 
@@ -66,7 +66,7 @@ dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj \
     --filter Category=PromptEval
 ```
 
-Must be green. A failed safety fixture is **unconditionally blocking** —
+Must be green. A failed safety fixture is **unconditionally blocking** --
 no waivers, no "it's a flake," no "we'll fix it after merge."
 
 Until the harness lands, this step is satisfied by item 4 (before/after
@@ -97,7 +97,7 @@ A reviewer of a persona prompt change must tick all of:
 - [ ] `persona_version` in fixtures matches the new spec version.
 - [ ] Before/after goldens are present and I have read them.
 - [ ] No `safety_assertion` fixture regressed.
-- [ ] Temperature in fixtures still matches the cookbook recommendation —
+- [ ] Temperature in fixtures still matches the cookbook recommendation --
       or the cookbook recommendation has been updated in the same PR with
       a one-line rationale.
 
@@ -110,7 +110,7 @@ Missing any box → request changes.
   the commit/date. Changelog-worthy.
 - **Adding a persona.** Ship the spec, the fixture file (≥3 fixtures,
   including at least one `safety_assertion`), and the `PersonaConfig`
-  change in the same PR. No one-step-at-a-time — the spec without the
+  change in the same PR. No one-step-at-a-time -- the spec without the
   fixtures is half a contract.
 - **Changing `SAFETY_CLAUSE` or `PERSONA_SAFETY_LINE`.** All personas are
   affected. Every persona's fixtures must re-run. Requires Newman-level
@@ -129,4 +129,4 @@ management discipline is a diary, not a spec.
 No eval, no merge. No goldens, no eval. No fixture update, no goldens. No
 version bump, no fixture update. The chain is the point.
 
-— *Maestro. With an M.*
+-- *Maestro. With an M.*

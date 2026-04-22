@@ -1,9 +1,9 @@
 # FR-008: Prompt Response Cache for Espanso/AHK Workflows
 
 **Status:** Shipped (v2.0.0, opt-in variant)
-**Priority:** P1 — High
+**Priority:** P1 -- High
 **Impact:** Turns repeated prompts from ~500ms (network round-trip) to <5ms (local cache hit)
-**Effort:** Medium (1–2 days)
+**Effort:** Medium (1-2 days)
 **Category:** Performance / Espanso Integration
 
 ---
@@ -11,7 +11,7 @@
 ## Shipped in v2.0.0
 
 - **Date:** 2026-04-20 window
-- **Commit:** [`4f1acdd`](../../) — `feat(v2): FR-008 prompt cache + UX fixes (json-stderr, unknown-flag, comment)`
+- **Commit:** [`4f1acdd`](../../) -- `feat(v2): FR-008 prompt cache + UX fixes (json-stderr, unknown-flag, comment)`
 - **Implementation:** [`azureopenai-cli-v2/Cache/PromptCache.cs`](../../azureopenai-cli-v2/Cache/PromptCache.cs)
 - **Tests:** `tests/AzureOpenAI_CLI.V2.Tests/PromptCacheTests.cs` (19 cases), `tests/AzureOpenAI_CLI.V2.Tests/V2UxAndCacheWaveTests.cs` (cache-flag cases)
 - **Release notes:** [`CHANGELOG.md`](../../CHANGELOG.md) v2.0.0 section, [`docs/release-notes-v2.0.0.md`](../release-notes-v2.0.0.md)
@@ -30,25 +30,25 @@ Three deviations from the original proposal were accepted during implementation.
 
 ## The Problem
 
-The primary use case for this tool is Espanso/AHK text expansion — a user types a trigger (like `:ai:explain docker`) and the CLI fires, sends the prompt to Azure, and injects the response as typed text. The `--raw` flag (Program.cs line 252–255) and the Espanso integration doc (`docs/espanso-ahk-integration.md`) confirm this is a first-class workflow.
+The primary use case for this tool is Espanso/AHK text expansion -- a user types a trigger (like `:ai:explain docker`) and the CLI fires, sends the prompt to Azure, and injects the response as typed text. The `--raw` flag (Program.cs line 252-255) and the Espanso integration doc (`docs/espanso-ahk-integration.md`) confirm this is a first-class workflow.
 
 Here's the problem: **text expansion triggers are often repetitive.** A developer explaining Docker networking to three different colleagues fires the same prompt three times. A support engineer using `:ai:summarize-ticket` on similar tickets gets semantically identical responses. Every invocation pays the full network round-trip cost:
 
 ```
-Prompt → DNS → TLS → Azure API server processing (~300–500ms) → Stream response → Inject text
+Prompt → DNS → TLS → Azure API server processing (~300-500ms) → Stream response → Inject text
 ```
 
 There is **zero caching** anywhere in the pipeline today. Every invocation is a cold network call, even for byte-identical prompts with identical parameters.
 
 ### What Makes This Especially Painful
 
-1. **Espanso triggers are synchronous** — the user's typing is blocked until the expansion completes. 500ms feels like a hiccup. 5ms feels like autocomplete.
+1. **Espanso triggers are synchronous** -- the user's typing is blocked until the expansion completes. 500ms feels like a hiccup. 5ms feels like autocomplete.
 
-2. **Azure API costs money** — repeated identical prompts burn tokens for no new information. At GPT-4o pricing, a cached response saves ~$0.01–0.05 per hit. Over hundreds of daily expansions, this adds up.
+2. **Azure API costs money** -- repeated identical prompts burn tokens for no new information. At GPT-4o pricing, a cached response saves ~$0.01-0.05 per hit. Over hundreds of daily expansions, this adds up.
 
-3. **Rate limits** — Azure OpenAI enforces per-minute token limits. Caching identical prompts keeps headroom for novel queries.
+3. **Rate limits** -- Azure OpenAI enforces per-minute token limits. Caching identical prompts keeps headroom for novel queries.
 
-4. **Offline resilience** — with a cache, previously-seen prompts work even when the network is down. For a CLI tool, "works offline for common queries" is a power feature.
+4. **Offline resilience** -- with a cache, previously-seen prompts work even when the network is down. For a CLI tool, "works offline for common queries" is a power feature.
 
 ---
 
@@ -63,7 +63,7 @@ A simple file-based cache with deterministic keys:
 > - Windows: `%LOCALAPPDATA%\azureopenai-cli\v1\<hash>.json`.
 > - Unix permissions: **files `0600`, directory `0700`** (enforced via `File.SetUnixFileMode`). Windows relies on `%LOCALAPPDATA%` ACLs.
 > - Schema version `v1` is baked into the path so a future layout change can coexist without wiping user data.
-> - Tests override the directory via `AZ_CACHE_DIR` (undocumented internal hook — not a user-facing knob).
+> - Tests override the directory via `AZ_CACHE_DIR` (undocumented internal hook -- not a user-facing knob).
 
 ```
 ~/.cache/azureopenai-cli/
@@ -76,9 +76,9 @@ A simple file-based cache with deterministic keys:
 
 #### Cache Key Derivation
 
-> **As shipped:** the key is SHA-256 (hex, lowercase) of a **canonical sorted-JSON** payload over exactly five fields, in this property order: `max_tokens`, `model`, `system_prompt`, `temperature` (formatted `F4`, invariant culture), `user_prompt`. Endpoint URL and API key are **intentionally excluded** — rotating credentials must not invalidate the cache, and credentials must never touch disk. The `ToolHardeningTests.ComputeKey_Ignores_Endpoint_And_ApiKey_By_Design` test pins this contract. See [`PromptCache.ComputeKey`](../../azureopenai-cli-v2/Cache/PromptCache.cs).
+> **As shipped:** the key is SHA-256 (hex, lowercase) of a **canonical sorted-JSON** payload over exactly five fields, in this property order: `max_tokens`, `model`, `system_prompt`, `temperature` (formatted `F4`, invariant culture), `user_prompt`. Endpoint URL and API key are **intentionally excluded** -- rotating credentials must not invalidate the cache, and credentials must never touch disk. The `ToolHardeningTests.ComputeKey_Ignores_Endpoint_And_ApiKey_By_Design` test pins this contract. See [`PromptCache.ComputeKey`](../../azureopenai-cli-v2/Cache/PromptCache.cs).
 >
-> **Originally proposed:** a newline-delimited string over `model`, `systemPrompt`, `userPrompt`, `temperature` — `max_tokens` was explicitly excluded. The shipped version includes `max_tokens` because truncation *is* user-visible when the cap is hit, and canonical JSON is more auditable than ad-hoc string concatenation.
+> **Originally proposed:** a newline-delimited string over `model`, `systemPrompt`, `userPrompt`, `temperature` -- `max_tokens` was explicitly excluded. The shipped version includes `max_tokens` because truncation *is* user-visible when the cap is hit, and canonical JSON is more auditable than ad-hoc string concatenation.
 
 The cache key must capture everything that affects the response:
 
@@ -92,10 +92,10 @@ static string ComputeCacheKey(string model, string systemPrompt, string userProm
 ```
 
 **Why these fields:**
-- `model` — different models give different responses
-- `systemPrompt` — changes behavior fundamentally
-- `userPrompt` — the actual query
-- `temperature` — at `0.0`, responses are deterministic; at `0.9`, caching is less useful (but still valid for the same session)
+- `model` -- different models give different responses
+- `systemPrompt` -- changes behavior fundamentally
+- `userPrompt` -- the actual query
+- `temperature` -- at `0.0`, responses are deterministic; at `0.9`, caching is less useful (but still valid for the same session)
 
 **Why NOT `maxTokens`:** Changing max tokens may truncate but doesn't change the content of what's generated. A cached response from a higher max-tokens call is strictly a superset.
 
@@ -114,7 +114,7 @@ static string ComputeCacheKey(string model, string systemPrompt, string userProm
 }
 ```
 
-### Integration Point: Program.cs Standard Mode (line 574–715)
+### Integration Point: Program.cs Standard Mode (line 574-715)
 
 The cache check slots in between prompt building and the API call:
 
@@ -160,12 +160,12 @@ if (!opts.NoCache && responseBuilder != null)
 
 ### CLI Flags
 
-> **As shipped — opt-in, not opt-out:**
+> **As shipped -- opt-in, not opt-out:**
 >
 > | Flag / Env | Effect |
 > |---|---|
 > | `--cache` | Enables the cache for this invocation (read + write). Default is **off**. |
-> | `AZ_CACHE=1` | Enables the cache when the flag is absent. Strict match — only the literal string `"1"` counts. Any other value (including `true`, `yes`, `on`) is ignored. |
+> | `AZ_CACHE=1` | Enables the cache when the flag is absent. Strict match -- only the literal string `"1"` counts. Any other value (including `true`, `yes`, `on`) is ignored. |
 > | `--cache-ttl <hours>` | Overrides the default TTL for this invocation. |
 > | `AZ_CACHE_TTL_HOURS` | Env-fallback TTL override. |
 >
@@ -175,7 +175,7 @@ if (!opts.NoCache && responseBuilder != null)
 
 #### Never-cache gates (shipped)
 
-The cache is bypassed — regardless of `--cache` or `AZ_CACHE` — for any of the following:
+The cache is bypassed -- regardless of `--cache` or `AZ_CACHE` -- for any of the following:
 
 - `--agent` (tool execution is non-deterministic)
 - `--ralph` (each iteration depends on the prior)
@@ -213,12 +213,12 @@ The cache is bypassed — regardless of `--cache` or `AZ_CACHE` — for any of t
 | Eviction | LRU when full | Most-recently-used responses survive |
 | Temperature threshold | Cache all | Even non-zero temperatures are useful for repeated prompts within a session |
 
-#### Deviation #3 — why mtime instead of access-time LRU
+#### Deviation #3 -- why mtime instead of access-time LRU
 
 Strict access-time LRU requires **writing to each file on read** (either the file's atime, or a sidecar index). That has two costs:
 
-1. **Perms roundtrip** — the 0600 contract means every hit-path read would need to re-assert perms after a write. More code, more failure modes.
-2. **Hit-path latency** — the cache's entire point is sub-5ms hits. Adding a write per read defeats it, especially on slow filesystems or encrypted home dirs.
+1. **Perms roundtrip** -- the 0600 contract means every hit-path read would need to re-assert perms after a write. More code, more failure modes.
+2. **Hit-path latency** -- the cache's entire point is sub-5ms hits. Adding a write per read defeats it, especially on slow filesystems or encrypted home dirs.
 
 mtime-based eviction uses `LastWriteTimeUtc` (stamped only on `Put`) as a recency proxy. It evicts **entries no one has re-queried recently enough to rewrite**, which is functionally close to LRU for the Espanso workload where a cache miss is what produces a fresh write.
 
@@ -229,7 +229,7 @@ An opt-in true-LRU mode is captured in follow-ups below.
 For `temperature > 0`, the API returns non-deterministic responses. The cache still helps because:
 
 1. **Within a session**, a user often wants the *same* response they got 5 minutes ago (e.g., re-expanding a trigger that didn't paste correctly)
-2. **For Espanso**, consistency matters more than variety — if the expansion gave a good answer, repeating the trigger should give the same answer
+2. **For Espanso**, consistency matters more than variety -- if the expansion gave a good answer, repeating the trigger should give the same answer
 3. The `--no-cache` flag provides an escape hatch for users who want a fresh response
 
 ### The `PromptCache` Class
@@ -266,7 +266,7 @@ internal static class PromptCache
             }
             return entry;
         }
-        catch { return null; }  // Corrupt cache entry — treat as miss
+        catch { return null; }  // Corrupt cache entry -- treat as miss
     }
 
     public static void Put(string key, string response, int? inputTokens, int? outputTokens, int ttlHours = 24)
@@ -293,11 +293,11 @@ Register in `JsonGenerationContext.cs`:
 
 ## What About Agent Mode?
 
-> **As shipped:** the never-cache list is broader than just agent/ralph. See the *Never-cache gates* table above — `--persona`, `--json`, `--schema`, and `--estimate` also bypass the cache, as do empty responses and errors.
+> **As shipped:** the never-cache list is broader than just agent/ralph. See the *Never-cache gates* table above -- `--persona`, `--json`, `--schema`, and `--estimate` also bypass the cache, as do empty responses and errors.
 
 Agent mode (`--agent`) should **bypass the cache entirely**. Agent responses depend on real-time tool execution (file contents, shell output, clipboard, web fetches) that change between invocations. Caching an agent response would return stale tool results.
 
-Ralph mode (`--ralph`) similarly bypasses the cache — each iteration depends on the previous iteration's output.
+Ralph mode (`--ralph`) similarly bypasses the cache -- each iteration depends on the previous iteration's output.
 
 The cache only applies to **standard single-shot mode** (the Espanso/AHK primary path).
 
@@ -337,14 +337,14 @@ Legacy `azureopenai-cli/` paths below are preserved from the original proposal f
 |---|---|
 | `azureopenai-cli/PromptCache.cs` | New file: cache implementation |
 | `azureopenai-cli/JsonGenerationContext.cs` | Add `CachedResponse` record + `[JsonSerializable]` |
-| `azureopenai-cli/Program.cs` (line 574–715) | Insert cache check before API call, cache write after response |
+| `azureopenai-cli/Program.cs` (line 574-715) | Insert cache check before API call, cache write after response |
 | `azureopenai-cli/Program.cs` (ParseCliFlags) | Add `--no-cache`, `--cache-ttl`, `--cache-clear` flags |
 
 ---
 
 ## Exit Criteria
 
-> **As shipped — all met:**
+> **As shipped -- all met:**
 >
 > - [x] Identical prompts return cached response in <10ms (measured in `PromptCacheTests`).
 > - [x] Cache is **opt-in** via `--cache` / `AZ_CACHE=1`; default omits the cache entirely.
@@ -355,7 +355,7 @@ Legacy `azureopenai-cli/` paths below are preserved from the original proposal f
 > - [x] `CachedResponse` uses source-generated JSON via `AppJsonContext` (AOT-compatible, per FR-006).
 > - [x] Total cache size stays under **50 MB** via mtime-based eviction of oldest 20%.
 > - [x] Key derivation excludes endpoint and API key (`ToolHardeningTests.ComputeKey_Ignores_Endpoint_And_ApiKey_By_Design`).
-> - [ ] `--cache-clear` — **deferred** (see follow-ups).
+> - [ ] `--cache-clear` -- **deferred** (see follow-ups).
 
 **Originally proposed checklist (preserved):**
 
@@ -375,10 +375,10 @@ Legacy `azureopenai-cli/` paths below are preserved from the original proposal f
 
 The following were scoped out of the v2.0.0 ship but are worth their own proposals:
 
-1. **`--cache-prewarm <file>`** — a subcommand that reads a file of prompts (one per line, or a structured YAML) and populates the cache ahead of time. Targets Espanso power-users who want first-call latency on known trigger sets (onboarding, demos, conference talks).
+1. **`--cache-prewarm <file>`** -- a subcommand that reads a file of prompts (one per line, or a structured YAML) and populates the cache ahead of time. Targets Espanso power-users who want first-call latency on known trigger sets (onboarding, demos, conference talks).
 
-2. **`--cache-clear`** — a subcommand to wipe the cache directory without shelling out to `rm`. Simple, but the v2.0.0 ship deliberately deferred any destructive cache-management surface until the read/write path had settled. Current workaround: delete the directory manually.
+2. **`--cache-clear`** -- a subcommand to wipe the cache directory without shelling out to `rm`. Simple, but the v2.0.0 ship deliberately deferred any destructive cache-management surface until the read/write path had settled. Current workaround: delete the directory manually.
 
-3. **Access-time LRU mode** — an opt-in `--cache-lru=atime` flag (or `AZ_CACHE_LRU=atime`) that re-stamps `LastWriteTimeUtc` on cache hits, converting mtime-based eviction into true LRU. Off by default because it re-introduces the hit-path write cost documented in deviation #3. Worth offering for users with enormous cache dirs and long-tail access patterns.
+3. **Access-time LRU mode** -- an opt-in `--cache-lru=atime` flag (or `AZ_CACHE_LRU=atime`) that re-stamps `LastWriteTimeUtc` on cache hits, converting mtime-based eviction into true LRU. Off by default because it re-introduces the hit-path write cost documented in deviation #3. Worth offering for users with enormous cache dirs and long-tail access patterns.
 
-4. **Telemetry counters** — when FR-XXX telemetry lands (`--telemetry`), emit `cache.hit` / `cache.miss` counters and a `cache.latency.ms` histogram. Gives users (and us) real data on hit rates instead of anecdote. Must remain strictly opt-in under `--telemetry`; the cache itself must never phone home.
+4. **Telemetry counters** -- when FR-XXX telemetry lands (`--telemetry`), emit `cache.hit` / `cache.miss` counters and a `cache.latency.ms` histogram. Gives users (and us) real data on hit rates instead of anecdote. Must remain strictly opt-in under `--telemetry`; the cache itself must never phone home.

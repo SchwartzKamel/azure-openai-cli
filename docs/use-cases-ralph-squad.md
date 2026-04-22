@@ -2,22 +2,22 @@
 
 > **Binary:** `az-ai`
 > **Required environment variables:** `AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`,
-> `AZUREOPENAIMODEL` — see [`prerequisites.md`](prerequisites.md).
+> `AZUREOPENAIMODEL` -- see [`prerequisites.md`](prerequisites.md).
 
 ---
 
-## Part 1 — Ralph Mode
+## Part 1 -- Ralph Mode
 
 Ralph mode (autonomous Wiggum loop) is an **autonomous self-correcting loop**. It runs an agentic task, optionally validates the result with
 an external command, and if validation fails, feeds the error output back into
-the next iteration — repeating until the task passes or the iteration budget is
+the next iteration -- repeating until the task passes or the iteration budget is
 exhausted.
 
 ### How the Loop Works
 
 Ralph runs the agent, then (optionally) runs your `--validate` command. Exit 0 → done. Non-zero → feed stderr back as context, retry. Bounded by `--max-iterations`.
 
-Each iteration is **stateless** — the full task prompt plus accumulated error
+Each iteration is **stateless** -- the full task prompt plus accumulated error
 context is sent fresh every time, so the model never inherits a corrupted
 conversation history.
 
@@ -29,7 +29,7 @@ The `--ralph` flag enables the loop. Ralph automatically implies agentic mode
 (`--agent`), so the model has full access to tools (shell, file I/O, web,
 datetime).
 
-**Basic usage — ask Ralph to complete a coding task:**
+**Basic usage -- ask Ralph to complete a coding task:**
 
 ```bash
 az-ai --ralph "Create a Python function that parses ISO 8601 dates with timezone support"
@@ -43,7 +43,7 @@ az-ai --ralph "Create a Python function that parses ISO 8601 dates with timezone
 4. Exit 0 → success; exit ≠ 0 → Ralph re-attempts with error context.
 
 ```
-🔁 Ralph mode — Wiggum loop active
+🔁 Ralph mode -- Wiggum loop active
    Max iterations: 10
 
 ━━━ Iteration 1/10 ━━━
@@ -92,7 +92,7 @@ az-ai --ralph --validate "docker build -t myapp ." \
 **Validation flow (example with `dotnet test`):**
 
 ```
-🔁 Ralph mode — Wiggum loop active
+🔁 Ralph mode -- Wiggum loop active
    Validate: dotnet test
    Max iterations: 10
 
@@ -169,11 +169,11 @@ Controls how many times Ralph will retry before giving up. Accepts values from
 **1 to 50** (default: **10**).
 
 ```bash
-# Quick fix — give Ralph only 3 tries
+# Quick fix -- give Ralph only 3 tries
 az-ai --ralph --max-iterations 3 --validate "cargo test" \
   "Fix the lifetime error in lib.rs"
 
-# Complex migration — allow more iterations
+# Complex migration -- allow more iterations
 az-ai --ralph --max-iterations 25 --validate "dotnet build" \
   --task-file migration-plan.md
 
@@ -230,7 +230,7 @@ Validation output (truncated at 2 000 chars):
 ## Iteration 2
 **Prompt:** Fix the NullReferenceException in UserService.cs
 
-[Iteration 1 — validation FAILED]
+[Iteration 1 -- validation FAILED]
 [Validation command: dotnet test]
 [Exit code: 1]
 [Validation output]:
@@ -252,7 +252,7 @@ don't want it checked in.
 
 ```bash
 az-ai --ralph --validate "dotnet test" \
-  "Fix the NullReferenceException in UserService.cs — the GetUser method
+  "Fix the NullReferenceException in UserService.cs -- the GetUser method
    returns null when the database query finds no match but the caller
    doesn't check for null."
 ```
@@ -274,7 +274,7 @@ build + tests, and loops until both pass.
 
 ```bash
 az-ai --ralph --validate "docker build -t myapp ." \
-  "Fix the Dockerfile so it builds successfully — currently failing
+  "Fix the Dockerfile so it builds successfully -- currently failing
    on the COPY step because the build context is wrong."
 ```
 
@@ -295,16 +295,16 @@ az-ai --ralph --max-iterations 20 \
 
 ```bash
 az-ai --ralph --validate "npx eslint src/ --max-warnings 0" \
-  "Refactor src/utils/helpers.js — split it into separate modules
+  "Refactor src/utils/helpers.js -- split it into separate modules
    under src/utils/ with one function per file. Keep all exports
    backward-compatible."
 ```
 
 ---
 
-## Part 2 — Squad / Persona System
+## Part 2 -- Squad / Persona System
 
-The Squad system gives `az-ai` **persistent, role-specific personas** — each
+The Squad system gives `az-ai` **persistent, role-specific personas** -- each
 with its own system prompt, tool set, and accumulated memory. Think of it as a
 team of specialists that live in your repo.
 
@@ -355,7 +355,7 @@ Use `--persona` to invoke a specific persona. The persona's system prompt
 replaces the default, and its tool set is applied. Persona mode automatically
 enables agentic mode.
 
-#### Coder — Software Engineer
+#### Coder -- Software Engineer
 
 ```bash
 az-ai --persona coder "Implement a binary search in Python with type hints"
@@ -368,7 +368,7 @@ az-ai --persona coder "Implement a binary search in Python with type hints"
 The coder writes clean, tested, production-ready code. It follows existing
 project conventions and prefers small, focused changes.
 
-#### Reviewer — Code Reviewer
+#### Reviewer -- Code Reviewer
 
 ```bash
 az-ai --persona reviewer "Review this PR for security issues"
@@ -382,7 +382,7 @@ The reviewer focuses on bugs, logic errors, security vulnerabilities, and
 performance issues. It cites specific line numbers and suggests fixes. It
 ignores style/formatting unless it hides a bug.
 
-#### Architect — System Architect
+#### Architect -- System Architect
 
 ```bash
 az-ai --persona architect "Design a microservice for user authentication"
@@ -396,7 +396,7 @@ The architect thinks about separation of concerns, extensibility, scalability,
 and operational complexity. It proposes designs with diagrams and documents
 trade-offs. Important decisions are logged to `.squad/decisions.md`.
 
-#### Writer — Technical Writer
+#### Writer -- Technical Writer
 
 ```bash
 az-ai --persona writer "Write docs for the /api/v2/users endpoint"
@@ -410,7 +410,7 @@ The writer creates documentation that is accurate (verified against actual
 code), scannable (headers, tables, code blocks), and complete (happy path +
 edge cases).
 
-#### Security — Security Auditor
+#### Security -- Security Auditor
 
 ```bash
 az-ai --persona security "Audit this codebase for vulnerabilities"
@@ -471,7 +471,7 @@ az-ai --persona auto "Review and check the new middleware for issues"
 az-ai --persona auto "Design the architecture for a system that needs to scale"
 
 # Matches "document" + "docs" → writer (2 keyword hits)
-az-ai --persona auto "Document the new API — update the docs folder"
+az-ai --persona auto "Document the new API -- update the docs folder"
 
 # Matches "security" + "vulnerability" → security (2 keyword hits)
 az-ai --persona auto "Check for security vulnerabilities in our dependencies"
@@ -517,7 +517,7 @@ No .squad.json found. Run --squad-init first.
 ### 11. Persona Memory (`.squad/history/`)
 
 Each persona accumulates knowledge across sessions. Memory is stored as
-Markdown files in `.squad/history/` — one file per persona.
+Markdown files in `.squad/history/` -- one file per persona.
 
 **How it works:**
 
@@ -539,19 +539,19 @@ cat .squad/history/reviewer.md
 **Sample `.squad/history/coder.md`:**
 
 ```markdown
-## Session — 2025-01-15 09:23 UTC
+## Session -- 2025-01-15 09:23 UTC
 **Task:** Implement binary search in Python with type hints
 **Result:** Created `src/search.py` with generic `binary_search[T]` function.
 Used `typing.Protocol` for the `Comparable` constraint.
 
-## Session — 2025-01-16 14:07 UTC
+## Session -- 2025-01-16 14:07 UTC
 **Task:** Add pagination to the /api/users endpoint
 **Result:** Added `offset` and `limit` query params. Default limit is 50, max
 is 200. Updated OpenAPI spec.
 ```
 
 **Memory is capped at 32 KB per persona.** When the history file exceeds this
-limit, the oldest entries are truncated (the tail — most recent learnings — is
+limit, the oldest entries are truncated (the tail -- most recent learnings -- is
 kept).
 
 **Shared decisions log:**
@@ -568,7 +568,7 @@ cat .squad/decisions.md
 
 Shared decision log across all personas.
 
-### 2025-01-15 10:45 UTC — architect
+### 2025-01-15 10:45 UTC -- architect
 Decided to use PostgreSQL over MongoDB for the user service. Rationale:
 relational model fits the user-role-permission hierarchy better; JOIN
 performance matters more than document flexibility for our access patterns.
@@ -600,7 +600,7 @@ structure of a persona entry:
       "name": "data-scientist",
       "role": "Data Scientist",
       "description": "Analyzes data, builds models, creates visualizations.",
-      "system_prompt": "You are a data scientist. Focus on: (1) data cleaning and validation, (2) statistical rigor, (3) reproducible analysis, (4) clear visualizations. Use pandas, numpy, and scikit-learn. Always state assumptions. Show your work — include the reasoning behind model choices.",
+      "system_prompt": "You are a data scientist. Focus on: (1) data cleaning and validation, (2) statistical rigor, (3) reproducible analysis, (4) clear visualizations. Use pandas, numpy, and scikit-learn. Always state assumptions. Show your work -- include the reasoning behind model choices.",
       "tools": ["shell", "file"],
       "model": null
     },
@@ -635,14 +635,14 @@ structure of a persona entry:
 
 **Key points:**
 
-- **`name`** — what you pass to `--persona`. Case-insensitive.
-- **`role`** — displayed in the `🎭 Persona:` banner.
-- **`system_prompt`** — replaces the default system prompt entirely.
-- **`tools`** — restricts which tools the persona can use (options: `shell`,
+- **`name`** -- what you pass to `--persona`. Case-insensitive.
+- **`role`** -- displayed in the `🎭 Persona:` banner.
+- **`system_prompt`** -- replaces the default system prompt entirely.
+- **`tools`** -- restricts which tools the persona can use (options: `shell`,
   `file`, `web`, `datetime`).
-- **`model`** — optionally override the deployment model for this persona
+- **`model`** -- optionally override the deployment model for this persona
   (set to `null` to use the default `AZUREOPENAIMODEL`).
-- **`routing.pattern`** — comma-separated keywords for auto-routing.
+- **`routing.pattern`** -- comma-separated keywords for auto-routing.
 
 After editing, use the new persona immediately:
 
@@ -705,7 +705,7 @@ az-ai --ralph --persona coder \
 # DevOps persona fixing a CI pipeline (requires custom persona from §12)
 az-ai --ralph --persona devops \
   --validate "act -j build" \
-  "Fix the GitHub Actions workflow — the build job is failing"
+  "Fix the GitHub Actions workflow -- the build job is failing"
 ```
 
 #### Auto-Routed Complex Request
@@ -732,23 +732,23 @@ az-ai --persona auto \
 #### Full Project Lifecycle with Auto-Routing
 
 ```bash
-# Planning phase — routes to architect
+# Planning phase -- routes to architect
 az-ai --persona auto "Design the system architecture for a URL shortener"
 
-# Implementation — routes to coder
+# Implementation -- routes to coder
 az-ai --persona auto "Implement the URL shortener based on the design"
 
-# Validation — coder + ralph for self-correction
+# Validation -- coder + ralph for self-correction
 az-ai --ralph --persona coder --validate "go test ./..." \
   "Implement and test the URL shortener redirect logic"
 
-# Documentation — routes to writer
+# Documentation -- routes to writer
 az-ai --persona auto "Document the URL shortener API endpoints"
 
-# Security review — routes to security
+# Security review -- routes to security
 az-ai --persona auto "Check the URL shortener for security vulnerabilities"
 
-# Final review — routes to reviewer
+# Final review -- routes to reviewer
 az-ai --persona auto "Review the complete URL shortener implementation for quality"
 ```
 
@@ -758,11 +758,11 @@ az-ai --persona auto "Review the complete URL shortener implementation for quali
 
 | Flag                      | Description                                      | Requires         |
 |---------------------------|--------------------------------------------------|------------------|
-| `--ralph`                 | Enable autonomous self-correcting loop            | —                |
+| `--ralph`                 | Enable autonomous self-correcting loop            | --                |
 | `--validate <cmd>`        | External validation command (exit 0 = pass)       | `--ralph`        |
-| `--task-file <path>`      | Read task prompt from a file                      | —                |
+| `--task-file <path>`      | Read task prompt from a file                      | --                |
 | `--max-iterations <1-50>` | Max Ralph loop iterations (default: 10)           | `--ralph`        |
-| `--squad-init`            | Initialize `.squad.json` and `.squad/` directory  | —                |
+| `--squad-init`            | Initialize `.squad.json` and `.squad/` directory  | --                |
 | `--persona <name>`        | Use a named persona (enables agentic mode)        | `.squad.json`    |
 | `--persona auto`          | Auto-route to best persona by keyword match       | `.squad.json`    |
 | `--personas`              | List all available personas                       | `.squad.json`    |

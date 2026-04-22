@@ -1,6 +1,6 @@
 # Emoji alt-text policy
 
-> *If a screen reader can't tell me what that 🚀 means, it's just noise.* — M.A.
+> *If a screen reader can't tell me what that 🚀 means, it's just noise.* -- M.A.
 
 This appendix is the project-wide alt-text and emoji policy. It pairs
 with the `emoji-alt-text` todo (scheduled for a later wave) and is the
@@ -11,7 +11,7 @@ The short version, memorized first:
 > **Every emoji must be redundant with adjacent text. Strip the emoji
 > and the meaning survives. No emoji-only signals, ever.**
 
-That is the rule. Sections 1–5 spell out what it means in practice.
+That is the rule. Sections 1-5 spell out what it means in practice.
 
 ---
 
@@ -31,20 +31,20 @@ That is the rule. Sections 1–5 spell out what it means in practice.
 
 ---
 
-## 2. Redundant-with-text — what it looks like
+## 2. Redundant-with-text -- what it looks like
 
 ### 2.1 Status signals
 
 **Do:**
 
 ```
-✅ PASS — 247 tests green
-🟡 CONCERN — 3 flaky tests, see #412
-🔴 FAIL — build broken on main
+✅ PASS -- 247 tests green
+🟡 CONCERN -- 3 flaky tests, see #412
+🔴 FAIL -- build broken on main
 ```
 
 A screen reader that renders emoji announces "white heavy check mark
-PASS" — the "PASS" carries the load; the emoji is garnish.
+PASS" -- the "PASS" carries the load; the emoji is garnish.
 
 **Don't:**
 
@@ -64,9 +64,9 @@ zero semantic cargo. Add `PASS` / `WARN` / `FAIL` text.
 **Do:**
 
 ```markdown
-- 🚀 **Fast cold start** — 5.4 ms on `az-ai --version`.
-- 🔒 **Security hardened** — no outbound calls at startup.
-- ⌨️ **Keyboard-only friendly** — Espanso / AHK / `$EDITOR`.
+- 🚀 **Fast cold start** -- 5.4 ms on `az-ai --version`.
+- 🔒 **Security hardened** -- no outbound calls at startup.
+- ⌨️ **Keyboard-only friendly** -- Espanso / AHK / `$EDITOR`.
 ```
 
 Strip the emoji: the bullets still read as a feature list. That is
@@ -81,7 +81,7 @@ the test.
 ```
 
 Terse-as-a-tweet. Strip the emoji and the meaning collapses. A screen
-reader user gets "rocket five point four milliseconds" — is that
+reader user gets "rocket five point four milliseconds" -- is that
 speed, memory, latency, cost?
 
 ---
@@ -139,8 +139,8 @@ prose transcript for the commands.
 ## 4. Forbidden patterns
 
 - **Emoji-as-section-marker without a text heading.**
-  `## 🚀` — the screen reader announces "rocket"; no section name.
-- **Emoji in links.** `[🚀](docs/fast.md)` — the link name is one
+  `## 🚀` -- the screen reader announces "rocket"; no section name.
+- **Emoji in links.** `[🚀](docs/fast.md)` -- the link name is one
   glyph; TTS has nothing to announce but the codepoint.
 - **Emoji in file names.** `docs/🚀fast.md` breaks shell completion,
   breaks some filesystems, breaks grep output.
@@ -173,15 +173,15 @@ If every box is ticked: ship it. If not: fix, then ship.
 
 ## 6. Cross-links
 
-- [`docs/accessibility.md`](../accessibility.md) §1 and §5 —
+- [`docs/accessibility.md`](../accessibility.md) §1 and §5 --
   higher-level commitments.
-- [`docs/accessibility/help-text-tone.md`](help-text-tone.md) — why
+- [`docs/accessibility/help-text-tone.md`](help-text-tone.md) -- why
   `--help` is emoji-free.
 - [`.github/contracts/color-contract.md`](../../.github/contracts/color-contract.md)
-  — if present, the coded policy.
-- [`docs/demos/README.md`](../demos/README.md) — alt-text rule as
+  -- if present, the coded policy.
+- [`docs/demos/README.md`](../demos/README.md) -- alt-text rule as
   applied to screencasts and GIFs.
 
 ---
 
-*Every emoji pays rent in text. No rent, no room.* — M.A.
+*Every emoji pays rent in text. No rent, no room.* -- M.A.

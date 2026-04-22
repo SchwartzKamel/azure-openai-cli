@@ -1,12 +1,12 @@
-# FinOps Runbook — Monthly Review
+# FinOps Runbook -- Monthly Review
 
-> *"It's the ones you don't know about that buy the boat."* — Morty
+> *"It's the ones you don't know about that buy the boat."* -- Morty
 >
 > This is how you know about them.
 
 **Audience:** whoever is on FinOps rotation this month (default: Morty).
 Budget: ~45 minutes of focused work on the 1st business day of each
-month. If it's taking two hours, the tooling is broken — file an issue,
+month. If it's taking two hours, the tooling is broken -- file an issue,
 don't power through.
 
 **Outcome:** a short review note posted to the repo (issue or wiki)
@@ -15,10 +15,10 @@ one-line verdict (`green` / `yellow` / `red`), and any ADR drafts
 triggered by the findings.
 
 **Related docs:**
-- [`docs/cost-optimization.md`](../cost-optimization.md) — the playbook
-- [`docs/cost/pricing-sourcing.md`](../cost/pricing-sourcing.md) —
+- [`docs/cost-optimization.md`](../cost-optimization.md) -- the playbook
+- [`docs/cost/pricing-sourcing.md`](../cost/pricing-sourcing.md) --
   where the per-model rates come from
-- [`docs/ops/v2-sre-runbook.md`](../ops/v2-sre-runbook.md) — the
+- [`docs/ops/v2-sre-runbook.md`](../ops/v2-sre-runbook.md) -- the
   `+15% over 48h` cost-regression alert lives here
 
 ---
@@ -61,7 +61,7 @@ Stop if the account or resource isn't what you expected.
 
 ## 2. Pull usage from Azure Cost Analysis
 
-Two sources of truth. You want **both** — they should agree to within
+Two sources of truth. You want **both** -- they should agree to within
 rounding. If they don't, that's a finding.
 
 ### 2a. Azure Cost Management (the bill)
@@ -105,13 +105,13 @@ az costmanagement query \
 ```
 
 Record the total, the top-3 meters, and the number of distinct
-meters. "Too many distinct meters" is itself a yellow flag — see §5.
+meters. "Too many distinct meters" is itself a yellow flag -- see §5.
 
 ### 2b. Stderr token-count summation (ground truth for the CLI)
 
 Every `az-ai` invocation emits a `[tokens: X→Y, Z total]` line on
 stderr (see [`cost-optimization.md §2`](../cost-optimization.md)).
-If your team pipes stderr to a log sink — and they should — sum it:
+If your team pipes stderr to a log sink -- and they should -- sum it:
 
 ```bash
 # Adjust path to wherever stderr lands. Example: per-user log files.
@@ -121,7 +121,7 @@ zcat ~/.local/share/az-ai/logs/${MONTH}-*.log.gz 2>/dev/null \
        END {printf "calls=%d input=%d output=%d total=%d\n", n, in_t, out_t, tot}'
 ```
 
-If no log sink is configured, that's a finding — open an issue tagged
+If no log sink is configured, that's a finding -- open an issue tagged
 `finops/observability-gap`. The monthly review cannot be done well
 without one.
 
@@ -133,10 +133,10 @@ Compare to 2a's total.
 
 | Reconciliation case | Interpretation | Action |
 |---|---|---|
-| Within ±5% | Normal — rounding, rate rotation mid-month, Batch API skew | Note and proceed |
+| Within ±5% | Normal -- rounding, rate rotation mid-month, Batch API skew | Note and proceed |
 | 2b < 2a by > 10% | Spend the CLI can't see: portal experiments, other tools on the same resource, or a forgotten deployment | Investigate the extra meters; add to next review |
-| 2b > 2a by > 10% | Stale rates in `pricing-sourcing.md` — we *think* we're paying more than we are | Run a pricing drift check (see `pricing-sourcing.md §2`) |
-| Within 5% **but** total up > 15% MoM | Real usage growth or an anomaly — see §3 | Investigate |
+| 2b > 2a by > 10% | Stale rates in `pricing-sourcing.md` -- we *think* we're paying more than we are | Run a pricing drift check (see `pricing-sourcing.md §2`) |
+| Within 5% **but** total up > 15% MoM | Real usage growth or an anomaly -- see §3 | Investigate |
 
 ---
 
@@ -146,13 +146,13 @@ Walk the top-3 meters from §2a. For each:
 
 1. **MoM delta.** Compare last-month to 3-month trailing average.
    - `< ±10%`: green, no action
-   - `±10%–±25%`: yellow — note in the review; compare to headcount
+   - `±10%-±25%`: yellow -- note in the review; compare to headcount
      or traffic growth to see if it's proportional
-   - `> ±25%`: red — investigate before closing the review. Common
+   - `> ±25%`: red -- investigate before closing the review. Common
      causes and triage below.
 2. **Per-call spend.** Divide meter total by the call count from 2b.
    If per-call cost jumped and call count didn't, the *prompt* got
-   heavier — see `cost-optimization.md §4`. If both jumped, it's
+   heavier -- see `cost-optimization.md §4`. If both jumped, it's
    traffic.
 3. **Ralph / agent fan-out.** Ralph mode iterates up to
    `--max-iterations` (default 10, hard cap 50). A Ralph outage
@@ -167,7 +167,7 @@ Walk the top-3 meters from §2a. For each:
 | Input-token spike, call count flat | Persona memory bloat (32 KB cap rarely hit; more often a 20 KB tail that grew 5 KB MoM) or longer stable system prompt | `cost-optimization.md §4 "Shave the system prompt"`; `§4 "Respect the 32 KB persona memory cap"` |
 | Call count spike | New workflow shipped, new user onboarded, Espanso macro firing on a hot path, or a Ralph loop runaway | Check CHANGELOG for new features touching `--espanso` or agent mode |
 | Premium-model meter (`gpt-4.1` / `gpt-4o`) appears where it shouldn't | `AZURE_DEPLOYMENT` env leaked from a dev's `.env` into a shared workflow, or an explicit `--model` override in a script | Grep CI configs and shared scripts for `gpt-4.1` / `gpt-4o` |
-| Cached Input ratio drops | Unstable prefix — someone moved a changing field to the front of the system prompt and broke prefix match | `cost-optimization.md §5.1 "what qualifies"` |
+| Cached Input ratio drops | Unstable prefix -- someone moved a changing field to the front of the system prompt and broke prefix match | `cost-optimization.md §5.1 "what qualifies"` |
 | Batch API meter absent where it should be present (Ralph-validator, nightly doc-audit) | `--batch` not wired to async workloads | `cost-optimization.md §5.2` |
 | Ralph cost multiplier out of expected range | See `cost-optimization.md §6.7` and compare `N × single + prompt_growth × N²` |
 
@@ -216,7 +216,7 @@ Post to the repo. One issue per month, label `finops/monthly-review`.
 Template:
 
 ```markdown
-## FinOps review — YYYY-MM
+## FinOps review -- YYYY-MM
 
 **Verdict:** green | yellow | red
 **Total spend:** $X.XX  (MoM: +/-Y%, vs 3-mo avg: +/-Z%)
@@ -224,7 +224,7 @@ Template:
 **Reconciliation (cost-mgmt vs stderr*rates):** within K%
 
 **Top 3 meters**
-1. <meter> — $X.XX (+/-%)
+1. <meter> -- $X.XX (+/-%)
 2. ...
 3. ...
 
@@ -272,4 +272,4 @@ In December's review, additionally:
 *"Get the documentation truthful, get the caching turned on, get the
 Batch API attached to the async jobs. Then when somebody asks
 'where'd the money go?' you'll have an answer that isn't 'I think
-Kramer did something.'"* — Morty
+Kramer did something.'"* -- Morty

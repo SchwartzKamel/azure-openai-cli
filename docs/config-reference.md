@@ -1,4 +1,4 @@
-# `.azureopenai-cli.json` — Config Reference
+# `.azureopenai-cli.json` -- Config Reference
 
 A local JSON file that lets you define model aliases, a default model, and
 preference defaults so you don't have to pass `--model`, `--temperature`,
@@ -62,12 +62,12 @@ for a drop-in starter. The full schema:
 |---|---|---|---|
 | `models` | `{ alias: deployment }` | `{}` | Alias → Azure deployment name. Used by `--model <alias>`. Alias is arbitrary; deployment must match the name in your Azure OpenAI resource. |
 | `default_model` | string | `null` | Which alias in `models` to use when `--model` and `AZUREOPENAIMODEL` are both unset. |
-| `defaults.temperature` | float | model default | `0.0`–`2.0`. |
+| `defaults.temperature` | float | model default | `0.0`-`2.0`. |
 | `defaults.max_tokens` | int | model default | Caps completion length. gpt-5/o1/o3 enforce this as `max_completion_tokens` on the wire. |
 | `defaults.timeout_seconds` | int | `90` | Request timeout. |
 | `defaults.system_prompt` | string | none | Prepended to every request. Override per-call with `--system-prompt`. |
 
-All `defaults.*` fields are **nullable** — omit a field to use the built-in
+All `defaults.*` fields are **nullable** -- omit a field to use the built-in
 default instead of forcing `null`.
 
 ---
@@ -76,9 +76,9 @@ default instead of forcing `null`.
 
 Looked up in this order (first match wins):
 
-1. `--config <path>` — explicit override
-2. `./.azureopenai-cli.json` — project-local (e.g., a repo's own config)
-3. `~/.azureopenai-cli.json` — user-global
+1. `--config <path>` -- explicit override
+2. `./.azureopenai-cli.json` -- project-local (e.g., a repo's own config)
+3. `~/.azureopenai-cli.json` -- user-global
 4. Built-in defaults (no file)
 
 Project-local files override the user-global file, which is handy for
@@ -94,11 +94,11 @@ local users on shared machines.
 
 When resolving a setting, the CLI checks, in order (first wins):
 
-1. **CLI flag** — e.g., `--model`, `--temperature`, `--max-tokens`
-2. **Environment variable** — e.g., `AZUREOPENAIMODEL` for the model name
-3. **Project-local config** — `./.azureopenai-cli.json`
-4. **User-global config** — `~/.azureopenai-cli.json`
-5. **Built-in default** — `gpt-4o-mini` for model, provider defaults for rest
+1. **CLI flag** -- e.g., `--model`, `--temperature`, `--max-tokens`
+2. **Environment variable** -- e.g., `AZUREOPENAIMODEL` for the model name
+3. **Project-local config** -- `./.azureopenai-cli.json`
+4. **User-global config** -- `~/.azureopenai-cli.json`
+5. **Built-in default** -- `gpt-4o-mini` for model, provider defaults for rest
 
 Example:
 
@@ -161,7 +161,7 @@ cp /mnt/c/Users/<YourName>/.azureopenai-cli.json ~/
 
 If you run **both** `az-ai` (Windows binary via espanso) and `az-ai-v2`
 (Linux binary from WSL) from the same keyboard, keep the two files in
-sync — a symlink is the zero-maintenance option.
+sync -- a symlink is the zero-maintenance option.
 
 ### 2. File permissions surprise on `/mnt/c/...`
 
@@ -256,21 +256,21 @@ this config file consistently across both hosts.
 - **Never put your API key or endpoint in this file.** Use the
   `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` environment variables.
   The CLI intentionally provides no config-file slot for credentials
-  — config files get committed, shared, or synced; env vars don't.
+  -- config files get committed, shared, or synced; env vars don't.
 - **`system_prompt` is not secret.** It's echoed by `--config show`
   and included in request bodies that can be captured by Fiddler /
   Wireshark / network telemetry. Treat it as public.
 - **Team-shared project configs** (a `./.azureopenai-cli.json`
   checked in with a repo) should contain only model aliases and
-  `defaults.system_prompt` for that project — never anything user-
+  `defaults.system_prompt` for that project -- never anything user-
   specific.
 
 ---
 
 ## See also
 
-- [Prerequisites](prerequisites.md) — environment variables
+- [Prerequisites](prerequisites.md) -- environment variables
 - [Use cases: config integration](use-cases-config-integration.md)
-- [Espanso + AHK integration](espanso-ahk-integration.md) — Path A/B,
+- [Espanso + AHK integration](espanso-ahk-integration.md) -- Path A/B,
   full WSL wiring
-- [Observability](observability.md) — `--telemetry`, cost events
+- [Observability](observability.md) -- `--telemetry`, cost events

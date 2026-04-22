@@ -6,11 +6,11 @@ Azure OpenAI CLI is a secure, containerized command-line interface for interacti
 
 ### Design Philosophy
 
-- **Simplicity** — A single binary with no external runtime dependencies. Arguments are the prompt; the response streams to stdout.
-- **Speed** — Primary use case is AHK/Espanso text injection where latency matters. Without `--agent`, zero tool overhead.
-- **Security** — Runs as a non-root user inside a minimal Alpine container. Credentials injected at runtime via `--env-file`, never baked into images.
-- **Opt-in Complexity** — `--agent` activates tool-calling; without it, the CLI behaves identically to v1.0.
-- **Containerization** — Docker is the primary distribution mechanism, ensuring reproducible builds and isolated execution across Windows, macOS, and Linux.
+- **Simplicity** -- A single binary with no external runtime dependencies. Arguments are the prompt; the response streams to stdout.
+- **Speed** -- Primary use case is AHK/Espanso text injection where latency matters. Without `--agent`, zero tool overhead.
+- **Security** -- Runs as a non-root user inside a minimal Alpine container. Credentials injected at runtime via `--env-file`, never baked into images.
+- **Opt-in Complexity** -- `--agent` activates tool-calling; without it, the CLI behaves identically to v1.0.
+- **Containerization** -- Docker is the primary distribution mechanism, ensuring reproducible builds and isolated execution across Windows, macOS, and Linux.
 
 ---
 
@@ -47,15 +47,15 @@ flowchart LR
 
 ## 3. Component Details
 
-### Program.cs — Entry Point
+### Program.cs -- Entry Point
 
 `Program.cs` contains the entire request lifecycle in a single `Main` method plus helper methods for command routing.
 
 #### Startup sequence
 
-1. **Load `.env`** — Uses `dotenv.net` to read the `.env` file baked into the container, overwriting any pre-existing environment variables.
-2. **Load UserConfig** — Deserializes `~/.azureopenai-cli.json` (if it exists) to retrieve saved model preferences.
-3. **Initialize models** — Parses the `AZUREOPENAIMODEL` environment variable (comma-separated) and reconciles it with the persisted config.
+1. **Load `.env`** -- Uses `dotenv.net` to read the `.env` file baked into the container, overwriting any pre-existing environment variables.
+2. **Load UserConfig** -- Deserializes `~/.azureopenai-cli.json` (if it exists) to retrieve saved model preferences.
+3. **Initialize models** -- Parses the `AZUREOPENAIMODEL` environment variable (comma-separated) and reconciles it with the persisted config.
 
 #### `--json` output mode
 
@@ -78,7 +78,7 @@ The CLI detects piped input with `Console.IsInputRedirected` and reads it via `C
 |---|---|
 | Args only | `string.Join(' ', args)` |
 | Stdin only | Raw stdin content |
-| Stdin + args | `"{stdin}\n\n{args}"` — piped content first, then the user instruction |
+| Stdin + args | `"{stdin}\n\n{args}"` -- piped content first, then the user instruction |
 | Neither | Show usage / JSON error; exit `1` |
 
 The combined prompt is validated against `MAX_PROMPT_LENGTH` (32 000 chars) before being sent to the API.
@@ -123,7 +123,7 @@ While waiting for the first token from Azure, a braille spinner (`⠋⠙⠹⠸�
 | `--set-model <name>` | Validate the name against available models, persist the choice. | `0` (success) / `1` (error) |
 | `--version` / `-v` | Print assembly version. | `0` |
 | `--help` / `-h` | Print usage information. | `0` |
-| _(any other text)_ | Treated as a prompt — all args are joined with spaces. | `0` (success) / non-zero on error |
+| _(any other text)_ | Treated as a prompt -- all args are joined with spaces. | `0` (success) / non-zero on error |
 | _(no args)_ | Print usage information (or JSON error in `--json` mode). | `1` |
 
 #### Chat completion flow
@@ -134,7 +134,7 @@ While waiting for the first token from Azure, a braille spinner (`⠋⠙⠹⠸�
 4. Construct a `ChatCompletionOptions` with those values (`TopP=1.0`, `FrequencyPenalty=0.0`, `PresencePenalty=0.0`).
 5. Send a two-message conversation (`SystemChatMessage` + `UserChatMessage`) via `CompleteChatStreaming`, wrapped in a `CancellationTokenSource` with the configured timeout.
 6. Start the spinner on stderr (if TTY and not `--json` mode).
-7. Iterate `StreamingChatCompletionUpdate` chunks, writing each content part to stdout in real time — or collecting them in a `StringBuilder` when `--json` is active.
+7. Iterate `StreamingChatCompletionUpdate` chunks, writing each content part to stdout in real time -- or collecting them in a `StringBuilder` when `--json` is active.
 8. On completion in `--json` mode, emit the JSON result with model name, full response text, and elapsed milliseconds.
 
 #### Error handling & exit codes
@@ -145,14 +145,14 @@ Errors are caught at the top level and routed through `--json`-aware paths:
 |---|---|---|
 | `0` | Success | Streamed text or JSON result |
 | `1` | Validation / usage error (missing prompt, bad endpoint, prompt too long, unknown model) | `[ERROR]` on stderr or JSON error |
-| `2` | Azure API error (`RequestFailedException`) — includes HTTP status and human-readable detail for 401/403/404/429 | `[AZURE ERROR]` on stderr or JSON error |
-| `3` | Timeout (`OperationCanceledException`) — streaming exceeded `AZURE_TIMEOUT` seconds | `[ERROR]` on stderr or JSON error |
-| `130` | User interrupt (CTRL+C) — `Console.CancelKeyPress` signals the top-level CancellationToken; Ralph flushes `.ralph-log`, Persona records `[cancelled]` in memory | `[cancelled]` on stderr |
+| `2` | Azure API error (`RequestFailedException`) -- includes HTTP status and human-readable detail for 401/403/404/429 | `[AZURE ERROR]` on stderr or JSON error |
+| `3` | Timeout (`OperationCanceledException`) -- streaming exceeded `AZURE_TIMEOUT` seconds | `[ERROR]` on stderr or JSON error |
+| `130` | User interrupt (CTRL+C) -- `Console.CancelKeyPress` signals the top-level CancellationToken; Ralph flushes `.ralph-log`, Persona records `[cancelled]` in memory | `[cancelled]` on stderr |
 | `99` | Unhandled exception | `[UNHANDLED ERROR]` on stderr or JSON error |
 
 ---
 
-### UserConfig.cs — Configuration Manager
+### UserConfig.cs -- Configuration Manager
 
 `UserConfig` manages persistent user preferences, stored as JSON at `~/.azureopenai-cli.json`.
 
@@ -176,7 +176,7 @@ Errors are caught at the top level and routed through `--json`-aware paths:
 
 #### Thread safety
 
-`UserConfig` is **not** thread-safe. It is designed for single-threaded CLI use — one invocation reads, optionally mutates, and writes the config file. Concurrent container invocations could race on the JSON file, but this is acceptable given the CLI's usage pattern.
+`UserConfig` is **not** thread-safe. It is designed for single-threaded CLI use -- one invocation reads, optionally mutates, and writes the config file. Concurrent container invocations could race on the JSON file, but this is acceptable given the CLI's usage pattern.
 
 ---
 
@@ -184,13 +184,13 @@ Errors are caught at the top level and routed through `--json`-aware paths:
 
 ```mermaid
 flowchart TD
-    subgraph "Stage 1 — Build (dotnet/sdk:10.0)"
+    subgraph "Stage 1 -- Build (dotnet/sdk:10.0)"
         A[Copy .sln + project files] --> B[dotnet restore]
         B --> C["dotnet publish<br/>-r linux-musl-x64<br/>--self-contained<br/>PublishSingleFile<br/>PublishTrimmed"]
         C --> D["/app/AzureOpenAI_CLI<br/>(single binary)"]
     end
 
-    subgraph "Stage 2 — Runtime (runtime-deps:9.0-preview-alpine)"
+    subgraph "Stage 2 -- Runtime (runtime-deps:9.0-preview-alpine)"
         E[Install icu-libs] --> F[Copy binary from Stage 1]
         F --> G[Create appuser / appgroup]
         G --> H[Copy .env into /app]
@@ -205,7 +205,7 @@ flowchart TD
 | Flag | Purpose |
 |---|---|
 | `-r linux-musl-x64` | Target Alpine's musl libc instead of glibc. |
-| `--self-contained true` | Bundle the .NET runtime — no framework install required. |
+| `--self-contained true` | Bundle the .NET runtime -- no framework install required. |
 | `/p:PublishSingleFile=true` | Produce a single executable file. |
 | `/p:PublishTrimmed=true` | Remove unused framework code to reduce binary size. |
 | `/p:IncludeAllContentForSelfExtract=true` | Embed all content for self-extraction at startup. |
@@ -220,7 +220,7 @@ flowchart TD
 | `make alias` | Append an `az-ai` shell alias to the user's RC file (`.zshrc`, `.bashrc`, or `.profile`). |
 | `make scan` | Run Grype vulnerability scanner against the built image. |
 | `make test` | Clean, build, then run a sample prompt ("Tell me some unusual facts about cats"). |
-| `make check` | Build verification — creates a placeholder `.env` if needed, runs `make build`, then cleans up. |
+| `make check` | Build verification -- creates a placeholder `.env` if needed, runs `make build`, then cleans up. |
 
 ---
 
@@ -336,12 +336,12 @@ ToolRegistry
 └── ExecuteAsync(name, json, ct)
 
 Built-in tools:
-├── ShellExecTool — /bin/sh -c, blocklist, 10s timeout, 64KB cap
-├── ReadFileTool — File.ReadAllTextAsync, 1MB cap, blocked paths
-├── WebFetchTool — HttpClient GET, HTTPS-only, 5s timeout
-├── GetClipboardTool — xclip/xsel/pbpaste/PowerShell
-├── GetDateTimeTool — DateTimeOffset, IANA timezone support
-└── DelegateTaskTool — Spawn child CLI agent, depth-capped, 60s timeout
+├── ShellExecTool -- /bin/sh -c, blocklist, 10s timeout, 64KB cap
+├── ReadFileTool -- File.ReadAllTextAsync, 1MB cap, blocked paths
+├── WebFetchTool -- HttpClient GET, HTTPS-only, 5s timeout
+├── GetClipboardTool -- xclip/xsel/pbpaste/PowerShell
+├── GetDateTimeTool -- DateTimeOffset, IANA timezone support
+└── DelegateTaskTool -- Spawn child CLI agent, depth-capped, 60s timeout
 ```
 
 ### Ralph Mode Data Flow (Wiggum Loop)
@@ -391,7 +391,7 @@ sequenceDiagram
             R->>V: Run validation command
             V-->>R: exit code + stdout/stderr
             alt exit code == 0
-                R-->>U: Success — output result
+                R-->>U: Success -- output result
             else exit code != 0
                 R->>R: Append errors as context
                 R->>F: Append to .ralph-log
@@ -401,23 +401,23 @@ sequenceDiagram
         end
     end
 
-    R-->>U: Max iterations reached — output final state
+    R-->>U: Max iterations reached -- output final state
 ```
 
 #### Ralph Loop Invariants
 
 | Property | Value |
 |---|---|
-| **State persistence** | Via filesystem — each iteration reads/writes files directly |
-| **Message history** | Stateless per iteration — fresh `[system, user]` messages each round |
+| **State persistence** | Via filesystem -- each iteration reads/writes files directly |
+| **Message history** | Stateless per iteration -- fresh `[system, user]` messages each round |
 | **Error feedback** | Validation stderr/stdout appended to user prompt as context |
-| **Iteration log** | `.ralph-log` — JSON-lines file with iteration number, task, result, validation output |
+| **Iteration log** | `.ralph-log` -- JSON-lines file with iteration number, task, result, validation output |
 | **Default iterations** | 10 (configurable via `--max-iterations`, hard cap at 50) |
 | **Implies** | `--agent` (Ralph mode always enables agent mode) |
 
 ### DelegateTaskTool Architecture
 
-The `delegate_task` tool enables subagent calling — the parent agent can spawn a child CLI instance to handle a subtask in isolation.
+The `delegate_task` tool enables subagent calling -- the parent agent can spawn a child CLI instance to handle a subtask in isolation.
 
 ```
 Parent Agent (depth 0)
@@ -502,24 +502,24 @@ Squad/ (namespace: AzureOpenAI_CLI.Squad)
 ```json
 {
   "team": {
-    "name": "string — team display name",
-    "description": "string — team description"
+    "name": "string -- team display name",
+    "description": "string -- team description"
   },
   "personas": [
     {
-      "name": "string — unique identifier (lowercase)",
-      "role": "string — human-readable role title",
-      "description": "string — what this persona does",
-      "system_prompt": "string — injected as system message",
-      "tools": ["string — tool short names (shell, file, web, etc.)"],
-      "model": "string? — optional model override per persona"
+      "name": "string -- unique identifier (lowercase)",
+      "role": "string -- human-readable role title",
+      "description": "string -- what this persona does",
+      "system_prompt": "string -- injected as system message",
+      "tools": ["string -- tool short names (shell, file, web, etc.)"],
+      "model": "string? -- optional model override per persona"
     }
   ],
   "routing": [
     {
-      "pattern": "string — comma-separated keywords",
-      "persona": "string — persona name to route to",
-      "description": "string — human-readable rule description"
+      "pattern": "string -- comma-separated keywords",
+      "persona": "string -- persona name to route to",
+      "description": "string -- human-readable rule description"
     }
   ]
 }
@@ -529,12 +529,12 @@ Squad/ (namespace: AzureOpenAI_CLI.Squad)
 
 | Property | Value |
 |---|---|
-| **Storage** | `.squad/history/<name>.md` — one file per persona |
+| **Storage** | `.squad/history/<name>.md` -- one file per persona |
 | **Max size** | 32 KB per persona (tail-truncated, most recent kept) |
 | **Session entry** | Timestamp + task summary + result summary |
-| **Shared log** | `.squad/decisions.md` — cross-persona decision record |
+| **Shared log** | `.squad/decisions.md` -- cross-persona decision record |
 | **Initialization** | `--squad-init` creates `.squad/`, `history/`, and `decisions.md` |
-| **Won't overwrite** | `--squad-init` is idempotent — returns false if `.squad.json` already exists |
+| **Won't overwrite** | `--squad-init` is idempotent -- returns false if `.squad.json` already exists |
 
 ---
 
@@ -558,7 +558,7 @@ These environment variables tune API request parameters. They are read via helpe
 | Variable | Default | Description |
 |---|---|---|
 | `AZURE_MAX_TOKENS` | `10000` | Maximum output tokens (`MaxOutputTokenCount`) |
-| `AZURE_TEMPERATURE` | `0.55` | Response temperature (0.0 – 2.0) |
+| `AZURE_TEMPERATURE` | `0.55` | Response temperature (0.0 - 2.0) |
 | `AZURE_TIMEOUT` | `120` | Streaming timeout in seconds (`CancellationTokenSource`) |
 
 ### Hardcoded defaults (in `Program.cs`)
@@ -569,10 +569,10 @@ These values are used when no environment variable override is set, or for param
 |---|---|---|
 | `MaxOutputTokenCount` | `10000` | `AZURE_MAX_TOKENS` |
 | `Temperature` | `0.55` | `AZURE_TEMPERATURE` |
-| `TopP` | `1.0` | — |
-| `FrequencyPenalty` | `0.0` | — |
-| `PresencePenalty` | `0.0` | — |
-| `MAX_PROMPT_LENGTH` | `32000` | — (compile-time constant) |
+| `TopP` | `1.0` | -- |
+| `FrequencyPenalty` | `0.0` | -- |
+| `PresencePenalty` | `0.0` | -- |
+| `MAX_PROMPT_LENGTH` | `32000` | -- (compile-time constant) |
 
 ### Precedence rules
 
@@ -588,7 +588,7 @@ These values are used when no environment variable override is set, or for param
 
 ### Containerization boundary
 
-- The CLI runs exclusively inside Docker — no host installation is supported.
+- The CLI runs exclusively inside Docker -- no host installation is supported.
 - The Alpine base image (`runtime-deps:9.0-preview-alpine`) minimizes the attack surface.
 - Only `icu-libs` is added at runtime; all other packages are stripped.
 
@@ -602,15 +602,15 @@ These values are used when no environment variable override is set, or for param
 
 - API keys and endpoints live in the `.env` file, which is **baked into the image** at build time.
 - The `.env` file is listed in `.gitignore` and never committed to version control.
-- No credentials are stored in the `UserConfig` JSON file — it only holds model names.
+- No credentials are stored in the `UserConfig` JSON file -- it only holds model names.
 
 ### Tool security
 
 All built-in tools enforce defense-in-depth input validation:
 
-- **Parameter access hardening** — All tools use `TryGetProperty()` instead of `GetProperty()` for graceful handling of missing or malformed JSON parameters. This prevents `KeyNotFoundException` crashes when the model omits required fields.
-- **SSRF redirect protection** — `WebFetchTool` validates the final URL after following HTTP redirects. If the redirect target resolves to a private IP range or uses a non-HTTPS scheme, the request is blocked. This defends against SSRF attacks where the initial URL passes validation but redirects to an internal resource.
-- **Shell injection hardening** — `ShellExecTool` blocks shell substitution patterns (`$()`, backticks, `<()`, `>()`) and dangerous builtins (`eval`, `exec`). Uses `ArgumentList` instead of string-interpolated `Arguments` for proper OS-level escaping, preventing argument injection.
+- **Parameter access hardening** -- All tools use `TryGetProperty()` instead of `GetProperty()` for graceful handling of missing or malformed JSON parameters. This prevents `KeyNotFoundException` crashes when the model omits required fields.
+- **SSRF redirect protection** -- `WebFetchTool` validates the final URL after following HTTP redirects. If the redirect target resolves to a private IP range or uses a non-HTTPS scheme, the request is blocked. This defends against SSRF attacks where the initial URL passes validation but redirects to an internal resource.
+- **Shell injection hardening** -- `ShellExecTool` blocks shell substitution patterns (`$()`, backticks, `<()`, `>()`) and dangerous builtins (`eval`, `exec`). Uses `ArgumentList` instead of string-interpolated `Arguments` for proper OS-level escaping, preventing argument injection.
 - Shell commands have a blocklist, 10-second timeout, and 64 KB output cap.
 - File reads are restricted from sensitive paths and enforce a 1 MB size cap.
 - Web fetches enforce HTTPS-only, DNS rebinding protection, and response size caps.
@@ -623,32 +623,32 @@ All built-in tools enforce defense-in-depth input validation:
 
 `JsonGenerationContext.cs` defines `AppJsonContext`, a `System.Text.Json` source generator context annotated with `[JsonSerializable]` for all serialized types:
 
-- `UserConfig` — user preferences (`~/.azureopenai-cli.json`)
-- `SquadConfig` — squad team configuration (`.squad.json`)
-- `PersonaConfig` — individual persona definitions
-- `ChatJsonResponse` — `--json` output for standard chat mode (`model`, `response`, `duration_ms`, `input_tokens`, `output_tokens`)
-- `AgentJsonResponse` — `--json` output for agent mode (adds `rounds`, `tools_called`, `agent` metadata)
+- `UserConfig` -- user preferences (`~/.azureopenai-cli.json`)
+- `SquadConfig` -- squad team configuration (`.squad.json`)
+- `PersonaConfig` -- individual persona definitions
+- `ChatJsonResponse` -- `--json` output for standard chat mode (`model`, `response`, `duration_ms`, `input_tokens`, `output_tokens`)
+- `AgentJsonResponse` -- `--json` output for agent mode (adds `rounds`, `tools_called`, `agent` metadata)
 - All supporting Squad types (routing rules, team metadata)
 
 ### Why source generators?
 
-Reflection-based `System.Text.Json` is incompatible with Native AOT — the trimmer removes the metadata that the serializer needs at runtime. Source generators emit serialization code at compile time, eliminating the reflection dependency entirely.
+Reflection-based `System.Text.Json` is incompatible with Native AOT -- the trimmer removes the metadata that the serializer needs at runtime. Source generators emit serialization code at compile time, eliminating the reflection dependency entirely.
 
 ### Usage convention
 
 All new JSON serialization **must** use `AppJsonContext` instead of default `JsonSerializer.Serialize<T>()` / `Deserialize<T>()` overloads. Use the typed context methods:
 
 ```csharp
-// ✅ Correct — uses source-generated serializer
+// ✅ Correct -- uses source-generated serializer
 JsonSerializer.Serialize(config, AppJsonContext.Default.UserConfig);
 JsonSerializer.Deserialize<UserConfig>(json, AppJsonContext.Default.UserConfig);
 
-// ❌ Wrong — falls back to reflection (breaks AOT)
+// ❌ Wrong -- falls back to reflection (breaks AOT)
 JsonSerializer.Serialize(config);
 JsonSerializer.Deserialize<UserConfig>(json);
 ```
 
-`UserConfig.cs`, `SquadConfig.cs`, and `SquadInitializer.cs` all use `AppJsonContext` for `Load()` / `Save()` / `Initialize()`. `Program.OutputJsonError` uses the `ErrorJsonResponse` record (no anonymous types). As a result, `make publish-aot` now produces a fully AOT-compatible ~9 MB single-file binary with **~5.4 ms cold start** (Linux x64) — the recommended publish mode for the CLI (see [README → Native AOT Status](README.md#native-aot-status)). `make publish-fast` (ReadyToRun) is retained for compatibility but starts in ~54 ms — roughly 10× slower. The Docker container path adds another order of magnitude on top (~400+ ms cold start) and is suitable for non-latency-sensitive invocations.
+`UserConfig.cs`, `SquadConfig.cs`, and `SquadInitializer.cs` all use `AppJsonContext` for `Load()` / `Save()` / `Initialize()`. `Program.OutputJsonError` uses the `ErrorJsonResponse` record (no anonymous types). As a result, `make publish-aot` now produces a fully AOT-compatible ~9 MB single-file binary with **~5.4 ms cold start** (Linux x64) -- the recommended publish mode for the CLI (see [README → Native AOT Status](README.md#native-aot-status)). `make publish-fast` (ReadyToRun) is retained for compatibility but starts in ~54 ms -- roughly 10× slower. The Docker container path adds another order of magnitude on top (~400+ ms cold start) and is suitable for non-latency-sensitive invocations.
 
 ### Vulnerability scanning
 
@@ -743,9 +743,9 @@ azure-openai-cli/
 
 ### Modifying the Docker build
 
-- **Add a system package** — Append to the `apk add` command in Stage 2.
-- **Change the .NET version** — Update both `FROM` image tags and the `<TargetFramework>` in the `.csproj`.
-- **Add build-time arguments** — Use `ARG` / `--build-arg` in the Dockerfile and reference them in the Makefile's `docker buildx build` command.
+- **Add a system package** -- Append to the `apk add` command in Stage 2.
+- **Change the .NET version** -- Update both `FROM` image tags and the `<TargetFramework>` in the `.csproj`.
+- **Add build-time arguments** -- Use `ARG` / `--build-arg` in the Dockerfile and reference them in the Makefile's `docker buildx build` command.
 
 ---
 
@@ -762,11 +762,11 @@ azure-openai-cli/
 | **JSON config in home directory** | Familiar convention (`~/.<app>.json`). Survives container restarts if a volume is mounted. Keeps credentials separate from user preferences. |
 | **Opt-in agent mode** | `--agent` is a clear boundary. Without it, zero tool loading, zero prompt injection surface, identical latency to v1.0. |
 | **Azure.AI.OpenAI 2.1.0 (stable GA)** | Stable GA release. Earlier work pinned to `2.9.0-beta.1` for tool-calling, but the current CLI exercises tool calling successfully against `2.1.0` and prefers the supported GA build to keep pre-release packages out of the supply chain. |
-| **Raw ChatTool over Agent Framework** | Microsoft.Agents.AI is designed for multi-agent orchestration — overkill for a single-shot CLI. Raw `ChatTool.CreateFunctionTool()` keeps the dependency tree small. |
+| **Raw ChatTool over Agent Framework** | Microsoft.Agents.AI is designed for multi-agent orchestration -- overkill for a single-shot CLI. Raw `ChatTool.CreateFunctionTool()` keeps the dependency tree small. |
 | **Non-streaming tool rounds** | Tool-calling rounds use `CompleteChatAsync` (non-streaming) because the full response is needed to check `FinishReason` and extract tool calls. Only the final text response could be streamed. |
 | **Ralph mode (Wiggum loop)** | Deterministic validation (tests, linters) catches errors that the LLM cannot self-detect. File-based state means each iteration starts with a clean context window while retaining all prior work on disk. Inspired by ghuntley's Ralph Wiggum technique. |
 | **Stateless iterations** | Each Ralph iteration gets fresh messages instead of an ever-growing conversation. This prevents context window exhaustion on long-running tasks and ensures the model reads the current state of files rather than relying on stale memory. |
 | **DelegateTaskTool depth cap** | Subagent recursion is capped at 3 levels via `RALPH_DEPTH` env var. This balances task decomposition power against runaway process spawning. Children default to all tools except `delegate` as a secondary safeguard. |
 | **Persona system (Squad)** | Inspired by bradygaster/squad, but built with zero new dependencies. JSON config (`.squad.json`) is simpler to generate, parse, and validate than Markdown-based configs. Per-persona history files compound knowledge across sessions without requiring a database. |
-| **Keyword-based routing** | `--persona auto` uses comma-separated keyword patterns instead of an LLM classifier. This keeps routing deterministic, zero-latency, and debuggable — users can read `.squad.json` and predict which persona will be selected. |
+| **Keyword-based routing** | `--persona auto` uses comma-separated keyword patterns instead of an LLM classifier. This keeps routing deterministic, zero-latency, and debuggable -- users can read `.squad.json` and predict which persona will be selected. |
 | **32 KB history cap** | Persona history is truncated from the head (keeping the tail / most recent learnings) to prevent unbounded context growth. 32 KB fits comfortably within any model's context window. |

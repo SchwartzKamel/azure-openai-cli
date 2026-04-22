@@ -1,6 +1,6 @@
 # FR-002: Interactive Chat Mode with Conversation Memory
 
-**Priority:** P0 — Critical  
+**Priority:** P0 -- Critical  
 **Impact:** Turns single-shot queries into actual AI conversations  
 **Effort:** Medium (2-3 days)  
 **Category:** Core UX
@@ -15,10 +15,10 @@ Every invocation of this CLI is a one-night stand. There's no relationship. No m
 az-ai "Write a Python function to parse CSV files"
 # Great output!
 az-ai "Now add error handling to it"
-# "Add error handling to WHAT?" — the AI has no idea what "it" is.
+# "Add error handling to WHAT?" -- the AI has no idea what "it" is.
 ```
 
-The user has to re-paste the entire prior response, plus their new question, into a single prompt. This is the #1 reason developers abandon CLI AI tools and go back to ChatGPT's web interface — because the web UI *remembers*.
+The user has to re-paste the entire prior response, plus their new question, into a single prompt. This is the #1 reason developers abandon CLI AI tools and go back to ChatGPT's web interface -- because the web UI *remembers*.
 
 Today, every invocation:
 1. Spins up a new Docker container (~1-2s overhead)
@@ -41,7 +41,7 @@ az-ai --chat
 ```
 
 ```
-Azure OpenAI CLI — Interactive Mode (gpt-4o)
+Azure OpenAI CLI -- Interactive Mode (gpt-4o)
 Type /help for commands, /exit to quit.
 
 You: Write a Python function to parse CSV files
@@ -110,7 +110,7 @@ chat:
 	@docker run --rm -it --env-file .env $(FULL_IMAGE) --chat
 ```
 
-The container stays alive for the duration of the chat session. This is fine — it's how interactive Docker tools work (`docker run -it python` does the same thing).
+The container stays alive for the duration of the chat session. This is fine -- it's how interactive Docker tools work (`docker run -it python` does the same thing).
 
 ### Token Counting
 
@@ -126,7 +126,7 @@ The REPL must handle `SIGINT` (Ctrl+C) gracefully:
 
 ## Why This Is P0
 
-This is what separates a "query tool" from a "thinking partner." The entire value proposition of AI is iterative refinement — and this tool currently makes that impossible.
+This is what separates a "query tool" from a "thinking partner." The entire value proposition of AI is iterative refinement -- and this tool currently makes that impossible.
 
 **The competitive gap is glaring:**
 - `aichat` has full REPL mode with session management
@@ -134,7 +134,7 @@ This is what separates a "query tool" from a "thinking partner." The entire valu
 - `mods` supports conversation continuations
 - ChatGPT's web UI is the gold standard here
 
-Without this feature, we're asking users to do their exploratory work in ChatGPT's browser and only use our CLI for one-off commands. That's not a tool someone loves — that's a tool someone tolerates until they forget it exists.
+Without this feature, we're asking users to do their exploratory work in ChatGPT's browser and only use our CLI for one-off commands. That's not a tool someone loves -- that's a tool someone tolerates until they forget it exists.
 
 ---
 

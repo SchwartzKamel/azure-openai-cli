@@ -18,7 +18,7 @@ string (`café`, `日本語`, `🙂`) and never covers the nasty ones
 fixtures below are the **adversarial** corpus: if a change survives all
 of them byte-identically, the i18n contract is intact.
 
-Running these is **not** gated in CI today — see [§7](#7-promotion-to-gate).
+Running these is **not** gated in CI today -- see [§7](#7-promotion-to-gate).
 The gate is the next step; the corpus is the prerequisite.
 
 ---
@@ -153,13 +153,13 @@ Any divergence is a regression.
 
 Examples of real regressions the corpus would catch:
 
-- Adding `.Trim()` on a prompt — `\uFEFF` BOM, `\u200E` LTR mark, or
+- Adding `.Trim()` on a prompt -- `\uFEFF` BOM, `\u200E` LTR mark, or
   trailing combining marks get silently eaten.
-- Switching a `TextWriter` to default encoding on Windows — half the
+- Switching a `TextWriter` to default encoding on Windows -- half the
   fixtures become mojibake.
-- Adding `string.Normalize(NormalizationForm.FormC)` — NFC/NFD fixtures
+- Adding `string.Normalize(NormalizationForm.FormC)` -- NFC/NFD fixtures
   diverge, surrogate-pair fixtures may or may not (depends on the pair).
-- Swapping `UTF8Encoding(false)` for `UTF8Encoding(true)` — a BOM gets
+- Swapping `UTF8Encoding(false)` for `UTF8Encoding(true)` -- a BOM gets
   prepended to output.
 
 ---
@@ -177,9 +177,9 @@ Today: guideline. Tomorrow: gate. The gate looks like:
 Blockers for gating:
 
 - `--dry-run` must be guaranteed network-free (currently is; Newman's
-  territory — coordinate before gating).
+  territory -- coordinate before gating).
 - `--dry-run` must be guaranteed deterministic across platforms (CRLF
-  vs LF — confirm on Windows runner).
+  vs LF -- confirm on Windows runner).
 
 When both are confirmed, add the workflow and flip the guideline to a
 requirement.
@@ -188,7 +188,7 @@ requirement.
 
 ## 8. Cross-refs
 
-- [docs/i18n.md](../i18n.md) — top-level contract and TL;DR.
-- [docs/i18n/rtl-audit.md](rtl-audit.md) — RTL byte-transparency.
-- [docs/i18n/cjk-notes.md](cjk-notes.md) — wide-character and emoji caveats.
-- [scripts/test-i18n.sh](../../scripts/test-i18n.sh) — the runner.
+- [docs/i18n.md](../i18n.md) -- top-level contract and TL;DR.
+- [docs/i18n/rtl-audit.md](rtl-audit.md) -- RTL byte-transparency.
+- [docs/i18n/cjk-notes.md](cjk-notes.md) -- wide-character and emoji caveats.
+- [scripts/test-i18n.sh](../../scripts/test-i18n.sh) -- the runner.

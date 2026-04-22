@@ -1,7 +1,7 @@
 # Pricing Sourcing & Provenance
 
 > *"You quoted a price without a source? In MY documentation? Get out."*
-> — Morty
+> -- Morty
 
 Every per-token dollar figure that appears anywhere in this repo's
 documentation **must** correspond to a row in the table below. The row
@@ -16,7 +16,7 @@ goes stale, you either refresh it or you remove the quote.
 
 **Authoritative hardcoded table:**
 [`azureopenai-cli-v2/Observability/CostHook.cs`](../../azureopenai-cli-v2/Observability/CostHook.cs)
-(the `PriceTable` dictionary, roughly lines 20–30). Override at
+(the `PriceTable` dictionary, roughly lines 20-30). Override at
 runtime via `AZAI_PRICE_TABLE=/path/to/prices.json` (schema in
 [`docs/observability.md`](../observability.md)). This doc tracks the
 provenance of each row in that table.
@@ -36,26 +36,26 @@ Morty's rule). Amounts are USD per 1 M tokens unless noted.
 | `gpt-4.1` | 3.00 | 1.50 | 12.00 | [Azure OpenAI pricing][az] | *pending re-check* | Azure Portal pricing blade → `gpt-4.1` → Global Standard. `CostHook.cs:26` comment marks this row "estimated"; replace with a verified figure on next refresh. |
 | `o1-mini` | 3.00 | 1.50 | 12.00 | [Azure OpenAI pricing][az] | *pending re-check* | Azure Portal pricing blade → `o1-mini`. Note: reasoning tokens bill as **output**. |
 | `DeepSeek-V3.2` | 0.58 | n/a | 1.68 | [cloudprice.net][cp] + [MS Community Hub announcement][msch] | 2026-04-22 | Third-party aggregator + first-party announcement. Replace with Foundry Console screenshot on next refresh. `curl -s https://api.cloudprice.net/... \| jq '...'` when their public API stabilises. |
-| `Phi-4-mini-instruct` | 0.075 | n/a | 0.30 | [MS Community Hub — Phi-4 on Foundry][msch-phi] | 2026-04-22 | First-party announcement post. Replace with Foundry Console screenshot (portal → Foundry → Model Catalog → `Phi-4-mini-instruct` → Pricing tab). |
-| `Phi-4-mini-reasoning` | 0.08 | n/a | 0.32 | [MS Community Hub — Phi-4 reasoning][msch-phi] | 2026-04-22 | Same as above. |
+| `Phi-4-mini-instruct` | 0.075 | n/a | 0.30 | [MS Community Hub -- Phi-4 on Foundry][msch-phi] | 2026-04-22 | First-party announcement post. Replace with Foundry Console screenshot (portal → Foundry → Model Catalog → `Phi-4-mini-instruct` → Pricing tab). |
+| `Phi-4-mini-reasoning` | 0.08 | n/a | 0.32 | [MS Community Hub -- Phi-4 reasoning][msch-phi] | 2026-04-22 | Same as above. |
 | `Phi-3.5-mini-instruct` | 0.13 | n/a | 0.52 | *no first-party source on file* | **never** | 🔴 Remove quote from docs or attach a source on next refresh. Currently referenced in `cost-optimization.md §3.6` "strictly dominated" argument; argument stands only if the number is real. |
 | **GPT-5 (flagship, peer-comparison)** | 1.25 | 0.125 | 10.00 | [Azure OpenAI pricing][az] | *pending re-check (prior stamp 2026-04 footnote in competitive-analysis.md)* | Used in `competitive-analysis.md §4` for like-for-like comparison against Claude/Gemini flagship tiers. **Not** the az-ai default; see `cost-optimization.md §3` for the default's actual pricing basis. |
 | **Claude 3.5 Sonnet** | 3.00 | n/a | 15.00 | [Anthropic API pricing][anth] | 2026-04-22 | `curl -s https://docs.anthropic.com/en/docs/about-claude/pricing \| grep -A2 'claude-3-5-sonnet'` (page structure may shift; prefer portal screenshot). Competitor; peer-comparison only. |
 | **Claude Opus 4.6** | 5.00 | n/a | 25.00 | [Anthropic API pricing][anth] | 2026-04-22 | Same method. Competitor; peer-comparison only. |
 | **Gemini 2.5 Pro** | 1.25 | n/a | 10.00 | [Google AI pricing][gai] | 2026-04-22 | `curl -s https://ai.google.dev/pricing \| grep -A2 'Gemini 2.5 Pro'`. Competitor; peer-comparison only. |
-| **Azure Batch API discount** | −50% | — | −50% | [Azure OpenAI pricing][az] overview section | 2026-04-22 | "Batch API returns completions within 24 hours for a 50% discount on Global Standard Pricing." Applies to all models on the Batch endpoint; no per-model row needed — it's a pricing *modifier*. |
+| **Azure Batch API discount** | −50% | -- | −50% | [Azure OpenAI pricing][az] overview section | 2026-04-22 | "Batch API returns completions within 24 hours for a 50% discount on Global Standard Pricing." Applies to all models on the Batch endpoint; no per-model row needed -- it's a pricing *modifier*. |
 
 ### Verification commands (copy-paste)
 
 ```bash
 # Fetch the public Azure OpenAI pricing page (HTML; numeric cells are
 # client-side rendered so grep won't always yield numbers, but the
-# page structure — model rows, Cached Input column, Batch footer —
+# page structure -- model rows, Cached Input column, Batch footer --
 # is visible).
 curl -sSL 'https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/' \
   | grep -Eo '(gpt-[0-9]+[^<]*|Cached Input|Batch API)' | sort -u | head -40
 
-# Authenticated Foundry deployment inventory — confirms *what your
+# Authenticated Foundry deployment inventory -- confirms *what your
 # deployment actually runs*, which is the number that matters for
 # your bill. Requires `az login` and the Cognitive Services resource
 # name/RG.
@@ -105,7 +105,7 @@ the policy that keeps us from finding out six months late.
 - **Primary:** the active FinOps reviewer (currently Morty).
 - **Backup:** the release manager (Mr. Lippman) checks drift as part of
   the release pre-flight when a release touches model defaults or the
-  price table — see
+  price table -- see
   [`docs/runbooks/release-runbook.md`](../runbooks/release-runbook.md).
 - **Escalation:** any engineer who notices a bill anomaly in the monthly
   FinOps review (see [`finops-runbook.md`](../runbooks/finops-runbook.md))
@@ -162,7 +162,7 @@ possible audit trail and does not depend on any individual's inbox.
 3. Check the [Azure pricing page][az] *overview* section for new
    pricing modifiers (Batch API, Provisioned Throughput Units,
    Cached Input changes). New modifiers are new rows or new
-   §1 mentions — file the PR.
+   §1 mentions -- file the PR.
 4. Sanity-check the hardcoded `PriceTable` in
    `azureopenai-cli-v2/Observability/CostHook.cs` against §1. If they
    disagree, the code is canonical *for what the CLI reports* but §1
@@ -176,7 +176,7 @@ When a row disagrees with the live source:
 | Drift magnitude (per-token rate change) | Response |
 |---|---|
 | < 5% | Update the number + `Verified` date. Note in PR body. No ADR needed. |
-| 5% – 15% | Update as above **and** note in the next monthly FinOps review. If the drifted model is the operational default, recompute the baseline-cost examples in `cost-optimization.md §6.5`. |
+| 5% - 15% | Update as above **and** note in the next monthly FinOps review. If the drifted model is the operational default, recompute the baseline-cost examples in `cost-optimization.md §6.5`. |
 | > 15% | Stop. File an issue tagged `finops/drift-major`. The operational default or any budget-gating meter at > 15% drift gets a CHANGELOG entry and, if the default changes as a result, an ADR (see `cost-optimization.md §3.7`). Do **not** silently update `PriceTable`. |
 | Row disappears from the live source (model deprecated) | Mark the row `DEPRECATED YYYY-MM-DD` in §1, add a migration note to `cost-optimization.md §3.7`, and file an issue for any docs still quoting the dead rate. |
 | New row appears (new model, new modifier) | Add it to §1 with a source, a verified date, and a verification command. If it's a default candidate, the decision goes through `cost-optimization.md §3.7`. |
@@ -194,7 +194,7 @@ Boring. Quarterly. Signed off by Morty. That's the goal.
 
 ---
 
-## 3. Adding a new price to the docs — checklist
+## 3. Adding a new price to the docs -- checklist
 
 Use this as a PR self-review before asking for FinOps sign-off.
 
@@ -215,4 +215,4 @@ Use this as a PR self-review before asking for FinOps sign-off.
 
 *"No price without a source. No source without a date. No date older
 than a quarter. Paid HOW much for unsourced pricing docs? Not on my
-watch."* — Morty
+watch."* -- Morty

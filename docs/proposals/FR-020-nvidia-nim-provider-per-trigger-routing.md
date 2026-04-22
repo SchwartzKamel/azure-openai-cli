@@ -1,8 +1,8 @@
-# FR-020 — NVIDIA NIM Provider with Per-Trigger Routing (2B-first)
+# FR-020 -- NVIDIA NIM Provider with Per-Trigger Routing (2B-first)
 
 **Status:** Draft (Costanza, 2026-04-23)
-**Related:** [FR-014](FR-014-local-preferences-and-multi-provider.md) (preferences schema home), [FR-018](FR-018-local-model-provider-llamacpp.md) (provider abstraction — **hard dependency**), [FR-019](FR-019-gemma-cpp-direct-adapter.md) (sibling local-model FR), [FR-013](FR-013-mcp-client-and-server-support.md) (complexity reference)
-**Implements:** [ADR-006 — NVFP4 / NIM integration](../adr/ADR-006-nvfp4-nim-integration.md)
+**Related:** [FR-014](FR-014-local-preferences-and-multi-provider.md) (preferences schema home), [FR-018](FR-018-local-model-provider-llamacpp.md) (provider abstraction -- **hard dependency**), [FR-019](FR-019-gemma-cpp-direct-adapter.md) (sibling local-model FR), [FR-013](FR-013-mcp-client-and-server-support.md) (complexity reference)
+**Implements:** [ADR-006 -- NVFP4 / NIM integration](../adr/ADR-006-nvfp4-nim-integration.md)
 **Owner:** Costanza (PM / flagship framing) · Kramer (impl) · Newman (security) · Jackie (licensing) · Morty (cost telemetry) · Frank (reliability) · Bania (perf gates) · Mickey (failure UX)
 **Target release:** v2.1 (post v2.0.0 cutover; ships release N+1 after FR-018 lands in v2.1-pre)
 
@@ -12,9 +12,9 @@
 
 Text expansion is a sub-500 ms game. Mickey's ergonomic bands are unforgiving:
 *≤500 ms is instant, >1500 ms the user starts typing around you, >3000 ms they
-give up.* Azure OpenAI, even on the best WAN day, pays an 800–1200 ms round-trip
+give up.* Azure OpenAI, even on the best WAN day, pays an 800-1200 ms round-trip
 floor before a single token arrives. A warm 2B NVFP4 model resident on a
-Blackwell GPU returns first token in **15–40 ms** (Bania's numbers, §A).
+Blackwell GPU returns first token in **15-40 ms** (Bania's numbers, §A).
 For Espanso/AHK triggers that's the difference between "native snippet" and
 "broken tool."
 
@@ -22,25 +22,25 @@ But "always local" is the wrong answer. A 2B model is *overqualified* for
 `:aifix` (grammar correction is a near-deterministic transform) and
 *outclassed* on `:aic` (code review is a reasoning task). Maestro's quality
 matrix (§A) is uncompromising: `:aic` stays on Azure, period. A single-provider
-policy — local-for-everything OR cloud-for-everything — gives up latency on
+policy -- local-for-everything OR cloud-for-everything -- gives up latency on
 the trivial triggers or gives up quality on the hard ones. **The answer is
 per-trigger routing: the right model for the right movement of the score.**
 
 This FR is the concrete implementation of [ADR-006](../adr/ADR-006-nvfp4-nim-integration.md).
 It adds an NVIDIA NIM provider (OpenAI-compat HTTP, served by the NIM
 container), layers a per-trigger routing table on top of FR-018's provider
-registry, and ships the 2B NVFP4 Gemma-4 path first — with 9B as the flagship
+registry, and ships the 2B NVFP4 Gemma-4 path first -- with 9B as the flagship
 demo target once the larger NVFP4 image is available.
 
 ## 2. Motivation / Competitive Gap
 
 | Dimension | Today | With FR-020 |
 |---|---|---|
-| **Text-expansion TTFT** | 800–1200 ms (Azure WAN). | 15–40 ms warm (local 2B NVFP4). |
+| **Text-expansion TTFT** | 800-1200 ms (Azure WAN). | 15-40 ms warm (local 2B NVFP4). |
 | **Per-trigger provider choice** | One provider per process. | Routing table: `:aifix` → local, `:aic` → Azure, length-gated `:aitldr`. |
 | **Cost of iteration** | Every `:aifix` keystroke burns tokens. | Zero per-call cost on warm local; Azure only where quality demands it. |
 | **Competitive differentiator** | fabric/aichat/llm/crush all ship local-model support; none ship per-trigger routing. | **No existing CLI does this.** This is the wedge. |
-| **Privacy posture** | Grammar-fix prompts leave the machine. | Trivial transformations stay on-device; heavyweight reasoning goes cloud — an auditable, configurable boundary. |
+| **Privacy posture** | Grammar-fix prompts leave the machine. | Trivial transformations stay on-device; heavyweight reasoning goes cloud -- an auditable, configurable boundary. |
 
 The differentiator is not "we have a local provider." That is table stakes as
 of FR-018. The differentiator is **we ship the routing policy** so Espanso/AHK
@@ -51,7 +51,7 @@ routing table; this FR codifies it.
 
 ## 3. Rough Effort
 
-**Small (S) — ≈1.5 engineer-days on top of FR-018 landing.**
+**Small (S) -- ≈1.5 engineer-days on top of FR-018 landing.**
 
 The C# surface is narrow: `NimProvider` is a thin subclass of FR-018's
 OpenAI-compat provider (new base URL, bearer token, health probe). The
@@ -105,7 +105,7 @@ block, and the `--provider` CLI flag. **If FR-018 slips, this FR slips.**
 
 The routing layer sits **above** the provider registry. Providers themselves
 know nothing about triggers; they just speak OpenAI-compat chat-completions.
-`TriggerRouter` is ~80 LOC of pure logic — no HTTP, no I/O — and is trivially
+`TriggerRouter` is ~80 LOC of pure logic -- no HTTP, no I/O -- and is trivially
 unit-testable with a mock `IChatProvider`.
 
 `NimProvider` is a **subclass** of FR-018's generic OpenAI-compat provider.
@@ -134,12 +134,12 @@ digest            = "sha256:<pinned>"              # see nim-install docs
 
 [routing]
 # Per-trigger overrides. Missing triggers fall through to default_provider.
-grammar   = "nim"         # :aifix  — 🟢 per Maestro
-rewrite   = "nim"         # :airw   — 🟢 per Maestro
-summarize = "nim:400"     # :aitldr — 🟡 length-gated: nim if input ≤400 tok
-explain   = "azure"       # :aiexp  — 🟡 default Azure
-review    = "azure"       # :aic    — 🔴 NON-NEGOTIABLE per Maestro
-freeform  = "azure"       # :ai     — 🟡 default Azure
+grammar   = "nim"         # :aifix  -- 🟢 per Maestro
+rewrite   = "nim"         # :airw   -- 🟢 per Maestro
+summarize = "nim:400"     # :aitldr -- 🟡 length-gated: nim if input ≤400 tok
+explain   = "azure"       # :aiexp  -- 🟡 default Azure
+review    = "azure"       # :aic    -- 🔴 NON-NEGOTIABLE per Maestro
+freeform  = "azure"       # :ai     -- 🟡 default Azure
 default_provider = "azure"
 
 [fallback]
@@ -173,7 +173,7 @@ review to a 2B model.
 **Install path (`make` vs subcommand):** ship a **`make install-nim-gemma-2b`**
 target, not an `az-ai nim-install` subcommand. Rationale: installing NIM
 requires `docker run`, `nvidia-ctk`, `systemctl --user`, and `loginctl
-enable-linger` — a shell script is the native idiom, and bundling 200 LOC of
+enable-linger` -- a shell script is the native idiom, and bundling 200 LOC of
 shell inside a C# CLI binary is wrong. `az-ai --list-providers` and
 `az-ai --health nim` stay in-binary for runtime; install is a Make target
 with a README pointer. This keeps the AOT binary focused and the install
@@ -189,7 +189,7 @@ We do **not** ship a real tokenizer. Tokenizer packages are AOT-hostile
 (reflection, static data tables, ICU) and we've fought that battle already
 (FR-006). Instead: **word-count × 1.3**. This is a well-known heuristic;
 over-counts on CJK and code-heavy input (they tokenize denser than English),
-which is exactly the direction we want the error to go — erring toward
+which is exactly the direction we want the error to go -- erring toward
 "fall through to Azure" on ambiguous input is safer than erring toward
 "overload the small model." Document the failure mode (§13 Q3).
 
@@ -203,7 +203,7 @@ No new packages, no new trim warnings, no AOT regressions.
 
 ### 4.5 Warm-state lifecycle (Kramer's spec)
 
-NIM's cold start is 10–20 s (weight load + CUDA graph compile + first kernel
+NIM's cold start is 10-20 s (weight load + CUDA graph compile + first kernel
 JIT). That is unshippable on a keystroke. **NIM must run as a persistent
 service**, not container-on-demand. The install target provisions:
 
@@ -218,11 +218,11 @@ service**, not container-on-demand. The install target provisions:
 
 Runtime behavior: every `az-ai` invocation probes `/v1/health/ready` with a
 150 ms timeout, cached for 2 s in-process. First call after boot pays the
-10–20 s warm-up; subsequent calls land in Bania's 15–40 ms band.
+10-20 s warm-up; subsequent calls land in Bania's 15-40 ms band.
 
 ### 4.6 Streaming path
 
-OpenAI-compat SSE. Reuse FR-018's SSE parser verbatim — the wire format is
+OpenAI-compat SSE. Reuse FR-018's SSE parser verbatim -- the wire format is
 identical. Byte-clean into the `--raw` sink; `NO_COLOR=1` and `--raw` MUST
 produce byte-identical output regardless of provider (Mickey's invariant;
 CI test: diff NIM output against Azure output on a fixed deterministic
@@ -246,13 +246,13 @@ and nothing else**:
 
 | Condition | Exit code | stdout |
 |---|---|---|
-| NIM unreachable | 42 | `[az-ai: NIM unreachable — systemctl --user start az-ai-nim]` |
-| NIM warming up (health returns 503) | 43 | `[az-ai: NIM warming up — retry in 15s or use --fallback azure]` |
-| Auth token missing / invalid | 44 | `[az-ai: NIM auth failed — check ~/.config/az-ai/nim.token]` |
-| Model not loaded | 45 | `[az-ai: model not loaded — check NIM logs]` |
+| NIM unreachable | 42 | `[az-ai: NIM unreachable -- systemctl --user start az-ai-nim]` |
+| NIM warming up (health returns 503) | 43 | `[az-ai: NIM warming up -- retry in 15s or use --fallback azure]` |
+| Auth token missing / invalid | 44 | `[az-ai: NIM auth failed -- check ~/.config/az-ai/nim.token]` |
+| Model not loaded | 45 | `[az-ai: model not loaded -- check NIM logs]` |
 
 Rules (inherited from Mickey): ≤72 chars, ASCII only, no ANSI, no tabs,
-always actionable. Exit codes are a **public contract** — documented in
+always actionable. Exit codes are a **public contract** -- documented in
 `docs/man/az-ai.1` and stable across minor releases, so Espanso/AHK macros
 can branch on them.
 
@@ -261,7 +261,7 @@ passes `--fallback azure` or sets `fallback.on_nim_down = "azure"`. Silent
 cloud calls on a local-requested prompt violate privacy, cost, and offline
 intent simultaneously; we do not do this.
 
-### 4.8 Cloud-only mode — zero-hardware onboarding (Uncle Leo / Costanza)
+### 4.8 Cloud-only mode -- zero-hardware onboarding (Uncle Leo / Costanza)
 
 **Not every user has a Blackwell laptop.** A contributor on a ThinkPad, a
 reviewer on an Intel MacBook, or a CI runner in a plain container must have
@@ -271,7 +271,7 @@ not a degraded variant of it.
 **Guarantee:** If `[providers.nim]` is absent from preferences, the router
 degrades to a **no-op**. Every trigger resolves to `default_provider`
 (Azure). No health probes, no warm-up, no Docker, no systemd, no NGC key,
-no Gemma ToU gate. The binary behaves exactly as v1.x did — no regression
+no Gemma ToU gate. The binary behaves exactly as v1.x did -- no regression
 in setup cost for users who never asked for local inference.
 
 **Three-step cloud-only setup:**
@@ -285,12 +285,12 @@ export AZUREOPENAIENDPOINT="https://YOUR.openai.azure.com"
 export AZUREOPENAIAPI="YOUR-KEY"
 export AZUREOPENAIMODEL="gpt-4o-mini"
 
-# 3. Drop in the Espanso/AHK kit — it works unchanged
+# 3. Drop in the Espanso/AHK kit -- it works unchanged
 cp examples/espanso-ahk-wsl/espanso/ai.yml ~/.config/espanso/match/
 ```
 
 That's it. `:aifix`, `:airw`, `:aitldr`, `:aiexp`, `:aic`, `:ai` all route
-to Azure. Latency is whatever Azure gives you (~2–3 s typical); no local
+to Azure. Latency is whatever Azure gives you (~2-3 s typical); no local
 footprint at all.
 
 **No separate binary, no separate build flag.** The same AOT binary ships
@@ -300,7 +300,7 @@ not in packaging.
 
 **Opt-in upgrade path:** when a cloud-only user later gets a Blackwell
 box, they run `make install-nim-gemma-2b`, which **only writes to
-`~/.config/az-ai/preferences.toml`** — it never touches the binary. The
+`~/.config/az-ai/preferences.toml`** -- it never touches the binary. The
 installer adds `[providers.nim]` + a `[routing]` table with Maestro's
 defaults. Existing Azure-only users upgrading a release see **zero**
 behaviour change until they explicitly opt in.
@@ -314,11 +314,11 @@ local inference exists. (See §10 criterion 9.)
 **Documentation ordering rule (Elaine/Uncle Leo):** every onboarding doc
 (`README.md`, `examples/espanso-ahk-wsl/README.md`, `docs/nim-setup.md`)
 must present **cloud-only first, NIM second**. The common case leads. The
-niche case — local NVFP4 on Blackwell — is a clearly-labelled upgrade
+niche case -- local NVFP4 on Blackwell -- is a clearly-labelled upgrade
 section, not the default narrative. This is a welcome-mat commitment, not
 a style preference.
 
-## 5. Security (Newman — non-negotiables)
+## 5. Security (Newman -- non-negotiables)
 
 1. **Digest-pinned images only.** The install script pulls by sha256 digest.
    Tag-based pulls (`latest`, `1.0`) are rejected with a clear error. The
@@ -354,7 +354,7 @@ a style preference.
 - Ack-file enforcement: missing file → clear error, no network call made.
 - Digest pinning: tag-based config → rejected at load time.
 
-## 6. Licensing (Jackie — non-negotiables)
+## 6. Licensing (Jackie -- non-negotiables)
 
 - **No bundling.** az-ai does not redistribute NIM images or Gemma weights,
   ever. The install script `docker pull`s from nvcr.io at the user's
@@ -417,7 +417,7 @@ should produce a binary within ±1 % of pre-FR-020 size. CI asserts this.
   below.
 - **Phase B:** `NimProvider` + preferences extension + `--provider` /
   `--trigger` flags + digest pinning + bearer token auth + ack-file gate.
-  **Cloud-only remains the default out-of-the-box state** — shipping Phase B
+  **Cloud-only remains the default out-of-the-box state** -- shipping Phase B
   must not change the behaviour of a user who never edits preferences.
 - **Phase C:** Per-trigger routing layer + length-gating heuristic +
   `--fallback` opt-in. `:aifix` / `:airw` ship here as local-by-default
@@ -450,13 +450,13 @@ Ultra 7 265H / WSL2 Ubuntu 24.04** reference box:
 3. All Newman hardening tests pass (token redaction, SSRF allow-list,
    metadata block, digest pin, ack-file gate).
 4. **`:aic` routes to Azure even when `routing.review = "nim"` is
-   misconfigured** — defense-in-depth assertion in tests.
+   misconfigured** -- defense-in-depth assertion in tests.
 5. `make install-nim-gemma-2b` succeeds on a fresh WSL2 Ubuntu 24.04
    in under **10 minutes** (network permitting), docker-install included.
 6. Zero new AOT trim warnings. `make publish-aot` binary size within ±1 %.
 7. `NO_COLOR=1 --raw` output is byte-identical between NIM and Azure on
    a fixed deterministic prompt (Mickey's diff test).
-8. Mickey-approved exit codes (42–45) and sentinel strings stable and
+8. Mickey-approved exit codes (42-45) and sentinel strings stable and
    documented in `docs/man/az-ai.1`.
 9. **Cloud-only parity (§4.8):** on a machine with **no GPU, no Docker,
    no systemd, no `[providers.nim]` config**, every `--trigger` flag
@@ -468,14 +468,14 @@ Ultra 7 265H / WSL2 Ubuntu 24.04** reference box:
 
 | Trigger | Local 2B rating | Routing decision | Reasoning |
 |---|---|---|---|
-| `:aifix` (grammar) | 🟢 Green | **Local 2B** | Near-deterministic transform. 2B matches cloud on 1–3 sentence inputs. Latency wins, quality parity. Overqualified for cloud. |
+| `:aifix` (grammar) | 🟢 Green | **Local 2B** | Near-deterministic transform. 2B matches cloud on 1-3 sentence inputs. Latency wins, quality parity. Overqualified for cloud. |
 | `:airw` (rewrite) | 🟡 Yellow | **Local 2B** (strict system prompt) | Competent; tonally uneven. Acceptable with negative-constraint prompting ("do NOT add pleasantries"). Watch for corporate over-formality. |
 | `:aitldr` (summarize) | 🟡 Yellow | **Local 2B if ≤400 input tokens, else Azure** | Fine on short input; collapses to first paragraph on long multi-topic input. Length gate is the fix. |
 | `:aiexp` (explain) | 🟡 Yellow | **Azure default; local 2B opt-in** | Explanations are read carefully. Code explanation misses framework-specific nuance, occasionally confabulates APIs. Prose passable. |
-| `:aic` (code review) | 🔴 Red | **Azure only — NON-NEGOTIABLE** | Code review is a reasoning task, not a text task. 2B produces surface nits, misses logic bugs, invents issues. Stays cloud until ≥14 B reasoning-distilled local model proves out. |
+| `:aic` (code review) | 🔴 Red | **Azure only -- NON-NEGOTIABLE** | Code review is a reasoning task, not a text task. 2B produces surface nits, misses logic bugs, invents issues. Stays cloud until ≥14 B reasoning-distilled local model proves out. |
 | `:ai` (freeform) | 🟡 Yellow | **Azure default** | Unbounded scope demands the stronger orchestra. Users may opt into local via `--provider nim`. |
 
-**Prompt-engineering invariants for small models** (Maestro §2–4):
+**Prompt-engineering invariants for small models** (Maestro §2-4):
 - System prompts are cages, not suggestions. Explicit `Output ONLY …` for
   every transformation trigger.
 - `max_tokens = ceil(input_tokens × 1.3)` for `:aifix` / `:airw`.
@@ -516,11 +516,11 @@ land):
 5. **Inline routing override for Espanso/AHK users.** Some users will want
    per-snippet overrides. Options: (a) `--provider` flag (already in),
    (b) trigger-name suffix like `:aifix@azure`, (c) environment variable
-   pinning. Recommend (a) only for v1 — keep the surface tight.
+   pinning. Recommend (a) only for v1 -- keep the surface tight.
 6. **Sentinel collision.** Do `[az-ai: …]` sentinels collide with content
-   any user might actually type? Unlikely — the combination of square
+   any user might actually type? Unlikely -- the combination of square
    brackets, the literal prefix `az-ai:`, and the trailing actionable
-   sentence is distinctive — but we should search a public Espanso corpus
+   sentence is distinctive -- but we should search a public Espanso corpus
    before finalizing.
 7. **Rules-based vs ML-driven routing.** Rules-based for v2.1. An ML
    quality classifier ("is this input 2B-suitable?") is intellectually
@@ -562,27 +562,27 @@ This FR does **not** cover, and will reject scope-creep on:
 
 ---
 
-## Appendix A — Performance Budget (Bania)
+## Appendix A -- Performance Budget (Bania)
 
 End-to-end budget for `:aifix` on a 100-token selection → 80-token rewrite,
 RTX PRO 3000 Blackwell Mobile (12 GB VRAM), warm NIM:
 
 | Stage | Budget | Notes |
 |---|---|---|
-| Espanso trigger → `wsl.exe` launch | 80–200 ms | **Dominant non-model term.** WSL process spawn. |
-| `az-ai` AOT cold start | 5–10 ms | Per FR-006. |
-| HTTP localhost → NIM | 1–3 ms | |
-| Prefill (100 tok) + TTFT | 20–40 ms | |
+| Espanso trigger → `wsl.exe` launch | 80-200 ms | **Dominant non-model term.** WSL process spawn. |
+| `az-ai` AOT cold start | 5-10 ms | Per FR-006. |
+| HTTP localhost → NIM | 1-3 ms | |
+| Prefill (100 tok) + TTFT | 20-40 ms | |
 | Decode 80 tokens @ 150 tok/s | ~530 ms | |
-| Response → clipboard (WSL→Win) | 30–80 ms | `clip.exe` or OSC52. |
-| **Total** | **~700–900 ms** | p50 target ≤ 800 ms, p95 ≤ 1200 ms. |
+| Response → clipboard (WSL→Win) | 30-80 ms | `clip.exe` or OSC52. |
+| **Total** | **~700-900 ms** | p50 target ≤ 800 ms, p95 ≤ 1200 ms. |
 
 vs Azure gpt-4o-mini end-to-end on same task: ~1.6 s p50 with a fatter p99
 tail from WAN variability. **Local warm wins; local cold loses; the whole
 game is keeping it warm.** That is why §4.5 is non-negotiable.
 
 CI gates (Bania §7):
-- `az-ai` cold start p95 ≤ 10 ms — **non-negotiable AOT budget.**
+- `az-ai` cold start p95 ≤ 10 ms -- **non-negotiable AOT budget.**
 - HTTP client request overhead p95 ≤ 5 ms.
 - End-to-end mock round-trip p95 ≤ 25 ms.
 
@@ -594,12 +594,12 @@ Nightly on reference box (live NIM):
 
 ---
 
-## Appendix B — Why Not Just Ollama-with-Gemma?
+## Appendix B -- Why Not Just Ollama-with-Gemma?
 
 Same question as FR-019 §Appendix, different answer. Ollama's Gemma bundle
 gives you 3B-class tok/s on CPU (good) or a naive CUDA path on GPU
 (acceptable, not NVFP4). NIM's value is **NVFP4 tensor-core utilization on
-Blackwell** — which is the only reason the 15–40 ms TTFT number is real.
+Blackwell** -- which is the only reason the 15-40 ms TTFT number is real.
 On a non-Blackwell machine, Ollama is the right answer and FR-018 already
 covers it. FR-020 is specifically the Blackwell-NVFP4 path. Docs must say
 that clearly so non-Blackwell users don't install NIM expecting magic.

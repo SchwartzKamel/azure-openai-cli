@@ -1,14 +1,14 @@
-# ADR-006 — NVIDIA NIM / NVFP4 Provider Integration
+# ADR-006 -- NVIDIA NIM / NVFP4 Provider Integration
 
-- **Status**: Proposed — 2026-04-23
+- **Status**: Proposed -- 2026-04-23
 - **Deciders**: Kramer (eng), Costanza (PM), Morty (FinOps), Newman (sec), Jerry (DevOps), Jackie (legal), Bania (perf)
 - **Related**:
-  - [FR-018 — Local-Model Provider (llama.cpp/Ollama)](../proposals/FR-018-local-model-provider-llamacpp.md) — **hard dependency**
-  - [FR-019 — gemma.cpp Direct Adapter](../proposals/FR-019-gemma-cpp-direct-adapter.md) — sibling, ship paired
-  - Prospective **FR-020 — NVIDIA NIM Provider** — gated by this ADR
-  - [ADR-007](./ADR-007-third-party-http-provider-security.md) — security guardrails spun out of this decision
-  - [ADR-008](./ADR-008-gpu-provider-bench-policy.md) — benchmarking policy for non-CI-gated providers
-  - [ADR-006 appendix](./ADR-006-appendix-roundtable.md) — verbatim 7-agent roundtable memos
+  - [FR-018 -- Local-Model Provider (llama.cpp/Ollama)](../proposals/FR-018-local-model-provider-llamacpp.md) -- **hard dependency**
+  - [FR-019 -- gemma.cpp Direct Adapter](../proposals/FR-019-gemma-cpp-direct-adapter.md) -- sibling, ship paired
+  - Prospective **FR-020 -- NVIDIA NIM Provider** -- gated by this ADR
+  - [ADR-007](./ADR-007-third-party-http-provider-security.md) -- security guardrails spun out of this decision
+  - [ADR-008](./ADR-008-gpu-provider-bench-policy.md) -- benchmarking policy for non-CI-gated providers
+  - [ADR-006 appendix](./ADR-006-appendix-roundtable.md) -- verbatim 7-agent roundtable memos
 
 ## Context
 
@@ -17,16 +17,16 @@ The user asked whether `azure-openai-cli` should integrate `nvidia/Gemma-4-31B-I
 Hard constraints:
 
 - az-ai is a 40 MB AOT Alpine binary. It does **not** ship GPU drivers, CUDA, Triton, or TensorRT. Anything that requires those must live behind a socket.
-- FR-018 introduces a provider abstraction that speaks OpenAI-compatible HTTP with a configurable base URL and bearer token. Any new provider must live inside that abstraction — we will not introduce a second runtime concept.
+- FR-018 introduces a provider abstraction that speaks OpenAI-compatible HTTP with a configurable base URL and bearer token. Any new provider must live inside that abstraction -- we will not introduce a second runtime concept.
 
 **Hardware reality (dev rig):** RTX PRO 3000 Blackwell (mobile), **12 GB VRAM**, Intel Core Ultra 7 265H, 31 GB host RAM, CUDA 12.8. Docker + NVIDIA Container Toolkit not yet installed.
 
-**The 31B NVFP4 variant does not fit on 12 GB.** Weights alone are ~18–20 GB before KV cache. Models that *do* fit on the dev rig:
+**The 31B NVFP4 variant does not fit on 12 GB.** Weights alone are ~18-20 GB before KV cache. Models that *do* fit on the dev rig:
 
-- `nvidia/Gemma-4-9B-IT-NVFP4` — ~5 GB weights, comfortable KV headroom. **Primary demo target.**
-- `nvidia/Gemma-4-2B-IT-NVFP4` — ~1.2 GB, smoke-test target.
+- `nvidia/Gemma-4-9B-IT-NVFP4` -- ~5 GB weights, comfortable KV headroom. **Primary demo target.**
+- `nvidia/Gemma-4-2B-IT-NVFP4` -- ~1.2 GB, smoke-test target.
 
-The 31B variant is retained in docs as the "if you have a B200 / dual-H200 rack, point az-ai at it" example — the cost-model exemplar, not the demo target. This reshapes §6 of the original roundtable: the primary ICP is now the **Blackwell-on-laptop developer**, not the datacenter tenant.
+The 31B variant is retained in docs as the "if you have a B200 / dual-H200 rack, point az-ai at it" example -- the cost-model exemplar, not the demo target. This reshapes §6 of the original roundtable: the primary ICP is now the **Blackwell-on-laptop developer**, not the datacenter tenant.
 
 ## Decision
 
@@ -35,7 +35,7 @@ The 31B variant is retained in docs as the "if you have a B200 / dual-H200 rack,
 Five commitments, in order of importance:
 
 **1. NIM (OCI container, HTTP, OpenAI-compatible) is the only supported path.**
-NIM exposes `/v1/chat/completions` with streaming SSE, `tools`, and `tool_choice` — the dialect az-ai already speaks. From az-ai's perspective, NIM is "another `IChatProvider` with a different base URL and a bearer token." Zero new C#, zero new JSON source-gen contexts, one new provider preset plus docs. `trtllm-serve` is acknowledged as a user-side fallback (same wire format) but is **not** a first-party target.
+NIM exposes `/v1/chat/completions` with streaming SSE, `tools`, and `tool_choice` -- the dialect az-ai already speaks. From az-ai's perspective, NIM is "another `IChatProvider` with a different base URL and a bearer token." Zero new C#, zero new JSON source-gen contexts, one new provider preset plus docs. `trtllm-serve` is acknowledged as a user-side fallback (same wire format) but is **not** a first-party target.
 
 **2. No bundling, ever.** az-ai must not ship, mirror, vendor, or re-host the NIM image, Gemma weights (original or NVFP4 re-quant), TRT-LLM engine plans, or any NVIDIA artifact in any release channel (GitHub Releases, Docker Hub, Homebrew, Scoop, installers). We document `docker pull` / `docker run`; we do not distribute. This is a legal line (Jackie: redistribution = "copyright infringement, breach of contract, tortious interference") and an architectural one (Jerry: "we do not bundle a 20 GB house inside a 40 MB toolshed").
 
@@ -50,8 +50,8 @@ GitHub Actions has no Blackwell silicon. Plumbing regressions (HTTP, auth, strea
 
 ## Sequencing
 
-- **Release N** — FR-018 lands. Provider abstraction becomes real.
-- **Release N+1** — FR-019 (gemma.cpp) and FR-020 (NIM) ship **paired**, under Costanza's unified "Gemma, everywhere you have silicon — from a MacBook (gemma.cpp) to a laptop Blackwell (NIM) to a datacenter rack (NIM)" narrative.
+- **Release N** -- FR-018 lands. Provider abstraction becomes real.
+- **Release N+1** -- FR-019 (gemma.cpp) and FR-020 (NIM) ship **paired**, under Costanza's unified "Gemma, everywhere you have silicon -- from a MacBook (gemma.cpp) to a laptop Blackwell (NIM) to a datacenter rack (NIM)" narrative.
 
 FR-020 is **deferred behind FR-018 landing.** No FR-020 work starts before FR-018 merges.
 
@@ -61,11 +61,11 @@ FR-020 is **deferred behind FR-018 landing.** No FR-020 work starts before FR-01
 
 - az-ai becomes reachable from NVFP4 workloads without taking on any GPU-runtime responsibility. Zero cold-start regression, zero AOT impact, zero new top-level CLI surface.
 - The "Gemma everywhere" narrative becomes coherent across FR-018, FR-019, FR-020.
-- Total FR-020 scope (after FR-018): ~half a day — docs, preset, integration-test stub, smoke test. No new C#.
+- Total FR-020 scope (after FR-018): ~half a day -- docs, preset, integration-test stub, smoke test. No new C#.
 
 ### Negative
 
-- **NVAIE is a de facto commercial dependency for production users** (~$4,500/GPU/yr list). Free dev tier exists but carries restrictions. We disclose this plainly in `docs/providers/nvidia.md` — the "just works locally" pitch is materially qualified.
+- **NVAIE is a de facto commercial dependency for production users** (~$4,500/GPU/yr list). Free dev tier exists but carries restrictions. We disclose this plainly in `docs/providers/nvidia.md` -- the "just works locally" pitch is materially qualified.
 - Perf claims for this provider will always be community-reported rather than CI-gated. We say so on the tin (see ADR-008).
 - We inherit a documentation liability around `docker run --gpus all` hardening even though we do not run the container ourselves.
 - Tool-calling on Gemma-4 NVFP4 is **unverified** until a live endpoint can be smoke-tested. `--agent` mode on this provider is gated on that smoke test.
@@ -77,12 +77,12 @@ FR-020 is **deferred behind FR-018 landing.** No FR-020 work starts before FR-01
 - **Bundle NIM or weights in an az-ai artifact.** Rejected: catastrophic license exposure (Jackie) and absurd artifact size (Jerry). Non-negotiable.
 - **Build a HuggingFace gated-model download helper.** Rejected: makes az-ai an intermediary in the Gemma ToU acceptance flow. Clean hands.
 - **Ship FR-020 before FR-018.** Rejected: "You don't pour the second floor before the first" (Costanza).
-- **Morty's DEFER position** (hold FR-020 until a user shows ≥10M tok/mo premium + Blackwell + NVAIE willingness). Overridden in favor of Costanza's flagship-demo framing, justified by the 9B-on-laptop ICP — the audience *does* exist on workstation Blackwell, not only in the datacenter.
+- **Morty's DEFER position** (hold FR-020 until a user shows ≥10M tok/mo premium + Blackwell + NVAIE willingness). Overridden in favor of Costanza's flagship-demo framing, justified by the 9B-on-laptop ICP -- the audience *does* exist on workstation Blackwell, not only in the datacenter.
 
 ## Open Questions (flag before FR-020 drafting)
 
-1. **NVAIE dev-tier EULA** — does the current free dev tier carry conditions (non-commercial, eval-only, expiry) that constrain what we can demo publicly? Needs a fresh read of the live EULA, not a 2024 summary.
-2. **Docker + NVIDIA Container Toolkit install instructions** — FR-018, FR-019, and FR-020 all want the same prereqs page. Recommendation: one shared `docs/local-model-prereqs.md`, linked thrice.
+1. **NVAIE dev-tier EULA** -- does the current free dev tier carry conditions (non-commercial, eval-only, expiry) that constrain what we can demo publicly? Needs a fresh read of the live EULA, not a 2024 summary.
+2. **Docker + NVIDIA Container Toolkit install instructions** -- FR-018, FR-019, and FR-020 all want the same prereqs page. Recommendation: one shared `docs/local-model-prereqs.md`, linked thrice.
 3. **Ack-file UX under non-interactive callers** (Espanso, AHK). Inherits whatever FR-018 lands on (`AZ_AI_ACCEPT_THIRD_PARTY_TERMS=1`, `--yes`, silent-deny with clear stderr if neither is set).
 4. **Is Gemma 4 actually released?** As of 2026-04-23 the `nvidia/Gemma-4-*-IT-NVFP4` cards have not been verified live on NGC from this environment. If Gemma 4 has not shipped by drafting time, FR-020 targets `nvidia/Gemma-3-9B-IT-NVFP4` (or the currently-available family) with the model id treated as a parameter.
 
@@ -100,8 +100,8 @@ FR-020 is **deferred behind FR-018 landing.** No FR-020 work starts before FR-01
 
 ## References
 
-- [ADR-007 — Security guardrails for third-party HTTP inference providers](./ADR-007-third-party-http-provider-security.md)
-- [ADR-008 — Benchmarking policy for GPU / non-CI-gated providers](./ADR-008-gpu-provider-bench-policy.md)
-- [ADR-006 appendix — verbatim roundtable memos](./ADR-006-appendix-roundtable.md)
-- [FR-018 — Local-Model Provider (llama.cpp/Ollama)](../proposals/FR-018-local-model-provider-llamacpp.md)
-- [FR-019 — gemma.cpp Direct Adapter](../proposals/FR-019-gemma-cpp-direct-adapter.md)
+- [ADR-007 -- Security guardrails for third-party HTTP inference providers](./ADR-007-third-party-http-provider-security.md)
+- [ADR-008 -- Benchmarking policy for GPU / non-CI-gated providers](./ADR-008-gpu-provider-bench-policy.md)
+- [ADR-006 appendix -- verbatim roundtable memos](./ADR-006-appendix-roundtable.md)
+- [FR-018 -- Local-Model Provider (llama.cpp/Ollama)](../proposals/FR-018-local-model-provider-llamacpp.md)
+- [FR-019 -- gemma.cpp Direct Adapter](../proposals/FR-019-gemma-cpp-direct-adapter.md)

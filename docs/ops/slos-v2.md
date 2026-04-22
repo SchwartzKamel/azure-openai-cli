@@ -1,13 +1,13 @@
-# v2 SLO Proposal — `az-ai-v2`
+# v2 SLO Proposal -- `az-ai-v2`
 
 **Status:** **Proposed.** These are soft targets, not hard SLAs. Hard SLAs require sign-off from Costanza (PM).
 **Owner:** Frank Costanza (SRE).
 **Tuning cadence:** revisit at **day-30 post-v2.0.0** with real data, then quarterly.
 **Cross-links:**
-- [`docs/ops/v2-sre-runbook.md`](v2-sre-runbook.md) §2 — already carries the detailed SLO-1..SLO-6 catalog grounded in the perf baseline. This document is the **summary + proposal tier** aimed at external readers; the runbook is the operator reference.
-- [`docs/perf-baseline-v2.md`](../perf-baseline-v2.md) — data underpinning the cold-start targets.
-- [`docs/ops/telemetry-schema-v2.0.0.md`](telemetry-schema-v2.0.0.md) — the measurement plumbing (opt-in).
-- [`docs/observability.md`](../observability.md) — the user-facing telemetry contract.
+- [`docs/ops/v2-sre-runbook.md`](v2-sre-runbook.md) §2 -- already carries the detailed SLO-1..SLO-6 catalog grounded in the perf baseline. This document is the **summary + proposal tier** aimed at external readers; the runbook is the operator reference.
+- [`docs/perf-baseline-v2.md`](../perf-baseline-v2.md) -- data underpinning the cold-start targets.
+- [`docs/ops/telemetry-schema-v2.0.0.md`](telemetry-schema-v2.0.0.md) -- the measurement plumbing (opt-in).
+- [`docs/observability.md`](../observability.md) -- the user-facing telemetry contract.
 
 > **Targets, not promises.** v2.0.0 has no fleet data yet. Every number below is either measured in CI or provisional. v2.0.x will tune based on day-30 data. That's the deal.
 
@@ -16,7 +16,7 @@
 ## How to read this doc
 
 - **Target** = the number we aim to hit in steady state.
-- **Measurement** = where the SLI comes from — CI harness, opt-in telemetry, or external signal.
+- **Measurement** = where the SLI comes from -- CI harness, opt-in telemetry, or external signal.
 - **Confidence** = `grounded` (measured on CI reference hardware with ≥ 50 runs) / `provisional` (extrapolated; will be recalibrated at day-30).
 - **Enforcement** = what we actually do when we breach. Hard fail (block PR / rollback), soft fail (page, investigate, but don't rollback), or monitor (track in the release-watch issue).
 
@@ -24,13 +24,13 @@ There are no hard SLAs in this document. Operations on the `az-ai-v2` CLI are be
 
 ---
 
-## SLO-A — Cold-start latency (AOT binary, local execution)
+## SLO-A -- Cold-start latency (AOT binary, local execution)
 
 **Scope:** `--help` / `--version` / `--estimate` (no credential resolution, no network).
 
 | Metric | Target | Confidence | Source |
 |---|---|---|---|
-| p50 cold-start | ≤ **20 ms** | grounded (CI reference runner) | `scripts/bench.sh --aot` *(planned — see note)* |
+| p50 cold-start | ≤ **20 ms** | grounded (CI reference runner) | `scripts/bench.sh --aot` *(planned -- see note)* |
 | p99 cold-start | ≤ **100 ms** | provisional | p95 is already bounded at 25 ms by the runbook; p99 ceiling will be pinned after 2.0.1 CI data |
 | p95 cold-start | ≤ **25 ms** (authoritative) | grounded | `docs/ops/v2-sre-runbook.md` §2 SLO-1 |
 
@@ -49,7 +49,7 @@ There are no hard SLAs in this document. Operations on the `az-ai-v2` CLI are be
 
 ---
 
-## SLO-B — First-token latency (chat mode, real call)
+## SLO-B -- First-token latency (chat mode, real call)
 
 **Scope:** `az-ai-v2 "hello"` standard chat path against the baseline Azure OpenAI deployment named in the CI secrets; measured end-user-perceived: process start → first streamed token on stdout.
 
@@ -58,20 +58,20 @@ There are no hard SLAs in this document. Operations on the `az-ai-v2` CLI are be
 | p50 first-token | ≤ **2 000 ms** | provisional | opt-in telemetry `azai.chat.duration` histogram, filtered to first-token via client-side timer |
 | p95 first-token | ≤ **5 000 ms** | provisional | same |
 
-**Measurement.** Opt-in only. SLI is derived from fleet data contributed by users who enable `--telemetry` or `AZ_TELEMETRY=1`. CI runs a single smoke call per release which contributes one data point — not enough for an SLO, but enough for regression sniffing.
+**Measurement.** Opt-in only. SLI is derived from fleet data contributed by users who enable `--telemetry` or `AZ_TELEMETRY=1`. CI runs a single smoke call per release which contributes one data point -- not enough for an SLO, but enough for regression sniffing.
 
 **Hard carve-outs (excluded from the SLI numerator/denominator):**
 - User-auth errors (exit 3, HTTP 401/403).
 - Config errors (exit 2).
 - SIGINT (exit 130).
-- Azure OpenAI regional incidents — SLO does not cover Microsoft's availability, only the client overhead.
+- Azure OpenAI regional incidents -- SLO does not cover Microsoft's availability, only the client overhead.
 
 **Enforcement.** Monitor only. A p95 breach opens an issue for Kenny Bania to evaluate. We do not block releases on first-token latency because the latency is dominated by Azure-side behavior we do not own.
 **Revisit at day-30** with a min-50-sample baseline before promoting these to grounded.
 
 ---
 
-## SLO-C — Error rate (non-user-error invocations)
+## SLO-C -- Error rate (non-user-error invocations)
 
 **Scope:** telemetry-reported invocations, **excluding** `--help`, `--version`, `--estimate`, and invocations that exit with a user-classified code (2 config, 3 auth, 130 SIGINT).
 
@@ -81,11 +81,11 @@ There are no hard SLAs in this document. Operations on the `az-ai-v2` CLI are be
 
 **Mapping to the runbook.** This is the public-facing summary of `v2-sre-runbook.md` §2 SLO-4 (real-call success ≥ 99.5%) plus SLO-6 (crash rate ≤ 0.1%). The runbook stays authoritative on window, burn rate, and page thresholds.
 **Measurement.** Opt-in telemetry only. We have no view on users who do not opt in, and we do not want one.
-**Enforcement.** Soft fail — page on-call; consult the runbook's SLO-4 / SLO-6 mechanics for rollback triggers.
+**Enforcement.** Soft fail -- page on-call; consult the runbook's SLO-4 / SLO-6 mechanics for rollback triggers.
 
 ---
 
-## SLO-D — Release pipeline: tag → GHCR live
+## SLO-D -- Release pipeline: tag → GHCR live
 
 **Scope:** time from `git push origin vX.Y.Z` (tag signed per `release-v2-playbook.md`) to `ghcr.io/schwartzkamel/azure-openai-cli:vX.Y.Z` returning a 200 manifest for anonymous pull.
 
@@ -99,7 +99,7 @@ There are no hard SLAs in this document. Operations on the `az-ai-v2` CLI are be
 
 ---
 
-## SLO-E — Cost-schema emission completeness (opt-in)
+## SLO-E -- Cost-schema emission completeness (opt-in)
 
 **Scope:** among users who opted into `--metrics` / `--telemetry`, the fraction of LLM-calling invocations that produce exactly one valid cost-event line on stderr.
 
@@ -117,7 +117,7 @@ There are no hard SLAs in this document. Operations on the `az-ai-v2` CLI are be
 
 - **Azure OpenAI availability.** Microsoft's SLA. We don't own it; we don't SLA it.
 - **User network latency.** Not measured, not targeted.
-- **Third-party package managers' propagation time.** Homebrew tap, Scoop bucket, Nix flake — Bob Sacamano's ecosystem latency, not ours.
+- **Third-party package managers' propagation time.** Homebrew tap, Scoop bucket, Nix flake -- Bob Sacamano's ecosystem latency, not ours.
 - **Documentation site uptime.** This repo is the docs site. GitHub's availability is our availability.
 - **Per-feature latency SLOs.** Not yet. v2.0.x focuses on the CLI-wide envelope; feature-grained SLOs come with feature-grained telemetry proposals (and those require schema bumps per `telemetry-schema-v2.0.0.md` §7).
 
@@ -140,7 +140,7 @@ Every grounded SLO has an error budget defined in `v2-sre-runbook.md` §2. Rules
 - [ ] Promote or demote each provisional target.
 - [ ] File a PR adding real numbers with a `slos-v2` CHANGELOG entry.
 - [ ] Schedule the next review 90 days out. Costanza (PM) signs off if any target is retitled from "proposed" to "agreed".
-- [ ] Add an entry to the Festivus post-mortem if any target was a problem that quarter. Airing of Grievances — I got a lotta problems with my own SLO targets, and now you're gonna hear about 'em.
+- [ ] Add an entry to the Festivus post-mortem if any target was a problem that quarter. Airing of Grievances -- I got a lotta problems with my own SLO targets, and now you're gonna hear about 'em.
 
 ---
 

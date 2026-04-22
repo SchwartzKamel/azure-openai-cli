@@ -1,28 +1,28 @@
 # Pre-release checklist
 
-> "This isn't ready. Fix it or pull it from the release." — Mr. Lippman
+> "This isn't ready. Fix it or pull it from the release." -- Mr. Lippman
 
 Audience: whoever is cutting the next tag on the v2 line. Copy this
 table into the release PR description, tick each row as you go, and
 do not cut the tag while a row is red. If a row does not apply
-(e.g. no persona changes this cycle), write `n/a` and say why — don't
+(e.g. no persona changes this cycle), write `n/a` and say why -- don't
 leave it blank.
 
-**Scope.** v2 line. v1 line uses a trimmed version — see
+**Scope.** v2 line. v1 line uses a trimmed version -- see
 [`../runbooks/release-runbook.md`](../runbooks/release-runbook.md).
 
 Companion docs:
-- [`semver-policy.md`](semver-policy.md) — how to pick the bump.
-- [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) — what happens to
+- [`semver-policy.md`](semver-policy.md) -- how to pick the bump.
+- [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) -- what happens to
   container tags at publish time.
-- [`artifact-inventory.md`](artifact-inventory.md) — the assets this
+- [`artifact-inventory.md`](artifact-inventory.md) -- the assets this
   checklist is validating.
-- [`../CHANGELOG-style-guide.md`](../CHANGELOG-style-guide.md) — prose
+- [`../CHANGELOG-style-guide.md`](../CHANGELOG-style-guide.md) -- prose
   rules for the CHANGELOG entry this release lands.
 - [`../runbooks/release-runbook.md`](../runbooks/release-runbook.md)
-  — end-to-end release flow (this checklist is §1 of that).
+  -- end-to-end release flow (this checklist is §1 of that).
 - [`../runbooks/packaging-publish.md`](../runbooks/packaging-publish.md)
-  — Bob's post-release tap/bucket publish flow.
+  -- Bob's post-release tap/bucket publish flow.
 
 ---
 
@@ -42,7 +42,7 @@ export REPO=SchwartzKamel/azure-openai-cli
 
 ## The table
 
-20 rows. Run top to bottom. Do not reorder — later rows assume earlier
+20 rows. Run top to bottom. Do not reorder -- later rows assume earlier
 rows passed.
 
 | #  | Gate                              | Command / check                                                                                                                                                       | Owner       | Pass criterion                                                                                              |
@@ -53,10 +53,10 @@ rows passed.
 | 4  | Version strings single-sourced    | `./packaging/scripts/verify-version-strings.sh "$TAG"` (lands with v2.0.5; see audit H-1).                                                                            | author      | Exit 0. Guards `stage.sh`, `Program.cs`, `Telemetry.cs`, `integration_tests.sh` against the v2.0.2-era drift. |
 | 5  | Format check                      | `dotnet format azure-openai-cli.sln --verify-no-changes`                                                                                                              | author      | Exit 0, no diff.                                                                                            |
 | 6  | v1 test suite green               | `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity minimal`                                                                             | author      | 1025+ passed, 0 failed, 0 skipped without waiver.                                                           |
-| 7  | v2 test suite green               | `dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj --verbosity minimal`                                                                       | author      | 490+ passed, 0 failed. Number grows every release — do not ratchet down.                                    |
+| 7  | v2 test suite green               | `dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj --verbosity minimal`                                                                       | author      | 490+ passed, 0 failed. Number grows every release -- do not ratchet down.                                    |
 | 8  | Binary `--version` smoke          | `make publish-linux-x64 && ./artifacts/publish/linux-x64/az-ai-v2 --version --short`                                                                                  | author      | Prints exactly `${VERSION}\n`. ≤ 10 bytes, trailing LF.                                                     |
 | 9  | Preflight integration gates       | `tests/integration_tests.sh` (Gate 2 asserts `--version`; Gate N asserts exit codes).                                                                                 | Puddy       | All gates green. Gate count = published baseline + any new gates landed this cycle.                         |
-| 10 | CHANGELOG entry populated         | `[${VERSION}] — ${DATE}` header present; `[Unreleased]` reset to skeleton (`### Added / Changed / Deprecated / Removed / Fixed / Security`).                          | author      | Entry follows [`CHANGELOG-style-guide.md`](../CHANGELOG-style-guide.md). Prose, not commit dump.            |
+| 10 | CHANGELOG entry populated         | `[${VERSION}] -- ${DATE}` header present; `[Unreleased]` reset to skeleton (`### Added / Changed / Deprecated / Removed / Fixed / Security`).                          | author      | Entry follows [`CHANGELOG-style-guide.md`](../CHANGELOG-style-guide.md). Prose, not commit dump.            |
 | 11 | Breaking changes called out       | If the bump is MAJOR or includes a `### Removed` / `### Deprecated`, a migration paragraph exists in the CHANGELOG banner.                                            | author      | Migration path is copy-paste-runnable or links to a doc that is.                                            |
 | 12 | Persona / prompt diff reviewed    | `git diff ${LAST_TAG}..HEAD -- docs/prompts/ azureopenai-cli-v2/**/personas/`                                                                                         | Maestro     | Wording changes match SemVer §4. Tone changes noted in `### Changed`.                                       |
 | 13 | Security sign-off                 | `grep -A2 "### Security" CHANGELOG.md` (current release block), threat-model delta reviewed.                                                                          | Newman      | Either `### Security` is populated and reviewed, or Newman confirms "no security-relevant change".          |
@@ -75,11 +75,11 @@ rows passed.
 Before the tag is pushed, the following roles must tick in the release
 PR:
 
-- [ ] **Puddy (QA)** — gates 6, 7, 9 green.
-- [ ] **Newman (security)** — gate 13.
-- [ ] **Jackie (licensing)** — gate 14.
-- [ ] **Elaine (docs)** — gates 10, 11, 15.
-- [ ] **Lippman (release)** — SemVer call on gate 2, final go/no-go
+- [ ] **Puddy (QA)** -- gates 6, 7, 9 green.
+- [ ] **Newman (security)** -- gate 13.
+- [ ] **Jackie (licensing)** -- gate 14.
+- [ ] **Elaine (docs)** -- gates 10, 11, 15.
+- [ ] **Lippman (release)** -- SemVer call on gate 2, final go/no-go
       against the full table, tag push.
 
 Missing a sign-off is a no-go. Lippman can override a no-go **only**
@@ -94,7 +94,7 @@ and the follow-up ticket.
 - A test suite is skipped "just to ship" without a Puddy-signed waiver.
 - CHANGELOG is a commit dump or missing a migration note for a
   breaking change.
-- Version strings disagree with the tag (gates 3, 4, 8) — this is
+- Version strings disagree with the tag (gates 3, 4, 8) -- this is
   C-1 / C-2 and it must never recur.
 - A previous release's hash-sync is still open. Finish the tail of
   the last release before starting the next.
@@ -119,4 +119,4 @@ and the follow-up ticket.
    See [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) and the
    release-rollback runbook (H-3).
 
-— Mr. Lippman, release management
+-- Mr. Lippman, release management

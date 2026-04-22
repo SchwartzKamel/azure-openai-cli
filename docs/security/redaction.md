@@ -1,4 +1,4 @@
-# Error-Path Secret Redaction — `UnsafeReplaceSecrets` Coverage
+# Error-Path Secret Redaction -- `UnsafeReplaceSecrets` Coverage
 
 > *Hello. Newman.* The secret redaction control at
 > `azureopenai-cli-v2/Program.cs:1348` exists, is tested, and is called on
@@ -25,8 +25,8 @@
 
 It is called from the two user-facing exception paths:
 
-- `Program.cs:604` — `RequestFailedException` catch (Azure SDK errors, 401s).
-- `Program.cs:619` — generic `Exception` catch (fallback, unhandled chain).
+- `Program.cs:604` -- `RequestFailedException` catch (Azure SDK errors, 401s).
+- `Program.cs:619` -- generic `Exception` catch (fallback, unhandled chain).
 
 Before redaction, the exception chain is unwrapped up to **5 `InnerException`
 levels** by `UnwrapAsync`, so deep AOT-trim chains
@@ -57,7 +57,7 @@ These are deliberate non-goals. Residual risk is accepted; see
 
 - **Keys shorter than 4 characters.** Literal substring replacement on a
   3-char string would clobber too many legitimate substrings of the error
-  text (timestamps, status codes). Azure OpenAI keys are >40 chars — this
+  text (timestamps, status codes). Azure OpenAI keys are >40 chars -- this
   threshold is far below production reality.
 - **`AZUREOPENAIENDPOINT` values that are not URL-shaped.** The helper
   takes `new Uri(endpoint).Host`; if `endpoint` isn't parseable, only the
@@ -68,7 +68,7 @@ These are deliberate non-goals. Residual risk is accepted; see
 - **Prompt content in `stdout`.** If the operator pasted a secret into a
   prompt, that secret appears in the model's reply and in the CLI's
   `stdout`. The CLI does not scan prompts or responses for secret-looking
-  patterns — that's prompt-hygiene, not error-path redaction.
+  patterns -- that's prompt-hygiene, not error-path redaction.
 - **Past `.ralph-log` files written before a rotation.** Redaction runs
   before write, so a file written today is clean. But if the key was
   rotated today, yesterday's `.ralph-log` still contains whatever error
@@ -86,7 +86,7 @@ These are deliberate non-goals. Residual risk is accepted; see
 |---|---|
 | `tests/AzureOpenAI_CLI.V2.Tests/UnsafeReplaceSecretsTests.cs` (expected location) | Key + endpoint + hostname substring replacement |
 | `tests/AzureOpenAI_CLI.V2.Tests/ErrorPathRedactionTests.cs` (expected location) | End-to-end: inject a known key into a `RequestFailedException`, confirm it is absent from `stderr` |
-| `ToolHardeningTests` suite | Upstream — confirms that tool-layer errors round-trip through the same helper |
+| `ToolHardeningTests` suite | Upstream -- confirms that tool-layer errors round-trip through the same helper |
 
 > **Puddy action item:** if any of the above test classes does not yet
 > exist under its canonical name, add a regression test before the next
@@ -110,7 +110,7 @@ Program.cs:1348: private static string UnsafeReplaceSecrets(string text, string 
 
 If an operator accidentally puts the endpoint URL into `AZUREOPENAIAPI`
 (or vice versa), the helper will redact the *other* value on both passes
-— but the mis-set variable is already a configuration error, not a
+-- but the mis-set variable is already a configuration error, not a
 secret-handling one. The redaction still holds as long as at least one of
 the two environment variables carries the real key.
 
@@ -155,11 +155,11 @@ lieu of key hygiene.
 
 ## 7. See also
 
-- [`SECURITY.md` §2](../../SECURITY.md#2-credential-management) — operator-facing summary.
+- [`SECURITY.md` §2](../../SECURITY.md#2-credential-management) -- operator-facing summary.
 - [`docs/runbooks/threat-model-v2.md`](../runbooks/threat-model-v2.md) § T-1.
 - [`docs/security/hardening-checklist.md`](./hardening-checklist.md).
-- [`docs/audits/fdr-v2-dogfood-2026-04-22.md`](../audits/fdr-v2-dogfood-2026-04-22.md) — the red-team report that drove the helper.
+- [`docs/audits/fdr-v2-dogfood-2026-04-22.md`](../audits/fdr-v2-dogfood-2026-04-22.md) -- the red-team report that drove the helper.
 
 ---
 
-*Redacted. Unwrapped. Tested. Filed.* — Newman
+*Redacted. Unwrapped. Tested. Filed.* -- Newman

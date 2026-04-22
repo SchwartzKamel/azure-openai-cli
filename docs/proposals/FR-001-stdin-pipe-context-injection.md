@@ -6,7 +6,7 @@
 > flag described below was deferred.
 
 ---
-**Priority:** P0 — Critical  
+**Priority:** P0 -- Critical  
 **Impact:** Transforms the tool from a toy into a workflow weapon  
 **Effort:** Small (< 1 day)  
 **Category:** Core UX
@@ -21,7 +21,7 @@ Right now, the CLI only accepts prompts as command-line arguments:
 az-ai "Explain quantum computing"
 ```
 
-This means the tool is **isolated from the developer's actual workflow**. You can't feed it code, diffs, logs, or files. Every other serious CLI tool — `jq`, `ripgrep`, `sed`, even `curl` — reads from stdin. This tool doesn't. That's a dealbreaker for power users who compose tools with pipes.
+This means the tool is **isolated from the developer's actual workflow**. You can't feed it code, diffs, logs, or files. Every other serious CLI tool -- `jq`, `ripgrep`, `sed`, even `curl` -- reads from stdin. This tool doesn't. That's a dealbreaker for power users who compose tools with pipes.
 
 A developer looking at a failing test or a messy diff should be able to say:
 
@@ -31,7 +31,7 @@ cat error.log | az-ai "What went wrong here?"
 kubectl logs pod/api-server | az-ai "Summarize these errors"
 ```
 
-Today, none of that works. The user has to manually copy-paste content into a quoted argument — which hits the 32KB prompt limit fast and breaks on special characters.
+Today, none of that works. The user has to manually copy-paste content into a quoted argument -- which hits the 32KB prompt limit fast and breaks on special characters.
 
 ---
 
@@ -45,7 +45,7 @@ When stdin is not a TTY (i.e., something is being piped in), read it and prepend
 string? stdinContent = null;
 if (!Console.IsInputRedirected)
 {
-    // Interactive mode — stdin is the terminal, no pipe
+    // Interactive mode -- stdin is the terminal, no pipe
 }
 else
 {
@@ -97,7 +97,7 @@ Piped content can be enormous. Apply a content-aware truncation:
 
 Charmbracelet's `mods` made pipe support their headline feature. `sgpt` supports it. This is table stakes.
 
-The implementation is trivial — `Console.IsInputRedirected` + `Console.In.ReadToEnd()` — but the impact on adoption is enormous. This is the feature that makes someone tweet: "just reviewed my entire PR with one command."
+The implementation is trivial -- `Console.IsInputRedirected` + `Console.In.ReadToEnd()` -- but the impact on adoption is enormous. This is the feature that makes someone tweet: "just reviewed my entire PR with one command."
 
 ---
 

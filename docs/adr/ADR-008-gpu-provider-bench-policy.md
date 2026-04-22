@@ -1,11 +1,11 @@
-# ADR-008 — Benchmarking Policy for GPU / Non-CI-Gated Providers
+# ADR-008 -- Benchmarking Policy for GPU / Non-CI-Gated Providers
 
-- **Status**: Proposed — 2026-04-23
+- **Status**: Proposed -- 2026-04-23
 - **Deciders**: Bania (perf), Jerry (DevOps), Kramer (eng)
 - **Related**:
-  - [ADR-006 — NVIDIA NIM / NVFP4 Provider Integration](./ADR-006-nvfp4-nim-integration.md) — originating decision
-  - [ADR-003 — Behavior-Driven Development in xUnit](./ADR-003-behavior-driven-development.md) — test-gate precedent
-  - [ADR-007 — Security guardrails for third-party HTTP providers](./ADR-007-third-party-http-provider-security.md)
+  - [ADR-006 -- NVIDIA NIM / NVFP4 Provider Integration](./ADR-006-nvfp4-nim-integration.md) -- originating decision
+  - [ADR-003 -- Behavior-Driven Development in xUnit](./ADR-003-behavior-driven-development.md) -- test-gate precedent
+  - [ADR-007 -- Security guardrails for third-party HTTP providers](./ADR-007-third-party-http-provider-security.md)
 
 ## Context
 
@@ -13,7 +13,7 @@ az-ai's existing perf gates (cold-start TTFT, binary size, AOT footprint) run on
 
 **It does not work for GPU-backed providers.**
 
-GitHub Actions runners have no Blackwell silicon, no NVFP4 tensor cores, no CUDA, no NIM container runtime. A "perf gate" on ADR-006's NIM provider run in GHA would be measuring nothing relevant — at best mock latency, at worst theatre. The same applies to any future provider that depends on user-side hardware we can't reproduce in CI (Apple Metal, AMD ROCm, Intel Arc, custom Triton deployments).
+GitHub Actions runners have no Blackwell silicon, no NVFP4 tensor cores, no CUDA, no NIM container runtime. A "perf gate" on ADR-006's NIM provider run in GHA would be measuring nothing relevant -- at best mock latency, at worst theatre. The same applies to any future provider that depends on user-side hardware we can't reproduce in CI (Apple Metal, AMD ROCm, Intel Arc, custom Triton deployments).
 
 At the same time, we still have to catch regressions in the code we *do* own: HTTP request construction, bearer-auth injection, SSE stream parsing, callback dispatch, retry logic. Those are az-ai's responsibility regardless of what's on the other end of the socket.
 
@@ -23,20 +23,20 @@ ADR-006 sketched a two-tier answer inline. This ADR promotes it to project-wide 
 
 **Every provider that depends on hardware az-ai's CI cannot provision is benchmarked in two tiers: a mock-backend tier that is CI-gated, and a real-hardware tier that is manual and explicitly not a merge gate.**
 
-### Tier 1 — Mock-backend bench, CI-gated
+### Tier 1 -- Mock-backend bench, CI-gated
 
-Each GPU-dependent provider ships with a mock server that mimics the provider's wire protocol at fixed, deterministic latency. For FR-020 (NIM) this is `scripts/bench_mock_nim.py` — a local HTTP server emitting OpenAI-compatible chat-completions with a scripted SSE stream and a fixed per-token delay.
+Each GPU-dependent provider ships with a mock server that mimics the provider's wire protocol at fixed, deterministic latency. For FR-020 (NIM) this is `scripts/bench_mock_nim.py` -- a local HTTP server emitting OpenAI-compatible chat-completions with a scripted SSE stream and a fixed per-token delay.
 
-The bench measures **az-ai's contribution to the end-to-end call**: request build, auth header injection, stream parse, callback dispatch, tool-call parsing. Not model inference — that is held constant by the mock.
+The bench measures **az-ai's contribution to the end-to-end call**: request build, auth header injection, stream parse, callback dispatch, tool-call parsing. Not model inference -- that is held constant by the mock.
 
 Tier 1 runs on every PR. Thresholds match the existing project standard:
 
-- **≥ 5% regression vs baseline** — warn (annotates the PR).
-- **≥ 10% regression vs baseline** — block (fails the merge gate).
+- **≥ 5% regression vs baseline** -- warn (annotates the PR).
+- **≥ 10% regression vs baseline** -- block (fails the merge gate).
 
 Mock-bench baselines live at `benchmarks/mock/<provider>.baseline.json` and are committed. Rebaseline PRs require a brief justification in the commit message.
 
-### Tier 2 — Real-hardware bench, manual / nightly self-hosted
+### Tier 2 -- Real-hardware bench, manual / nightly self-hosted
 
 Real-GPU numbers are produced by one of:
 
@@ -63,30 +63,30 @@ Every manual or nightly measurement must record:
 | `value` | `94` |
 | `variance` | `p95=138, p99=181, stdev=24` |
 
-Bare means are rejected — "the p50 was 94 ms" without sample size, variance, and hardware is not a measurement, it is a rumour. The schema is enforced by a JSON-schema lint on `benchmarks/manual/*.json`.
+Bare means are rejected -- "the p50 was 94 ms" without sample size, variance, and hardware is not a measurement, it is a rumour. The schema is enforced by a JSON-schema lint on `benchmarks/manual/*.json`.
 
 ### Published-claim policy
 
-Any latency or throughput number that leaves `benchmarks/` — README tables, blog posts, conference talks, docs pages — **must cite the source measurement row**: hardware, sample size, variance, provider version. No exceptions.
+Any latency or throughput number that leaves `benchmarks/` -- README tables, blog posts, conference talks, docs pages -- **must cite the source measurement row**: hardware, sample size, variance, provider version. No exceptions.
 
 Every `docs/providers/<provider>.md` for a GPU-dependent provider carries the banner:
 
 > **Performance characterization**
-> Numbers in this page are manual / community-reported. They are not CI-gated. Hardware, sample size, and variance are listed alongside every value. If a number lacks those fields, it is not a measurement — treat it as a rumour.
+> Numbers in this page are manual / community-reported. They are not CI-gated. Hardware, sample size, and variance are listed alongside every value. If a number lacks those fields, it is not a measurement -- treat it as a rumour.
 
 ### Metrics catalogue
 
 The following metrics are the recommended minimum for a GPU-dependent provider's Tier 2 sheet:
 
-- **TTFT** — cold (container cold), warm (container hot, model loaded).
-- **Throughput** — steady-state tokens per second, per concurrency level `{1, 4, 16, 64}`.
-- **TTFT under load** — p50/p95/p99 at each concurrency level.
-- **Container cold start** — wall-clock from `docker run` to first-token readiness.
-- **Model load time** — weights → VRAM residency, reported separately.
-- **VRAM residency** — idle and peak, in GB.
-- **az-ai overhead** — wall-clock delta between az-ai invocation and the first byte received from the provider (Tier 1 measures this; Tier 2 cross-checks).
+- **TTFT** -- cold (container cold), warm (container hot, model loaded).
+- **Throughput** -- steady-state tokens per second, per concurrency level `{1, 4, 16, 64}`.
+- **TTFT under load** -- p50/p95/p99 at each concurrency level.
+- **Container cold start** -- wall-clock from `docker run` to first-token readiness.
+- **Model load time** -- weights → VRAM residency, reported separately.
+- **VRAM residency** -- idle and peak, in GB.
+- **az-ai overhead** -- wall-clock delta between az-ai invocation and the first byte received from the provider (Tier 1 measures this; Tier 2 cross-checks).
 
-Not every provider will populate every field on day one. The schema treats missing fields as `null`, not absent — so omissions are visible in rollups rather than silently assumed zero.
+Not every provider will populate every field on day one. The schema treats missing fields as `null`, not absent -- so omissions are visible in rollups rather than silently assumed zero.
 
 ## Consequences
 
@@ -105,11 +105,11 @@ Not every provider will populate every field on day one. The schema treats missi
 ## Alternatives Considered
 
 - **Gate real-GPU perf in CI via paid cloud runners (e.g. Lambda, Modal).** Rejected: cost, queue times, and "which Blackwell SKU is the baseline?" churn. A provider's CI bill exceeding its user base is a smell.
-- **Don't bench GPU providers at all — let users do it.** Rejected: plumbing regressions (stream parsing, auth) are az-ai's problem and would go undetected. Tier 1 catches those cheaply.
+- **Don't bench GPU providers at all -- let users do it.** Rejected: plumbing regressions (stream parsing, auth) are az-ai's problem and would go undetected. Tier 1 catches those cheaply.
 - **Publish bare means without variance.** Rejected: every "gold" claim without a reproducer becomes a support ticket six months later. Variance + sample size are required for a reason.
 
 ## References
 
-- [ADR-003 — Behavior-Driven Development in xUnit](./ADR-003-behavior-driven-development.md) — test-gate thresholds precedent
-- [ADR-006 appendix §A.7 — Bania's perf memo (verbatim)](./ADR-006-appendix-roundtable.md#a7--kenny-bania-perf)
+- [ADR-003 -- Behavior-Driven Development in xUnit](./ADR-003-behavior-driven-development.md) -- test-gate thresholds precedent
+- [ADR-006 appendix §A.7 -- Bania's perf memo (verbatim)](./ADR-006-appendix-roundtable.md#a7--kenny-bania-perf)
 - Existing `docs/benchmarks.md` and `make bench` targets

@@ -2,7 +2,7 @@
 
 This directory contains **1,510+ xUnit tests** (1,025 v1 + 485 v2) and **~174 bash integration assertions** for the Azure OpenAI CLI.
 
-> **Counts measured:** `dotnet test` on both `AzureOpenAI_CLI.Tests/` and `AzureOpenAI_CLI.V2.Tests/` at the tip of `main`. The `+` acknowledges PRs in flight (e.g. new contract tests) — the floor is firm.
+> **Counts measured:** `dotnet test` on both `AzureOpenAI_CLI.Tests/` and `AzureOpenAI_CLI.V2.Tests/` at the tip of `main`. The `+` acknowledges PRs in flight (e.g. new contract tests) -- the floor is firm.
 
 ---
 
@@ -10,11 +10,11 @@ This directory contains **1,510+ xUnit tests** (1,025 v1 + 485 v2) and **~174 ba
 
 | Suite | Type | Count | Description |
 |-------|------|------:|-------------|
-| [`AzureOpenAI_CLI.Tests/`](AzureOpenAI_CLI.Tests/) | xUnit (v1) | 1,025 | Legacy v1 unit/contract/chaos/property tests — `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj` |
-| [`AzureOpenAI_CLI.V2.Tests/`](AzureOpenAI_CLI.V2.Tests/) | xUnit (v2) | 485 | v2 CLI tests under `azureopenai-cli-v2/` — `dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj` |
-| [`integration_tests.sh`](integration_tests.sh) | Bash | ~174 assertions | End-to-end CLI tests — no Azure credentials needed |
-| [`docker-image-optimization.sh`](docker-image-optimization.sh) | Bash | — | Dockerfile validation — checks build best practices |
-| [`chaos/`](chaos/) | Bash | — | Chaos / failure-injection harness (see `tests/chaos/` docs) |
+| [`AzureOpenAI_CLI.Tests/`](AzureOpenAI_CLI.Tests/) | xUnit (v1) | 1,025 | Legacy v1 unit/contract/chaos/property tests -- `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj` |
+| [`AzureOpenAI_CLI.V2.Tests/`](AzureOpenAI_CLI.V2.Tests/) | xUnit (v2) | 485 | v2 CLI tests under `azureopenai-cli-v2/` -- `dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj` |
+| [`integration_tests.sh`](integration_tests.sh) | Bash | ~174 assertions | End-to-end CLI tests -- no Azure credentials needed |
+| [`docker-image-optimization.sh`](docker-image-optimization.sh) | Bash | -- | Dockerfile validation -- checks build best practices |
+| [`chaos/`](chaos/) | Bash | -- | Chaos / failure-injection harness (see `tests/chaos/` docs) |
 
 **Total: 1,510+ xUnit tests across both projects.**
 
@@ -34,9 +34,9 @@ See [`docs/testing/README.md`](../docs/testing/README.md) for the full testing p
 
 | File | Tests | Description |
 |------|------:|-------------|
-| [`ProgramTests.cs`](AzureOpenAI_CLI.Tests/ProgramTests.cs) | — | Core CLI argument parsing, flags, exit codes |
-| [`ToolTests.cs`](AzureOpenAI_CLI.Tests/ToolTests.cs) | — | Built-in tool registration, execution, edge cases |
-| [`UserConfigTests.cs`](AzureOpenAI_CLI.Tests/UserConfigTests.cs) | — | Config file loading, model persistence, file permissions |
+| [`ProgramTests.cs`](AzureOpenAI_CLI.Tests/ProgramTests.cs) | -- | Core CLI argument parsing, flags, exit codes |
+| [`ToolTests.cs`](AzureOpenAI_CLI.Tests/ToolTests.cs) | -- | Built-in tool registration, execution, edge cases |
+| [`UserConfigTests.cs`](AzureOpenAI_CLI.Tests/UserConfigTests.cs) | -- | Config file loading, model persistence, file permissions |
 | [`SecurityToolTests.cs`](AzureOpenAI_CLI.Tests/SecurityToolTests.cs) | 104 | Security hardening: symlink traversal, DNS rebinding, command blocklist, path blocking, input sanitization |
 | [`ParallelToolExecutionTests.cs`](AzureOpenAI_CLI.Tests/ParallelToolExecutionTests.cs) | 11 | Concurrent tool call execution via `Task.WhenAll` |
 | [`RetryTests.cs`](AzureOpenAI_CLI.Tests/RetryTests.cs) | 36 | Retry logic, backoff, timeout behavior |

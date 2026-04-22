@@ -1,11 +1,11 @@
-# Azure OpenAI CLI — Use Cases
+# Azure OpenAI CLI -- Use Cases
 
 > Index of mode-by-mode recipes. Pick the mode you need, jump to the deep
 > dive, and come back if your workflow spans more than one.
 
 ## Prerequisites
 
-Set the three required env vars before running any example — see
+Set the three required env vars before running any example -- see
 [`prerequisites.md`](prerequisites.md) (single source of truth):
 `AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`.
 
@@ -37,7 +37,7 @@ az-ai --estimate --model gpt-4o "$(cat big-prompt.txt)"
 | **Persona/Squad** | `--persona <name\|auto>`     | ✅ (per persona)      | ❌ (unless `--ralph`) | ✅ (`.squad/`) | [`persona-guide.md`](persona-guide.md) + [`use-cases-ralph-squad.md`](use-cases-ralph-squad.md) (Part 2) |
 
 Config, Espanso/AHK integration, pipelines, Docker, and the security sandbox
-are cross-mode — see [`use-cases-config-integration.md`](use-cases-config-integration.md).
+are cross-mode -- see [`use-cases-config-integration.md`](use-cases-config-integration.md).
 
 Shared flags that apply to most modes: `--json`, `--raw`, `--system`,
 `--temperature`, `--max-tokens`, `--timeout`, `--model`, `--schema`,
@@ -51,20 +51,20 @@ The 2.0.0 release adds nine flags and wires `--persona` end-to-end. Full
 rundown in [`migration-v1-to-v2.md`](migration-v1-to-v2.md) §1. Headline
 additions (also listed in `az-ai --help`):
 
-- `--json` — machine-readable errors and estimator output.
-- `--version --short` — bare semver (`2.0.0`), for packaging scripts.
-- `--schema <json>` — capture a JSON schema (wire enforcement deferred to 2.1.x).
-- `--max-rounds <n>` — agent tool-call cap; default 5, range 1–20.
-- `--config <path>` and `--config set/get/list/reset/show` — alternate-path
+- `--json` -- machine-readable errors and estimator output.
+- `--version --short` -- bare semver (`2.0.0`), for packaging scripts.
+- `--schema <json>` -- capture a JSON schema (wire enforcement deferred to 2.1.x).
+- `--max-rounds <n>` -- agent tool-call cap; default 5, range 1-20.
+- `--config <path>` and `--config set/get/list/reset/show` -- alternate-path
   overrides and CRUD for persisted preferences.
-- `--completions <bash|zsh|fish>` — shell completion scripts on stdout.
+- `--completions <bash|zsh|fish>` -- shell completion scripts on stdout.
 - `--models` / `--list-models` / `--current-model` / `--set-model
-  <alias>=<deployment>` — model-alias management, persisted to
+  <alias>=<deployment>` -- model-alias management, persisted to
   `~/.azureopenai-cli.json`.
-- `--telemetry` (or `AZ_TELEMETRY=1`) — opt-in OTel + cost events on stderr.
-- `--estimate` / `--dry-run-cost` / `--estimate-with-output <n>` — predicted
+- `--telemetry` (or `AZ_TELEMETRY=1`) -- opt-in OTel + cost events on stderr.
+- `--estimate` / `--dry-run-cost` / `--estimate-with-output <n>` -- predicted
   USD without an API call. Short-circuits before credential resolution.
-- `--persona <name|auto>` — now fully wired via `SquadCoordinator` + memory.
+- `--persona <name|auto>` -- now fully wired via `SquadCoordinator` + memory.
 
 ---
 
@@ -80,5 +80,5 @@ additions (also listed in `az-ai --help`):
 
 ---
 
-*Azure OpenAI CLI — v2.0.0. See [`CHANGELOG.md`](../CHANGELOG.md) for the
+*Azure OpenAI CLI -- v2.0.0. See [`CHANGELOG.md`](../CHANGELOG.md) for the
 currently released version.*

@@ -21,13 +21,13 @@ A **persona** is three things glued together:
 3. A **memory file** at `.squad/history/<name>.md` (what happened in past
    sessions, prepended to the system prompt on each run).
 
-A **Squad** is a collection of personas plus optional **routing rules** —
+A **Squad** is a collection of personas plus optional **routing rules** --
 keyword patterns that let `--persona auto` pick the best persona for a task.
 
 All configuration lives in two places:
 
-- `.squad.json` — the Squad definition (personas + routing rules). Commit it.
-- `.squad/` — runtime state (memory files + decision log). Also commit it;
+- `.squad.json` -- the Squad definition (personas + routing rules). Commit it.
+- `.squad/` -- runtime state (memory files + decision log). Also commit it;
   that is how knowledge compounds across contributors.
 
 Persona mode **implies agent mode**. If a persona declares any tools, its
@@ -41,10 +41,10 @@ allow-list overrides `--tools` on the command line.
 # 1. Scaffold a Squad in the current directory.
 az-ai --squad-init
 # Writes:
-#   .squad.json           — 5 default personas + routing rules
-#   .squad/history/       — empty; memory files are created on first use
-#   .squad/decisions.md   — shared decision log
-#   .squad/README.md      — inline reference
+#   .squad.json           -- 5 default personas + routing rules
+#   .squad/history/       -- empty; memory files are created on first use
+#   .squad/decisions.md   -- shared decision log
+#   .squad/README.md      -- inline reference
 
 # 2. Run a task under a named persona.
 az-ai --persona coder "Refactor BUG-142 out of src/auth.py"
@@ -80,21 +80,21 @@ A `PersonaConfig` entry in `.squad.json`. Fields:
 | `description`   |          | One-liner shown by `--personas`                                    |
 | `system_prompt` | ✅       | Full system prompt. Overrides `--system` on the command line.      |
 | `tools`         |          | Tool names: any of `shell`, `file`, `web`, `clipboard`, `datetime`, `delegate`. Empty = no tool restriction; falls back to `--tools` or the default allow-list. |
-| `model`         |          | Optional per-persona model override. Reserved — not yet wired in 2.0.0. |
+| `model`         |          | Optional per-persona model override. Reserved -- not yet wired in 2.0.0. |
 
 ### Memory
 
 For every persona run, `PersonaMemory` does two things:
 
-1. **On entry** — reads `.squad/history/<name>.md` (if present) and prepends
+1. **On entry** -- reads `.squad/history/<name>.md` (if present) and prepends
    the contents to the persona's system prompt under the header
    `## Your Memory (from previous sessions)`. The file is capped at **32 KB at
    read time**; older content is truncated from the front with a
    `...(earlier history truncated)...` marker. Writes are not capped.
-2. **On exit** — appends a session summary to the same file. Format:
+2. **On exit** -- appends a session summary to the same file. Format:
 
    ```markdown
-   ## Session — 2026-04-20 14:32 UTC
+   ## Session -- 2026-04-20 14:32 UTC
    **Task:** <first 200 chars of prompt>...
    **Result:** <first 500 chars of model response>...
    ```
@@ -118,7 +118,7 @@ bad learnings, or seed a new persona with institutional knowledge.
 4. Look up the winning rule's `persona` name in `Personas`.
 
 This is deterministic, offline, and cheap. No model is called to pick the
-persona — that would defeat the purpose.
+persona -- that would defeat the purpose.
 
 Routing rules are a list of:
 
@@ -137,7 +137,7 @@ change tie-breaking.
 
 `.squad/decisions.md` is a shared file personas can append to. It is capped
 at 32 KB on read (same rules as memory). Use it for cross-persona context
-that does not belong in any single persona's history — for example, an
+that does not belong in any single persona's history -- for example, an
 architecture trade-off the `architect` recorded that the `coder` should
 honour on the next session.
 
@@ -149,7 +149,7 @@ honour on the next session.
 
 | Flag                 | Purpose                                                          |
 |----------------------|------------------------------------------------------------------|
-| `--squad-init`       | Scaffold `.squad.json` + `.squad/`. Idempotent — refuses if `.squad.json` already exists. |
+| `--squad-init`       | Scaffold `.squad.json` + `.squad/`. Idempotent -- refuses if `.squad.json` already exists. |
 | `--persona <name>`   | Run under the named persona. Case-insensitive. Unknown name exits 1 with the list of valid names. |
 | `--persona auto`     | Let the coordinator pick the persona. Falls back to the first persona on no match. |
 | `--personas`         | List configured personas with descriptions.                       |
@@ -207,12 +207,12 @@ Verified against `azureopenai-cli-v2/Squad/SquadInitializer.cs`.
 
 ### Precedence rules
 
-- **System prompt** — persona's `system_prompt` **overrides** `--system` and
+- **System prompt** -- persona's `system_prompt` **overrides** `--system` and
   `SYSTEMPROMPT`.
-- **Tools** — a non-empty `tools` array on the persona **overrides**
+- **Tools** -- a non-empty `tools` array on the persona **overrides**
   `--tools` and forces `--agent` on. Empty `tools` falls back to `--tools`
   or the default allow-list.
-- **Model** — persona-level `model` is reserved; for now resolution is the
+- **Model** -- persona-level `model` is reserved; for now resolution is the
   same as a bare run: CLI `--model` > `AZUREOPENAIMODEL` > UserConfig smart
   default > `gpt-4o-mini`.
 
@@ -227,7 +227,7 @@ az-ai --persona coder "Implement a Redis-backed rate limiter in src/ratelimit/"
 # Security review of a specific file.
 az-ai --persona security "Audit src/api/tokens.py for injection and SSRF bugs"
 
-# Documentation from scratch — note the 'docs' keyword triggers --persona auto.
+# Documentation from scratch -- note the 'docs' keyword triggers --persona auto.
 az-ai --persona auto "Write docs for FR-014 (multi-provider support)"
 # → 🎭 Auto-routed to: writer (Technical Writer)
 
@@ -272,7 +272,7 @@ change the tie-break.
 **Where is memory stored?**
 `./.squad/history/<name>.md` relative to the current working directory. If
 you run `az-ai --persona coder` from two different project roots, the
-`coder` persona has two independent memories. This is intentional — each
+`coder` persona has two independent memories. This is intentional -- each
 project gets its own Squad.
 
 **Can I disable memory for a run?**
@@ -305,7 +305,7 @@ az-ai --squad-init
 ```
 
 If `.squad.json` exists but is in a parent directory, `cd` into the project
-root first — `SquadConfig.Load()` reads from the **current working directory**.
+root first -- `SquadConfig.Load()` reads from the **current working directory**.
 
 ### `Unknown persona '<name>'. Available: coder, reviewer, …`
 
@@ -329,13 +329,13 @@ The routing rules are keyword substring matches. Two common causes:
 2. No keywords match at all, so the coordinator falls back to the first
    persona in the array.
 
-Fix by editing `.squad.json` — reorder rules, remove overlapping keywords,
+Fix by editing `.squad.json` -- reorder rules, remove overlapping keywords,
 or make the patterns more specific.
 
 ### Memory file seems to "forget" older sessions
 
 Expected. `ReadHistory` truncates to 32 KB, keeping the tail. If you want
-the full history, open the raw file — it is not truncated on disk, only on
+the full history, open the raw file -- it is not truncated on disk, only on
 read. To compact, edit the file by hand and keep the summary you want.
 
 ### Persona-mode tools don't match what I passed with `--tools`
@@ -357,7 +357,7 @@ az-ai --persona writer "Rephrase: $INPUT" 2>/dev/null
 
 ### Decisions or memory don't survive across machines
 
-Commit `.squad/` to your repo. It is designed to be version-controlled —
+Commit `.squad/` to your repo. It is designed to be version-controlled --
 that is how the team's accumulated knowledge travels.
 
 ---

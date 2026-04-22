@@ -1,6 +1,6 @@
-# TTY detection — worked examples
+# TTY detection -- worked examples
 
-> *Color is garnish, never the entrée. The plate tells you which.* — M.A.
+> *Color is garnish, never the entrée. The plate tells you which.* -- M.A.
 
 `docs/accessibility.md` §1 states the seven-rule color precedence in
 the abstract. This appendix shows the same rules in action, command by
@@ -10,11 +10,11 @@ for the ground-truth implementation.
 
 **Legend** (used in every table below):
 
-- **CLEAN** — zero ANSI escapes, zero cursor-hide codes, zero
+- **CLEAN** -- zero ANSI escapes, zero cursor-hide codes, zero
   spinner. Safe for TTS, braille, CI logs, and `grep`.
-- **CHROME** — ANSI color, section headers, and (where not suppressed
+- **CHROME** -- ANSI color, section headers, and (where not suppressed
   by `--raw`) a subtle progress affordance on stderr.
-- **CHROME-NC** — CHROME but with color stripped; structure still
+- **CHROME-NC** -- CHROME but with color stripped; structure still
   emitted.
 
 ---
@@ -29,7 +29,7 @@ az-ai-v2 "hello"
 
 - stdout: **CHROME** (TTY detected, no env overrides).
 - stderr: CHROME (status prefixes, token usage).
-- Why: rule 7 — stdout is a TTY, no suppress-env set.
+- Why: rule 7 -- stdout is a TTY, no suppress-env set.
 
 ### 1.2 Piped to another command
 
@@ -39,15 +39,15 @@ az-ai-v2 "hello" | less
 az-ai-v2 "hello" > out.txt
 ```
 
-- stdout: **CLEAN** (rule 6 — stdout is not a TTY).
-- stderr: still CHROME *unless* `--raw` is set — status text goes to
+- stdout: **CLEAN** (rule 6 -- stdout is not a TTY).
+- stderr: still CHROME *unless* `--raw` is set -- status text goes to
   a terminal if stderr is still a TTY, which is the common case for
   `cmd | tee`. This is the correct POSIX behavior: stderr is for the
   human, stdout is for the pipeline.
 - If both stdout and stderr are redirected (e.g. `>out 2>err`), both
   fall to CLEAN automatically; no env flag needed.
 
-### 1.3 Explicit opt-out — `NO_COLOR`
+### 1.3 Explicit opt-out -- `NO_COLOR`
 
 ```sh
 NO_COLOR=1 az-ai-v2 "hello"            # interactive, no color
@@ -55,13 +55,13 @@ NO_COLOR=1 az-ai-v2 "hello" | less     # piped, still no color
 NO_COLOR=1 FORCE_COLOR=1 az-ai-v2 "hi" # NO_COLOR WINS
 ```
 
-- stdout (interactive): **CHROME-NC** — structure preserved, color
+- stdout (interactive): **CHROME-NC** -- structure preserved, color
   stripped. Rule 1 fires first.
 - Last line: `FORCE_COLOR=1` does **not** override. That is the
   [no-color.org](https://no-color.org/) contract and it is the single
   most important property on this page.
 
-### 1.4 Explicit opt-in — `--raw`
+### 1.4 Explicit opt-in -- `--raw`
 
 ```sh
 az-ai-v2 --raw "hello"                   # interactive, but CLEAN
@@ -93,7 +93,7 @@ TERM=dumb az-ai-v2 "hello"
 
 ---
 
-## 2. Decision matrix — what actually comes out
+## 2. Decision matrix -- what actually comes out
 
 This table is the quick-reference. Read left to right: find the row
 whose conditions match your invocation, read off the expected class.
@@ -116,7 +116,7 @@ Rule ordering corresponds to the seven-rule list in
 
 ## 3. Verifying from the outside
 
-You do not need to trust this doc — verify it on your system. All
+You do not need to trust this doc -- verify it on your system. All
 three of the following commands should produce byte-identical stdout
 (modulo the actual model response):
 
@@ -130,7 +130,7 @@ diff a.txt c.txt
 ```
 
 If any of those diffs is non-empty, the TTY / color contract is
-broken — please file it as a bug with severity = crash.
+broken -- please file it as a bug with severity = crash.
 
 For the interactive case, a visual check is to pipe through `cat -A`:
 
@@ -145,7 +145,7 @@ none (other than `$` end-of-line markers for `\n`).
 
 ## 4. What about stderr?
 
-Stderr follows the same seven rules independently — it is evaluated
+Stderr follows the same seven rules independently -- it is evaluated
 against *stderr*'s TTY-ness, not stdout's. The common case (`cmd |
 tee`) leaves stderr at a TTY and therefore CHROME, which is correct:
 stderr is the human channel. `--raw` is the only flag that suppresses
@@ -157,7 +157,7 @@ on both channels.
 ## 5. What about color for "errors only"?
 
 There isn't a half-off mode. Color is all-or-nothing. This is
-deliberate: a partial palette is how colorblind regressions ship —
+deliberate: a partial palette is how colorblind regressions ship --
 "error red is still red even with `NO_COLOR`" is the classic bug.
 `az-ai-v2` refuses to emit *any* ANSI when any of the off-rules fire.
 Errors still scream at you via text (`[ERROR]` prefix, exit code), not
@@ -167,15 +167,15 @@ via a lone red glyph.
 
 ## 6. Cross-links
 
-- [`docs/accessibility.md`](../accessibility.md) — the canonical
+- [`docs/accessibility.md`](../accessibility.md) -- the canonical
   contract.
 - [`docs/accessibility/keyboard-workflows.md`](keyboard-workflows.md)
-  — pipes, `$EDITOR`, Espanso/AHK.
-- [`docs/accessibility/low-bandwidth-ssh.md`](low-bandwidth-ssh.md) —
+  -- pipes, `$EDITOR`, Espanso/AHK.
+- [`docs/accessibility/low-bandwidth-ssh.md`](low-bandwidth-ssh.md) --
   why `--raw` is a byte-budget win, not just an a11y win.
 - [`azureopenai-cli-v2/Theme.cs`](../../azureopenai-cli-v2/Theme.cs)
-  — the seven rules, in code.
+  -- the seven rules, in code.
 
 ---
 
-*If it can't be read aloud, it can't be shipped.* — M.A.
+*If it can't be read aloud, it can't be shipped.* -- M.A.

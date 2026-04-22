@@ -1,15 +1,15 @@
-# Azure OpenAI CLI — Standard Mode Use Cases
+# Azure OpenAI CLI -- Standard Mode Use Cases
 
 > Every example on this page uses the binary name **`az-ai`**.
 > Required environment variables (`AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`,
 > `AZUREOPENAIMODEL`) are documented once in
-> [`prerequisites.md`](prerequisites.md) — set them before running any command.
+> [`prerequisites.md`](prerequisites.md) -- set them before running any command.
 
 ---
 
 ## 1. Basic Prompting (Positional Arguments)
 
-The simplest way to talk to the CLI — just type your prompt after the binary name.
+The simplest way to talk to the CLI -- just type your prompt after the binary name.
 All positional arguments are joined with spaces into a single prompt string.
 
 ### Single word
@@ -105,7 +105,7 @@ Error: stdin input exceeds 1 MB limit.
 
 **Exit code:** `1`
 
-The CLI reads exactly 1,048,576 bytes (1 MB). If there is still data remaining after that read, it rejects the input immediately — it does not silently truncate.
+The CLI reads exactly 1,048,576 bytes (1 MB). If there is still data remaining after that read, it rejects the input immediately -- it does not silently truncate.
 
 ---
 
@@ -123,7 +123,7 @@ az-ai "Write a limerick about Kubernetes"
 
 1. A spinner appears on stderr: `⠋ Thinking...` → `⠙ Thinking...` → `⠹ Thinking...` (cycles through `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏` at 80 ms intervals).
 2. When the first token arrives, the spinner is cleared.
-3. Tokens stream to stdout in real time — you see words appear as the model generates them.
+3. Tokens stream to stdout in real time -- you see words appear as the model generates them.
 4. After the last token, a token usage summary prints on stderr (see §4).
 
 ### Spinner suppression
@@ -148,9 +148,9 @@ After every standard-mode response, the CLI prints a token summary on **stderr**
 
 | Symbol | Meaning |
 |---|---|
-| `X` | **Input tokens** — your system prompt + user prompt, tokenized |
-| `Y` | **Output tokens** — the model's response, tokenized |
-| `Z` | **Total** — `X + Y` |
+| `X` | **Input tokens** -- your system prompt + user prompt, tokenized |
+| `Y` | **Output tokens** -- the model's response, tokenized |
+| `Z` | **Total** -- `X + Y` |
 
 ### Example
 
@@ -181,7 +181,7 @@ az-ai "What is 2+2?"
 Token usage is suppressed in three cases:
 
 1. `--raw` flag is active (see §5)
-2. `--json` flag is active (tokens are embedded in the JSON instead — see §6)
+2. `--json` flag is active (tokens are embedded in the JSON instead -- see §6)
 3. stderr is redirected (e.g., `2>/dev/null`)
 
 ---
@@ -218,7 +218,7 @@ az-ai --raw "Write a .gitignore for a Python project" > .gitignore
 az-ai --raw "Generate a random 6-word passphrase" | tr ' ' '-'
 ```
 
-**Expected:** Something like `correct-horse-battery-staple-lunar-frost` — words joined by dashes.
+**Expected:** Something like `correct-horse-battery-staple-lunar-frost` -- words joined by dashes.
 
 ### Why `--raw` is essential for Espanso / AutoHotKey
 
@@ -309,17 +309,17 @@ az-ai --json
 
 ## 7. Temperature (`--temperature` / `-t`)
 
-Controls randomness in the model's output. Range: **0.0 – 2.0**. Default: **0.55**.
+Controls randomness in the model's output. Range: **0.0 - 2.0**. Default: **0.55**.
 
-### Deterministic (0.0) — Factual lookups, code generation
+### Deterministic (0.0) -- Factual lookups, code generation
 
 ```bash
 az-ai -t 0.0 "Convert 72°F to Celsius. Show only the number."
 ```
 
-**Expected:** `22.22` — the same answer every time you run it. Use `0.0` when you need reproducible, deterministic output.
+**Expected:** `22.22` -- the same answer every time you run it. Use `0.0` when you need reproducible, deterministic output.
 
-### Balanced (0.7) — General-purpose questions
+### Balanced (0.7) -- General-purpose questions
 
 ```bash
 az-ai -t 0.7 "Suggest three names for a developer productivity tool"
@@ -327,7 +327,7 @@ az-ai -t 0.7 "Suggest three names for a developer productivity tool"
 
 **Expected:** Creative but sensible suggestions. Each run will vary slightly. Good default for brainstorming with guardrails.
 
-### Creative (1.5) — Fiction, humor, brainstorming
+### Creative (1.5) -- Fiction, humor, brainstorming
 
 ```bash
 az-ai -t 1.5 "Write a one-paragraph horror story about a haunted CI/CD pipeline"
@@ -335,7 +335,7 @@ az-ai -t 1.5 "Write a one-paragraph horror story about a haunted CI/CD pipeline"
 
 **Expected:** Wildly creative, possibly unpredictable output. Higher temperatures increase randomness and surprise.
 
-### Validation — out of range
+### Validation -- out of range
 
 ```bash
 az-ai -t 2.5 "anything"
@@ -349,7 +349,7 @@ az-ai -t 2.5 "anything"
 
 **Exit code:** `1`
 
-### Validation — missing value
+### Validation -- missing value
 
 ```bash
 az-ai --temperature
@@ -367,7 +367,7 @@ az-ai --temperature
 
 ## 8. Max Tokens (`--max-tokens`)
 
-Caps the **output** length. Range: **1 – 128,000**. Default: **10,000**.
+Caps the **output** length. Range: **1 - 128,000**. Default: **10,000**.
 
 ### Tweet-length (50 tokens ≈ 35-50 words)
 
@@ -393,7 +393,7 @@ az-ai --max-tokens 2000 "Write a deep-dive on the CAP theorem with examples"
 
 **Expected:** A substantial multi-paragraph explanation with real-world distributed systems examples.
 
-### Validation — out of range (zero)
+### Validation -- out of range (zero)
 
 ```bash
 az-ai --max-tokens 0 "anything"
@@ -407,7 +407,7 @@ az-ai --max-tokens 0 "anything"
 
 **Exit code:** `1`
 
-### Validation — out of range (too high)
+### Validation -- out of range (too high)
 
 ```bash
 az-ai --max-tokens 999999 "anything"
@@ -421,7 +421,7 @@ az-ai --max-tokens 999999 "anything"
 
 **Exit code:** `1`
 
-### Validation — non-numeric
+### Validation -- non-numeric
 
 ```bash
 az-ai --max-tokens abc "anything"
@@ -487,7 +487,7 @@ cat /var/log/syslog | tail -50 | az-ai --system "You are a log analysis expert. 
 
 **Expected:** Targeted analysis of the log entries, focused on errors and anomalies.
 
-### Validation — missing value
+### Validation -- missing value
 
 ```bash
 az-ai --system
@@ -528,7 +528,7 @@ az-ai --schema '{
 {"name": "John Smith", "age": 34, "email": "john@example.com"}
 ```
 
-The model is **required** to produce JSON matching the schema exactly — no missing fields, no extra fields (due to `additionalProperties: false` and strict mode).
+The model is **required** to produce JSON matching the schema exactly -- no missing fields, no extra fields (due to `additionalProperties: false` and strict mode).
 
 ### Sentiment analysis with enum
 
@@ -578,7 +578,7 @@ cat error.log | az-ai --schema '{
 
 **Expected:** A JSON array of structured error objects.
 
-### Validation — invalid JSON schema
+### Validation -- invalid JSON schema
 
 ```bash
 az-ai --schema '{ not valid json' "anything"
@@ -641,7 +641,7 @@ az-ai "Translate this entire document to French" < large-doc.txt
 AZURE_TIMEOUT=30 az-ai --json "Summarize the internet"
 result=$?
 if [ $result -eq 3 ]; then
-  echo "Timed out — try a simpler prompt"
+  echo "Timed out -- try a simpler prompt"
 fi
 ```
 
@@ -659,7 +659,7 @@ The CLI uses five distinct exit codes. Every error path in the codebase maps to 
 | `3` | **Timeout** | Request exceeded `AZURE_TIMEOUT` seconds |
 | `99` | **Unhandled exception** | Any unexpected error (bug in the CLI or environment issue) |
 
-### Use in scripts — success gate
+### Use in scripts -- success gate
 
 ```bash
 az-ai --raw "Generate a SQL migration" > migration.sql
@@ -671,7 +671,7 @@ else
 fi
 ```
 
-### Use in scripts — granular error handling
+### Use in scripts -- granular error handling
 
 ```bash
 az-ai --json "Summarize this PR" < pr-diff.txt
@@ -679,10 +679,10 @@ exit_code=$?
 
 case $exit_code in
   0) echo "✅ Success" ;;
-  1) echo "❌ Input error — check your prompt or config" ;;
-  2) echo "❌ API error — check credentials or rate limits" ;;
-  3) echo "⏳ Timeout — try a shorter prompt or increase AZURE_TIMEOUT" ;;
-  99) echo "💥 Unexpected error — file a bug report" ;;
+  1) echo "❌ Input error -- check your prompt or config" ;;
+  2) echo "❌ API error -- check credentials or rate limits" ;;
+  3) echo "⏳ Timeout -- try a shorter prompt or increase AZURE_TIMEOUT" ;;
+  99) echo "💥 Unexpected error -- file a bug report" ;;
 esac
 ```
 
@@ -740,7 +740,7 @@ head -c 30000 large-file.txt | az-ai "Summarize the key points"
 
 ## 14. Retry Logic
 
-The CLI automatically retries **transient API errors** with exponential backoff. This happens transparently — you don't need to configure anything.
+The CLI automatically retries **transient API errors** with exponential backoff. This happens transparently -- you don't need to configure anything.
 
 ### What gets retried
 
@@ -748,7 +748,7 @@ The CLI automatically retries **transient API errors** with exponential backoff.
 |---|---|---|
 | HTTP 429 (Rate Limited) | ✅ Yes | Respects `Retry-After` header if present (capped at 60s) |
 | HTTP 5xx (Server Error) | ✅ Yes | Exponential backoff: 1s, 2s, 4s |
-| HTTP 401/403/404 | ❌ No | Permanent errors — retrying won't help |
+| HTTP 401/403/404 | ❌ No | Permanent errors -- retrying won't help |
 | Tokens already streaming | ❌ No | Only retries if failure occurs **before** the first token |
 
 ### Retry behavior
@@ -772,7 +772,7 @@ If all retries fail, the CLI exits with code `2` (API error).
 ### Script-friendly: no action needed
 
 ```bash
-# Retries happen automatically — just check the final exit code
+# Retries happen automatically -- just check the final exit code
 az-ai --raw "Generate release notes" > RELEASE.md
 if [ $? -ne 0 ]; then
   echo "API call failed even after retries"

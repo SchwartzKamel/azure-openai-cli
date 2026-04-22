@@ -2,19 +2,19 @@
 
 > **Either it works or it doesn't.** This is the live, executable reference
 > for how we test `azure-openai-cli`. If something here disagrees with the
-> code, the code is right and this doc is wrong — file an issue.
+> code, the code is right and this doc is wrong -- file an issue.
 
 Companion docs:
 
-- [`bdd-guide.md`](./bdd-guide.md) — naming, Given/When/Then structure, one
+- [`bdd-guide.md`](./bdd-guide.md) -- naming, Given/When/Then structure, one
   behaviour per test.
-- [`test-sanity-audit.md`](./test-sanity-audit.md) — v1-era audit findings
+- [`test-sanity-audit.md`](./test-sanity-audit.md) -- v1-era audit findings
   (scope frozen at 925 tests, still useful for the files it covers).
 - [`../adr/ADR-003-behavior-driven-development.md`](../adr/ADR-003-behavior-driven-development.md)
-  — the BDD decision record.
-- [`../../tests/README.md`](../../tests/README.md) — directory-level index
+  -- the BDD decision record.
+- [`../../tests/README.md`](../../tests/README.md) -- directory-level index
   of the test trees.
-- [`../../tests/chaos/README.md`](../../tests/chaos/README.md) — chaos /
+- [`../../tests/chaos/README.md`](../../tests/chaos/README.md) -- chaos /
   failure-injection harness.
 
 ---
@@ -28,7 +28,7 @@ Numbers measured at tip of `main`. `+` absorbs PRs in flight.
 | v1 xUnit | `tests/AzureOpenAI_CLI.Tests/` (28 `*.cs`) | unit + contract + property + security | **1,025** |
 | v2 xUnit | `tests/AzureOpenAI_CLI.V2.Tests/` (38+ `*.cs`) | unit + contract + regression | **490+** |
 | Integration | `tests/integration_tests.sh` | bash, end-to-end binary exec | ~174 assertions |
-| Docker | `tests/docker-image-optimization.sh` | bash, Dockerfile lint | — |
+| Docker | `tests/docker-image-optimization.sh` | bash, Dockerfile lint | -- |
 | Chaos | `tests/chaos/*.sh` | bash, failure injection | 11 scenarios |
 | **xUnit total** | | | **1,510+** |
 
@@ -37,9 +37,9 @@ Rough category breakdown (xUnit, both trees combined):
 | Category | Examples | Rationale |
 |---|---|---|
 | Unit | `ToolTests.cs`, `UserConfigTests.cs`, `CostEstimatorTests.cs` | Pure logic, no I/O beyond tempdirs. |
-| Contract | `RalphExitCodeTests.cs`, `ToolHardeningTests.cs`, `RawModeTests.cs`, `VersionContractTests.cs` | Gate user-visible promises — exit codes, `--raw` stderr discipline, `--version` strings. |
+| Contract | `RalphExitCodeTests.cs`, `ToolHardeningTests.cs`, `RawModeTests.cs`, `VersionContractTests.cs` | Gate user-visible promises -- exit codes, `--raw` stderr discipline, `--version` strings. |
 | Regression | `SecurityRegressionTests.cs`, `ErrorAndExitTests.cs` | Pin past bugs so they stay dead. |
-| Property | `CliParserPropertyTests.cs` | Hand-rolled property-style coverage (no FsCheck — see §10). |
+| Property | `CliParserPropertyTests.cs` | Hand-rolled property-style coverage (no FsCheck -- see §10). |
 | Security | `SecurityToolTests.cs`, `SecurityDocValidationTests.cs` | SSRF, symlink traversal, DNS rebinding, doc-claim truth-ness. |
 | Observability | `ObservabilityTests.cs`, `PrewarmTests.cs` | Telemetry, cache warm-up. |
 
@@ -47,7 +47,7 @@ Rough category breakdown (xUnit, both trees combined):
 
 ## 2. Running tests
 
-Four supported entry points — pick the one that matches your loop:
+Four supported entry points -- pick the one that matches your loop:
 
 ```bash
 # 1. Canonical: runs BOTH v1 and v2 projects via the solution file.
@@ -55,16 +55,16 @@ Four supported entry points — pick the one that matches your loop:
 make test
 dotnet test azure-openai-cli.sln --verbosity minimal
 
-# 2. v1 only — faster loop when working inside tests/AzureOpenAI_CLI.Tests/.
+# 2. v1 only -- faster loop when working inside tests/AzureOpenAI_CLI.Tests/.
 #    NEVER ship on v1-only green; CI runs both.
 make test-v1
 dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity minimal
 
-# 3. v2 only — same deal, for tests/AzureOpenAI_CLI.V2.Tests/.
+# 3. v2 only -- same deal, for tests/AzureOpenAI_CLI.V2.Tests/.
 make test-v2
 dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj --verbosity minimal
 
-# 4. Single test or filter — for really tight debug loops.
+# 4. Single test or filter -- for really tight debug loops.
 dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj \
   --filter "FullyQualifiedName~RalphExitCode"
 ```
@@ -93,7 +93,7 @@ The loop for any behavioural change:
 # 1. Write the failing test first (v2 example).
 $EDITOR tests/AzureOpenAI_CLI.V2.Tests/MyFeatureTests.cs
 
-# 2. Confirm RED — test exists and fails for the right reason.
+# 2. Confirm RED -- test exists and fails for the right reason.
 make test-v2
 # Expect: Failed: 1, Passed: ...
 
@@ -117,7 +117,7 @@ git commit -m "fix: MyFeature regression on empty input"
 test that would have caught it. The test lands in the same commit as the
 fix, or in the immediately preceding commit.
 
-### 3.1. Worked example — RED → GREEN → REFACTOR
+### 3.1. Worked example -- RED → GREEN → REFACTOR
 
 A real case from this repo: the **year-boundary flake** (commit `c861c2e`,
 2026-04-19; audit H1 follow-up).
@@ -125,10 +125,10 @@ A real case from this repo: the **year-boundary flake** (commit `c861c2e`,
 **Context.** Several tests asserted captured CLI output contained
 `DateTime.Now.Year.ToString()`. On a test machine running straddling UTC
 midnight on Dec 31, the `get_datetime` tool wrote the old year into
-stdout and the assertion computed the new year — guaranteed failure once
+stdout and the assertion computed the new year -- guaranteed failure once
 a year, impossible to reproduce the other 364.
 
-**RED — the failing test.** Reproducible with a clock stub fixed to
+**RED -- the failing test.** Reproducible with a clock stub fixed to
 `2025-12-31T23:59:59.900Z` (the pre-fix test, paraphrased):
 
 ```csharp
@@ -140,10 +140,10 @@ Assert.Contains(DateTime.Now.Year.ToString(), output);
 // Failed: expected "2026" in "...2025-12-31T23:59:59Z...".
 ```
 
-The test proves the race exists — `Assert.Equal(expected, actual)` is the
+The test proves the race exists -- `Assert.Equal(expected, actual)` is the
 right shape, the literal being asserted is wrong.
 
-**GREEN — the simplest code that makes the test pass.** Replace the
+**GREEN -- the simplest code that makes the test pass.** Replace the
 year-literal coupling with a structural match that cannot straddle a
 boundary:
 
@@ -158,7 +158,7 @@ Assert.Matches(@"20\d{2}", output);
 That's it. No clock abstraction, no `IDateTimeProvider` introduced, no
 production code touched. The simplest thing that turns the test green.
 
-**REFACTOR — tighten the narrative, not the assertion.** With both passing,
+**REFACTOR -- tighten the narrative, not the assertion.** With both passing,
 look for duplicated flakes and for drift in surrounding comments:
 
 - Three more sites in `ParallelToolExecutionTests.cs` had the same literal
@@ -187,14 +187,14 @@ transient value that caused it.
 
 For flaky-adjacent cases, also walk the
 [`flaky-triage.md`](./flaky-triage.md) checklist before shipping the fix
-— the same race may hide in three more files you haven't looked at yet.
+-- the same race may hide in three more files you haven't looked at yet.
 
 ---
 
 ## 4. `ConsoleCapture` collection
 
 Some xUnit tests swap `Console.Out` / `Console.Error` / environment
-variables to assert on output. Those mutations are process-global — if two
+variables to assert on output. Those mutations are process-global -- if two
 such tests run in parallel, their stdout streams collide and assertions
 flake.
 
@@ -215,7 +215,7 @@ Any test class that does **any** of the following MUST carry the
   path baked into a global.
 - Touches a `static` field mutated at runtime (e.g. `Theme.UseColor`).
 
-Existing membership (non-exhaustive) — treat as the reference set:
+Existing membership (non-exhaustive) -- treat as the reference set:
 
 ```
 tests/AzureOpenAI_CLI.V2.Tests/
@@ -230,11 +230,11 @@ tests/AzureOpenAI_CLI.V2.Tests/
 ```
 
 Parallel-safe test classes (no global mutation) must NOT join this
-collection — that needlessly serialises the suite and makes CI slower.
+collection -- that needlessly serialises the suite and makes CI slower.
 
 A separate collection, `TelemetryGlobalStateCollection`, exists for the
 same reason but scoped to `OpenTelemetry` singleton state. Don't cross the
-streams — a class joins exactly one serialization collection.
+streams -- a class joins exactly one serialization collection.
 
 ---
 
@@ -265,7 +265,7 @@ the compiled binary end-to-end.
 ### Prerequisites
 
 ```bash
-# Build the binaries first — the script runs the artifacts, not `dotnet run`
+# Build the binaries first -- the script runs the artifacts, not `dotnet run`
 # (except for the v1 legacy path which still uses `dotnet run`).
 make dotnet-build          # or: dotnet build azure-openai-cli.sln -c Release
 ```
@@ -279,8 +279,8 @@ path and are skipped if creds are missing:
 |---|---|---|
 | `V1_BIN` | locate legacy binary | `./azureopenai-cli/bin/Release/net10.0/AzureOpenAI_CLI` |
 | `V2_BIN` | locate v2 binary | `./azureopenai-cli-v2/bin/Release/net10.0/az-ai-v2` |
-| `AZUREOPENAIENDPOINT` | live-endpoint smoke tests | — (skipped if unset) |
-| `AZUREOPENAIAPIKEY` | live-endpoint smoke tests | — (skipped if unset) |
+| `AZUREOPENAIENDPOINT` | live-endpoint smoke tests | -- (skipped if unset) |
+| `AZUREOPENAIAPIKEY` | live-endpoint smoke tests | -- (skipped if unset) |
 
 ### Running
 
@@ -291,7 +291,7 @@ bash tests/integration_tests.sh
 ```
 
 Output is `✓ PASS`, `✗ FAIL`, `⊘ SKIP`. Exit code is non-zero iff any
-assertion failed — skips are not failures.
+assertion failed -- skips are not failures.
 
 ### When to add an integration test
 
@@ -305,7 +305,7 @@ Add one when:
 - An xUnit test would need too much mocking to be honest.
 
 Do **not** add an integration test when a fast xUnit test can cover the
-same path — integration is slower, less debuggable, and more
+same path -- integration is slower, less debuggable, and more
 environment-dependent.
 
 ### What `integration_tests.sh` covers (and doesn't)
@@ -325,12 +325,12 @@ Live snapshot; refresh after any integration-facing PR.
 
 Add to `integration_tests.sh` when **any** of:
 
-- The promise is about the **process boundary** — exit code, signal,
+- The promise is about the **process boundary** -- exit code, signal,
   real argv, real env-var inheritance, stdin/stdout bytes verbatim.
 - An xUnit test would need so much mocking that it stops proving the
   real behaviour (e.g. faking `Environment.Exit`).
 - A downstream script (Espanso, shell wrapper, Homebrew formula test)
-  will exec the binary the same way — the integration test mirrors that
+  will exec the binary the same way -- the integration test mirrors that
   usage.
 
 Add an **xUnit** test instead when:
@@ -341,7 +341,7 @@ Add an **xUnit** test instead when:
 - You want sub-second feedback on a tight loop.
 
 Add **both** when a user-visible promise has both a process-level
-manifestation and an internal invariant — the xUnit test pins the
+manifestation and an internal invariant -- the xUnit test pins the
 invariant, the integration test pins the wire format. `--version` is the
 canonical example: `VersionContractTests` asserts the internal strings
 match the csproj; `integration_tests.sh` asserts `az-ai-v2 --version`
@@ -367,7 +367,7 @@ Flakes are bugs. We do not paper over them with retries.
    reason that references the issue number:
 
    ```csharp
-   [Fact(Skip = "flaky — see #NNN; race on Console.Out under parallel run")]
+   [Fact(Skip = "flaky -- see #NNN; race on Console.Out under parallel run")]
    public async Task Feature_Behaviour_ExpectedOutcome() { ... }
    ```
 
@@ -377,7 +377,7 @@ Flakes are bugs. We do not paper over them with retries.
 ### `[Trait]` status (honesty note)
 
 `docs/testing/bdd-guide.md` references `[Trait("type", "slow")]` and a
-`[Trait("flaky", "true")]` quarantine lane. Both are **aspirational** —
+`[Trait("flaky", "true")]` quarantine lane. Both are **aspirational** --
 no tests currently carry either trait. Treat these as a design target,
 not a live filter. If you add a trait, also add the CI wiring to honour
 it; otherwise it's decorative.
@@ -425,7 +425,7 @@ Run all:
 bash tests/chaos/run_all.sh
 ```
 
-Chaos tests are not part of `make preflight` — they're slower and some
+Chaos tests are not part of `make preflight` -- they're slower and some
 need a running mock server (`tests/chaos/mock_server.py`). Run them
 before cutting a release and whenever you touch process-level concerns
 (signals, subprocess, network, env parsing).
@@ -436,7 +436,7 @@ before cutting a release and whenever you touch process-level concerns
 
 We have one hand-rolled property-style test file:
 `tests/AzureOpenAI_CLI.Tests/CliParserPropertyTests.cs`. It uses a
-seeded `Random` and a generator loop — **not** FsCheck. This is
+seeded `Random` and a generator loop -- **not** FsCheck. This is
 deliberate: ADR-003 bans new test dependencies, and the argv parser's
 state space is small enough that a seeded generator is enough.
 
@@ -447,7 +447,7 @@ Good candidates for property-style coverage:
 - Invariants (output never exceeds N chars, exit code always in a known
   set, `--raw` stdout never contains ANSI).
 
-If you're reaching for FsCheck or similar, open an ADR first — the
+If you're reaching for FsCheck or similar, open an ADR first -- the
 dependency cost must be justified against the AOT / supply-chain budget
 (ADR-001).
 

@@ -1,6 +1,6 @@
 # Livestream Checklist
 
-> I'm Keith Hernandez. The stream starts when the chat sees a clean terminal, not when OBS says "live." This is the checklist we run before every episode — Twitch, YouTube Live, LinkedIn Live, doesn't matter. Two copies: one on paper next to the keyboard, one pinned in the producer's tab.
+> I'm Keith Hernandez. The stream starts when the chat sees a clean terminal, not when OBS says "live." This is the checklist we run before every episode -- Twitch, YouTube Live, LinkedIn Live, doesn't matter. Two copies: one on paper next to the keyboard, one pinned in the producer's tab.
 
 **Owner:** Keith Hernandez (DevRel)
 **Pairs with:** [`../speaker-bureau.md`](../speaker-bureau.md), [`../demos/README.md`](../demos/README.md), Frank Costanza's on-call rotation (chat moderation escalation)
@@ -10,29 +10,29 @@
 
 ## Table of contents
 
-1. [T-24h — booking + rehearsal](#1-t-24h--booking--rehearsal)
-2. [T-60m — fresh machine setup](#2-t-60m--fresh-machine-setup)
-3. [T-15m — env + terminal + audio + video](#3-t-15m--env--terminal--audio--video)
-4. [T-2m — go-live pre-flight](#4-t-2m--go-live-pre-flight)
-5. [Live — demo risk-reduce](#5-live--demo-risk-reduce)
+1. [T-24h -- booking + rehearsal](#1-t-24h--booking--rehearsal)
+2. [T-60m -- fresh machine setup](#2-t-60m--fresh-machine-setup)
+3. [T-15m -- env + terminal + audio + video](#3-t-15m--env--terminal--audio--video)
+4. [T-2m -- go-live pre-flight](#4-t-2m--go-live-pre-flight)
+5. [Live -- demo risk-reduce](#5-live--demo-risk-reduce)
 6. [Asciinema fallback](#6-asciinema-fallback)
 7. [Q&A template](#7-qa-template)
-8. [T+0 — post-show](#8-t0--post-show)
+8. [T+0 -- post-show](#8-t0--post-show)
 
 ---
 
-## 1. T-24h — booking + rehearsal
+## 1. T-24h -- booking + rehearsal
 
 - [ ] Episode outline written, linked in the show-run doc
-- [ ] Guest (if any) has signed the [guest release — template pending] and received the guest brief
+- [ ] Guest (if any) has signed the [guest release -- template pending] and received the guest brief
 - [ ] Every command in the run-sheet executed **end-to-end on a fresh machine** (container, VM, or borrowed laptop). No "trust me, this works."
-- [ ] Every command also pasted into the show-run doc as a copy-pasteable snippet — if the live demo fails, the block falls back to read-aloud
+- [ ] Every command also pasted into the show-run doc as a copy-pasteable snippet -- if the live demo fails, the block falls back to read-aloud
 - [ ] `az-ai-v2 --version --short` recorded in the show-run so chat can sanity-check what we're on
-- [ ] Backup network identified (phone hotspot, tethered laptop) — tested, not theoretical
+- [ ] Backup network identified (phone hotspot, tethered laptop) -- tested, not theoretical
 - [ ] Asciinema recording of the hero demo captured as the dead-WiFi fallback (see §6)
 - [ ] Chat-moderation brief reviewed with whoever is on mod duty; Frank's escalation path in the pinned note
 
-## 2. T-60m — fresh machine setup
+## 2. T-60m -- fresh machine setup
 
 Run on the streaming machine *before* you open OBS. A cold environment catches drift that a warm one hides.
 
@@ -40,14 +40,14 @@ Run on the streaming machine *before* you open OBS. A cold environment catches d
 - [ ] Screen saver off, auto-lock off, Do Not Disturb **on**
 - [ ] Browser profile: stream-only. No tabs with secrets, email, Slack, or internal docs. A *fresh profile* is safer than "I'll be careful."
 - [ ] Window notifications silenced (Slack, Discord, email, calendar, IDE)
-- [ ] Desktop clean — no screenshots, no stray downloads with embarrassing names
+- [ ] Desktop clean -- no screenshots, no stray downloads with embarrassing names
 - [ ] `~/.bash_history` / `~/.zsh_history` either (a) cleared for the stream shell, or (b) the stream shell is a fresh one with `HISTFILE=/dev/null`
 - [ ] `env | grep -iE 'key|token|secret|password'` returns **nothing** in the shell you're about to share. Rotate anything that appears.
 - [ ] `az-ai-v2` binary present at the path the demo assumes; `AZ_AI_BIN` exported if the demo uses it
 - [ ] Azure OpenAI test credentials loaded from a **scoped** key (low-rate, billing-capped), not the production one
 - [ ] Persona memory, history, and scratch directories reset to the demo-ready state
 
-## 3. T-15m — env + terminal + audio + video
+## 3. T-15m -- env + terminal + audio + video
 
 ### Terminal
 
@@ -64,27 +64,27 @@ Run on the streaming machine *before* you open OBS. A cold environment catches d
 - [ ] Input gain set so normal speech peaks at ~−12 dBFS, never clips
 - [ ] Monitor (headphones) on so you hear yourself; avoid speaker echo
 - [ ] Room: HVAC aware, keyboard away from the mic, water within reach, phone silent
-- [ ] Recorded test clip played back — check for hum, hiss, clipping, room echo
+- [ ] Recorded test clip played back -- check for hum, hiss, clipping, room echo
 
 ### Video
 
 - [ ] Camera at eye level, not laptop-low
 - [ ] Lighting in front of you, not behind
-- [ ] Background clean — no whiteboard with yesterday's roadmap, no Post-its with anyone's handle
-- [ ] Screen share scoped to a **single window** when possible — never share the whole desktop unless the run-sheet specifically requires it
+- [ ] Background clean -- no whiteboard with yesterday's roadmap, no Post-its with anyone's handle
+- [ ] Screen share scoped to a **single window** when possible -- never share the whole desktop unless the run-sheet specifically requires it
 
 ### OBS / stream software
 
-- [ ] Scenes: `Intro`, `Camera + Terminal`, `Terminal full`, `Camera full`, `BRB`, `Outro` — all tested with transitions
+- [ ] Scenes: `Intro`, `Camera + Terminal`, `Terminal full`, `Camera full`, `BRB`, `Outro` -- all tested with transitions
 - [ ] Lower-third copy correct and spelled right (episode title, handle, project URL)
 - [ ] Recording-to-local enabled as a backup even if the platform records server-side
-- [ ] Bitrate reasonable for the uplink — test at 80% of available bandwidth, not 100%
+- [ ] Bitrate reasonable for the uplink -- test at 80% of available bandwidth, not 100%
 - [ ] Chat window visible on a secondary monitor, *not* in the streamed scene
 
-## 4. T-2m — go-live pre-flight
+## 4. T-2m -- go-live pre-flight
 
 - [ ] `clear` run in the stream terminal; last visible line is a clean prompt
-- [ ] `env | grep -iE 'key|token|secret|password'` — one last time. One last time.
+- [ ] `env | grep -iE 'key|token|secret|password'` -- one last time. One last time.
 - [ ] Water, not coffee, within arm's reach
 - [ ] Phone on airplane mode (but reachable off-scene in case the hotspot is the backup)
 - [ ] Timer set for the episode length; warning ping at `T-10m` and `T-2m`
@@ -92,14 +92,14 @@ Run on the streaming machine *before* you open OBS. A cold environment catches d
 - [ ] Guest (if any) audio-checked; their microphone doesn't double with yours
 - [ ] Exhale. Roll the intro.
 
-## 5. Live — demo risk-reduce
+## 5. Live -- demo risk-reduce
 
 Rules of the stage, in order:
 
 1. **Read the next command aloud before pressing Enter.** Audience processes faster when they hear it framed.
 2. **If a command produces more than a screenful, redirect to a file and `head` it.** Scrollback is not a demo.
 3. **Never paste from a hidden buffer the audience can't see.** If it's not in the show-run doc, it's not in the demo.
-4. **If a command fails, announce it.** "That didn't do what I expected. The fallback is in my notes — one moment." No pretending.
+4. **If a command fails, announce it.** "That didn't do what I expected. The fallback is in my notes -- one moment." No pretending.
 5. **If the network drops, go to the asciinema fallback (§6). Do not wait out the outage live.**
 6. **Keep one hand off the keyboard when speaking.** It slows you down. Slow is watchable.
 7. **Time-box the demo.** If the run-sheet says 8 minutes and you're at 12, cut to the next segment. Audience forgives a skipped cool-down; they don't forgive a 20-minute debugging side quest.
@@ -109,7 +109,7 @@ Rules of the stage, in order:
 
 ## 6. Asciinema fallback
 
-When the WiFi dies — and it will — switch to a pre-recorded asciinema and narrate over it.
+When the WiFi dies -- and it will -- switch to a pre-recorded asciinema and narrate over it.
 
 ### Record the fallback (T-24h or earlier)
 
@@ -128,7 +128,7 @@ Keep the `.cast` file committed (they're small). Pair it with a notes block in t
 ### Play during the stream
 
 ```bash
-# during the outage — full-screen the terminal, then:
+# during the outage -- full-screen the terminal, then:
 asciinema play /path/to/livestream-fallback-YYYYMMDD.cast --speed 1.25
 ```
 
@@ -139,22 +139,22 @@ Narrate as if you were running it. Audience would rather hear a confident walk-t
 - Streaming software reconnects more than once in 60 seconds
 - A command hits the network twice and times out both times
 - Platform status page shows a red dot
-- You feel the room temperature change — trust it
+- You feel the room temperature change -- trust it
 
 ## 7. Q&A template
 
-Last 10–15 minutes of the episode.
+Last 10-15 minutes of the episode.
 
-**Producer / mod preps:** 3–5 pre-selected questions from chat + the project backlog, ranked by what the audience will learn from the answer.
+**Producer / mod preps:** 3-5 pre-selected questions from chat + the project backlog, ranked by what the audience will learn from the answer.
 
 **Host script:**
 
-> "Alright — last stretch is Q&A. [Mod name] has been keeping a list. I'm going to start with the ones that teach the room something, and if we've got time at the end I'll grab fresh ones from chat. Keep them coming — one question per message, and if you want to stay anonymous just say so."
+> "Alright -- last stretch is Q&A. [Mod name] has been keeping a list. I'm going to start with the ones that teach the room something, and if we've got time at the end I'll grab fresh ones from chat. Keep them coming -- one question per message, and if you want to stay anonymous just say so."
 
 **Handling rules:**
 
 - **Don't know the answer?** "I don't know. Here's where I'd look: [file / doc / person]. I'll follow up in the episode notes." Honest beats improvised.
-- **Out-of-scope question?** "That's a great one — out of scope for today. Drop it as a GitHub issue and we'll address it there, or save it for the follow-up episode."
+- **Out-of-scope question?** "That's a great one -- out of scope for today. Drop it as a GitHub issue and we'll address it there, or save it for the follow-up episode."
 - **Hostile question?** Mod's call. The host stays on the technical merits, doesn't engage tone. If it escalates, Frank Costanza's escalation path kicks in (mute / ban / report, in that order).
 - **Vendor pitch in chat?** Ignore it. Keep moving. We're not a lead-gen channel.
 
@@ -164,7 +164,7 @@ Last 10–15 minutes of the episode.
 
 Cut to outro. Leave the stream running the outro card for 60 seconds so slow-loaders catch it.
 
-## 8. T+0 — post-show
+## 8. T+0 -- post-show
 
 - [ ] Local recording saved and named `YYYY-MM-DD-<slug>.mkv` (or similar)
 - [ ] VOD URL captured; chapter timestamps drafted before memory fades
@@ -175,4 +175,4 @@ Cut to outro. Leave the stream running the outro card for 60 seconds so slow-loa
 
 ---
 
-— *Keith Hernandez. Lights up. Mic hot. The demo's rehearsed.*
+-- *Keith Hernandez. Lights up. Mic hot. The demo's rehearsed.*

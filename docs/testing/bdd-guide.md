@@ -33,7 +33,7 @@ public void Given_<InitialState>_When_<Action>_Then_<ExpectedObservation>()
 ### Why it matters
 
 A failing test in CI shows only the method name. Readers shouldn't have
-to open the file to learn *what regressed* — the name carries the
+to open the file to learn *what regressed* -- the name carries the
 expected behaviour.
 
 ## 2. One behaviour per test
@@ -66,7 +66,7 @@ public void Empty_Args_ReturnsDefaultOptions()
 ```
 
 When `SystemPrompt` regresses to empty-string, the test should say
-`Given_NoArgs_When_Parsing_Then_SystemPromptIsNull` failed — not
+`Given_NoArgs_When_Parsing_Then_SystemPromptIsNull` failed -- not
 "Empty_Args_ReturnsDefaultOptions failed on assertion #3".
 
 ### Acceptable bundling
@@ -148,14 +148,14 @@ Scenario
 
 If the act throws `InvalidOperationException` instead of
 `ArgumentNullException`, `WhenThrowing<ArgumentNullException>` fails
-the scenario with the full narrative — no silent pass.
+the scenario with the full narrative -- no silent pass.
 
 ### When NOT to use the DSL
 
 For one-liner tests, the DSL adds ceremony without clarity:
 
 ```csharp
-// Good — no DSL needed
+// Good -- no DSL needed
 [Fact]
 public void Given_RawFlag_When_Parsing_Then_RawIsTrue() =>
     Assert.True(ParseOk("--raw").Raw);
@@ -178,7 +178,7 @@ Tag each class or test method:
 [Trait("type", "behavior")]  // end-to-end scenarios via the DSL
 [Trait("type", "property")]  // parameterised [Theory] tests
 [Trait("type", "unit")]      // narrow / legacy / reflection tests
-[Trait("type", "slow")]      // >500ms — see audit H2
+[Trait("type", "slow")]      // >500ms -- see audit H2
 ```
 
 CI usage:
@@ -247,7 +247,7 @@ public class MyTests : IClassFixture<PopulatedTempDirFixture>
 }
 ```
 
-The fixture is created once per class and reused — **treat it as
+The fixture is created once per class and reused -- **treat it as
 read-only** or tests will race each other.
 
 ## 7. Anti-patterns
@@ -255,7 +255,7 @@ read-only** or tests will race each other.
 ### ❌ Bundled assertions
 
 ```csharp
-// Don't — one regression masks the others
+// Don't -- one regression masks the others
 [Fact]
 public void Flag_Parsing_Works()
 {
@@ -267,7 +267,7 @@ public void Flag_Parsing_Works()
 
 ### ❌ Positive-only tests
 
-Every test asserts at least one **negative** where feasible — "pass the
+Every test asserts at least one **negative** where feasible -- "pass the
 pass, fail the fail":
 
 ```csharp
@@ -282,17 +282,17 @@ Assert.False(result.StartsWith("Error:"));  // would have caught M7
 ### ❌ Year-boundary flakes
 
 ```csharp
-// Bad — fails on Dec 31 23:59:59.999
+// Bad -- fails on Dec 31 23:59:59.999
 Assert.Contains(DateTime.Now.Year.ToString(), result);
 
-// Good — structure-only assertion
+// Good -- structure-only assertion
 Assert.Matches(@"20\d{2}", result);
 ```
 
 ### ❌ Silently swallowed cleanup exceptions
 
 ```csharp
-// Bad — hides leaked-fd / permission issues in CI
+// Bad -- hides leaked-fd / permission issues in CI
 try { Directory.Delete(_tempDir, recursive: true); } catch { }
 
 // Good
@@ -318,14 +318,14 @@ public class MyNewTests { … }
 ### ❌ Overspecified error-message assertions
 
 ```csharp
-// Bad — breaks when wording is edited
+// Bad -- breaks when wording is edited
 Assert.Contains("Temperature must be between 0.0 and 2.0", e.Message);
 
-// Better — structural
+// Better -- structural
 Assert.Equal(1, e.ExitCode);
 Assert.Equal("temperature", e.FailedFlag);  // if available
 
-// Acceptable — partial wording as a smoke check
+// Acceptable -- partial wording as a smoke check
 Assert.Contains("between 0.0 and 2.0", e.Message);
 ```
 
@@ -341,12 +341,12 @@ first and show it doesn't work before opening a package-addition PR.
    in a scratchpad.
 2. Rename methods to `Given_X_When_Y_Then_Z`. Keep behaviour identical.
 3. Split each bundled test into one-behaviour-per-method.
-4. Add missing negatives (audit your positive assertions — what's the
+4. Add missing negatives (audit your positive assertions -- what's the
    corresponding "does NOT" clause?).
 5. Replace `DateTime.Now.Year.ToString()` with `Assert.Matches(@"20\d{2}", …)`.
 6. Replace silent `catch { }` in cleanup with logged catches.
 7. Add `[Trait("type", …)]` to the class.
-8. Pick 1–2 async tests that benefit from narrative and port them to
+8. Pick 1-2 async tests that benefit from narrative and port them to
    the Scenario DSL. Leave the rest naming-only.
 9. Run `dotnet test`. Green? Commit with the `Co-authored-by: Copilot
    <223556219+Copilot@users.noreply.github.com>` trailer.
@@ -354,14 +354,14 @@ first and show it doesn't work before opening a package-addition PR.
 ## 9. References
 
 - [ADR-003: Behaviour-Driven Development in xUnit](../adr/ADR-003-behavior-driven-development.md)
-- [Test sanity audit](./test-sanity-audit.md) — the findings that
+- [Test sanity audit](./test-sanity-audit.md) -- the findings that
   motivated this guide
 - [`tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs`](../../tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs)
-  — the DSL implementation (~200 LOC)
+  -- the DSL implementation (~200 LOC)
 - [`tests/AzureOpenAI_CLI.Tests/CliParserTests.cs`](../../tests/AzureOpenAI_CLI.Tests/CliParserTests.cs)
-  — pilot: pure-function BDD
+  -- pilot: pure-function BDD
 - [`tests/AzureOpenAI_CLI.Tests/ToolTests.cs`](../../tests/AzureOpenAI_CLI.Tests/ToolTests.cs)
-  — pilot: async BDD with DSL
+  -- pilot: async BDD with DSL
 
 ---
 

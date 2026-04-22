@@ -5,8 +5,8 @@
 > reader). Future work on preferences, aliases, and directory overrides tracks
 > in [FR-014](FR-014-local-preferences-and-multi-provider.md).
 
-**Priority:** P1 — High  
-**Impact:** Makes the tool feel personal — "my tool" vs "a tool"  
+**Priority:** P1 -- High  
+**Impact:** Makes the tool feel personal -- "my tool" vs "a tool"  
 **Effort:** Small-Medium (1-2 days)  
 **Category:** Configuration UX
 
@@ -14,7 +14,7 @@
 
 ## The Problem
 
-The current `UserConfig` only stores one thing: which model is active. Everything else — temperature, max tokens, system prompt, timeout — is locked in the `.env` file, which is a shared, project-level artifact baked into the Docker image at build time.
+The current `UserConfig` only stores one thing: which model is active. Everything else -- temperature, max tokens, system prompt, timeout -- is locked in the `.env` file, which is a shared, project-level artifact baked into the Docker image at build time.
 
 This creates three friction points:
 
@@ -24,7 +24,7 @@ This creates three friction points:
 
 3. **No discoverability.** Users don't know what they can configure without reading the README. There's no `--config` command that says "here's what you can tune and what it's currently set to."
 
-The `.env` file was a solid v1 choice — simple, portable, Docker-friendly. But user preferences belong in `UserConfig`, not in a build artifact.
+The `.env` file was a solid v1 choice -- simple, portable, Docker-friendly. But user preferences belong in `UserConfig`, not in a build artifact.
 
 ---
 
@@ -68,7 +68,7 @@ The `.env` file was a solid v1 choice — simple, portable, Docker-friendly. But
 az-ai --config
 
 # Output:
-# Azure OpenAI CLI — Configuration
+# Azure OpenAI CLI -- Configuration
 # ─────────────────────────────────
 # Endpoint:      https://my-resource.openai.azure.com  (env)
 # Active Model:  gpt-4o                                 (user config)
@@ -79,8 +79,8 @@ az-ai --config
 # Config File:   ~/.azureopenai-cli.json
 #
 # Profiles:
-#   code      — temp=0.2, custom system prompt
-#   creative  — temp=0.95, custom system prompt
+#   code      -- temp=0.2, custom system prompt
+#   creative  -- temp=0.95, custom system prompt
 
 # Set a value
 az-ai --config set temperature 0.8
@@ -92,7 +92,7 @@ az-ai --config reset temperature
 
 # Show where a specific setting comes from
 az-ai --config get temperature
-# Temperature: 0.8 (user config) — default is 0.55
+# Temperature: 0.8 (user config) -- default is 0.55
 ```
 
 ### 3. Add Inline Flags for One-Off Overrides
@@ -108,7 +108,7 @@ az-ai --system "You are a pirate" "Explain Docker networking"
 az-ai --max-tokens 500 "TL;DR of quantum computing"
 ```
 
-These flags don't change the config file — they apply only to the current invocation. This is how users experiment before committing to a setting.
+These flags don't change the config file -- they apply only to the current invocation. This is how users experiment before committing to a setting.
 
 ### 4. Profiles for Context Switching
 
@@ -155,13 +155,13 @@ DOCKER_CMD := docker run --rm --env-file .env \
     $(FULL_IMAGE)
 ```
 
-This should be the default in the Makefile. If the file doesn't exist on the host, Docker will create it as an empty file — which `UserConfig.Load()` already handles gracefully.
+This should be the default in the Makefile. If the file doesn't exist on the host, Docker will create it as an empty file -- which `UserConfig.Load()` already handles gracefully.
 
 ---
 
 ## Why This Is P1
 
-Configuration is how a user makes a tool *theirs*. Right now, this tool feels like a rental car — you can drive it, but you can't adjust the seat. A developer who can't tweak the temperature or swap system prompts without rebuilding Docker images will never form the daily-driver habit that turns users into advocates.
+Configuration is how a user makes a tool *theirs*. Right now, this tool feels like a rental car -- you can drive it, but you can't adjust the seat. A developer who can't tweak the temperature or swap system prompts without rebuilding Docker images will never form the daily-driver habit that turns users into advocates.
 
 The `--config` command also serves as **self-documentation**. Instead of reading a README table, users run `az-ai --config` and see everything in context, with sources. This reduces support questions and increases confidence.
 

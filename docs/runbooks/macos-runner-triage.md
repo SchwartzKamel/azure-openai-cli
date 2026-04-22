@@ -19,7 +19,7 @@ up a runner in the first place, or picks one up and dies.
 | Leg           | Runner label | Workflow file            | Status |
 |---------------|--------------|--------------------------|--------|
 | `osx-arm64`   | `macos-14`   | `release.yml` line ~231  | ✅ shipped |
-| ~~`osx-x64`~~ | ~~`macos-13`~~ | —                      | ❌ cut in v2.0.4 ([commit `afa95fd`](https://github.com/SchwartzKamel/azure-openai-cli/commit/afa95fd)) |
+| ~~`osx-x64`~~ | ~~`macos-13`~~ | --                      | ❌ cut in v2.0.4 ([commit `afa95fd`](https://github.com/SchwartzKamel/azure-openai-cli/commit/afa95fd)) |
 
 > **Source of truth:** `.github/workflows/release.yml` `build-binaries-v2.strategy.matrix`.
 > If you are reading this more than ~6 months after 2026-04-22, re-check
@@ -31,7 +31,7 @@ legs.
 
 ---
 
-## 2. Detection — is the macOS leg actually wedged?
+## 2. Detection -- is the macOS leg actually wedged?
 
 ```bash
 # What is the current release run doing?
@@ -53,7 +53,7 @@ You have a wedged macOS leg when **all** of the following are true:
    either *Operational* or partial degradation on `Actions`.
 4. Issue search for [`"macos-14 queued"`](https://github.com/orgs/community/discussions?discussions_q=macos-14+queued)
    or [`"macos-14 runner pool"`](https://github.com/orgs/community/discussions?discussions_q=macos-14+runner+pool)
-   is quiet (no fresh complaints) — **or** loud (others affected; it's
+   is quiet (no fresh complaints) -- **or** loud (others affected; it's
    not just us).
 
 If a macOS leg *started* and then failed, that's a different problem;
@@ -73,7 +73,7 @@ Is the release run failing or just slow?
 └─ macOS leg FAILED (not queued) ──▶ §3.3  Rerun once, investigate on second failure
 ```
 
-### 3.1 — Linux + Windows green, macOS queued > 30 min
+### 3.1 -- Linux + Windows green, macOS queued > 30 min
 
 **Diagnosis.** GitHub-hosted `macos-14` runner pool backlog. This is the
 same class of failure that blocked v2.0.2 and v2.0.3 on `macos-13`
@@ -88,25 +88,25 @@ before the cut. It is **transient** and **not our code**.
    before rerun."* This is how Frank knows you're on it.
 3. At 90 min, **rerun failed/cancelled legs only**:
    ```bash
-   # DO NOT use `gh workflow run release.yml --ref <tag>` on an old tag —
+   # DO NOT use `gh workflow run release.yml --ref <tag>` on an old tag --
    # workflow_dispatch needs the workflow_dispatch trigger to exist at
    # the *ref's* commit, not HEAD. On a tag cut before that trigger was
    # added you get HTTP 422. This is the "workflow_dispatch trap."
    gh run rerun <run-id> --failed --repo SchwartzKamel/azure-openai-cli
    ```
    `--failed` reschedules only cancelled/failed legs and preserves the
-   green ones — their artifacts are already uploaded and won't be
+   green ones -- their artifacts are already uploaded and won't be
    rebuilt.
 4. If the rerun also queues > 60 min, escalate (§4).
 
-### 3.2 — All legs queued, no job started
+### 3.2 -- All legs queued, no job started
 
 GitHub Actions is having a bad day. Check
 [githubstatus.com](https://www.githubstatus.com/) and
 [@githubstatus](https://twitter.com/githubstatus). Nothing to do but
-wait. Don't rerun — you'll just add to the queue.
+wait. Don't rerun -- you'll just add to the queue.
 
-### 3.3 — macOS leg started and failed
+### 3.3 -- macOS leg started and failed
 
 Different failure class. The runner picked the job up; something in our
 pipeline broke.
@@ -117,7 +117,7 @@ pipeline broke.
    are real (network drops during `dotnet restore`, disk pressure
    during AOT link).
 3. **If it fails a second time with the same error, it's not flake.**
-   Don't rerun a third time — you're burning minutes. Open an issue,
+   Don't rerun a third time -- you're burning minutes. Open an issue,
    link the two runs, and either:
    - Fix-forward (bump csproj, tag next patch), or
    - If the platform is persistently unreliable, consider §5.
@@ -128,15 +128,15 @@ pipeline broke.
 
 In order of escalation:
 
-1. **GitHub Actions status page** — <https://www.githubstatus.com/>.
+1. **GitHub Actions status page** -- <https://www.githubstatus.com/>.
    If `Actions` is degraded or in incident, wait.
-2. **GitHub Community discussion search** — look for others hitting the
+2. **GitHub Community discussion search** -- look for others hitting the
    same backlog; if it's a widespread event, a fix is usually hours away.
-3. **GitHub Support ticket** — <https://support.github.com/>. Include
+3. **GitHub Support ticket** -- <https://support.github.com/>. Include
    the run URL and the specific job that has been queued. Support can
    see runner-pool capacity you cannot. Do this after 2+ hours of
    unexplained backlog.
-4. **`#release` / on-call rotation** — loop in Frank (SRE) if the
+4. **`#release` / on-call rotation** -- loop in Frank (SRE) if the
    backlog is blocking a time-sensitive release (CVE fix, security
    advisory). Otherwise, hold and let the pool clear.
 
@@ -175,15 +175,15 @@ from v2.0.4 is the template:
 ```
 
 Companion edits when cutting a RID:
-- `CHANGELOG.md` — explicit `Removed` section with the substitution
+- `CHANGELOG.md` -- explicit `Removed` section with the substitution
   paths (Rosetta, Docker, source build). See [v2.0.4 entry](../../CHANGELOG.md).
-- `docs/verifying-releases.md` — remove the RID from multi-platform
+- `docs/verifying-releases.md` -- remove the RID from multi-platform
   verify loops.
-- `Makefile` — leave the local-dev `publish-<rid>` target; contributors
+- `Makefile` -- leave the local-dev `publish-<rid>` target; contributors
   still want it. Add a note that it's local-dev only.
 - `packaging/homebrew/Formula/az-ai.rb`, `packaging/nix/flake.nix`,
-  `packaging/scoop/az-ai.json` — drop the RID's hash block.
-- This runbook — update §1 table and move the cut RID to the
+  `packaging/scoop/az-ai.json` -- drop the RID's hash block.
+- This runbook -- update §1 table and move the cut RID to the
   strikethrough row.
 
 ---
@@ -195,20 +195,20 @@ Each is marked **RESOLVED** as of v2.0.4; read them for context, not
 operational guidance.
 
 - **[`docs/launch/v2.0.1-release-attempt-diagnostic.md`](../launch/v2.0.1-release-attempt-diagnostic.md)**
-  — v2.0.1 failed on two defects: `win-x64` zip packaging (fixed via
-  PowerShell `Compress-Archive`) and `macos-13` queueing (unresolved —
+  -- v2.0.1 failed on two defects: `win-x64` zip packaging (fixed via
+  PowerShell `Compress-Archive`) and `macos-13` queueing (unresolved --
   see v2.0.2 postmortem).
 - **[`docs/launch/v2.0.2-release-attempt-diagnostic.md`](../launch/v2.0.2-release-attempt-diagnostic.md)**
-  — v2.0.2 cleared the Dockerfile.v2 `--no-restore` regression but sat
+  -- v2.0.2 cleared the Dockerfile.v2 `--no-restore` regression but sat
   on a `macos-13` leg queued 82 min. Documented the `workflow_dispatch`
   HTTP 422 trap (dispatching against a tag cut before the trigger was
   added returns 422).
 - **[`docs/launch/v2.0.2-publish-handoff.md`](../launch/v2.0.2-publish-handoff.md)**
-  — the recovery recipe: `gh run rerun <id> --failed` is the lever;
+  -- the recovery recipe: `gh run rerun <id> --failed` is the lever;
   `gh workflow run release.yml --ref <tag>` is not. Recipe is still
   valid; the specific incident is closed.
 - **[`docs/launch/v2-tag-rehearsal-report.md`](../launch/v2-tag-rehearsal-report.md)**
-  — pre-tag rehearsal for v2.0.0 (linux-x64 only); flagged metadata
+  -- pre-tag rehearsal for v2.0.0 (linux-x64 only); flagged metadata
   mismatches that were cleaned up before the real v2.0.0 cut. Good
   reference for what a *clean* rehearsal looks like.
 

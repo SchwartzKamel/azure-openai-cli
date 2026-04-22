@@ -1,4 +1,4 @@
-# Vulnerability Scanners — Trivy (CI) + Grype (local)
+# Vulnerability Scanners -- Trivy (CI) + Grype (local)
 
 > *Hello. Newman.* Two scanners in the repo. One gates the pipeline; the
 > other sits in the Makefile for people who like their CVEs at the
@@ -32,7 +32,7 @@ merge is not blocked.
 
 ---
 
-## 2. Trivy — what it covers
+## 2. Trivy -- what it covers
 
 | Target | Run | Severity threshold |
 |---|---|---|
@@ -45,7 +45,7 @@ tab is **not yet wired** and is tracked as follow-on work.
 
 ---
 
-## 3. Grype — what it covers
+## 3. Grype -- what it covers
 
 ```bash
 make scan
@@ -62,7 +62,7 @@ curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
 
 Scans the locally tagged image, reports OS + application CVEs, exits
 non-zero on findings. Because it is not a CI gate, operators can ignore
-it at their own risk — but if Grype is clean, it is a useful sanity check
+it at their own risk -- but if Grype is clean, it is a useful sanity check
 before opening a PR.
 
 ---
@@ -102,13 +102,13 @@ vendor). Not a priority.
 
 ## 6. See also
 
-- [`docs/security/sbom.md`](./sbom.md) — SBOM as the scanner's input.
-- [`docs/security/supply-chain.md`](./supply-chain.md) — pinning + feeds.
-- [`docs/security/cve-log.md`](./cve-log.md) — where scanner findings get
+- [`docs/security/sbom.md`](./sbom.md) -- SBOM as the scanner's input.
+- [`docs/security/supply-chain.md`](./supply-chain.md) -- pinning + feeds.
+- [`docs/security/cve-log.md`](./cve-log.md) -- where scanner findings get
   tracked.
-- `SECURITY.md` § 7 — short user-facing summary pointing here.
+- `SECURITY.md` § 7 -- short user-facing summary pointing here.
 
 ---
 
 *One scanner in front of the gate. One scanner on the bench. Both
-documented. No ambiguity.* — Newman
+documented. No ambiguity.* -- Newman

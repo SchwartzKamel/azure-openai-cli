@@ -1,11 +1,11 @@
-# ADR-007 — Security Guardrails for Third-Party HTTP Inference Providers
+# ADR-007 -- Security Guardrails for Third-Party HTTP Inference Providers
 
-- **Status**: Proposed — 2026-04-23
+- **Status**: Proposed -- 2026-04-23
 - **Deciders**: Newman (sec), Kramer (eng), Jerry (DevOps), Jackie (legal)
 - **Related**:
-  - [ADR-006 — NVIDIA NIM / NVFP4 Provider Integration](./ADR-006-nvfp4-nim-integration.md) — originating decision
-  - [FR-018 — Local-Model Provider](../proposals/FR-018-local-model-provider-llamacpp.md)
-  - Prospective FR-020 — NVIDIA NIM Provider
+  - [ADR-006 -- NVIDIA NIM / NVFP4 Provider Integration](./ADR-006-nvfp4-nim-integration.md) -- originating decision
+  - [FR-018 -- Local-Model Provider](../proposals/FR-018-local-model-provider-llamacpp.md)
+  - Prospective FR-020 -- NVIDIA NIM Provider
 
 ## Context
 
@@ -13,7 +13,7 @@ FR-018 introduces az-ai's provider abstraction: "OpenAI-compatible HTTP + config
 
 Each of these providers is, from az-ai's perspective, an arbitrary HTTP endpoint running on the user's machine, their LAN, or the public internet. That opens five distinct risk classes:
 
-1. **Supply chain.** Unpinned container tags (e.g. `:latest`) permit silent upstream swap; the model image runs a full HTTP server, a model runtime, often Triton and Python — a lot of sockets for "just a model."
+1. **Supply chain.** Unpinned container tags (e.g. `:latest`) permit silent upstream swap; the model image runs a full HTTP server, a model runtime, often Triton and Python -- a lot of sockets for "just a model."
 2. **Auth posture.** Several runtimes (notably NIM) default to **no authentication on `localhost`**. Any local process can issue inference requests and read the prompt stream.
 3. **SSRF / metadata exfiltration.** A provider configured to point at `169.254.169.254` (AWS IMDS), `metadata.google.internal`, `metadata.azure.com`, or `100.100.100.200` will happily exfiltrate cloud-instance credentials on the user's behalf. Deny-lists miss variants; allow-lists do not.
 4. **Credential leakage.** Bearer tokens end up in logs, exception messages, structured traces, and shell history if the code path is not disciplined from day one.
@@ -39,7 +39,7 @@ Rationale: Dependabot does not cover NVCR or most non-OSS registries. A monthly 
 
 ### 2. Bearer-token auth on every provider endpoint
 
-az-ai generates a random 256-bit bearer token on first provider run, starts the backing process with the token injected into its environment (e.g. `NIM_API_KEY` for NIM), and sends `Authorization: Bearer …` on every request. The token is stored in the OS keychain (macOS Keychain, Windows Credential Manager, libsecret on Linux) — **never** in a dotfile, **never** echoed to stdout, **never** logged.
+az-ai generates a random 256-bit bearer token on first provider run, starts the backing process with the token injected into its environment (e.g. `NIM_API_KEY` for NIM), and sends `Authorization: Bearer …` on every request. The token is stored in the OS keychain (macOS Keychain, Windows Credential Manager, libsecret on Linux) -- **never** in a dotfile, **never** echoed to stdout, **never** logged.
 
 Implementation rule: any log path, exception message, or structured trace that could carry an auth header must route through a redactor. Auth header appearing in an exception message is a **P1 bug**.
 
@@ -70,7 +70,7 @@ Post-redirect IP re-validation is required: a 3xx to `http://169.254.169.254` fr
 
 Plain HTTP to any non-loopback host is refused unless `--insecure-remote` is passed explicitly on the command line. That flag prints a loud red banner on every invocation. It is **never** set via env var.
 
-First use of any non-loopback endpoint triggers an interactive confirmation, cached per-host in a trust file (`~/.config/az-ai/providers/trust.json`). Structured logs record `host:port` and auth scheme only — never the prompt, never the response, never the token.
+First use of any non-loopback endpoint triggers an interactive confirmation, cached per-host in a trust file (`~/.config/az-ai/providers/trust.json`). Structured logs record `host:port` and auth scheme only -- never the prompt, never the response, never the token.
 
 ### 5. First-run acknowledgment file for gated models
 
@@ -85,9 +85,9 @@ First invocation of a provider + model combination subject to third-party ToU (G
 }
 ```
 
-Phrasing is a **notice** ("By proceeding you acknowledge the Gemma Terms of Use and the NVIDIA Software License…"), never "You agree to…" — az-ai is not the user's agent and not a party to the contract (Jackie §3).
+Phrasing is a **notice** ("By proceeding you acknowledge the Gemma Terms of Use and the NVIDIA Software License…"), never "You agree to…" -- az-ai is not the user's agent and not a party to the contract (Jackie §3).
 
-Non-interactive callers (Espanso, AHK, CI) use either `--yes` or `AZ_AI_ACCEPT_THIRD_PARTY_TERMS=1`. With neither flag set and no TTY, az-ai fails closed with a clear stderr pointer to the doc page — never hangs on a prompt.
+Non-interactive callers (Espanso, AHK, CI) use either `--yes` or `AZ_AI_ACCEPT_THIRD_PARTY_TERMS=1`. With neither flag set and no TTY, az-ai fails closed with a clear stderr pointer to the doc page -- never hangs on a prompt.
 
 ### 6. Hardened container-run documentation
 
@@ -97,12 +97,12 @@ Every provider that runs in a container gets a `docs/providers/<provider>.md` wi
 
 The following cases are added to `ToolHardeningTests` alongside any PR that introduces a third-party provider:
 
-1. Provider base URL on an SSRF-blocked address (e.g. `169.254.169.254`) — request rejected before socket open.
-2. Metadata endpoint under `--allow-lan` — still rejected.
-3. Provider endpoint that 3xx-redirects to a blocked IP — rejected post-redirect.
-4. Exception path emitted with bearer header present — redactor verified.
-5. Non-loopback HTTP endpoint without `--insecure-remote` — rejected.
-6. First-run acknowledgment missing under non-interactive invocation — fails closed, clear stderr message, non-zero exit.
+1. Provider base URL on an SSRF-blocked address (e.g. `169.254.169.254`) -- request rejected before socket open.
+2. Metadata endpoint under `--allow-lan` -- still rejected.
+3. Provider endpoint that 3xx-redirects to a blocked IP -- rejected post-redirect.
+4. Exception path emitted with bearer header present -- redactor verified.
+5. Non-loopback HTTP endpoint without `--insecure-remote` -- rejected.
+6. First-run acknowledgment missing under non-interactive invocation -- fails closed, clear stderr message, non-zero exit.
 
 ## Consequences
 
@@ -126,6 +126,6 @@ The following cases are added to `ToolHardeningTests` alongside any PR that intr
 
 ## References
 
-- ADR-006 §Decision (original Newman roundtable memo, items 1–8) — the unabridged version lives in [ADR-006 appendix §A.3](./ADR-006-appendix-roundtable.md#a3--newman-security).
+- ADR-006 §Decision (original Newman roundtable memo, items 1-8) -- the unabridged version lives in [ADR-006 appendix §A.3](./ADR-006-appendix-roundtable.md#a3--newman-security).
 - OWASP SSRF Prevention Cheat Sheet
 - Cloud metadata endpoint index: AWS IMDSv2, GCP metadata server, Azure IMDS

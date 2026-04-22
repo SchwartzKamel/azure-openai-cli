@@ -39,14 +39,14 @@ Every GitHub Release from v1.8.0 onward publishes:
 
 Attestations are produced by
 [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
-using GitHub's OIDC token — there are **no long-lived signing keys** to steal.
+using GitHub's OIDC token -- there are **no long-lived signing keys** to steal.
 The signer identity is the workflow file itself, pinned to the release tag:
 `.github/workflows/release.yml@refs/tags/vX.Y.Z`.
 
 > We do **not** publish a separate `checksums.txt`. The attestation already
 > binds a SHA-256 digest to the artifact; recording the digest elsewhere adds
 > no security. You can still compute `sha256sum` locally for an integrity
-> record — see §4.
+> record -- see §4.
 
 ---
 
@@ -55,11 +55,11 @@ The signer identity is the workflow file itself, pinned to the release tag:
 You need two tools. Everything below is copy-pasteable on Linux and macOS.
 
 ```bash
-# GitHub CLI — handles attestation download + verification
+# GitHub CLI -- handles attestation download + verification
 # https://cli.github.com/
 gh --version            # need >= 2.49 for `gh attestation verify`
 
-# (Optional) cosign — only if you want to inspect raw bundles yourself
+# (Optional) cosign -- only if you want to inspect raw bundles yourself
 # https://docs.sigstore.dev/cosign/system_config/installation/
 cosign version
 
@@ -231,10 +231,10 @@ gh attestation verify azure-openai-cli-win-x64.zip \
 | `MANIFEST_UNKNOWN` on `oci://…:v1.8.1`                         | The OCI tag omits the `v` prefix. Use `:1.8.1`.                                                 |
 | `Signer workflow: …@refs/tags/vX.Y.Z` differs from expected    | The binary was built from a different release. Refuse to run it.                                |
 | `gh: could not authenticate`                                   | Run `gh auth login`. Verification still calls the GitHub API to fetch the bundle.              |
-| SHA-256 differs from §4.2 but verification passes              | Trust the attestation over any static digest list — the asset was re-uploaded post-release.    |
+| SHA-256 differs from §4.2 but verification passes              | Trust the attestation over any static digest list -- the asset was re-uploaded post-release.    |
 | SHA-256 matches but verification fails                         | Clock skew, revoked Sigstore root, or offline environment. Retry with fresh `gh` / `cosign`.   |
 
-A **failed verification is not a warning** — it is a security event. Treat the
+A **failed verification is not a warning** -- it is a security event. Treat the
 artifact as hostile, delete it, and report it (§7).
 
 ---
@@ -256,8 +256,8 @@ private security advisory channel described there.
 
 ## 8. Further reading
 
-- SLSA v1 specification — <https://slsa.dev/spec/v1.0/>
-- `actions/attest-build-provenance` — <https://github.com/actions/attest-build-provenance>
-- Sigstore & keyless signing — <https://docs.sigstore.dev/>
-- CycloneDX SBOM format — <https://cyclonedx.org/docs/1.7/json/>
-- GitHub CLI `attestation` reference — <https://cli.github.com/manual/gh_attestation_verify>
+- SLSA v1 specification -- <https://slsa.dev/spec/v1.0/>
+- `actions/attest-build-provenance` -- <https://github.com/actions/attest-build-provenance>
+- Sigstore & keyless signing -- <https://docs.sigstore.dev/>
+- CycloneDX SBOM format -- <https://cyclonedx.org/docs/1.7/json/>
+- GitHub CLI `attestation` reference -- <https://cli.github.com/manual/gh_attestation_verify>

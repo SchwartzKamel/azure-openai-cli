@@ -1,12 +1,12 @@
 # Contract Tests
 
 > Contract tests gate **user-visible promises**. They fail loudly when a
-> public interface drifts — exit codes, stdout/stderr discipline, version
+> public interface drifts -- exit codes, stdout/stderr discipline, version
 > strings, tool-call JSON shapes, doc claims that encode constants.
 > They exist so downstream consumers (Espanso, AHK, shell pipelines,
 > Homebrew formula tests, Scoop manifests, CI scripts) don't silently break.
 
-## Canonical example — `VersionContractTests`
+## Canonical example -- `VersionContractTests`
 
 `tests/AzureOpenAI_CLI.V2.Tests/VersionContractTests.cs` is the reference
 implementation for "this is what a contract test looks like."
@@ -32,7 +32,7 @@ caught it at PR time. It now does.
 
 - It asserts against a **public, user-observable surface** (`--version`
   output, telemetry service.version attribute).
-- It fails on **behaviour drift**, not implementation detail — if the field
+- It fails on **behaviour drift**, not implementation detail -- if the field
   moves from `Program` to `Versioning.Current`, the test follows; if the
   *value* regresses, the test fires.
 - It is intentionally cheap so it runs on every PR.
@@ -48,11 +48,11 @@ A test is a contract test if **all three** of the following hold:
    formula, Scoop manifest, shell pipeline, CI script, another service's
    tool call) will break if the promise silently drifts.
 3. **The test asserts the promise directly.** Not "the code internally does
-   X" — instead "running the binary / calling the public method produces
+   X" -- instead "running the binary / calling the public method produces
    observable Y."
 
 If only #1 and #3 hold (public surface, no known external consumer), it's
-still a useful test — just file it as a regression or unit test. Contract
+still a useful test -- just file it as a regression or unit test. Contract
 tests earn the label by having a named external victim of drift.
 
 ## Current contract suite
@@ -70,7 +70,7 @@ tests earn the label by having a named external victim of drift.
 Contract test classes end in `ContractTests.cs`:
 
 - ✅ `VersionContractTests`
-- ✅ `RalphExitCodeTests` *(legacy name — acceptable; would be
+- ✅ `RalphExitCodeTests` *(legacy name -- acceptable; would be
   `RalphExitCodeContractTests` under today's convention)*
 - ✅ `RawModeContractTests` *(if added new)*
 - ❌ `TestVersion`, `VersionTest1`, `CheckVersion`
@@ -78,8 +78,8 @@ Contract test classes end in `ContractTests.cs`:
 **Within the class**, method names follow the BDD pattern from
 `bdd-guide.md`:
 
-- ✅ `VersionSemver_matches_csproj_version` — subject, verb, expected.
-- ✅ `VersionSemver_is_not_the_stale_v2_0_2_literal` — negative contract
+- ✅ `VersionSemver_matches_csproj_version` -- subject, verb, expected.
+- ✅ `VersionSemver_is_not_the_stale_v2_0_2_literal` -- negative contract
   naming the specific drift it guards against.
 - ❌ `Test1`, `ItWorks`, `ShouldPass`.
 
@@ -101,7 +101,7 @@ Add one when the PR introduces any of the following:
 - A new tool-call contract (JSON shape an agent emits).
 
 Also add one **defensively** after a bug fix if the bug's root cause was
-drift in a user-visible promise — that's the `v2.0.4` lesson. The
+drift in a user-visible promise -- that's the `v2.0.4` lesson. The
 regression test for the specific literal belongs in the contract suite.
 
 ## How contract tests differ from regular unit tests
@@ -112,17 +112,17 @@ regression test for the specific literal belongs in the contract suite.
 | **Changes when…** | Implementation changes. | Promise changes. |
 | **Breaks when…** | Implementation breaks. | User-observable behaviour drifts. |
 | **Review lens** | "Does the code do the right thing internally?" | "Does this PR intentionally change a promise a consumer depends on? Is the change called out in the commit message?" |
-| **Allowed to mock** | Yes, heavily. | Rarely — the point is to exercise the real surface. Version contract reads `Assembly.GetName()`, not a test double. |
-| **Update cadence** | Every refactor. | Only when the promise deliberately changes — and then the CHANGELOG and release notes change too. |
+| **Allowed to mock** | Yes, heavily. | Rarely -- the point is to exercise the real surface. Version contract reads `Assembly.GetName()`, not a test double. |
+| **Update cadence** | Every refactor. | Only when the promise deliberately changes -- and then the CHANGELOG and release notes change too. |
 
-A failing contract test is never "flaky" — it's either a real regression
+A failing contract test is never "flaky" -- it's either a real regression
 or an intentional change. Reviewer's job: which one is it, and is the
 commit message honest about it?
 
-## Adding a new contract test — checklist
+## Adding a new contract test -- checklist
 
 - [ ] Named with the `ContractTests` suffix (or a close historical variant
-      — don't rename legacy files just for aesthetics).
+      -- don't rename legacy files just for aesthetics).
 - [ ] Placed in the right project (v1 → `AzureOpenAI_CLI.Tests`; v2 →
       `AzureOpenAI_CLI.V2.Tests`).
 - [ ] Asserts against the **public surface**, not an internal helper.
@@ -136,13 +136,13 @@ commit message honest about it?
 
 ## Cross-references
 
-- [`README.md §5`](./README.md) — the contract-test table in the testing
+- [`README.md §5`](./README.md) -- the contract-test table in the testing
   playbook (authoritative source).
-- [`bdd-guide.md`](./bdd-guide.md) — Given/When/Then naming.
+- [`bdd-guide.md`](./bdd-guide.md) -- Given/When/Then naming.
 - [`../adr/ADR-003-behavior-driven-development.md`](../adr/ADR-003-behavior-driven-development.md)
-  — decision record.
+  -- decision record.
 - [`../audits/docs-audit-2026-04-22-puddy.md`](../audits/docs-audit-2026-04-22-puddy.md)
-  — audit finding H4 / M4 that called out the missing contract-test doc.
+  -- audit finding H4 / M4 that called out the missing contract-test doc.
 
 *Either the promise holds or it doesn't. Contract tests make that question
 a green/red, not a judgement call. High-five.*

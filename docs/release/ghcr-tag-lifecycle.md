@@ -1,7 +1,7 @@
 # GHCR tag lifecycle
 
 > "Tags are a contract. `latest` is a convenience. Digests are
-> truth." — Mr. Lippman
+> truth." -- Mr. Lippman
 
 Audience: whoever runs the release workflow and anyone operating a
 deployment that pins on an image tag. This page is the written policy
@@ -9,14 +9,14 @@ behind which OCI tags on `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`
 exist, when they move, and when they don't.
 
 Companion docs:
-- [`semver-policy.md`](semver-policy.md) — what counts as a
+- [`semver-policy.md`](semver-policy.md) -- what counts as a
   "contract break" on the image.
-- [`pre-release-checklist.md`](pre-release-checklist.md) — gate 18
+- [`pre-release-checklist.md`](pre-release-checklist.md) -- gate 18
   is the workflow that actually pushes these tags.
-- [`artifact-inventory.md`](artifact-inventory.md) — what else
+- [`artifact-inventory.md`](artifact-inventory.md) -- what else
   publishes alongside each image.
 - [`../runbooks/packaging-publish.md`](../runbooks/packaging-publish.md)
-  — Bob's downstream tap/bucket work consumes these tags.
+  -- Bob's downstream tap/bucket work consumes these tags.
 
 **Images this policy covers:**
 
@@ -37,7 +37,7 @@ We publish **three** classes of tag. Every push from the release
 workflow lands all three. Every class has a different stability
 contract.
 
-### 1.1 Version tags — permanent, immutable
+### 1.1 Version tags -- permanent, immutable
 
 Examples: `2.0.4`, `2.0.5`, `2.0.5-rc.1`.
 
@@ -54,7 +54,7 @@ Examples: `2.0.4`, `2.0.5`, `2.0.5-rc.1`.
 
 This is the only tag class a production deployment should pin on.
 
-### 1.2 Floating majors / minors — move forward only
+### 1.2 Floating majors / minors -- move forward only
 
 Examples: `2`, `2.0`.
 
@@ -71,14 +71,14 @@ Examples: `2`, `2.0`.
 - **Deleted:** only when the entire major line is end-of-lifed and
   the deprecation window has closed. Advance notice via
   `### Deprecated` in the CHANGELOG for at least two MINORs first.
-- **Signed / attested:** yes — inherits the attestation of whatever
+- **Signed / attested:** yes -- inherits the attestation of whatever
   version tag it currently points to.
 
 Use these in **non-production** pins where you want "latest v2" or
 "latest 2.0 patch" semantics. Expect the digest under you to change
 any time a release cuts.
 
-### 1.3 `latest` — moves on every GA release
+### 1.3 `latest` -- moves on every GA release
 
 - **Format:** literally `latest`.
 - **Pushed:** on every GA release, full stop. Including MAJOR cuts
@@ -103,7 +103,7 @@ on-call pager doesn't care what the README said six months ago.
   GHCR. If you need to pin to a specific build, use the image
   **digest** (`@sha256:…`) recorded in the GitHub Release body.
 - **Branch tags.** No `main`, no `dev`, no `release-v2`. Anything
-  appearing under those names on GHCR is a bug — file it.
+  appearing under those names on GHCR is a bug -- file it.
 - **Date tags.** No `2026-04-22`. The GitHub Release date + the
   version tag cover this.
 
@@ -114,17 +114,17 @@ on-call pager doesn't care what the README said six months ago.
 At `v2.0.Z` GA cutover (not a pre-release), the release workflow
 pushes, in order:
 
-1. `2.0.Z` — new version tag, immutable.
-2. `2.0` — moved forward to the new digest.
-3. `2` — moved forward to the new digest.
-4. `latest` — moved forward to the new digest.
+1. `2.0.Z` -- new version tag, immutable.
+2. `2.0` -- moved forward to the new digest.
+3. `2` -- moved forward to the new digest.
+4. `latest` -- moved forward to the new digest.
 
 All four tags point at the **same** manifest digest. Record that
 digest in the GitHub Release body (pre-release-checklist gate 19).
 
 For a pre-release (`v2.0.Z-rc.1`):
 
-1. `2.0.Z-rc.1` — immutable.
+1. `2.0.Z-rc.1` -- immutable.
 2. No float moves. `2`, `2.0`, `latest` stay where they were.
 3. GitHub Release is marked "Pre-release" in the UI.
 
@@ -139,7 +139,7 @@ For a cancelled tag (`v2.0.3` style):
 
 ---
 
-## 3. Digest pinning — the escape hatch
+## 3. Digest pinning -- the escape hatch
 
 Every tag resolves to a manifest digest (`sha256:…`). Digests are
 the only truly immutable reference.
@@ -153,7 +153,7 @@ the only truly immutable reference.
   give you reproducibility.
 
 Attestations are stored against the digest, not the tag. Retagging
-a float does not invalidate any attestation — it just points the
+a float does not invalidate any attestation -- it just points the
 float at a different (still-attested) digest.
 
 ---
@@ -229,4 +229,4 @@ before the first `gh` command runs.
 | `latest`      | float    | no         | yes, on any GA         | no                   |
 | `@sha256:…`   | digest   | yes        | n/a                    | yes                  |
 
-— Mr. Lippman, release management
+-- Mr. Lippman, release management

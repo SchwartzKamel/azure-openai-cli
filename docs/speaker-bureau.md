@@ -1,6 +1,6 @@
 # Speaker Bureau
 
-> I'm Keith Hernandez. If a CFP form, podcast producer, meetup organizer, or conference speaker-page asks for copy, they get what's on this page — not a bespoke writeup. One file, one source of truth, no title inflation.
+> I'm Keith Hernandez. If a CFP form, podcast producer, meetup organizer, or conference speaker-page asks for copy, they get what's on this page -- not a bespoke writeup. One file, one source of truth, no title inflation.
 
 **Owner:** Keith Hernandez (DevRel)
 **Last reviewed:** 2026-04-22 (v2.0.4)
@@ -12,7 +12,7 @@
 
 1. [About the project](#1-about-the-project)
 2. [About the speaker](#2-about-the-speaker-template)
-3. [Bios — 50 / 150 / 300 word](#3-bios)
+3. [Bios -- 50 / 150 / 300 word](#3-bios)
 4. [Pronouns, handles, headshot](#4-pronouns-handles-headshot)
 5. [Conflict-of-interest disclosure](#5-conflict-of-interest-disclosure)
 6. [Talk abstracts on offer](#6-talk-abstracts-on-offer)
@@ -39,7 +39,7 @@
 Name: [Legal name as it should appear on the badge]
 Preferred on-stage name: [if different]
 Pronouns: [they/them | she/her | he/him | …]
-Title / affiliation: [Maintainer, azure-openai-cli — OSS] or [Role, Employer]
+Title / affiliation: [Maintainer, azure-openai-cli -- OSS] or [Role, Employer]
 Location / timezone: [City, TZ offset]
 Primary handle: [@handle on the platform they care about]
 Secondary handles: [mastodon / bluesky / linkedin]
@@ -53,7 +53,7 @@ Accessibility notes: [quiet green room, lights-up during demo, …]
 
 ## 3. Bios
 
-> Pick the length that fits the form. All three are interchangeable — same person, same project, same tone. Update the *version number* sentence when a new release ships.
+> Pick the length that fits the form. All three are interchangeable -- same person, same project, same tone. Update the *version number* sentence when a new release ships.
 
 ### 50-word bio
 
@@ -61,17 +61,17 @@ Accessibility notes: [quiet green room, lights-up during demo, …]
 
 ### 150-word bio
 
-> [Speaker] maintains `azure-openai-cli`, an indie OSS command-line tool for Azure OpenAI. They work at the intersection of terminal ergonomics, AOT-compiled .NET, and agent frameworks — shipping a single NativeAOT binary under 13 MB that streams tokens, runs tool-calling agents, and starts in milliseconds. In a past life they [one-line career hook — keep it honest; no title inflation]. They talk about shipping polish-over-hype OSS, AOT trim warnings you *shouldn't* silence, and what happens when a Markdown persona file meets a real chaos drill. They live in [city] with [spouse / dog / houseplant]. Find the project at [github.com/SchwartzKamel/azure-openai-cli](https://github.com/SchwartzKamel/azure-openai-cli).
+> [Speaker] maintains `azure-openai-cli`, an indie OSS command-line tool for Azure OpenAI. They work at the intersection of terminal ergonomics, AOT-compiled .NET, and agent frameworks -- shipping a single NativeAOT binary under 13 MB that streams tokens, runs tool-calling agents, and starts in milliseconds. In a past life they [one-line career hook -- keep it honest; no title inflation]. They talk about shipping polish-over-hype OSS, AOT trim warnings you *shouldn't* silence, and what happens when a Markdown persona file meets a real chaos drill. They live in [city] with [spouse / dog / houseplant]. Find the project at [github.com/SchwartzKamel/azure-openai-cli](https://github.com/SchwartzKamel/azure-openai-cli).
 
 ### 300-word bio (keynote length)
 
-> [Speaker] is the maintainer of `azure-openai-cli`, an OSS NativeAOT CLI for Azure OpenAI. The project started as a personal text-expander workflow — `;;fix` triggering a Python script that called the OpenAI SDK at 2 AM in Istanbul — and grew into a cross-platform single-binary CLI that v2 rebuilt on Microsoft Agent Framework without breaking a single v1 flag.
+> [Speaker] is the maintainer of `azure-openai-cli`, an OSS NativeAOT CLI for Azure OpenAI. The project started as a personal text-expander workflow -- `;;fix` triggering a Python script that called the OpenAI SDK at 2 AM in Istanbul -- and grew into a cross-platform single-binary CLI that v2 rebuilt on Microsoft Agent Framework without breaking a single v1 flag.
 >
 > Their technical focus is the unglamorous middle of the stack: AOT trim warnings the Azure SDK emits that you *shouldn't* silence; a 1.5× binary-size gate honored without waiver; persona memory that survives a chaos drill involving `/dev/urandom` symlinks and a persona named `../../canary`; and OpenTelemetry wired into a CLI small enough to install with `curl`.
 >
-> [Speaker] has spoken at [conferences] and written for [outlets]. They are not an Azure employee, not a consultant, and hold no financial relationship with Microsoft or any Azure partner — see the COI disclosure in this bureau. They prefer small, rehearsed demos on fresh machines over live-coding adventures, and they believe the terminal is a product surface that deserves the same care as a web UI.
+> [Speaker] has spoken at [conferences] and written for [outlets]. They are not an Azure employee, not a consultant, and hold no financial relationship with Microsoft or any Azure partner -- see the COI disclosure in this bureau. They prefer small, rehearsed demos on fresh machines over live-coding adventures, and they believe the terminal is a product surface that deserves the same care as a web UI.
 >
-> Outside the project they [one or two lines — hobbies, family, city — keep it human]. The project is at [github.com/SchwartzKamel/azure-openai-cli](https://github.com/SchwartzKamel/azure-openai-cli), under the license in the repo.
+> Outside the project they [one or two lines -- hobbies, family, city -- keep it human]. The project is at [github.com/SchwartzKamel/azure-openai-cli](https://github.com/SchwartzKamel/azure-openai-cli), under the license in the repo.
 
 ---
 
@@ -79,14 +79,14 @@ Accessibility notes: [quiet green room, lights-up during demo, …]
 
 | Field | Value |
 |---|---|
-| Pronouns | *[set per speaker — do not default]* |
+| Pronouns | *[set per speaker -- do not default]* |
 | Mastodon | *[@handle@instance]* |
 | Bluesky | *[@handle.bsky.social]* |
 | LinkedIn | *[full URL]* |
 | X / Twitter | *[@handle if still active]* |
 | GitHub | *[@handle]* |
-| Headshot (web) | *placeholder — add `docs/devrel/headshots/<speaker>-web-1024.jpg` (sRGB, 1024 px square, < 300 KB)* |
-| Headshot (print) | *placeholder — add `docs/devrel/headshots/<speaker>-print-3000.jpg` (sRGB, 3000 px square, 300 dpi)* |
+| Headshot (web) | *placeholder -- add `docs/devrel/headshots/<speaker>-web-1024.jpg` (sRGB, 1024 px square, < 300 KB)* |
+| Headshot (print) | *placeholder -- add `docs/devrel/headshots/<speaker>-print-3000.jpg` (sRGB, 3000 px square, 300 dpi)* |
 | Headshot license | *"Free to use by [event name] for speaker-page and program use. Not licensed for merchandise or model-training datasets."* |
 
 Headshots are **not** committed yet. Cut a PR against `docs/devrel/headshots/` once a speaker is confirmed for an event; don't bulk-upload the whole team ahead of demand.
@@ -116,45 +116,45 @@ event* and note the amendment in the talk's slide colophon.
 
 These three are drawn from the CFP packet at [`docs/launch/v2-conference-cfp.md`](launch/v2-conference-cfp.md). The full packet has opening-line options, cut-lists, and demo scripts; this page is the short menu a producer can scan.
 
-### Abstract A — *Shipping an agentic CLI in AOT*
+### Abstract A -- *Shipping an agentic CLI in AOT*
 
-- **Length:** 30–45 min (25–30 min also works; see cut-list in CFP packet)
+- **Length:** 30-45 min (25-30 min also works; see cut-list in CFP packet)
 - **Track:** Deep-dev / .NET internals
 - **Target events:** .NET Conf, NDC, dotnetos, Monitorama (if framed around OTel trim)
 - **Elevator (≤140 char):** MAF + OpenTelemetry + Azure SDK on NativeAOT, single-file, 12.91 MB. Two csproj lines took us from 1.625× to 1.456× v1.
 - **Status:** CFP-ready. Demo is rehearsed as the hero script.
 
-### Abstract B — *Persona memory that can't read /dev/urandom*
+### Abstract B -- *Persona memory that can't read /dev/urandom*
 
-- **Length:** 30–40 min
+- **Length:** 30-40 min
 - **Track:** Security / SRE
 - **Target events:** KubeCon + CloudNativeSecurityCon, OSS Summit Security, BSides, Monitorama
 - **Elevator (≤140 char):** A Markdown file store met an adversary who brought a 5 GB log, a `/dev/urandom` symlink, and a persona named `../../canary`. Three findings, one commit, green.
 - **Status:** CFP-ready. Demo is the chaos-drill reproducer set.
 
-### Abstract C — *Text expansion at the speed of a keystroke: az-ai-v2 under WSL with Espanso*
+### Abstract C -- *Text expansion at the speed of a keystroke: az-ai-v2 under WSL with Espanso*
 
 - **Length:** 15 min (hard cap) + Q&A slot; scales to 30 min with extra demo (AHK path, fleet-dispatch teaser)
 - **Track:** DevRel / developer tools / WSL
 - **Target events:** Microsoft Reactor (WSL track), All Things Open lightning, Strange Loop meetups, PyCon hallway demo, .NET Conf community room, DevOps Days regionals
 - **Elevator (≤140 char):** `:aifix` fires in an Outlook draft. 10.73 ms AOT cold-start under WSL + Espanso. 12.97 MiB binary. `--raw` keeps the cursor from jumping.
-- **Status:** CFP-ready as of v2.0.6. Full packet — abstract, bio, outline, demo script, rehearsal notes, Q&A prep — at [`docs/talks/wsl-espanso.md`](talks/wsl-espanso.md). Fallback cast recording pending first booking.
+- **Status:** CFP-ready as of v2.0.6. Full packet -- abstract, bio, outline, demo script, rehearsal notes, Q&A prep -- at [`docs/talks/wsl-espanso.md`](talks/wsl-espanso.md). Fallback cast recording pending first booking.
 
 ---
 
 ## 7. CFP boilerplate
 
-> Blocks below are for producers who need *just copy* — no decisions. Paste, tweak the bracketed fields, submit.
+> Blocks below are for producers who need *just copy* -- no decisions. Paste, tweak the bracketed fields, submit.
 
-### Short-form CFP answer — "Why this talk, why now?"
+### Short-form CFP answer -- "Why this talk, why now?"
 
-> `azure-openai-cli` v2.0.4 ships in April 2026 as a single 12.91 MB NativeAOT binary with Microsoft Agent Framework inside. The lessons the rebuild surfaced — AOT trim warnings you shouldn't silence, a 1.5× size gate honored without waiver, OpenTelemetry wired through a CLI small enough to `curl`-install — are not in a vendor deck yet. This talk puts them in one.
+> `azure-openai-cli` v2.0.4 ships in April 2026 as a single 12.91 MB NativeAOT binary with Microsoft Agent Framework inside. The lessons the rebuild surfaced -- AOT trim warnings you shouldn't silence, a 1.5× size gate honored without waiver, OpenTelemetry wired through a CLI small enough to `curl`-install -- are not in a vendor deck yet. This talk puts them in one.
 
-### Short-form CFP answer — "Who is this for?"
+### Short-form CFP answer -- "Who is this for?"
 
 > Engineers shipping AOT CLIs, SRE/security teams deploying AI-adjacent tooling, and OSS maintainers deciding whether to take on an agent framework. No background in Azure OpenAI required; every flag is demonstrated.
 
-### Short-form CFP answer — "What will attendees take away?"
+### Short-form CFP answer -- "What will attendees take away?"
 
 > Three things: (1) which AOT trim warnings from Microsoft packages are signal vs. noise; (2) how a Markdown-backed persona store survives a real chaos drill; (3) one honest, reproducible measurement harness you can lift into your own project. Slides cite every number.
 
@@ -164,7 +164,7 @@ These three are drawn from the CFP packet at [`docs/launch/v2-conference-cfp.md`
 
 ### Recording / publishing answer
 
-> Consent to recording and publication on the conference's usual channels, CC-BY or equivalent. Request a copy of the raw recording for our own archive at [`docs/talks/`](talks/) (once that directory exists — see the speaker-bureau README).
+> Consent to recording and publication on the conference's usual channels, CC-BY or equivalent. Request a copy of the raw recording for our own archive at [`docs/talks/`](talks/) (once that directory exists -- see the speaker-bureau README).
 
 ---
 
@@ -186,8 +186,8 @@ These three are drawn from the CFP packet at [`docs/launch/v2-conference-cfp.md`
 **Ask first:**
 - Anything that asks for exclusive publishing rights to the recording
 - Anything that asks for the speaker to demo a *different* vendor's product as part of the talk
-- Anything happening within 6 weeks — we rehearse demos on fresh machines and the calendar is load-bearing
+- Anything happening within 6 weeks -- we rehearse demos on fresh machines and the calendar is load-bearing
 
 ---
 
-— *Keith Hernandez. One file. Honest bio. The CFP goes out clean.*
+-- *Keith Hernandez. One file. Honest bio. The CFP goes out clean.*

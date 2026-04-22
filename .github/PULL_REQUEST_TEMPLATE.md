@@ -1,12 +1,12 @@
 <!--
   Thanks for sending a PR. Fill out what applies; delete the rest.
-  Keep the diff focused — one concern per PR is easier to review and revert.
+  Keep the diff focused -- one concern per PR is easier to review and revert.
   Scope creep is the leading cause of stalled reviews. When in doubt, split.
 -->
 
 ## Summary
 
-<!-- 1–3 sentences. What does this change, and why? -->
+<!-- 1-3 sentences. What does this change, and why? -->
 
 ## Related issue
 
@@ -25,10 +25,10 @@ Fixes #
 
 ## Tree touched
 
-<!-- Check all that apply. PRs that touch both trees are unusual — if you must, note why. -->
+<!-- Check all that apply. PRs that touch both trees are unusual -- if you must, note why. -->
 
-- [ ] `azureopenai-cli-v2/` — v2, default for new work
-- [ ] `azureopenai-cli/` — v1 maintenance only (security / P0 / cutover)
+- [ ] `azureopenai-cli-v2/` -- v2, default for new work
+- [ ] `azureopenai-cli/` -- v1 maintenance only (security / P0 / cutover)
 - [ ] `tests/` only
 - [ ] Docs / CI / tooling only (no compiled code)
 
@@ -60,9 +60,9 @@ Fixes #
 
 ## Checklist
 
-- [ ] Tests added or updated for new behavior — positive **and** negative paths (or N/A)
+- [ ] Tests added or updated for new behavior -- positive **and** negative paths (or N/A)
 - [ ] `CHANGELOG.md` updated under `[Unreleased]` (or N/A for docs-only)
-- [ ] Docs updated where behavior changed: `README.md`, `ARCHITECTURE.md`, `CONFIGURATION.md`, `--help` text, man pages, `docs/…` — whichever applies
+- [ ] Docs updated where behavior changed: `README.md`, `ARCHITECTURE.md`, `CONFIGURATION.md`, `--help` text, man pages, `docs/…` -- whichever applies
 - [ ] Diff is scoped to one concern (no drive-by refactors, no unrelated renames)
 - [ ] No secrets, endpoints, or tokens committed
 - [ ] Commit subject is a [Conventional Commit](.github/skills/commit.md) (lowercase type, imperative, ≤ 72 chars)

@@ -1,4 +1,4 @@
-# ADR-005 — Azure AI Foundry endpoint routing
+# ADR-005 -- Azure AI Foundry endpoint routing
 
 **Status**: 🟡 Proposed  
 **Date**: 2026-04-20  
@@ -10,7 +10,7 @@
 
 Morty's analysis of Phi-4-mini-instruct (cost-optimization.md §3.6) identifies it as a **serious cost challenger**: ~2× cheaper than gpt-4o-mini on input/output, Microsoft-native, same compliance posture, built for Espanso use cases. The blocker: **hand-rolled `Program.cs` cannot reach Azure AI Foundry endpoints today.** Current auth flow routes `AZUREOPENAIENDPOINT` + key → `AzureOpenAIClient` → Azure OpenAI SDK. Foundry uses the same OpenAI-compatible chat-completions wire protocol but a different hostname (`services.ai.azure.com/models`) and deployment-name convention. This ADR routes that traffic without overengineering.
 
-The spike's Foundry path (`spike/agent-framework/Program.cs` §148) is a `NotImplementedException` stub. This is about shipping the hand-rolled path first—lean, contained, no MAF dependency.
+The spike's Foundry path (`spike/agent-framework/Program.cs` §148) is a `NotImplementedException` stub. This is about shipping the hand-rolled path first--lean, contained, no MAF dependency.
 
 ## Decision
 
@@ -36,12 +36,12 @@ Morty notes Phi-4-mini's instruction-following is shakier than OpenAI models (co
 
 **6. Backwards-compat matrix: Zero change unless opted in.**
 
-Existing `gpt-5.4-nano` / `gpt-4o-mini` users see zero diff: they don't set `AZURE_FOUNDRY_ENDPOINT`, so `ValidateConfiguration()` uses the Azure OpenAI path as today. Phi users set both env vars. Tests for both paths—existing Azure OpenAI path must pass without modification.
+Existing `gpt-5.4-nano` / `gpt-4o-mini` users see zero diff: they don't set `AZURE_FOUNDRY_ENDPOINT`, so `ValidateConfiguration()` uses the Azure OpenAI path as today. Phi users set both env vars. Tests for both paths--existing Azure OpenAI path must pass without modification.
 
 ## Consequences
 
 ### Positive
-- **Lean scope**: ~50–80 LOC in `Program.cs` (`ValidateConfiguration`, client construction, URL binding). No new dependencies.
+- **Lean scope**: ~50-80 LOC in `Program.cs` (`ValidateConfiguration`, client construction, URL binding). No new dependencies.
 - **Phi-4-mini unblocked**: Morty can run cost benchmarks against live Foundry endpoint; Bania's harness feeds into v1.11.0 roadmap decision.
 - **Reversible**: if Foundry routing breaks, users fall back to Azure OpenAI by unsetting `AZURE_FOUNDRY_ENDPOINT`.
 - **MAF-clean**: this hand-rolled path doesn't conflict with MAF adoption in v2.0; the spike's Foundry `NotImplementedException` is independent.

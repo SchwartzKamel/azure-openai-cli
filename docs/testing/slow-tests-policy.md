@@ -1,4 +1,4 @@
-# Slow Test Policy — `[Trait("type", "slow")]`
+# Slow Test Policy -- `[Trait("type", "slow")]`
 
 > **Status:** YAGNI for now. Not wired, not enforced, not decorative.
 > **Owner:** Puddy. **Revisit:** if the xUnit wall-clock crosses 60 s on CI.
@@ -6,12 +6,12 @@
 ## The three-line justification
 
 1. Suite wall-clock is currently under 30 s on CI (`make test` runs both
-   projects in one `dotnet test` pass). There is no pain to relieve — a fast
+   projects in one `dotnet test` pass). There is no pain to relieve -- a fast
    lane exists, it's called "the whole suite."
 2. The handful of intentionally-slow tests (`RetryTests.BackoffTimingIs*`,
    cancellation-timing tests) are already small in absolute count and already
    paid for inside the 30 s budget. Tagging them buys nothing today.
-3. Traits without CI wiring are decorative — they lie to readers about
+3. Traits without CI wiring are decorative -- they lie to readers about
    infrastructure that doesn't exist. We'd rather delete the promise than
    fake the infrastructure.
 
@@ -51,12 +51,12 @@ then: **no `slow` trait. No exceptions. No decoration.**
 
 ## Cross-references
 
-- [`bdd-guide.md`](./bdd-guide.md) — still mentions the `slow` trait;
+- [`bdd-guide.md`](./bdd-guide.md) -- still mentions the `slow` trait;
   treated as aspirational per §7 of the README.
-- [`README.md §7`](./README.md) — honesty note on `[Trait]` status.
+- [`README.md §7`](./README.md) -- honesty note on `[Trait]` status.
 - Audit finding H6 in
   [`../audits/docs-audit-2026-04-22-puddy.md`](../audits/docs-audit-2026-04-22-puddy.md)
-  — the finding this policy closes.
+  -- the finding this policy closes.
 
 *Either it works or it doesn't. The trait doesn't. We stopped pretending.
 High-five.*

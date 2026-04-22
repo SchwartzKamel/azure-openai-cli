@@ -1,10 +1,10 @@
 # v2 Cutover Checklist (Phase 6)
 
 **Owners:** Mr. Wilhelm (process) + Mr. Lippman (release)
-**Status:** Pending — do not execute until all preconditions in §1 are green
+**Status:** Pending -- do not execute until all preconditions in §1 are green
 **Companion docs:** [`v2-migration.md`](v2-migration.md) · [`v2-dogfood-plan.md`](v2-dogfood-plan.md) · [`adr/ADR-004-agent-framework-adoption.md`](adr/ADR-004-agent-framework-adoption.md)
 
-> The gate is the gate. The gate is *there* for a reason. We're going to press — but not before every item below is checked, signed, and dated. No back-channel merges. No "just this once." — Wilhelm & Lippman
+> The gate is the gate. The gate is *there* for a reason. We're going to press -- but not before every item below is checked, signed, and dated. No back-channel merges. No "just this once." -- Wilhelm & Lippman
 
 ---
 
@@ -13,12 +13,12 @@
 The cutover **must not start** until all of the following are true. Owner initials go in the release PR checklist.
 
 - [ ] Phase 5 (Observability) shipped to `main` with OTel + Morty's cost schema behind opt-in flag. Owner: Frank + Morty.
-- [ ] Phase 7 dogfood window complete per [`v2-dogfood-plan.md`](v2-dogfood-plan.md) exit criteria — **this is non-negotiable**. Owner: FDR + Bania.
+- [ ] Phase 7 dogfood window complete per [`v2-dogfood-plan.md`](v2-dogfood-plan.md) exit criteria -- **this is non-negotiable**. Owner: FDR + Bania.
 - [ ] All `azureopenai-cli-v2/` unit + integration tests green on latest `main` (CI shows green `Test v2` step).
 - [ ] Bania perf deltas vs 1.9.1 within budget (cold start ≤ +10%, TTFT ≤ +5ms, stream throughput ≤ −5%, AOT binary ≤ 15 MB).
 - [ ] FDR chaos drill: zero P1 findings outstanding, any P2 triaged with owners.
 - [ ] Newman security sign-off on the v2 tool hardening adapter layer.
-- [ ] Jackie licensing scan across the MAF dependency graph — attribution file updated, no GPL contagion.
+- [ ] Jackie licensing scan across the MAF dependency graph -- attribution file updated, no GPL contagion.
 - [ ] Elaine: migration guide draft ready for the GitHub Release body.
 - [ ] Costanza go/no-go signed in release PR.
 
@@ -58,12 +58,12 @@ The cutover is therefore a **project rename/swap on `main`**, not a branch renam
 
 Every step has an owner and a validation command. Do not mark done without running the validation.
 
-### 3.1 Pre-cutover — establish rollback anchors
+### 3.1 Pre-cutover -- establish rollback anchors
 
 | # | Action | Owner | Validation |
 |---|--------|-------|------------|
 | 1 | Cut `v1-legacy` branch from current `main` HEAD: `git switch -c v1-legacy && git push -u origin v1-legacy` | Jerry | `git ls-remote origin v1-legacy` |
-| 2 | Apply branch protection to `v1-legacy` (require PR, require `build-and-test`, restrict force-push) | Wilhelm | GitHub UI — branch settings screenshot in release PR |
+| 2 | Apply branch protection to `v1-legacy` (require PR, require `build-and-test`, restrict force-push) | Wilhelm | GitHub UI -- branch settings screenshot in release PR |
 | 3 | Retag current `ghcr.io/schwartzkamel/azure-openai-cli:latest` as `:1.9.1` (explicit lockdown of the last v1 image) | Jerry | `docker buildx imagetools inspect ghcr.io/schwartzkamel/azure-openai-cli:1.9.1` |
 | 4 | Snapshot current Homebrew/Scoop/Nix files into `packaging/legacy/v1.9.1/` for trivial rollback | Bob Sacamano | `git log packaging/legacy/v1.9.1/` |
 | 5 | Open the cutover tracking PR in draft; enable merge queue gating | Wilhelm | PR link posted to Discussions |
@@ -78,17 +78,17 @@ All work happens on branch `release/2.0.0` cut from `main`.
 | 7 | `git mv azureopenai-cli-v2 azureopenai-cli` and `git mv tests/AzureOpenAI_CLI.V2.Tests tests/AzureOpenAI_CLI.Tests` | Kramer | File exists at new path with old name (`test -f azureopenai-cli/AzureOpenAI_CLI_V2.csproj`), ready for §3.3 step 8 rename |
 | 8 | Rename `azureopenai-cli/AzureOpenAI_CLI_V2.csproj` → `azureopenai-cli/AzureOpenAI_CLI.csproj`; rename test csproj analogously; rename `AssemblyName` / `RootNamespace` inside the csproj if set | Kramer | `grep -l AzureOpenAI_CLI_V2` must return no csproj hits |
 | 9 | Update [`azure-openai-cli.sln`](../azure-openai-cli.sln): delete the two V2 entries (`{B2C3...}`, `{C3D4...}`), delete the two v1 entries, re-add a single `AzureOpenAI_CLI` + `AzureOpenAI_CLI.Tests` pair pointing at the new paths. Use `dotnet sln` not hand-editing. | Kramer | `dotnet sln list` shows exactly two projects |
-| 10 | Update [`Dockerfile`](../Dockerfile) — path is already `azureopenai-cli/AzureOpenAI_CLI.csproj`, so no change needed after the rename. Confirm: | Jerry | `docker build -t az-ai:cutover-smoke .` succeeds |
-| 11 | Update [`Makefile`](../Makefile) — all `azureopenai-cli/AzureOpenAI_CLI.csproj` references already match; sweep for `V2`/`v2` stragglers (test targets, bench scripts) | Jerry | `grep -nE '_V2|azureopenai-cli-v2' Makefile` returns nothing |
-| 12 | Update `.github/workflows/ci.yml` — collapse `Test v1` + `Test v2` into a single `Test` step pointing at `tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj` | Jerry | workflow dry-run via `act` or push-to-branch CI green |
-| 13 | Update `.github/workflows/release.yml` — already references `azureopenai-cli/AzureOpenAI_CLI.csproj`; confirm SBOM + publish matrix still resolve | Jerry | `grep -nE '_V2|azureopenai-cli-v2' .github/workflows/` returns nothing |
-| 14 | Sweep repo for stale references: `grep -rnE 'azureopenai-cli-v2\|AzureOpenAI_CLI_V2\|V2\.Tests' -- ':!docs/v2-*.md' ':!CHANGELOG.md'` — each hit either updated or explicitly whitelisted in the PR description | Kramer + Elaine | Clean grep output |
+| 10 | Update [`Dockerfile`](../Dockerfile) -- path is already `azureopenai-cli/AzureOpenAI_CLI.csproj`, so no change needed after the rename. Confirm: | Jerry | `docker build -t az-ai:cutover-smoke .` succeeds |
+| 11 | Update [`Makefile`](../Makefile) -- all `azureopenai-cli/AzureOpenAI_CLI.csproj` references already match; sweep for `V2`/`v2` stragglers (test targets, bench scripts) | Jerry | `grep -nE '_V2|azureopenai-cli-v2' Makefile` returns nothing |
+| 12 | Update `.github/workflows/ci.yml` -- collapse `Test v1` + `Test v2` into a single `Test` step pointing at `tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj` | Jerry | workflow dry-run via `act` or push-to-branch CI green |
+| 13 | Update `.github/workflows/release.yml` -- already references `azureopenai-cli/AzureOpenAI_CLI.csproj`; confirm SBOM + publish matrix still resolve | Jerry | `grep -nE '_V2|azureopenai-cli-v2' .github/workflows/` returns nothing |
+| 14 | Sweep repo for stale references: `grep -rnE 'azureopenai-cli-v2\|AzureOpenAI_CLI_V2\|V2\.Tests' -- ':!docs/v2-*.md' ':!CHANGELOG.md'` -- each hit either updated or explicitly whitelisted in the PR description | Kramer + Elaine | Clean grep output |
 
 ### 3.3 Package identity
 
 | # | Action | Owner | Validation |
 |---|--------|-------|------------|
-| 15 | Keep binary name `az-ai` (install target, Homebrew alias, Scoop `bin` mapping — all unchanged) | Mr. Lippman | `bin.install "AzureOpenAI_CLI" => "az-ai"` unchanged in formula |
+| 15 | Keep binary name `az-ai` (install target, Homebrew alias, Scoop `bin` mapping -- all unchanged) | Mr. Lippman | `bin.install "AzureOpenAI_CLI" => "az-ai"` unchanged in formula |
 | 16 | Bump `<Version>` in `azureopenai-cli/AzureOpenAI_CLI.csproj` from `2.0.0-alpha.1` to `2.0.0` | Mr. Lippman | `grep '<Version>2.0.0</Version>' azureopenai-cli/AzureOpenAI_CLI.csproj` |
 | 17 | Update Docker image `org.opencontainers.image.version` label (if present) to `2.0.0` | Jerry | `docker inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' az-ai:cutover-smoke` |
 
@@ -96,8 +96,8 @@ All work happens on branch `release/2.0.0` cut from `main`.
 
 | # | Action | Owner | Validation |
 |---|--------|-------|------------|
-| 18 | Add `## [2.0.0] - <date>` section. **Headline** under **Changed**: "Adopted Microsoft Agent Framework (MAF) — `ChatClientAgent`, `Workflow`+`CheckpointManager`, `AgentSession`+`AIContextProvider` replace ~2200 LOC of hand-rolled harness. Zero CLI surface changes. See [ADR-004](docs/adr/ADR-004-agent-framework-adoption.md)." Include Added (opt-in telemetry flag, OTel spans, per-request cost hook), Changed (dependency graph now includes `Microsoft.Agents.AI.*`), Removed (dual-runtime `--agent-runtime` if not shipped; legacy squad session loader). Link the migration guide. | Mr. Lippman | Preview render on the PR |
-| 19 | Call out breaking changes loudly — even if user-invisible, library consumers may see API surface drift | Mr. Lippman | Section starts "### ⚠️ Breaking changes" |
+| 18 | Add `## [2.0.0] - <date>` section. **Headline** under **Changed**: "Adopted Microsoft Agent Framework (MAF) -- `ChatClientAgent`, `Workflow`+`CheckpointManager`, `AgentSession`+`AIContextProvider` replace ~2200 LOC of hand-rolled harness. Zero CLI surface changes. See [ADR-004](docs/adr/ADR-004-agent-framework-adoption.md)." Include Added (opt-in telemetry flag, OTel spans, per-request cost hook), Changed (dependency graph now includes `Microsoft.Agents.AI.*`), Removed (dual-runtime `--agent-runtime` if not shipped; legacy squad session loader). Link the migration guide. | Mr. Lippman | Preview render on the PR |
+| 19 | Call out breaking changes loudly -- even if user-invisible, library consumers may see API surface drift | Mr. Lippman | Section starts "### ⚠️ Breaking changes" |
 | 20 | Date the section on the day the tag is cut, not the day the PR is opened | Mr. Lippman | Visual inspection |
 
 ### 3.5 Docker
@@ -130,13 +130,13 @@ All work happens on branch `release/2.0.0` cut from `main`.
 | # | Action | Owner | Validation |
 |---|--------|-------|------------|
 | 31 | Hero copy + launch post drafted | Peterman | Draft linked in release PR |
-| 32 | Community notice — Discussions post, welcome thread for early v2 reports | Uncle Leo | Post URL |
+| 32 | Community notice -- Discussions post, welcome thread for early v2 reports | Uncle Leo | Post URL |
 | 33 | Conference-talk delta (if a CFP references a version) | Keith Hernandez | Slide delta or "N/A" |
 | 34 | Announcement fires *after* tag is published and binaries are signed/verified | Mr. Lippman | Timestamped in the release PR |
 
 ---
 
-## 4. Validation gates — must all pass before Phase 6 is marked done
+## 4. Validation gates -- must all pass before Phase 6 is marked done
 
 Run in order. Every command below must exit 0 or its artifact must match the stated criterion.
 
@@ -155,7 +155,7 @@ AZUREOPENAIENDPOINT=... AZUREOPENAIAPI=... AZUREOPENAIMODEL=gpt-4o-mini \
 # Gate 4: FDR chaos drill
 bash tests/adversarial/run-chaos-drill.sh --baseline 1.9.1   # zero P1, P2 triaged
 
-# Gate 5: Bania perf regression (⚠️ PLANNED — see note below)
+# Gate 5: Bania perf regression (⚠️ PLANNED -- see note below)
 python scripts/bench.py --compare 1.9.1 --budget cold=10% --budget ttft=5ms \
        --budget stream=5% --budget binsize=15MB
 ```
@@ -198,7 +198,7 @@ Rollback is a sequence of inverse steps against the anchors set in §3.1. It is 
 |---|--------|-------|------------|
 | R1 | `git switch v1-legacy && git switch -c rollback/1.9.2 && git merge --ff-only v1-legacy` | Jerry | `git log --oneline -1` matches pre-cutover SHA |
 | R2 | Apply the single hotfix that forced the rollback (if any) as a separate commit | Kramer | Hotfix PR linked |
-| R3 | Bump csproj to `1.9.2`, add CHANGELOG entry under `## [1.9.2]` with "Rollback of 2.0.0 — see §5 of v2-cutover-checklist" | Mr. Lippman | `grep '<Version>1.9.2</Version>'` |
+| R3 | Bump csproj to `1.9.2`, add CHANGELOG entry under `## [1.9.2]` with "Rollback of 2.0.0 -- see §5 of v2-cutover-checklist" | Mr. Lippman | `grep '<Version>1.9.2</Version>'` |
 | R4 | Reset `main` to the rollback branch: merge via PR with "rollback" label; squash disabled | Wilhelm | `main` HEAD = rollback SHA |
 | R5 | Retag `ghcr.io/...:latest` back to the `:1.9.1` digest (set aside in §3.1 step 3); publish `:1.9.2` after hotfix merges | Jerry | `docker buildx imagetools inspect ...:latest` |
 | R6 | Cut GitHub Release `v1.9.2` with a "Rollback Notice" section citing trigger + ADR-004 status change to "Rejected post-implementation" | Mr. Lippman | Release page URL |
@@ -218,8 +218,8 @@ Once `v1-legacy` has been deleted *or* 30 days have passed since the 2.0.0 tag, 
 |---------|---------|--------|-------|
 | GitHub Release (v2.0.0) | Full release notes + migration guide + ADR link | T+0 (tag publish) | Mr. Lippman |
 | README.md | Version badge bump + "What's new in 2.0" callout | T+0 | Elaine |
-| Discussions — Announcements | "v2.0.0 is out" thread; invite early reports | T+0 | Uncle Leo |
-| Discussions — Migration | FAQ stub — "Do I need to change anything?" (answer: no for CLI users) | T+0 | Elaine + Uncle Leo |
+| Discussions -- Announcements | "v2.0.0 is out" thread; invite early reports | T+0 | Uncle Leo |
+| Discussions -- Migration | FAQ stub -- "Do I need to change anything?" (answer: no for CLI users) | T+0 | Elaine + Uncle Leo |
 | Issue tracker | Pin "v2.0 known issues" meta-issue; triage P1s in ≤ 4h during first week | T+0 through T+7d | Puddy |
 | Blog / launch copy (if any) | Peterman's hero post | T+1 (next business day) | Peterman |
 | Conference / talk decks | Version bump slide | T+7 or next rehearsal | Keith Hernandez |
@@ -232,10 +232,10 @@ Do **not** pre-announce. The announcement fires after tag publish and binary att
 
 Execute within two weeks of the 2.0.0 tag.
 
-- [ ] Remove the "v1 vs v2" test-matrix split from `ci.yml` — one test job only.
+- [ ] Remove the "v1 vs v2" test-matrix split from `ci.yml` -- one test job only.
 - [ ] Archive `.github/workflows/` references to `V2.Tests` if any remain.
-- [ ] Sweep docs for `azureopenai-cli-v2` / "v2 branch" language — update to historical tense ("v2 was merged in 2.0.0"). Elaine owns the sweep.
-- [ ] Move [`docs/v2-migration.md`](v2-migration.md), this checklist, and [`docs/v2-dogfood-plan.md`](v2-dogfood-plan.md) into `docs/history/` — they are artifacts now, not planning docs.
+- [ ] Sweep docs for `azureopenai-cli-v2` / "v2 branch" language -- update to historical tense ("v2 was merged in 2.0.0"). Elaine owns the sweep.
+- [ ] Move [`docs/v2-migration.md`](v2-migration.md), this checklist, and [`docs/v2-dogfood-plan.md`](v2-dogfood-plan.md) into `docs/history/` -- they are artifacts now, not planning docs.
 - [ ] Freeze `v1-legacy`: retain branch for 180 days for hotfixes, then archive (not delete) via GitHub branch archive.
 - [ ] Update [`docs/v2-migration.md`](v2-migration.md) phase table: Phase 6 and 7 → ✅ Done with commit SHAs.
 - [ ] Retire the `--agent-runtime native|af` flag (if it shipped) at v2.1 per the open question in [`v2-migration.md`](v2-migration.md).

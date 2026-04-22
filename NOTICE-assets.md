@@ -33,7 +33,7 @@ GitHub Release). Code-licensing attribution lives in
   reference to the 1931 *Frankenstein* "It's alive!" line. The asset
   itself contains **no footage, stills, audio, makeup design, or other
   protectable element** from that film or any other third-party work
-  — it is a terminal recording of this project's own binary. The name
+  -- it is a terminal recording of this project's own binary. The name
   is a joke; the bytes are first-party.
 
 ---
@@ -82,13 +82,13 @@ once that clause lands.
 
 ## Cross-references
 
-- [`NOTICE`](NOTICE) — Apache-2.0 §4(d) compliance + trademark posture
+- [`NOTICE`](NOTICE) -- Apache-2.0 §4(d) compliance + trademark posture
   for code dependencies.
-- [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) — authoritative
+- [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) -- authoritative
   per-package manifest for the v2.x dependency graph.
-- [`docs/licensing-audit.md`](docs/licensing-audit.md) — reproducible
+- [`docs/licensing-audit.md`](docs/licensing-audit.md) -- reproducible
   audit of the resolved dependency graph with verification cadence.
-- [`docs/legal/trademark-policy.md`](docs/legal/trademark-policy.md) —
+- [`docs/legal/trademark-policy.md`](docs/legal/trademark-policy.md) --
   project trademark posture and nominative-use rules.
-- [`docs/demos/hero-gif.md`](docs/demos/hero-gif.md) — regeneration
+- [`docs/demos/hero-gif.md`](docs/demos/hero-gif.md) -- regeneration
   workflow for the hero GIF.

@@ -1,4 +1,4 @@
-# Microsoft Agent Framework — Phase 0 benchmarks
+# Microsoft Agent Framework -- Phase 0 benchmarks
 
 **Status**: harness ready, awaiting real Azure endpoint to populate.
 **Spike code**: `spike/agent-framework/`
@@ -40,7 +40,7 @@
 ## Runs
 <!-- bench.sh appends here -->
 
-## Run 2026-04-20T02:35Z — first real endpoint run
+## Run 2026-04-20T02:35Z -- first real endpoint run
 
 **Endpoint**: `https://sierrahackingco.cognitiveservices.azure.com/` (gpt-5.4-nano via Azure OpenAI Responses API)
 **Binaries**: spike AOT (`af-spike`, 19 MB), handrolled AOT (`AzureOpenAI_CLI`, 9.1 MB)
@@ -56,12 +56,12 @@
 ### End-to-end (real LLM call)
 
 **Handrolled is BROKEN against this endpoint.** Two independent pre-existing bugs surfaced and block any fair comparison:
-1. **AOT**: `InvalidOperationException: Reflection-based serialization has been disabled` — reflection path still reachable in the streaming/response handling code despite `AppJsonContext` source-gen. Filed as a v1 regression; blocks AOT ship of v1.9.0-alpha.1 against modern endpoints.
-2. **JIT**: `HTTP 400 unsupported_parameter: max_tokens` — newer Azure models (Responses API surface, gpt-5.x) require `max_completion_tokens` instead. Our `Azure.AI.OpenAI` 2.1.0 call still sends `max_tokens`.
+1. **AOT**: `InvalidOperationException: Reflection-based serialization has been disabled` -- reflection path still reachable in the streaming/response handling code despite `AppJsonContext` source-gen. Filed as a v1 regression; blocks AOT ship of v1.9.0-alpha.1 against modern endpoints.
+2. **JIT**: `HTTP 400 unsupported_parameter: max_tokens` -- newer Azure models (Responses API surface, gpt-5.x) require `max_completion_tokens` instead. Our `Azure.AI.OpenAI` 2.1.0 call still sends `max_tokens`.
 
-As a result, the spike is currently the **only working path** against this endpoint. The head-to-head latency table cannot be populated — but the qualitative verdict is unambiguous.
+As a result, the spike is currently the **only working path** against this endpoint. The head-to-head latency table cannot be populated -- but the qualitative verdict is unambiguous.
 
-### Spike (MAF, apikey) — short prompt (n=10)
+### Spike (MAF, apikey) -- short prompt (n=10)
 
 | Measurement | Value |
 |---|---|
@@ -69,7 +69,7 @@ As a result, the spike is currently the **only working path** against this endpo
 | Avg TTFT (internal `[mark]` first-token) | **948 ms** |
 | Agent construction (args-parsed → agent-ready) | < 1 ms (AOT) |
 
-### Spike (MAF, apikey) — ~50-char streamed reply (n=5)
+### Spike (MAF, apikey) -- ~50-char streamed reply (n=5)
 
 | Run | Wall | TTFT | Stream phase | Throughput |
 |---|---|---|---|---|
@@ -87,7 +87,7 @@ Wired correctly. Without AAD env setup, fails with the expected `CredentialUnava
 - EnvironmentCredential authentication unavailable. Environment variables are not fully configured.
 - WorkloadIdentityCredential authentication unavailable. The workload options are not fully configured.
 ```
-This is the correct behavior — the MAF AAD path is ready for a real AAD deployment.
+This is the correct behavior -- the MAF AAD path is ready for a real AAD deployment.
 
 ### Foundry path
 
@@ -96,11 +96,11 @@ Still a `NotImplementedException` stub. Requires real Foundry project endpoint; 
 ### Verdict (partial, promoted to ADR-004)
 
 - ✅ **AOT works**: MAF publishes cleanly with no new IL warnings
-- ✅ **Cold start passes budget**: +0.5–1 ms delta, well under 10% threshold
+- ✅ **Cold start passes budget**: +0.5-1 ms delta, well under 10% threshold
 - ✅ **End-to-end works** against gpt-5.4-nano Azure Responses endpoint
 - ✅ **AAD path wired correctly** (fails with right error when not configured)
-- ⚠️ **Binary 2× larger** (9 → 19 MB) — trim follow-up
-- 🔴 **Handrolled v1 is broken** against this endpoint — two pre-existing bugs (AOT reflection + max_tokens). Cannot be used as comparison baseline until fixed.
+- ⚠️ **Binary 2× larger** (9 → 19 MB) -- trim follow-up
+- 🔴 **Handrolled v1 is broken** against this endpoint -- two pre-existing bugs (AOT reflection + max_tokens). Cannot be used as comparison baseline until fixed.
 
 **Implication for plan.md**: the hybrid adoption case is stronger than the plan assumed. Handrolled needs two fixes before it can even target modern Azure models (gpt-5.x Responses API); MAF handles both out of the box. File the handrolled bugs as `v1.9.1` hotfix candidates.
 

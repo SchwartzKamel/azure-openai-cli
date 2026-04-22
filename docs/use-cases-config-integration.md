@@ -43,7 +43,7 @@ list (e.g. `gpt-4o,gpt-4o-mini`).
 
 ### 1. --config show
 
-Display the effective configuration with source attribution for every value. This command does **not** require valid Azure credentials — it reads local config only.
+Display the effective configuration with source attribution for every value. This command does **not** require valid Azure credentials -- it reads local config only.
 
 ```bash
 az-ai --config show
@@ -163,7 +163,7 @@ Available models:
 | `gpt-4o` | Complex reasoning, code review, analysis | Higher | Higher |
 | `gpt-4o-mini` | Grammar fixes, translation, quick Q&A, text expansion | Lower | Lower |
 
-**Workflow — switch model based on task:**
+**Workflow -- switch model based on task:**
 
 ```bash
 # Morning: code review mode
@@ -200,7 +200,7 @@ No active model set.
 Use --set-model <model-name> to select a model, or configure AZUREOPENAIMODEL in your .env file.
 ```
 
-**Scripting use case — check before running a batch:**
+**Scripting use case -- check before running a batch:**
 
 ```bash
 #!/bin/bash
@@ -240,8 +240,8 @@ The CLI persists user preferences to `~/.azureopenai-cli.json`. On Unix systems,
 | Max tokens | ✅ `MaxTokens` | `AZURE_MAX_TOKENS` | Config overrides env |
 | Timeout | ✅ `TimeoutSeconds` | `AZURE_TIMEOUT` | Config overrides env |
 | System prompt | ✅ `SystemPrompt` | `SYSTEMPROMPT` | Config overrides env |
-| Endpoint | ❌ | `AZUREOPENAIENDPOINT` | Environment only — never persisted |
-| API key | ❌ | `AZUREOPENAIAPI` | Environment only — never persisted (security) |
+| Endpoint | ❌ | `AZUREOPENAIENDPOINT` | Environment only -- never persisted |
+| API key | ❌ | `AZUREOPENAIAPI` | Environment only -- never persisted (security) |
 
 **Manually editing the config file:**
 
@@ -318,7 +318,7 @@ az-ai --system "You are a pirate." "What is Docker?"
 | `AZUREOPENAIENDPOINT` | Azure OpenAI resource URL | *(required)* |
 | `AZUREOPENAIAPI` | API key | *(required)* |
 | `AZUREOPENAIMODEL` | Model deployment name(s), comma-separated | *(required)* |
-| `AZURE_TEMPERATURE` | Default temperature (0.0–2.0) | `0.55` |
+| `AZURE_TEMPERATURE` | Default temperature (0.0-2.0) | `0.55` |
 | `AZURE_MAX_TOKENS` | Default max output tokens | `10000` |
 | `AZURE_TIMEOUT` | Request timeout in seconds | `120` |
 | `SYSTEMPROMPT` | Default system prompt | `"You are a secure, concise CLI assistant..."` |
@@ -332,7 +332,7 @@ The CLI auto-loads a `.env` file from the current working directory on every run
 **Sample `.env` file:**
 
 ```dotenv
-# .env — Azure OpenAI CLI configuration
+# .env -- Azure OpenAI CLI configuration
 # Place in your project root. Loaded automatically.
 
 # Required: Azure OpenAI connection
@@ -356,13 +356,13 @@ SYSTEMPROMPT=You are a senior engineer. Be concise and precise.
 **Per-project configuration:**
 
 ```bash
-# Project A — uses gpt-4o for code review
+# Project A -- uses gpt-4o for code review
 cd ~/projects/backend
 cat .env
 # AZUREOPENAIMODEL=gpt-4o
 # SYSTEMPROMPT=You are a backend code reviewer specializing in C# and .NET.
 
-# Project B — uses gpt-4o-mini for docs
+# Project B -- uses gpt-4o-mini for docs
 cd ~/projects/docs
 cat .env
 # AZUREOPENAIMODEL=gpt-4o-mini
@@ -525,11 +525,11 @@ Type `:ai ` (with trailing space) → a form pops up → type any question → A
 
 #### Performance Tips for Espanso
 
-- **Always use `--raw`** — prevents spinner/stats artifacts in pasted text
-- **Cap `--max-tokens`** — shorter responses complete faster (150 for summaries, 200 for explanations)
+- **Always use `--raw`** -- prevents spinner/stats artifacts in pasted text
+- **Cap `--max-tokens`** -- shorter responses complete faster (150 for summaries, 200 for explanations)
 - **Use `--temperature 0.3`** for deterministic tasks (grammar fixes, translations)
-- **End system prompts with "Output ONLY..."** — prevents chatty preamble from the model
-- **Use `gpt-4o-mini`** — faster for mechanical text tasks (grammar, translation, summaries)
+- **End system prompts with "Output ONLY..."** -- prevents chatty preamble from the model
+- **Use `gpt-4o-mini`** -- faster for mechanical text tasks (grammar, translation, summaries)
 
 ---
 
@@ -537,7 +537,7 @@ Type `:ai ` (with trailing space) → a form pops up → type any question → A
 
 [AutoHotKey v2](https://www.autohotkey.com/) provides global hotkeys on Windows. Save the following as `ai-hotkeys.ahk`:
 
-#### Hotkey 1: Ctrl+Shift+A — Prompt Input Box
+#### Hotkey 1: Ctrl+Shift+A -- Prompt Input Box
 
 Opens an input dialog, sends your prompt to `az-ai`, pastes the response.
 
@@ -573,7 +573,7 @@ AiTransform(text, systemPrompt, extraFlags := "") {
     return RunWaitOne(cmd)
 }
 
-; ── Ctrl+Shift+A — Free-form AI prompt ──────────────────────
+; ── Ctrl+Shift+A -- Free-form AI prompt ──────────────────────
 ^+a:: {
     ib := InputBox("Enter your prompt:", "Azure OpenAI CLI", "w400 h120")
     if ib.Result = "Cancel"
@@ -586,12 +586,12 @@ AiTransform(text, systemPrompt, extraFlags := "") {
 }
 ```
 
-#### Hotkey 2: Ctrl+Shift+F — Fix Selected Text
+#### Hotkey 2: Ctrl+Shift+F -- Fix Selected Text
 
 Select text in any application → press `Ctrl+Shift+F` → grammar-corrected text replaces it.
 
 ```ahk
-; ── Ctrl+Shift+F — Fix grammar of selected text ─────────────
+; ── Ctrl+Shift+F -- Fix grammar of selected text ─────────────
 ^+f:: {
     text := GetSelectedText()
     if (text = "")
@@ -606,12 +606,12 @@ Select text in any application → press `Ctrl+Shift+F` → grammar-corrected te
 }
 ```
 
-#### Hotkey 3: Ctrl+Shift+S — Summarize Clipboard
+#### Hotkey 3: Ctrl+Shift+S -- Summarize Clipboard
 
 Copies selected text → summarizes it → pastes the summary.
 
 ```ahk
-; ── Ctrl+Shift+S — Summarize selected text ───────────────────
+; ── Ctrl+Shift+S -- Summarize selected text ───────────────────
 ^+s:: {
     text := GetSelectedText()
     if (text = "")
@@ -694,7 +694,7 @@ cat src/auth/login.cs | az-ai --raw --system "Review this code for security issu
 
 ```bash
 #!/bin/bash
-# review-pr.sh — AI-assisted PR review
+# review-pr.sh -- AI-assisted PR review
 branch="${1:-HEAD}"
 
 echo "## Code Changes"
@@ -778,7 +778,7 @@ Persona Mode:
 
 | Section | Purpose |
 |---------|---------|
-| **Usage** | Core commands — prompt, model management, meta commands |
+| **Usage** | Core commands -- prompt, model management, meta commands |
 | **Options** | Per-invocation flags that modify behavior |
 | **Agent Mode** | Autonomous tool-calling mode (shell, file, web, clipboard, datetime) |
 | **Piping** | Stdin examples for pipeline workflows |
@@ -803,7 +803,7 @@ az-ai -v
 Azure OpenAI CLI v1.0.0
 ```
 
-**Scripting — check minimum version:**
+**Scripting -- check minimum version:**
 
 ```bash
 version=$(az-ai --version 2>&1)
@@ -823,13 +823,13 @@ When the model uses the `shell_exec` tool, commands are filtered through multipl
 
 #### Blocked Commands
 
-The following commands are **always blocked** — they can destroy data or escalate privileges:
+The following commands are **always blocked** -- they can destroy data or escalate privileges:
 
 | Command | Category | Why Blocked |
 |---------|----------|-------------|
 | `rm`, `rmdir`, `del` | Destructive | Delete files/directories |
-| `dd` | Destructive | Raw disk write — can overwrite entire drives |
-| `mkfs`, `fdisk`, `format` | Destructive | Filesystem creation/partitioning — wipes disks |
+| `dd` | Destructive | Raw disk write -- can overwrite entire drives |
+| `mkfs`, `fdisk`, `format` | Destructive | Filesystem creation/partitioning -- wipes disks |
 | `shutdown`, `reboot`, `halt`, `poweroff` | System | Shuts down the host machine |
 | `kill`, `killall`, `pkill` | Process | Terminate arbitrary processes |
 | `sudo`, `su` | Privilege escalation | Gain root access |
@@ -839,7 +839,7 @@ The following commands are **always blocked** — they can destroy data or escal
 | `nc`, `ncat`, `netcat` | Network | Open raw network connections (reverse shells) |
 | `wget` | Network | Download arbitrary files (use `curl` via the web_fetch tool instead) |
 
-**Example — blocked direct command:**
+**Example -- blocked direct command:**
 
 ```bash
 # In agent mode, if the model tries:
@@ -900,15 +900,15 @@ The `read_file` tool blocks access to sensitive system files.
 
 | Path | Why Blocked |
 |------|-------------|
-| `/etc/shadow` | Password hashes — could enable offline cracking |
+| `/etc/shadow` | Password hashes -- could enable offline cracking |
 | `/etc/passwd` | User account information |
 | `/etc/sudoers` | Privilege escalation configuration |
-| `/etc/hosts` | Network configuration — could reveal internal hostnames |
-| `/root/.ssh` | SSH private keys — could enable remote access |
-| `/proc/self/environ` | Process environment variables — contains API keys |
-| `/proc/self/cmdline` | Command line arguments — may contain secrets |
+| `/etc/hosts` | Network configuration -- could reveal internal hostnames |
+| `/root/.ssh` | SSH private keys -- could enable remote access |
+| `/proc/self/environ` | Process environment variables -- contains API keys |
+| `/proc/self/cmdline` | Command line arguments -- may contain secrets |
 
-**Example — blocked file access:**
+**Example -- blocked file access:**
 
 ```bash
 # In agent mode, if the model tries:
@@ -943,7 +943,7 @@ Files larger than **256 KB** are rejected to prevent memory exhaustion:
 
 ### 15. SSRF Protection
 
-**The attack:** In agent mode, a malicious prompt could instruct the model to fetch `http://169.254.169.254/latest/meta-data/` — the cloud metadata endpoint that returns IAM credentials, instance identity, and other secrets. This is a Server-Side Request Forgery (SSRF) attack.
+**The attack:** In agent mode, a malicious prompt could instruct the model to fetch `http://169.254.169.254/latest/meta-data/` -- the cloud metadata endpoint that returns IAM credentials, instance identity, and other secrets. This is a Server-Side Request Forgery (SSRF) attack.
 
 The `web_fetch` tool has three layers of SSRF protection:
 
@@ -1032,7 +1032,7 @@ dd if=/dev/zero bs=1048577 count=1 2>/dev/null | az-ai "analyze this"
 # Error: stdin input exceeds 1 MB limit.
 ```
 
-#### Temperature Range (0.0 – 2.0)
+#### Temperature Range (0.0 - 2.0)
 
 ```bash
 # Temperature out of range:
@@ -1043,7 +1043,7 @@ az-ai --temperature -0.5 "hello"
 # [ERROR] Temperature must be between 0.0 and 2.0
 ```
 
-#### Max Tokens Range (1 – 128,000)
+#### Max Tokens Range (1 - 128,000)
 
 ```bash
 # Max tokens out of range:
@@ -1054,7 +1054,7 @@ az-ai --max-tokens 200000 "hello"
 # [ERROR] Max tokens must be between 1 and 128000
 ```
 
-#### Max Rounds Range (1 – 20)
+#### Max Rounds Range (1 - 20)
 
 ```bash
 # Agent mode round limit:

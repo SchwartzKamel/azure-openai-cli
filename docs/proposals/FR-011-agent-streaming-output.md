@@ -1,23 +1,23 @@
 # FR-011: Agent Mode Streaming Output
 
-**Priority:** P0 — Top v1.9.0 item
+**Priority:** P0 -- Top v1.9.0 item
 **Impact:** Restores the perceived-latency win of Native AOT inside `--agent` mode
-**Effort:** Small–Medium (1–2 days)
+**Effort:** Small-Medium (1-2 days)
 **Category:** Latency / UX
 
 ---
 
 ## Status
 
-📋 **PLANNED** — Targeted for v1.9.0. Assigned by Mr. Pitt as the top priority
-following the v1.8.0 AOT ship. Depends on FR-006 (AOT) shipping first — already done.
+📋 **PLANNED** -- Targeted for v1.9.0. Assigned by Mr. Pitt as the top priority
+following the v1.8.0 AOT ship. Depends on FR-006 (AOT) shipping first -- already done.
 
 ---
 
 ## Summary
 
 Stream assistant text tokens to stdout *as they arrive* during every round of
-`RunAgentLoop` — including rounds that ultimately resolve to a tool call —
+`RunAgentLoop` -- including rounds that ultimately resolve to a tool call --
 instead of buffering the full turn. Preserve correct conversation-history
 semantics (tool-call fragments still accumulate) and `--raw` / `--json`
 compatibility. Emit incremental round status on stderr so the user sees motion
@@ -32,7 +32,7 @@ between tool invocations.
 > AOT win. Top-priority v1.9 item precisely because it's the last big
 > perceived-latency miss after AOT.
 
-Concretely, today's `RunAgentLoop` (`Program.cs:1229–1274`):
+Concretely, today's `RunAgentLoop` (`Program.cs:1229-1274`):
 
 ```csharp
 foreach (var part in update.ContentUpdate)
@@ -62,7 +62,7 @@ Two failure modes:
 
 - Stream every assistant text token to stdout within ~1 frame of arrival,
   in *all* rounds, not just the final one.
-- Preserve existing tool-call accumulation semantics — `toolCallsById` must
+- Preserve existing tool-call accumulation semantics -- `toolCallsById` must
   still rebuild complete `ChatToolCall` objects for conversation history.
 - Keep `--raw` byte-identical to a cleanly concatenated final response
   (no ANSI, no status lines, no separators on stdout).
@@ -76,7 +76,7 @@ Two failure modes:
 
 - No reordering of tool execution (still parallel via `Task.WhenAll`).
 - No new streaming for `--json` or Ralph mode's captured `StringWriter`
-  path — those explicitly need buffered output.
+  path -- those explicitly need buffered output.
 - No markdown rendering during streaming (FR-005 territory).
 - No change to the `CompleteChatStreamingAsync` call itself; this is a
   consumer-side fix.
@@ -102,8 +102,8 @@ foreach (var part in update.ContentUpdate)
 }
 ```
 
-`isToolCallRound` stays — it still governs round-end branching (execute tools
-vs. finalize) — but it no longer gates stdout.
+`isToolCallRound` stays -- it still governs round-end branching (execute tools
+vs. finalize) -- but it no longer gates stdout.
 
 ### 2. Round separators on stderr
 
@@ -138,8 +138,8 @@ The `textBuilder` still collects the full response for the final
 ### 5. Ralph mode is unchanged
 
 Ralph calls `RunAgentLoop` with `Console.SetOut(agentOutput)` redirected
-to a `StringWriter` (`Program.cs:1436–1443`). Streaming writes land in
-that buffer exactly as before — Ralph sees a fully-formed string at the
+to a `StringWriter` (`Program.cs:1436-1443`). Streaming writes land in
+that buffer exactly as before -- Ralph sees a fully-formed string at the
 end. No code change needed; just verify the redirect still captures
 everything.
 
@@ -170,7 +170,7 @@ everything.
 4. **Token count drift in JSON mode.**
    `update.Usage` arrives on the final chunk. Since we no longer skip
    content in tool-call rounds, verify `promptTokens`/`completionTokens`
-   still reflect the *final* round only (they should — each round is its
+   still reflect the *final* round only (they should -- each round is its
    own streaming call).
 
 5. **ANSI / Unicode on Windows console.**
@@ -186,7 +186,7 @@ everything.
       100 ms of their arrival from the API, in every round.
 - [ ] Preamble text before a tool call appears on stdout (currently dropped).
 - [ ] `--raw --agent` output is byte-identical to the concatenation of all
-      streamed text tokens — no status, no ANSI, no separators.
+      streamed text tokens -- no status, no ANSI, no separators.
 - [ ] `--json --agent` output is unchanged: single JSON object on stdout,
       no partial writes.
 - [ ] CTRL+C during streaming flushes current line, writes a single
@@ -211,7 +211,7 @@ everything.
    `Write` adds overhead but guarantees no OS-level buffering. Likely
    unnecessary on Linux TTY (line-buffered by default when TTY), but
    required when stdout is a pipe and consumer wants live tokens.
-   Suggest: flush only when `!Console.IsOutputRedirected` (TTY) — pipes
+   Suggest: flush only when `!Console.IsOutputRedirected` (TTY) -- pipes
    typically batch anyway, and the consumer is usually fine waiting for
    the terminator.
 3. **Inter-round blank line.** Do we emit `\n` on stdout between rounds'
@@ -226,14 +226,14 @@ everything.
 
 ## References
 
-- **FR-004** — Latency & Startup Optimization (spinner contract,
+- **FR-004** -- Latency & Startup Optimization (spinner contract,
   showStatus rules, stderr-only status convention).
-- **FR-006** — Native AOT Compilation (the 5.4 ms cold-start win this
+- **FR-006** -- Native AOT Compilation (the 5.4 ms cold-start win this
   proposal is defending).
-- **FR-005** — Shell Integration & Output Intelligence (`--raw` contract).
-- `azureopenai-cli/Program.cs:1229–1314` — current `RunAgentLoop`
+- **FR-005** -- Shell Integration & Output Intelligence (`--raw` contract).
+- `azureopenai-cli/Program.cs:1229-1314` -- current `RunAgentLoop`
   streaming block.
-- `azureopenai-cli/Program.cs:676` — reference implementation of
+- `azureopenai-cli/Program.cs:676` -- reference implementation of
   clean streaming in non-agent mode.
-- CTRL+C handling — `GlobalCancellation` / `cts` linked at
+- CTRL+C handling -- `GlobalCancellation` / `cts` linked at
   `Program.cs:35, 378, 591`.

@@ -1,4 +1,4 @@
-# Prerequisites — Environment Variables
+# Prerequisites -- Environment Variables
 
 Every `az-ai` example in the use-case guides assumes the following three
 environment variables are set. Without them the CLI will refuse to start.
@@ -30,9 +30,9 @@ configuration workflow.
 
 ## Troubleshooting
 
-- **"Missing AZUREOPENAIENDPOINT"** — the variable is unset or exported in a
+- **"Missing AZUREOPENAIENDPOINT"** -- the variable is unset or exported in a
   different shell. Verify with `env | grep AZUREOPENAI`.
-- **HTTP 401 Unauthorized** — `AZUREOPENAIAPI` is wrong or rotated. Regenerate
+- **HTTP 401 Unauthorized** -- `AZUREOPENAIAPI` is wrong or rotated. Regenerate
   in the Azure portal under *Keys and Endpoint*.
-- **HTTP 404 DeploymentNotFound** — `AZUREOPENAIMODEL` does not match a
+- **HTTP 404 DeploymentNotFound** -- `AZUREOPENAIMODEL` does not match a
   deployment on the endpoint. List deployments in Azure AI Foundry / portal.

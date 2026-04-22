@@ -1,10 +1,10 @@
 # Keyboard-only workflows
 
-> *No mouse. No problem. No excuses.* — M.A.
+> *No mouse. No problem. No excuses.* -- M.A.
 
 This appendix expands [`docs/accessibility.md` §4](../accessibility.md)
 with worked examples for users who cannot (or will not) use a pointing
-device. The `az-ai-v2` binary has **no mouse affordances anywhere** —
+device. The `az-ai-v2` binary has **no mouse affordances anywhere** --
 everything that follows is the supported path, not a workaround.
 
 Audience: motor-impaired users driving the CLI via switch input or
@@ -30,7 +30,7 @@ combine with any of them.
 
 ---
 
-## 2. Stdin piping — the universal fallback
+## 2. Stdin piping -- the universal fallback
 
 If your input device cannot comfortably produce a long quoted argument
 (sticky-key users typing `"` and `\` is painful; switch-input users
@@ -38,7 +38,7 @@ cannot chord at all), **pipe instead**. Every shell supports it, every
 screen reader understands it, and it bypasses argv length limits.
 
 ```sh
-# Heredoc — multi-line prompt, no quoting gymnastics
+# Heredoc -- multi-line prompt, no quoting gymnastics
 az-ai-v2 --raw <<'EOF'
 Summarize the attached log.
 Focus on errors after 14:00 UTC.
@@ -54,7 +54,7 @@ pbpaste                     | az-ai-v2 --raw
 # File
 cat bug-report.md           | az-ai-v2 --raw
 
-# Ring buffer — the last command's output, re-submitted
+# Ring buffer -- the last command's output, re-submitted
 dmesg | tail -50            | az-ai-v2 --raw "explain this kernel log"
 ```
 
@@ -66,11 +66,11 @@ sits on the command line and the long payload flows on stdin.
 
 ---
 
-## 3. `$EDITOR` integration — composing without leaving the shell
+## 3. `$EDITOR` integration -- composing without leaving the shell
 
 For prompts longer than a few lines, the **correct** keyboard-only
 pattern is "compose in your editor of choice, then pipe". `az-ai-v2`
-intentionally does **not** launch an editor itself — that would couple
+intentionally does **not** launch an editor itself -- that would couple
 the CLI to a specific editor and break screen readers that don't
 integrate with TUI editors cleanly.
 
@@ -92,7 +92,7 @@ aiedit() {
     local f
     f=$(mktemp --suffix=.md) || return 1
     "${EDITOR:-vi}" "$f" || { rm -f "$f"; return 1; }
-    # If the file is empty, bail — don't send a wasted request.
+    # If the file is empty, bail -- don't send a wasted request.
     [ -s "$f" ] || { rm -f "$f"; echo "aiedit: empty prompt, skipping" >&2; return 2; }
     az-ai-v2 --raw "$@" < "$f"
     local rc=$?
@@ -102,7 +102,7 @@ aiedit() {
 ```
 
 Usage: `aiedit`, or `aiedit --persona coder`, or `aiedit --model fast`.
-Exit codes from `az-ai-v2` propagate untouched — the shell function is
+Exit codes from `az-ai-v2` propagate untouched -- the shell function is
 transparent to scripting.
 
 `ed`-compatible, too: for users whose accessibility stack works best
@@ -115,7 +115,7 @@ Nothing in the pipeline assumes a TUI editor.
 
 Ralph mode (`--ralph`) is the keyboard-only agent path. You write the
 task to a file once, in whatever editor works for you, and Ralph loops
-until a validation command passes — no interactive TUI, no mouse, no
+until a validation command passes -- no interactive TUI, no mouse, no
 ambiguity:
 
 ```sh
@@ -124,12 +124,12 @@ az-ai-v2 --ralph --task-file task.md \
          --validate "dotnet test"                 # run until tests pass
 ```
 
-This is the pattern preferred by power users on assistive tech — it is
+This is the pattern preferred by power users on assistive tech -- it is
 deterministic, auditable, and re-runnable with exactly zero GUI.
 
 ---
 
-## 5. Espanso + AutoHotkey — the keyboard-only accelerator
+## 5. Espanso + AutoHotkey -- the keyboard-only accelerator
 
 [Espanso](https://espanso.org/) (cross-platform) and
 [AutoHotkey](https://www.autohotkey.com/) (Windows) are the
@@ -137,12 +137,12 @@ deterministic, auditable, and re-runnable with exactly zero GUI.
 [`docs/espanso-ahk-integration.md`](../espanso-ahk-integration.md); the
 short version:
 
-- You type a trigger (e.g. `:aifix`) into **any text field** — the OS
+- You type a trigger (e.g. `:aifix`) into **any text field** -- the OS
   itself routes input; no mouse.
 - Espanso/AHK shells out to `az-ai-v2 --raw`, captures stdout, and
   pastes it back where your cursor was.
 - Because `--raw` emits only content (no ANSI, no spinner), the paste
-  is clean — no escape-soup, no cursor-hide codes, no TTS choking.
+  is clean -- no escape-soup, no cursor-hide codes, no TTS choking.
 
 For screen-reader users: this is the single highest-leverage
 accessibility win in the project. A trigger like `:grammar` turns any
@@ -152,12 +152,12 @@ leaving the text buffer your reader is already focused on.
 
 ---
 
-## 6. Shell completions — tab-to-discover
+## 6. Shell completions -- tab-to-discover
 
 `az-ai-v2 --completions bash|zsh|fish` emits a completion script on
 stdout. Source it, and tab-completion covers every flag and every
 registered model alias. For keyboard-only users this is a primary
-discovery mechanism — far more accessible than scrolling through
+discovery mechanism -- far more accessible than scrolling through
 `--help`.
 
 ```sh
@@ -190,10 +190,10 @@ To pre-empt the "but surely you need X" questions:
 - **No drag-and-drop.** Paste via stdin, always.
 - **No "click to copy".** stdout *is* the output; redirect it.
 
-If you find any affordance that *requires* a mouse — that is a bug.
+If you find any affordance that *requires* a mouse -- that is a bug.
 Please file it through [`SECURITY.md`](../../SECURITY.md) channels;
 accessibility bugs are triaged at crash severity.
 
 ---
 
-*Us little guys gotta stick together.* — M.A.
+*Us little guys gotta stick together.* -- M.A.

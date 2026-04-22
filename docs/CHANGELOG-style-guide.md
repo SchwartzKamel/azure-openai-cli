@@ -1,7 +1,7 @@
 # CHANGELOG style guide
 
 > "No commit dumps. Every line reads like prose a user can
-> understand." — Mr. Lippman
+> understand." -- Mr. Lippman
 
 Audience: anyone touching `CHANGELOG.md`. This guide codifies the
 house style we've actually been following through the 1.x and 2.x
@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
-## [X.Y.Z] — YYYY-MM-DD
+## [X.Y.Z] -- YYYY-MM-DD
 
 > Optional one-paragraph banner explaining the headline change …
 
@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The preamble (lines 1-6) is fixed. Do not rewrite it per release.
 - `## [Unreleased]` lives **immediately** under the preamble and is
-  always present — even if empty, keep the skeleton subheaders (M-3).
+  always present -- even if empty, keep the skeleton subheaders (M-3).
 - Newest release header sits directly below `[Unreleased]`. Entries
   are reverse-chronological.
 - Do not delete old entries. `CHANGELOG.md` is append-only; obsolete
@@ -59,16 +59,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 2. Version headers
 
-Format: `## [X.Y.Z] — YYYY-MM-DD`
+Format: `## [X.Y.Z] -- YYYY-MM-DD`
 
-- Use the Unicode em-dash `—` (U+2014), **not** `-` or `--`.
+- Use the Unicode em-dash `--` (U+2014), **not** `-` or `--`.
 - `YYYY-MM-DD` is UTC, ISO 8601, zero-padded.
 - For tagged-but-not-yet-published releases, use
-  `## [X.Y.Z] — unreleased` (lowercase, no date) until the release
+  `## [X.Y.Z] -- unreleased` (lowercase, no date) until the release
   publishes. Replace with the publish date in the same commit that
   publishes.
 - For cancelled tags that never published, keep the header with
-  `— YYYY-MM-DD (cancelled)` and a `### Notes` subsection explaining
+  `-- YYYY-MM-DD (cancelled)` and a `### Notes` subsection explaining
   what superseded them. Do not delete the entry.
 - Every `[X.Y.Z]` header must have a matching link-reference at the
   bottom of the file if you add link-references (we currently don't;
@@ -80,28 +80,28 @@ Format: `## [X.Y.Z] — YYYY-MM-DD`
 
 Fixed, per Keep a Changelog, in this order when present:
 
-1. `### Added` — new capability.
-2. `### Changed` — existing capability, different behavior.
-3. `### Deprecated` — still works, will be removed later. Name the
+1. `### Added` -- new capability.
+2. `### Changed` -- existing capability, different behavior.
+3. `### Deprecated` -- still works, will be removed later. Name the
    target version.
-4. `### Removed` — gone. Matches a prior `### Deprecated` whenever
+4. `### Removed` -- gone. Matches a prior `### Deprecated` whenever
    possible.
-5. `### Fixed` — bug fix, no new capability.
-6. `### Security` — vulnerability fix. Include CVE / advisory link
+5. `### Fixed` -- bug fix, no new capability.
+6. `### Security` -- vulnerability fix. Include CVE / advisory link
    if public.
 
 Project-specific sections (**optional**, appended after the standard
 six in this order):
 
-7. `### Performance` — measurable perf delta. Include baseline vs.
+7. `### Performance` -- measurable perf delta. Include baseline vs.
    new numbers and a pointer to the benchmark doc.
-8. `### Tests` — test-suite changes users should know about (new
+8. `### Tests` -- test-suite changes users should know about (new
    gates, baseline counts).
-9. `### Verified` — platforms / configurations actually validated
+9. `### Verified` -- platforms / configurations actually validated
    this release.
-10. `### Packaging` — post-publish hash-sync work landed on this tag
+10. `### Packaging` -- post-publish hash-sync work landed on this tag
     (Homebrew / Nix / Scoop / GHCR digests).
-11. `### Notes` — context that is not itself a change (cancelled
+11. `### Notes` -- context that is not itself a change (cancelled
     predecessor, known issues carried over, migration pointer).
 
 Do **not** invent new top-level subheaders. If a change doesn't fit,
@@ -113,7 +113,7 @@ lives under `### Added`, not a new `### Telemetry` section.
 
 ---
 
-## 4. Entry prose — the house style
+## 4. Entry prose -- the house style
 
 ### 4.1 Tense and voice
 
@@ -122,16 +122,16 @@ lives under `### Added`, not a new `### Telemetry` section.
   - Good: "Added `--raw` gate to `UserConfig.Load`."
   - Bad: "This change drops …" (present).
   - Bad: "`osx-x64` has been dropped …" (passive).
-- Subject is the project, implied — start the bullet with the verb.
+- Subject is the project, implied -- start the bullet with the verb.
 
 ### 4.2 Bullets are prose, not commit messages
 
 - Never paste a commit subject line. `git log --pretty=%s` is not a
   CHANGELOG.
 - One bullet per user-observable change. If a single change spans
-  five files, it's still one bullet — describe the change, not the
+  five files, it's still one bullet -- describe the change, not the
   patches.
-- Length: 1–6 lines per bullet. If you need more, start with a
+- Length: 1-6 lines per bullet. If you need more, start with a
   short summary line and indent the detail.
 - Cite the relevant commit, audit finding, or issue in parentheses
   at the end of the first line when it materially helps a reader:
@@ -141,7 +141,7 @@ lives under `### Added`, not a new `### Telemetry` section.
 
 When deciding whether to include a line, ask: "Would a user running
 `az-ai-v2` or an integrator consuming the tarball care?" If no, the
-line does not belong here — it goes in the PR description or a
+line does not belong here -- it goes in the PR description or a
 code comment.
 
 - User-facing: flags, config, output, exit codes, personas, image
@@ -167,7 +167,7 @@ code comment.
 - Code, filenames, flags, env vars: backticks. `AZUREOPENAIAPI`,
   `--raw`, `Program.cs:1550`, `packaging/tarball/stage.sh`.
 - Bold for the **label** that opens a multi-line bullet.
-- Italics sparingly — only to contrast terms (*contract* vs
+- Italics sparingly -- only to contrast terms (*contract* vs
   *implementation*).
 - Line length: wrap at ~72 columns to match the rest of the file.
 - Lists inside bullets use `1. / 2.` numbered when order matters,
@@ -187,22 +187,22 @@ code comment.
 
 ## 5. Linking policy
 
-- **In-repo links** — relative paths in backticks, wrapped in a
+- **In-repo links** -- relative paths in backticks, wrapped in a
   Markdown link:
 
   `[`docs/audits/docs-audit-2026-04-22-lippman.md`](docs/audits/docs-audit-2026-04-22-lippman.md)`
 
   Use the full relative path so the link works from both the repo
   root (GitHub web UI) and inside `CHANGELOG.md`.
-- **Commits** — backtick the short SHA (`` `4842b6a` ``). Do not
+- **Commits** -- backtick the short SHA (`` `4842b6a` ``). Do not
   hyperlink; GitHub renders commit links automatically in the Release
   body, and `CHANGELOG.md` stays portable.
-- **Issues / PRs** — `#421` style, no autolinking. GitHub's web UI
+- **Issues / PRs** -- `#421` style, no autolinking. GitHub's web UI
   renders these for free.
-- **External refs** — Markdown link with the URL visible in context
+- **External refs** -- Markdown link with the URL visible in context
   ("see [Keep a Changelog](https://keepachangelog.com/…)"). Never
   a bare URL on its own line.
-- **Audit findings** — parenthetical form: `(audit C-1)`,
+- **Audit findings** -- parenthetical form: `(audit C-1)`,
   `(audit finding H-2)`. The audits live under
   `docs/audits/` and are append-only.
 
@@ -239,8 +239,8 @@ code comment.
 
 ### 7.1 Cancelled / unpublished tags
 
-Entry stays. Header is `## [X.Y.Z] — YYYY-MM-DD (cancelled)` (or
-`— unreleased` if it was never tagged). Include a `### Notes`
+Entry stays. Header is `## [X.Y.Z] -- YYYY-MM-DD (cancelled)` (or
+`-- unreleased` if it was never tagged). Include a `### Notes`
 subsection explaining what superseded it. Reference the diagnostic
 doc in `docs/launch/` if one exists. Do not renumber.
 
@@ -264,7 +264,7 @@ amend only this section, never the others.
 
 If we ship with a known bug that will be fixed in the next release,
 call it out explicitly under `### Notes` or at the bottom of
-`### Fixed` with a `**Known issue — …**` label. v2.0.4's C-1 filename
+`### Fixed` with a `**Known issue -- …**` label. v2.0.4's C-1 filename
 drift is the reference example.
 
 ---
@@ -280,7 +280,7 @@ drift is the reference example.
 - ❌ Don't retroactively edit a published release's entry except for
   typos, broken links, or the `### Packaging` post-publish block.
 - ❌ Don't put the CHANGELOG entry in the release PR description
-  only — it must land in `CHANGELOG.md` in the release commit.
+  only -- it must land in `CHANGELOG.md` in the release commit.
 
 ---
 
@@ -299,4 +299,4 @@ Reviewers apply this to every PR that touches `CHANGELOG.md`:
       PRs).
 - [ ] No commit subjects, no `git log` output, no future tense.
 
-— Mr. Lippman, release management
+-- Mr. Lippman, release management

@@ -1,4 +1,4 @@
-# FR-017 — v1.9.1 Hotfix: Send `max_completion_tokens` for new-generation models
+# FR-017 -- v1.9.1 Hotfix: Send `max_completion_tokens` for new-generation models
 
 **Status**: ✅ Fixed in v1.9.1 (2026-04-20)
 **Severity**: High
@@ -42,7 +42,7 @@ requestOptions.SetNewMaxCompletionTokensPropertyEnabled(true);
 ```
 
 Applied at both Chat Completions call sites in `Program.cs` (standard/agent
-path at line ~614, ralph iteration at line ~1573). Safe to always enable —
+path at line ~614, ralph iteration at line ~1573). Safe to always enable --
 older models (`gpt-4o`, `gpt-4o-mini`) also accept `max_completion_tokens`.
 
 **Verified**: JIT + AOT both return clean responses from `gpt-5.4-nano` on
@@ -53,7 +53,7 @@ older models (`gpt-4o`, `gpt-4o-mini`) also accept `max_completion_tokens`.
 - [x] Non-trivial prompt to `gpt-5.4-nano` returns a streamed response without HTTP 400
 - [x] `1001/1001` tests still pass (no `gpt-4o` regression on existing mocks)
 - [x] CHANGELOG note: "v1.9.1 fixes gpt-5.x / o1 compatibility"
-- [ ] Live `gpt-4o` regression guard (deferred — no gpt-4o deployment on current endpoint)
+- [ ] Live `gpt-4o` regression guard (deferred -- no gpt-4o deployment on current endpoint)
 
 ## Related
 

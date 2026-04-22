@@ -1,4 +1,4 @@
-# SBOM — Software Bill of Materials
+# SBOM -- Software Bill of Materials
 
 > *Hello. Newman.* If a CVE hits tomorrow, the SBOM is the receipt that
 > proves whether you were exposed. Keep it current. Keep it reachable.
@@ -19,7 +19,7 @@ each release artifact. Ground truth:
 |---|---|---|
 | Tagged release, per-RID binary | `.github/workflows/release.yml:95-102` (`dotnet dotnet-CycloneDX ...`) | `az-ai-v2-<version>-<rid>.sbom.json` |
 | Tagged release, per-RID artifact dist | `.github/workflows/release.yml:277-287` | same filename, uploaded to the release |
-| Docker image | Trivy produces a CycloneDX report inline in CI (not yet archived) | CI log artifact only — see §5 |
+| Docker image | Trivy produces a CycloneDX report inline in CI (not yet archived) | CI log artifact only -- see §5 |
 
 Generator: [`CycloneDX .NET`](https://github.com/CycloneDX/cyclonedx-dotnet),
 invoked via `dotnet tool restore` + `dotnet dotnet-CycloneDX` against the
@@ -36,7 +36,7 @@ package hash.
 | Who | Where |
 |---|---|
 | Release consumers | [GitHub Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases) → pick your tag → download `*.sbom.json` next to the binary |
-| Auditors | `gh release download <tag> --pattern '*.sbom.json'` — or pull the release `artifacts/*.sbom.json` via the API |
+| Auditors | `gh release download <tag> --pattern '*.sbom.json'` -- or pull the release `artifacts/*.sbom.json` via the API |
 | Local developers | `cd azureopenai-cli-v2 && dotnet tool restore && dotnet dotnet-CycloneDX AzureOpenAI_CLI_V2.csproj -o . -f sbom.json --output-format Json` |
 | CI (non-release) | Trivy runs on every PR (`.github/workflows/ci.yml:119`) and reports CVEs at build time; it does not publish the SBOM outside the CI log |
 
@@ -50,7 +50,7 @@ Canonical filename pattern: `az-ai-v2-<version>-<rid>.sbom.json`
 | Trigger | Action | SLO |
 |---|---|---|
 | Any `PackageReference` change in a csproj | Rebuild + republish SBOM with next release | Next tag |
-| Tagged release | Fresh SBOM **must** be attached to the release | Release gate — Mr. Lippman enforces |
+| Tagged release | Fresh SBOM **must** be attached to the release | Release gate -- Mr. Lippman enforces |
 | Advisory against a listed package | Diff SBOM against affected versions; open advisory in [`cve-log.md`](./cve-log.md) | 48 h acknowledgment, per `SECURITY.md` §8 |
 | Quarterly supply-chain review | Re-diff SBOM vs last quarter; note added/removed deps | Last week of each quarter |
 
@@ -80,7 +80,7 @@ diff <(jq -S . az-ai-v2-2.0.4.sbom.json) \
 
 Differences should be limited to timestamp + `serialNumber` fields. A
 structural diff in the `components[]` array means the release artifact and
-your reproduction disagree on dependencies — **that is an incident**, open
+your reproduction disagree on dependencies -- **that is an incident**, open
 a private advisory.
 
 Light-weight alternative for a name+version listing (useful in a hurry, not
@@ -92,7 +92,7 @@ dotnet list package --include-transitive
 ```
 
 This does **not** produce a signed SBOM and is not acceptable as the
-canonical release SBOM — it's a sanity check only.
+canonical release SBOM -- it's a sanity check only.
 
 ---
 
@@ -113,11 +113,11 @@ canonical release SBOM — it's a sanity check only.
 
 ## 6. See also
 
-- [`docs/security/supply-chain.md`](./supply-chain.md) — NuGet pinning, feed trust, provenance.
-- [`docs/security/scanners.md`](./scanners.md) — Trivy / Grype split.
-- [`docs/security/cve-log.md`](./cve-log.md) — live advisory register.
+- [`docs/security/supply-chain.md`](./supply-chain.md) -- NuGet pinning, feed trust, provenance.
+- [`docs/security/scanners.md`](./scanners.md) -- Trivy / Grype split.
+- [`docs/security/cve-log.md`](./cve-log.md) -- live advisory register.
 - [`docs/runbooks/threat-model-v2.md`](../runbooks/threat-model-v2.md) § T-5.
 
 ---
 
-*If the SBOM and the binary disagree, the binary is wrong. File the paperwork.* — Newman
+*If the SBOM and the binary disagree, the binary is wrong. File the paperwork.* -- Newman

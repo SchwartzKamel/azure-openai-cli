@@ -24,9 +24,9 @@ The v1 → v2 transition is structured as eight distinct phases with controlled 
 | Commit | Phase | Milestone |
 |--------|-------|-----------|
 | `78b4fd5` | Phase 0 pt 2 | Tool round-trip benchmarking complete; Foundry endpoint integration validated |
-| `ad613c7` | Phase 1 | v2 core CLI skeleton merged — hot-path contract (`--raw`, streaming) verified |
-| `7af5b07` | Phases 2–4 | Tools port, Ralph workflow, and personas coordinated merge — all built-in tools migrated to AF function tools, Ralph loop ported to `Workflow` + `CheckpointManager`, squad personas wired to `AgentSession` |
-| `32f7ce0` | Phase 3 | Ralph workflow integration — multi-iteration planning now uses MAF graph primitives |
+| `ad613c7` | Phase 1 | v2 core CLI skeleton merged -- hot-path contract (`--raw`, streaming) verified |
+| `7af5b07` | Phases 2-4 | Tools port, Ralph workflow, and personas coordinated merge -- all built-in tools migrated to AF function tools, Ralph loop ported to `Workflow` + `CheckpointManager`, squad personas wired to `AgentSession` |
+| `32f7ce0` | Phase 3 | Ralph workflow integration -- multi-iteration planning now uses MAF graph primitives |
 
 **Next**: Phase 5 (observability + OTel cost hooks) in flight with Frank Costanza and Morty Seinfeld.
 
@@ -34,13 +34,13 @@ The v1 → v2 transition is structured as eight distinct phases with controlled 
 
 What v2 will **not** change:
 
-- **CLI flag surface** — all existing flags (`--raw`, `--agent`, `--ralph`, `--persona`, `--system`, etc.) remain unchanged
-- **`--raw` contract** — clean stdout-only output preserved for Espanso/AHK
-- **`.squad/` on-disk format** — persona memory files remain byte-identical (`AIContextProvider` reads/writes the same markdown format)
-- **Espanso/AHK integration** — text expansion behavior is unaffected
-- **Native AOT compilation** — binary size and cold-start latency are speed-gated (≤10% regression thresholds enforced)
-- **Docker image name** — `ghcr.io/schwartzkamel/azure-openai-cli:latest` stays the same
-- **Security hardening** — tool blocklists, SSRF protection, shell-injection defenses, and file-read restrictions migrate intact
+- **CLI flag surface** -- all existing flags (`--raw`, `--agent`, `--ralph`, `--persona`, `--system`, etc.) remain unchanged
+- **`--raw` contract** -- clean stdout-only output preserved for Espanso/AHK
+- **`.squad/` on-disk format** -- persona memory files remain byte-identical (`AIContextProvider` reads/writes the same markdown format)
+- **Espanso/AHK integration** -- text expansion behavior is unaffected
+- **Native AOT compilation** -- binary size and cold-start latency are speed-gated (≤10% regression thresholds enforced)
+- **Docker image name** -- `ghcr.io/schwartzkamel/azure-openai-cli:latest` stays the same
+- **Security hardening** -- tool blocklists, SSRF protection, shell-injection defenses, and file-read restrictions migrate intact
 
 Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless they explicitly opt into new MAF-powered features via `--agent-runtime af` (if that flag ships) or new authentication modes.
 
@@ -154,7 +154,7 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 
 **Risk**: `AIContextProvider` may expect a different persistence format. Mitigation: implement a custom provider that translates MAF's internal state to/from our markdown format.
 
-**Status**: ✅ Complete (2026-04-20, commit `7af5b07` — coordinated merge with Phase 2). Squad personas wired to `AgentSession`.
+**Status**: ✅ Complete (2026-04-20, commit `7af5b07` -- coordinated merge with Phase 2). Squad personas wired to `AgentSession`.
 
 ---
 
@@ -198,7 +198,7 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 
 **Owner**: FDR (chaos eng) + Bania (benchmarks) + all agents (usage validation).
 
-**Risk**: Low-probability edge cases only surface in production use. Mitigation: this phase is continuous — even after 2.0.0 ships, dogfood findings inform 2.0.1+ hotfixes.
+**Risk**: Low-probability edge cases only surface in production use. Mitigation: this phase is continuous -- even after 2.0.0 ships, dogfood findings inform 2.0.1+ hotfixes.
 
 ---
 
@@ -212,7 +212,7 @@ Users upgrading from v1.9.x to v2.0.0 should see zero behavioral changes unless 
 
 ### SemVer bump
 
-v1.9.1 → **2.0.0** because MAF is a public dependency change. If external consumers exist (unlikely — this is primarily a CLI), they will see `Microsoft.Agents.AI.*` packages in the dependency graph. For CLI-only users, the change is behaviorally non-breaking (see Non-goals).
+v1.9.1 → **2.0.0** because MAF is a public dependency change. If external consumers exist (unlikely -- this is primarily a CLI), they will see `Microsoft.Agents.AI.*` packages in the dependency graph. For CLI-only users, the change is behaviorally non-breaking (see Non-goals).
 
 ### Migration guide for users
 
@@ -228,7 +228,7 @@ v1.9.1 → **2.0.0** because MAF is a public dependency change. If external cons
 
 If MAF adoption proves untenable:
 
-- **Pre-cutover (Phases 1-5)**: Simply abandon the `v2` branch. No cutover means no rollback needed — `main` remains untouched.
+- **Pre-cutover (Phases 1-5)**: Simply abandon the `v2` branch. No cutover means no rollback needed -- `main` remains untouched.
 - **Post-cutover (after Phase 6)**: Revert the branch rename: `main` → `v2-reverted`, `v1.x` → `main`. Publish v1.9.2 from the restored main. Document the decision in ADR-004 as "Rejected post-implementation" with rationale.
 
 The cutover is designed to be reversible until Phase 7 completes and 2.0.0 ships to public release channels (Homebrew, GHCR, GitHub Releases).
@@ -259,7 +259,7 @@ These will be resolved during Phases 1-5 and documented in per-phase commit mess
 
 **PersistentAgentsClient**: MAF client for Azure AI Foundry's persistent agents API. Handles deployment-specific routing, model-catalog queries, and session continuity across invocations.
 
-**Foundry**: Azure AI Foundry — Microsoft's managed AI service platform. Hosts models like Phi-4-mini-instruct at `services.ai.azure.com/models`. Requires different auth and endpoint routing than Azure OpenAI.
+**Foundry**: Azure AI Foundry -- Microsoft's managed AI service platform. Hosts models like Phi-4-mini-instruct at `services.ai.azure.com/models`. Requires different auth and endpoint routing than Azure OpenAI.
 
 **Ralph**: Autonomous self-correcting agent mode (`--ralph`). Repeatedly invokes tools and validators until a success condition is met or max iterations is reached. Named after Ralph Cifaretto (plan, act, validate, retry).
 

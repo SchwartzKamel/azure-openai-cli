@@ -16,9 +16,9 @@ is a deliberate non-commitment. This file explains where the seams are.
 - CJK in model output, including `--json` (Unicode is preserved; JSON
   never needs `\uXXXX` escaping for valid UTF-8 strings, but both forms
   round-trip).
-- CJK in config files (`.az-ai-config`, `.squad.json`) — persona names,
+- CJK in config files (`.az-ai-config`, `.squad.json`) -- persona names,
   system prompts, memory entries.
-- CJK in persona names as far as filesystem hygiene goes — see
+- CJK in persona names as far as filesystem hygiene goes -- see
   `docs/security-review-v2.md:285` for persona-name normalisation rules
   (Newman's territory).
 
@@ -28,7 +28,7 @@ is a deliberate non-commitment. This file explains where the seams are.
 
 ### 2.1 Terminal-width math
 
-CJK ideographs are **East Asian Width: Wide** — they occupy two
+CJK ideographs are **East Asian Width: Wide** -- they occupy two
 terminal cells for every one code point. The CLI does not perform
 width-aware column math anywhere in its output. Implications:
 
@@ -43,7 +43,7 @@ width-aware column math anywhere in its output. Implications:
 ### 2.2 Grapheme-cluster truncation
 
 If we ever add a "truncate to N characters" feature (none today), it
-**must** truncate on grapheme-cluster boundaries — not on code-point
+**must** truncate on grapheme-cluster boundaries -- not on code-point
 boundaries and certainly not on UTF-8 byte boundaries. The latter two
 produce:
 
@@ -88,7 +88,7 @@ Emoji-related footguns, in increasing order of severity:
 
 **Our guarantee:** we pass all of the above through byte-for-byte when
 the model emits them. We do not claim pretty rendering in every
-terminal — that depends on the terminal's font stack.
+terminal -- that depends on the terminal's font stack.
 
 ---
 
@@ -108,7 +108,7 @@ Rendering gaps above are **not** CLI bugs.
 
 ---
 
-## 5. Locale-aware collation — we don't do it
+## 5. Locale-aware collation -- we don't do it
 
 If a future feature ever sorts CJK strings (none today), the naive
 `string.Compare` with `InvariantGlobalization=true` falls back to an
@@ -157,9 +157,9 @@ out of ten, it is the terminal or the code page.
 
 ## 7. Cross-refs
 
-- [docs/i18n.md](../i18n.md) — top-level contract.
-- [docs/i18n/rtl-audit.md](rtl-audit.md) — RTL byte-transparency.
-- [docs/i18n/test-corpus.md](test-corpus.md) — CJK fixtures we test against.
-- [docs/accessibility-review-v2.md](../accessibility-review-v2.md) — Mickey
+- [docs/i18n.md](../i18n.md) -- top-level contract.
+- [docs/i18n/rtl-audit.md](rtl-audit.md) -- RTL byte-transparency.
+- [docs/i18n/test-corpus.md](test-corpus.md) -- CJK fixtures we test against.
+- [docs/accessibility-review-v2.md](../accessibility-review-v2.md) -- Mickey
   owns terminal-width math and screen-reader behaviour; this doc defers
   to his on rendering policy.

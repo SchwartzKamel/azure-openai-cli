@@ -1,6 +1,6 @@
 # FR-005: Shell Integration & Output Intelligence
 
-**Priority:** P1 — High  
+**Priority:** P1 -- High  
 **Impact:** Makes the tool feel native to the terminal, not bolted on  
 **Effort:** Medium (2-3 days)  
 **Category:** Developer Experience / Virality
@@ -13,10 +13,10 @@ Right now, the CLI outputs raw text to stdout with no awareness of *what* it's o
 
 1. **Manually copy code blocks** from a wall of text
 2. **Manually run shell commands** the AI suggests (copy, paste, hope it's safe)
-3. **Read unformatted markdown** as raw text — `**bold**` shows as `**bold**`, not **bold**
+3. **Read unformatted markdown** as raw text -- `**bold**` shows as `**bold**`, not **bold**
 4. **Get no visual distinction** between code, prose, and warnings
 
-Compare this to how ChatGPT, GitHub Copilot, or even `glow` render output — with syntax highlighting, clear code block boundaries, and actionable buttons. Terminal tools don't need to be ugly.
+Compare this to how ChatGPT, GitHub Copilot, or even `glow` render output -- with syntax highlighting, clear code block boundaries, and actionable buttons. Terminal tools don't need to be ugly.
 
 ---
 
@@ -46,7 +46,7 @@ You can run it with python hello.py.
 
 **Implementation options:**
 - Use ANSI escape codes directly (zero dependencies, full control)
-- Integrate `Spectre.Console` (.NET library for rich terminal output — actively maintained, MIT license)
+- Integrate `Spectre.Console` (.NET library for rich terminal output -- actively maintained, MIT license)
 
 **Key rendering rules:**
 - Bold, italic, inline code → ANSI styles
@@ -56,7 +56,7 @@ You can run it with python hello.py.
 
 ### 2. Shell Command Mode (`--exec` / `--shell`)
 
-The killer feature for daily-driver adoption. When the user asks for a shell command, don't just print it — offer to run it:
+The killer feature for daily-driver adoption. When the user asks for a shell command, don't just print it -- offer to run it:
 
 ```bash
 $ az-ai --shell "find all Python files modified in the last week"
@@ -135,7 +135,7 @@ The features in this proposal are **demo-able in a 15-second GIF**:
 4. Command runs, PNGs are compressed
 5. 🎉
 
-That's a tweet. That's a Reddit post. That's a "look what I found" Slack message. The current tool — which outputs plain text and requires the user to manually copy-paste — has no demo moment.
+That's a tweet. That's a Reddit post. That's a "look what I found" Slack message. The current tool -- which outputs plain text and requires the user to manually copy-paste -- has no demo moment.
 
 ### The Workflow Integration
 
@@ -166,7 +166,7 @@ az-ai --code "Terraform module for an Azure Function App" > main.tf
 
 ## Why This Is P1
 
-These features are what transform "useful" into "delightful." The raw capabilities of the CLI are already solid — it connects to Azure, streams responses, manages models. But the *output experience* is where competitors are winning.
+These features are what transform "useful" into "delightful." The raw capabilities of the CLI are already solid -- it connects to Azure, streams responses, manages models. But the *output experience* is where competitors are winning.
 
 **Charmbracelet's `mods`** has gorgeous terminal rendering via Glamour/Lipgloss. **GitHub Copilot CLI** has the shell-execute-with-confirmation flow. **`sgpt`** has `--shell` and `--code` modes.
 

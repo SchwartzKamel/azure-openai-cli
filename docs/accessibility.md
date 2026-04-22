@@ -1,9 +1,9 @@
 # Accessibility
 
-> *Us little guys gotta stick together.* — M.A.
+> *Us little guys gotta stick together.* -- M.A.
 
 This page is the user-facing accessibility contract for `az-ai` (v2+). It
-documents what the tool **actually does today** — not what it might do
+documents what the tool **actually does today** -- not what it might do
 someday. Everything below is grep-verifiable against the source tree. If
 the code ever drifts from this page, the code is wrong; file a bug.
 
@@ -13,11 +13,11 @@ Audience:
 - Colorblind users (deuteranopia / protanopia / tritanopia).
 - Sysadmins on 300-baud SSH / tmux-over-mosh / text browsers.
 - CI log-grepers who do **not** want ANSI escape soup in their artifacts.
-- Keyboard-only power users (Espanso, AHK, `$EDITOR` — no mouse anywhere).
+- Keyboard-only power users (Espanso, AHK, `$EDITOR` -- no mouse anywhere).
 - Anyone writing shell scripts that branch on `$?`.
 
 If you need to reach a human, see [SECURITY.md](../SECURITY.md) for the
-contact paths — accessibility bugs are welcome through the same channel
+contact paths -- accessibility bugs are welcome through the same channel
 and get the same triage as crashes.
 
 ---
@@ -26,12 +26,12 @@ and get the same triage as crashes.
 
 `az-ai` honors the [no-color.org](https://no-color.org/) informal
 standard, plus `TERM=dumb`, `CLICOLOR`, `CLICOLOR_FORCE`, and
-`FORCE_COLOR` — the superset of conventions you'd expect from a
+`FORCE_COLOR` -- the superset of conventions you'd expect from a
 well-behaved POSIX tool. Color is **garnish, never the entrée**: every
 piece of information conveyed by color is also conveyed by adjacent text
 (see §5 for the one known gap).
 
-### Precedence — what wins over what
+### Precedence -- what wins over what
 
 The runtime order is implemented in
 [`azureopenai-cli-v2/Theme.cs:108-142`](../azureopenai-cli-v2/Theme.cs).
@@ -40,9 +40,9 @@ rule that matches wins:
 
 | # | Condition                              | Effect             | Rationale                                            |
 |---|----------------------------------------|--------------------|------------------------------------------------------|
-| 1 | `NO_COLOR` set to any non-empty value  | **No color, ever** | [no-color.org](https://no-color.org/) spec — presence alone is not enough; empty string does **not** disable. |
+| 1 | `NO_COLOR` set to any non-empty value  | **No color, ever** | [no-color.org](https://no-color.org/) spec -- presence alone is not enough; empty string does **not** disable. |
 | 2 | `TERM=dumb`                            | No color           | Emacs `M-x shell`, `tramp`, legacy serial consoles. |
-| 3 | `CLICOLOR=0`                           | No color           | BSD convention. Beats `FORCE_COLOR` — order matters. |
+| 3 | `CLICOLOR=0`                           | No color           | BSD convention. Beats `FORCE_COLOR` -- order matters. |
 | 4 | `FORCE_COLOR` non-empty and not `"0"`  | Force color        | Node/CI convention. Overrides TTY auto-detect.       |
 | 5 | `CLICOLOR_FORCE=1`                     | Force color        | BSD convention. Overrides TTY auto-detect.           |
 | 6 | stdout is **not** a TTY                | No color           | Default for pipes, redirects, subshells.             |
@@ -51,13 +51,13 @@ rule that matches wins:
 Two things to notice and remember:
 
 - **`NO_COLOR` is absolute.** It beats `FORCE_COLOR`, `CLICOLOR_FORCE`,
-  and the TTY check. If a user sets `NO_COLOR`, color is off — period.
+  and the TTY check. If a user sets `NO_COLOR`, color is off -- period.
 - **`CLICOLOR=0` beats `FORCE_COLOR`.** This is intentional. A user who
   explicitly says "no color" via `CLICOLOR=0` is not overridden by a
   blanket CI env that sets `FORCE_COLOR=1`.
 
-There is one additional branch above the list — an internal test seam
-(`UseColorOverride`) — that exists only for deterministic unit tests and
+There is one additional branch above the list -- an internal test seam
+(`UseColorOverride`) -- that exists only for deterministic unit tests and
 is never touched in production. It is not a user-facing knob.
 
 ### Worked examples
@@ -74,7 +74,7 @@ az-ai "summarize this log" > out.txt       # out.txt is clean
 #    (e.g. GitHub Actions log renderer, asciinema):
 FORCE_COLOR=1 az-ai "summarize" | tee run.log
 
-# 4. User who hates color globally — set once in shell rc:
+# 4. User who hates color globally -- set once in shell rc:
 #    echo 'export NO_COLOR=1' >> ~/.bashrc
 #    Everything is plain, forever. FORCE_COLOR=1 will not override it.
 
@@ -100,21 +100,21 @@ screen-reader workflows should rely on.
 
 When `--raw` is set, `az-ai` emits:
 
-- **Zero ANSI escapes** — no color, no cursor-hide, no carriage-return
+- **Zero ANSI escapes** -- no color, no cursor-hide, no carriage-return
   rewrite tricks. Pure UTF-8 text.
-- **Zero spinner frames** — no `⠋⠙⠹⠸`, no rotating characters, no
+- **Zero spinner frames** -- no `⠋⠙⠹⠸`, no rotating characters, no
   backspace-and-rewrite animation fighting the screen reader.
-- **Zero stderr warnings** — a malformed config file does not spam
+- **Zero stderr warnings** -- a malformed config file does not spam
   stderr in raw mode; `UserConfig.Load(quiet: opts.Raw)` respects the
   caller's promise of stderr cleanliness (see
   [`Program.cs:141`](../azureopenai-cli-v2/Program.cs)).
-- **Zero version banner** — no `az-ai v2.0.x` preamble.
-- **Zero token-usage footer** — the `~123 in / ~456 out tokens` stderr
+- **Zero version banner** -- no `az-ai v2.0.x` preamble.
+- **Zero token-usage footer** -- the `~123 in / ~456 out tokens` stderr
   line is suppressed.
 - **Pure model output, nothing else.** That is the contract.
 
 `--raw` is **gold** for screen-reader users. No ANSI, no spinner
-animation, no chrome — just the model's bytes. The same property that
+animation, no chrome -- just the model's bytes. The same property that
 makes it safe for Espanso's "type this into the active text field"
 workflow makes it safe to pipe to a TTS engine or a braille display.
 
@@ -124,7 +124,7 @@ workflow makes it safe to pipe to a TTS engine or a braille display.
 # Espanso / AHK / any "insert into active field" flow:
 az-ai --raw "fix this grammar: $clipboard"
 
-# TTS pipeline — pure text into espeak, no escape-code choke:
+# TTS pipeline -- pure text into espeak, no escape-code choke:
 az-ai --raw "explain this diff" | espeak-ng
 
 # Shell script variable capture:
@@ -136,11 +136,11 @@ az-ai --raw "summarize" > /var/run/brltty/in
 
 ### When *not* to use `--raw`
 
-- Interactive terminal use where you *want* the color and spinner —
+- Interactive terminal use where you *want* the color and spinner --
   skip `--raw`, the TTY path is already screen-reader-clean if you also
   set `NO_COLOR=1`.
 - When you need the `[ERROR] stdin exceeds 1 MB limit.` class of stderr
-  diagnostics — raw silences them by design.
+  diagnostics -- raw silences them by design.
 
 ### Stability
 
@@ -153,7 +153,7 @@ not a best-effort.
 
 ## 3. Exit codes
 
-Exit codes are the scripting contract — Espanso triggers, AHK hotkeys,
+Exit codes are the scripting contract -- Espanso triggers, AHK hotkeys,
 CI gates, and `if az-ai … ; then` shell conditionals all depend on a
 meaningful, stable non-zero code. The full table:
 
@@ -161,13 +161,13 @@ meaningful, stable non-zero code. The full table:
 |-----:|-------------------------------------------------|---------------------------------------------------------------------------------|
 | `0`  | Success                                         | Model replied, tool calls resolved, Ralph validation passed.                   |
 | `1`  | Runtime error                                   | Model call failed, config invalid, tool execution failed, Ralph hit `--max-iterations` without a clean validation, stdin exceeded the 1 MB limit, `--default-model` asked but none configured. This is the generic "something broke" code. |
-| `2`  | CLI usage error                                 | Unknown flag, bad value for `--max-iterations` (not in 1–50), missing required positional. Parser bails before the model is ever called. |
+| `2`  | CLI usage error                                 | Unknown flag, bad value for `--max-iterations` (not in 1-50), missing required positional. Parser bails before the model is ever called. |
 | `130`| SIGINT (Ctrl+C)                                 | User interrupted. POSIX-standard `128 + SIGINT(2)`. `Console.CancelKeyPress` handler at [`Program.cs:406`](../azureopenai-cli-v2/Program.cs). |
 
 ### Guarantees
 
 - `0` means **success**. If you see `0`, trust it.
-- Non-zero is **meaningful** — never a cosmetic "something printed a
+- Non-zero is **meaningful** -- never a cosmetic "something printed a
   warning" false alarm.
 - `130` specifically means the user pressed Ctrl+C. Scripts should
   generally not retry on 130 (the user said stop).
@@ -183,7 +183,7 @@ if az-ai --raw "lint this" > suggestions.txt ; then
 else
     case "$?" in
         1)   echo "model or config error" >&2 ;;
-        2)   echo "bad invocation — check your flags" >&2 ;;
+        2)   echo "bad invocation -- check your flags" >&2 ;;
         130) echo "interrupted" >&2 ;;
         *)   echo "unexpected exit: $?" >&2 ;;
     esac
@@ -223,7 +223,7 @@ driveable from a keyboard on a text-only terminal.
 - Pure stdin → stdout. Input is `-p`/`--prompt` argument, a positional
   string, or piped on stdin. No interactive prompts, no "press any
   key," no curses-style menus.
-- Config is edited via `$EDITOR` — the tool honors whatever the user
+- Config is edited via `$EDITOR` -- the tool honors whatever the user
   has configured (Vim, Emacs, nano, `ed`, Helix, whatever). No
   hard-coded editor assumption.
 - `--help` and `--version` both return immediately. No pager is
@@ -232,7 +232,7 @@ driveable from a keyboard on a text-only terminal.
 
 ### Espanso (keyboard-only trigger expansion)
 
-Espanso is itself a pure-keyboard tool — you type a trigger like `:ai`
+Espanso is itself a pure-keyboard tool -- you type a trigger like `:ai`
 in any text field and it replaces the trigger with the tool's output.
 No mouse, no focus-grabbing UI, no modal dialog. This is a WCAG 2.1 SC
 2.1.1 *Keyboard* workflow by construction. See
@@ -258,12 +258,12 @@ printf '%s' "$answer" | clip.exe
 ```
 
 Both `powershell.exe` and `clip.exe` are keyboard-reachable from inside
-any WSL shell — no Alt-Tab required.
+any WSL shell -- no Alt-Tab required.
 
 ### Shell completions
 
 If/when shell completions ship, they install into the standard
-locations and are driven by `<Tab>` — no mouse. The current shipped
+locations and are driven by `<Tab>` -- no mouse. The current shipped
 completions (if any for your shell) are listed in
 [CONTRIBUTING.md](../CONTRIBUTING.md) and the man page (§5 roadmap).
 Completion is a keyboard-only ergonomics win by definition.
@@ -271,7 +271,7 @@ Completion is a keyboard-only ergonomics win by definition.
 ### What this tool deliberately does *not* have
 
 - No mouse-only affordance anywhere.
-- No "click to copy" button — you already have `clip.exe`, `xclip`,
+- No "click to copy" button -- you already have `clip.exe`, `xclip`,
   `pbcopy`, `wl-copy`.
 - No modal dialog that steals focus.
 - No cursor-addressable TUI (no ncurses, no Spectre.Console prompt
@@ -286,9 +286,9 @@ contract.
 
 ## 5. Known gaps
 
-Honest list. None of these are crashes for assistive tech — the
+Honest list. None of these are crashes for assistive tech -- the
 silent-by-design baseline keeps the tool functional for everyone
-today — but they are real gaps and they are tracked.
+today -- but they are real gaps and they are tracked.
 
 - **Emoji used alone in some docs tables.** A handful of status cells
   in audit documents under `docs/` use bare `🟢` / `🟡` / `🔴` or `✅`
@@ -296,7 +296,7 @@ today — but they are real gaps and they are tracked.
   heavy check mark" or "large green circle," which is functional but
   not ideal. Tracked as the `emoji-alt-text` todo (joint Babu + Mickey
   pass). User-facing output from the binary itself is already compliant
-  — every emoji is redundant with text.
+  -- every emoji is redundant with text.
 
 - **No shipped man page.** `man az-ai` does not currently work because
   no `.1` file is packaged. The text of `--help` is the only reference.
@@ -308,7 +308,7 @@ today — but they are real gaps and they are tracked.
   `NO_COLOR` and `--raw` contract tests on every build, but we do not
   run output through Orca / NVDA / VoiceOver under test. Aspirational.
   Until then, we rely on the silent-by-design baseline and the
-  `--raw` contract — both of which are automatically verified.
+  `--raw` contract -- both of which are automatically verified.
 
 - **Screenshots in docs are not paired with high-contrast variants.**
   If README or docs gain screenshots, only one rendering exists
@@ -335,7 +335,7 @@ today — but they are real gaps and they are tracked.
   the model produces. Today the workaround is `az-ai --raw … | iconv
   -f utf-8 -t ascii//TRANSLIT`. A first-class flag is future work.
 
-If you hit a gap that isn't in this list, that's a bug — please file
+If you hit a gap that isn't in this list, that's a bug -- please file
 it. Accessibility bugs are triaged at the same severity as crashes.
 
 ---
@@ -343,16 +343,16 @@ it. Accessibility bugs are triaged at the same severity as crashes.
 ## See also
 
 - [`azureopenai-cli-v2/Theme.cs:108-142`](../azureopenai-cli-v2/Theme.cs)
-  — the color precedence, in code, as ground truth.
-- [docs/espanso-ahk-integration.md](espanso-ahk-integration.md) —
+  -- the color precedence, in code, as ground truth.
+- [docs/espanso-ahk-integration.md](espanso-ahk-integration.md) --
   keyboard-only trigger setup for Espanso and AHK.
-- [docs/i18n.md](i18n.md) — Babu's internationalization contract and
+- [docs/i18n.md](i18n.md) -- Babu's internationalization contract and
   roadmap.
-- [SECURITY.md](../SECURITY.md) — how to report issues (accessibility
+- [SECURITY.md](../SECURITY.md) -- how to report issues (accessibility
   bugs welcome on the same channel).
-- [no-color.org](https://no-color.org/) — the informal `NO_COLOR` spec
+- [no-color.org](https://no-color.org/) -- the informal `NO_COLOR` spec
   we honor.
-- [WCAG 2.1](https://www.w3.org/TR/WCAG21/) — the authoring references
+- [WCAG 2.1](https://www.w3.org/TR/WCAG21/) -- the authoring references
   cited in the accompanying audit (`docs/audits/`).
 
 ---
@@ -365,21 +365,21 @@ readable; start with this page for the contract, follow the link for
 the patterns.
 
 - [`accessibility/keyboard-workflows.md`](accessibility/keyboard-workflows.md)
-  — stdin piping, `$EDITOR` integration, Ralph mode, Espanso/AHK, and
+  -- stdin piping, `$EDITOR` integration, Ralph mode, Espanso/AHK, and
   shell completions. No mouse, ever.
 - [`accessibility/tty-detection.md`](accessibility/tty-detection.md)
-  — the seven color-precedence rules, shown as worked invocations
+  -- the seven color-precedence rules, shown as worked invocations
   with observed output classes (CLEAN / CHROME / CHROME-NC).
 - [`accessibility/help-text-tone.md`](accessibility/help-text-tone.md)
-  — the `--help` style guide: consistent verbs, no emoji, no tabs,
+  -- the `--help` style guide: consistent verbs, no emoji, no tabs,
   no sales copy. The 2026-04-22 audit snapshot and method.
 - [`accessibility/emoji-alt-text.md`](accessibility/emoji-alt-text.md)
-  — the project-wide emoji and image alt-text policy. Every emoji
+  -- the project-wide emoji and image alt-text policy. Every emoji
   pays rent in text; decorative-only images use `alt=""`.
 - [`accessibility/low-bandwidth-ssh.md`](accessibility/low-bandwidth-ssh.md)
-  — byte-budget guidance for 56 kbps / satellite / multi-hop SSH.
+  -- byte-budget guidance for 56 kbps / satellite / multi-hop SSH.
   `--raw`, `ControlMaster`, `--cache`, and a worked byte table.
-- [`../man/az-ai-v2.1`](../man/az-ai-v2.1) — Unix man page (groff).
+- [`../man/az-ai-v2.1`](../man/az-ai-v2.1) -- Unix man page (groff).
   Preview with `man -l man/az-ai-v2.1`. Stub: NAME, SYNOPSIS,
   DESCRIPTION, OPTIONS, ENVIRONMENT, EXIT STATUS, FILES, EXAMPLES,
   ACCESSIBILITY, BUGS, SEE ALSO, AUTHORS.
@@ -387,4 +387,4 @@ the patterns.
 ---
 
 *Color is garnish, never the entrée. Information must survive
-monochrome. If it can't be read aloud, it can't be shipped.* — M.A.
+monochrome. If it can't be read aloud, it can't be shipped.* -- M.A.

@@ -1,6 +1,6 @@
-# Homebrew tap — `az-ai-v2`
+# Homebrew tap -- `az-ai-v2`
 
-> "Homebrew? I know a guy. Done. Next problem." — Bob Sacamano
+> "Homebrew? I know a guy. Done. Next problem." -- Bob Sacamano
 
 This directory holds the Homebrew formulae pinned in-repo. The actual
 **tap repo** is published out-of-tree at:
@@ -9,7 +9,7 @@ This directory holds the Homebrew formulae pinned in-repo. The actual
   `schwartzkamel/az-ai` → `github.com/SchwartzKamel/homebrew-az-ai`).
 
 Formulae in `Formula/` are the canonical source; the tap repo mirrors
-them. Never hand-edit the tap — always round-trip through this repo.
+them. Never hand-edit the tap -- always round-trip through this repo.
 
 ## Layout
 
@@ -18,13 +18,13 @@ packaging/homebrew/
 ├── README.md                      # this file
 └── Formula/
     ├── az-ai.rb                   # tracks latest (currently pinned to v2.0.4; v2.0.5 bump queued)
-    ├── az-ai-v2@2.0.0.rb          # frozen pin — keg_only
+    ├── az-ai-v2@2.0.0.rb          # frozen pin -- keg_only
     ├── az-ai-v2@2.0.1.rb
     ├── az-ai-v2@2.0.2.rb
     └── az-ai-v2@2.0.4.rb
 ```
 
-v2.0.3 has no formula — the tag was cancelled at cutover; see
+v2.0.3 has no formula -- the tag was cancelled at cutover; see
 `docs/launch/v2.0.2-publish-handoff.md`. v2.0.5 is the queued
 fix-forward that rolls the `stage.sh` VERSION drift called out in
 `Formula/az-ai-v2@2.0.4.rb`'s filename-drift comment.
@@ -94,6 +94,6 @@ SHA256s embedded in each formula come from the GitHub Release's
 `digests.txt` artifact (produced by the `Compute digests` step in
 `.github/workflows/release.yml`). The tag-time ritual in
 [`packaging/README.md`](../README.md) §Tag-time-ritual is the
-single source of truth — if a formula's digest disagrees with
+single source of truth -- if a formula's digest disagrees with
 `digests.txt` for its tag, **the release is broken, not the
 formula**. Stop the publish and file a fix-forward.

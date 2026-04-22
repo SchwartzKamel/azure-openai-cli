@@ -4,7 +4,7 @@ Hello! Contributor! Hello! We're glad you're here.
 
 This file is where we recognize the humans (and thoughtfully-prompted
 assistants) who have shaped `azure-openai-cli`. Big PRs, small typo fixes,
-sharp bug reports, helpful Discussions answers — it all counts.
+sharp bug reports, helpful Discussions answers -- it all counts.
 
 ## How your name gets here
 
@@ -24,7 +24,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 ```
 
 GitHub renders co-authors on the commit, the PR, and your contributor
-graph. You don't need to edit this file yourself — a maintainer will add
+graph. You don't need to edit this file yourself -- a maintainer will add
 you during the next release pass.
 
 If we missed you, open a PR against this file. No ceremony required.
@@ -34,12 +34,12 @@ If we missed you, open a PR against this file. No ceremony required.
 These folks were here early. The list grows organically as new people
 land their first PR.
 
-- [@SchwartzKamel](https://github.com/SchwartzKamel) — project lead, original author
+- [@SchwartzKamel](https://github.com/SchwartzKamel) -- project lead, original author
 
 <!-- Add new first-time contributors below this line, one per release pass. -->
 
 ## See also
 
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to set up, test, and send a PR
-- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — how we treat each other
-- [GitHub Discussions](https://github.com/SchwartzKamel/azure-openai-cli/discussions) — questions, ideas, show-and-tell
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) -- how to set up, test, and send a PR
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) -- how we treat each other
+- [GitHub Discussions](https://github.com/SchwartzKamel/azure-openai-cli/discussions) -- questions, ideas, show-and-tell

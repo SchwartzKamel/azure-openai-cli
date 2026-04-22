@@ -1,9 +1,9 @@
 # Observability (v2 Phase 5)
 
 **Owners:** Frank Costanza (SRE / telemetry) + Morty Seinfeld (FinOps / cost schema)
-**Status:** Phase 5 complete — opt-in telemetry shipped with OTel spans + cost events.
+**Status:** Phase 5 complete -- opt-in telemetry shipped with OTel spans + cost events.
 
-> SERENITY NOW! — and then, a clipboard.
+> SERENITY NOW! -- and then, a clipboard.
 > Telemetry is not a feeling. It's a number. And the number is OFF by default.
 
 ---
@@ -21,10 +21,10 @@ egress. The v2 CLI emits zero telemetry on the hot path until one of the followi
 | `--metrics` | Meters + stderr cost events | OTLP endpoint + stderr |
 
 Set `AZ_TELEMETRY` to `1`, `true`, or `yes` (case-insensitive) to enable via environment. Any
-other value — or an unset variable — keeps telemetry OFF.
+other value -- or an unset variable -- keeps telemetry OFF.
 
 **Stdout is sacred.** No telemetry ever writes to stdout. `--raw` consumers (Espanso, AHK)
-see exactly what they saw before — the assistant's text and nothing else. Cost events go to
+see exactly what they saw before -- the assistant's text and nothing else. Cost events go to
 stderr. Spans and metrics go to the configured OTLP endpoint. Period.
 
 ---
@@ -49,12 +49,12 @@ Export target: `OTEL_EXPORTER_OTLP_ENDPOINT` (default `http://localhost:4317`).
 | `azai.tokens.input` | Counter | tokens | `model`, `mode` |
 | `azai.tokens.output` | Counter | tokens | `model`, `mode` |
 | `azai.cost.usd` | Histogram | USD | `model`, `mode` |
-| `azai.ralph.iterations` | Histogram | iterations | — |
-| `azai.tool.invocations` | Counter | invocations | — |
+| `azai.ralph.iterations` | Histogram | iterations | -- |
+| `azai.tool.invocations` | Counter | invocations | -- |
 
 ### Stderr cost events (`--metrics` or `--telemetry`)
 
-One JSON line per completed LLM request, written to stderr. Stable schema — log shippers
+One JSON line per completed LLM request, written to stderr. Stable schema -- log shippers
 and Morty's spreadsheet depend on this. See [`CostEvent.cs`](../azureopenai-cli-v2/Observability/CostEvent.cs).
 
 ```json
@@ -68,18 +68,18 @@ and Morty's spreadsheet depend on this. See [`CostEvent.cs`](../azureopenai-cli-
 | `model` | string | deployment name as reported to Azure OpenAI |
 | `input_tokens` | int | prompt tokens consumed |
 | `output_tokens` | int | completion tokens generated |
-| `usd` | number \| null | `null` if the model is not in the price table — never faked |
+| `usd` | number \| null | `null` if the model is not in the price table -- never faked |
 | `mode` | string | `standard`, `agent`, or `ralph` |
 
 Price table lives in [`CostHook.cs`](../azureopenai-cli-v2/Observability/CostHook.cs).
-Override with `AZAI_PRICE_TABLE=/path/to/prices.json` — JSON must match
+Override with `AZAI_PRICE_TABLE=/path/to/prices.json` -- JSON must match
 `{"model-name":{"InputPer1K":0.00015,"OutputPer1K":0.00060}}`.
 
 ---
 
 ## Disabling and auditing
 
-- **Default state is off.** Omit all flags and leave `AZ_TELEMETRY` unset — the ActivitySource
+- **Default state is off.** Omit all flags and leave `AZ_TELEMETRY` unset -- the ActivitySource
   and Meter have no listeners, so `StartActivity` / counter calls are no-op.
 - **Audit what would be sent:** run `az-ai-v2 --telemetry --metrics "hi"` and inspect the
   single cost-event line on stderr before enabling an OTLP collector.
@@ -90,7 +90,7 @@ Override with `AZAI_PRICE_TABLE=/path/to/prices.json` — JSON must match
 
 ## AOT / hot-path guarantees
 
-- `Telemetry.IsEnabled` short-circuits all cost/metric work when off — no JSON serialization,
+- `Telemetry.IsEnabled` short-circuits all cost/metric work when off -- no JSON serialization,
   no string formatting on the `--raw` hot path.
 - `CostEvent` serialization goes through `AppJsonContext` (source-gen, no reflection).
 - OTel SDK is wired only when a flag is set; the `ActivitySource` itself is a no-op with
@@ -102,7 +102,7 @@ Override with `AZAI_PRICE_TABLE=/path/to/prices.json` — JSON must match
 ## SLOs and error budgets
 
 Phase 5 deliverables include the Frank Costanza reliability catalog in
-[`docs/reliability.md`](reliability.md) (when it lands) — SLOs for startup latency, chat
+[`docs/reliability.md`](reliability.md) (when it lands) -- SLOs for startup latency, chat
 success rate, and cost-schema emission completeness live there.
 
 If telemetry emission throws, the request path continues; the exception is swallowed inside
@@ -114,5 +114,5 @@ If telemetry emission throws, the request path continues; the exception is swall
 
 - [v2-migration.md §Phase 5](v2-migration.md)
 - [v2-cutover-checklist.md §1](v2-cutover-checklist.md)
-- [cost-optimization.md §3](cost-optimization.md) — Morty's rate card
-- [`azureopenai-cli-v2/Observability/`](../azureopenai-cli-v2/Observability/) — source
+- [cost-optimization.md §3](cost-optimization.md) -- Morty's rate card
+- [`azureopenai-cli-v2/Observability/`](../azureopenai-cli-v2/Observability/) -- source

@@ -1,7 +1,7 @@
-# Packaging — distribution channels for `az-ai-v2`
+# Packaging -- distribution channels for `az-ai-v2`
 
 > "You need it on Homebrew? I know a guy. Scoop bucket? Done. Nix flake? Already wired."
-> — Bob Sacamano
+> -- Bob Sacamano
 
 This directory holds the third-party packaging manifests that pin a specific
 release of the Azure OpenAI CLI (published as `az-ai-v2`) to each ecosystem's
@@ -40,7 +40,7 @@ and to `sources` in `nix/flake.nix`.
 
 > **NOTICE bundling:** every manifest now stages `LICENSE`, `NOTICE`, and
 > `THIRD_PARTY_NOTICES.md` alongside the binary so Mr. Lippman's
-> release-notes claim — *"all distributed artifacts include NOTICE"* —
+> release-notes claim -- *"all distributed artifacts include NOTICE"* --
 > holds across Homebrew, Scoop, Nix, and the raw tarballs.
 
 ---
@@ -62,7 +62,7 @@ brew tap SchwartzKamel/tap
 brew install az-ai-v2
 ```
 
-### Publish (owner action — Lippman TBD)
+### Publish (owner action -- Lippman TBD)
 
 1. Create the tap repository: `SchwartzKamel/homebrew-tap`
    (Homebrew resolves `SchwartzKamel/tap` → `SchwartzKamel/homebrew-tap`.)
@@ -97,7 +97,7 @@ scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-bucket
 scoop install az-ai-v2
 ```
 
-### Publish (owner action — Lippman TBD)
+### Publish (owner action -- Lippman TBD)
 
 1. Create the bucket repository: `SchwartzKamel/scoop-bucket`.
 2. Copy `packaging/scoop/az-ai.json` to the bucket's `bucket/az-ai.json`.
@@ -129,7 +129,7 @@ nix run github:SchwartzKamel/azure-openai-cli?dir=packaging/nix -- --version --s
 #   environment.systemPackages = [ inputs.az-ai.packages.${pkgs.system}.default ];
 ```
 
-### Publish (owner action — future)
+### Publish (owner action -- future)
 
 - Short term: the flake lives in-repo under `packaging/nix/`. No extra
   action required; consumers point their inputs at this subdirectory.
@@ -149,13 +149,13 @@ nix build .#default
 
 ---
 
-## Versioned-pin install (`@<version>` syntax) — G6 scaffolding
+## Versioned-pin install (`@<version>` syntax) -- G6 scaffolding
 
 Shipped at the v2.0.1 boundary. Users can now pin a specific historical
 release natively through each channel's version-suffix convention, without
 needing to install from a raw URL.
 
-### Homebrew — pinnable sibling formulae
+### Homebrew -- pinnable sibling formulae
 
 Every tagged release gets a frozen sibling formula alongside the tracking
 `az-ai.rb`:
@@ -163,7 +163,7 @@ Every tagged release gets a frozen sibling formula alongside the tracking
 ```
 packaging/homebrew/Formula/
 ├── az-ai.rb                  # tracks latest (currently v2.0.1)
-└── az-ai-v2@2.0.0.rb         # frozen pin — keg_only, class AzAiV2AT200
+└── az-ai-v2@2.0.0.rb         # frozen pin -- keg_only, class AzAiV2AT200
 ```
 
 Install:
@@ -175,11 +175,11 @@ brew install az-ai-v2@2.0.0    # pinned
 
 The versioned class name follows Homebrew's convention: `AzAiV2AT` + the
 version with dots stripped (`2.0.0` → `AT200`). `keg_only :versioned_formula`
-prevents the pinned binary from shadowing `az-ai-v2` on `PATH` — use
+prevents the pinned binary from shadowing `az-ai-v2` on `PATH` -- use
 `brew link --force` or call `$(brew --prefix az-ai-v2@2.0.0)/bin/az-ai-v2`
 directly.
 
-### Scoop — `versions/` subdirectory
+### Scoop -- `versions/` subdirectory
 
 Scoop resolves `<bucket>/<pkg>@<version>` by looking for a manifest under
 `bucket/versions/<pkg>@<version>.json`. The layout matches the upstream
@@ -200,7 +200,7 @@ scoop install schwartzkamel/az-ai-v2          # latest
 scoop install schwartzkamel/az-ai-v2@2.0.0    # pinned
 ```
 
-### Nix — frozen derivation attributes
+### Nix -- frozen derivation attributes
 
 The flake exposes a `packages.az-ai-v2_<version-underscored>` attribute per
 frozen release, in addition to `packages.default` which tracks the latest:
@@ -220,13 +220,13 @@ frozen release, in addition to `packages.default` which tracks the latest:
 ```
 
 New pinned attributes are generated at tag time by adding an entry to
-`pinnedHashes` in `nix/flake.nix`. Old entries must never be mutated — if a
+`pinnedHashes` in `nix/flake.nix`. Old entries must never be mutated -- if a
 retag is required, add a new key (e.g. `"2.0.0-1"`) rather than changing an
 existing digest.
 
 ---
 
-## Tag-time ritual — G6 gate
+## Tag-time ritual -- G6 gate
 
 This section closes the **G6** gate called out in
 [`docs/v2-cutover-decision.md`](../docs/v2-cutover-decision.md) and rehearsed
@@ -234,7 +234,7 @@ in [`docs/launch/v2-tag-rehearsal-report.md`](../docs/launch/v2-tag-rehearsal-re
 Run the ritual on the tagger's workstation after pushing the `v<version>`
 tag and waiting for `.github/workflows/release.yml` to publish the tarballs.
 
-### Step 1 — fetch digests from the release artifacts
+### Step 1 -- fetch digests from the release artifacts
 
 ```sh
 VERSION=2.0.1
@@ -249,10 +249,10 @@ curl -sL "${BASE}/az-ai-v2-${VERSION}-win-x64.zip" \
     | sha256sum | awk '{printf "win-x64   %s\n", $1}'
 ```
 
-Keep the digest table open — the next three steps paste each value into
+Keep the digest table open -- the next three steps paste each value into
 the matching manifest slot.
 
-### Step 2a — Homebrew
+### Step 2a -- Homebrew
 
 Either in-place edit (current tap-less mode):
 
@@ -274,7 +274,7 @@ brew bump-formula-pr --tap=SchwartzKamel/tap \
     az-ai-v2
 ```
 
-### Step 2b — Scoop
+### Step 2b -- Scoop
 
 ```sh
 sed -i "s/TODO_FILL_AT_RELEASE_TIME/${WIN_X64_SHA}/" packaging/scoop/az-ai.json
@@ -285,7 +285,7 @@ jq . packaging/scoop/az-ai.json > /dev/null
 Once the bucket repo is live, `scoop checkver az-ai -u` run inside the
 bucket checkout auto-bumps from the `checkver` + `autoupdate` blocks.
 
-### Step 2c — Nix
+### Step 2c -- Nix
 
 ```sh
 # Convert each sha256sum hex digest to SRI form Nix expects:
@@ -297,11 +297,11 @@ done
 nix-prefetch-url --type sha256 "${BASE}/az-ai-v2-${VERSION}-linux-x64.tar.gz"
 
 ${EDITOR:-vi} packaging/nix/flake.nix     # paste into latestHashes
-(cd packaging/nix && nix build .#default --no-link) || echo "hash mismatch — recheck"
+(cd packaging/nix && nix build .#default --no-link) || echo "hash mismatch -- recheck"
 ! grep -q fakeHash packaging/nix/flake.nix
 ```
 
-### Step 3 — add the new version to pin scaffolding
+### Step 3 -- add the new version to pin scaffolding
 
 Before the *next* release ships, copy the just-filled hashes into the
 pinnable sibling so the version remains installable forever:
@@ -314,11 +314,11 @@ pinnable sibling so the version remains installable forever:
 - Nix: add a `"${VERSION}" = { linux-x64 = "sha256-..."; ... };` entry to
   `pinnedHashes` in `flake.nix`.
 
-### Step 4 — commit and gate close
+### Step 4 -- commit and gate close
 
 ```sh
 git add packaging/
-git commit -m "release(packaging): v${VERSION} — fill digests + pin scaffolding"
+git commit -m "release(packaging): v${VERSION} -- fill digests + pin scaffolding"
 git push origin main
 ```
 

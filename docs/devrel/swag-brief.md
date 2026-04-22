@@ -1,9 +1,9 @@
 # Swag Brief
 
-> I'm Keith Hernandez. This is what a vendor needs to quote a job, and what a maintainer needs to know before saying yes to a conference booth. No art yet — the brief unblocks the art.
+> I'm Keith Hernandez. This is what a vendor needs to quote a job, and what a maintainer needs to know before saying yes to a conference booth. No art yet -- the brief unblocks the art.
 
 **Owner:** Keith Hernandez (DevRel)
-**Clearance:** Jackie Chiles (licensing / trademark) — *every art file must be reviewed before it hits a vendor*
+**Clearance:** Jackie Chiles (licensing / trademark) -- *every art file must be reviewed before it hits a vendor*
 **Last reviewed:** 2026-04-22
 
 ---
@@ -13,34 +13,34 @@
 | Asset | Status | Path | Use |
 |---|:-:|---|---|
 | Project wordmark "az-ai" / "azure-openai-cli" | ✅ text-only | n/a | Any print surface; plain-text typesetting fine |
-| Kramer-designed logo mark | ⚠️ raster only, no vendor-ready SVG | `img/` *(unconfirmed inventory — see §2)* | Screen only until §2 closes |
+| Kramer-designed logo mark | ⚠️ raster only, no vendor-ready SVG | `img/` *(unconfirmed inventory -- see §2)* | Screen only until §2 closes |
 | Hero GIF (`its_alive_too.gif`) | ✅ | `img/its_alive_too.gif` | Booth demo loop (screen only, not print) |
-| Color palette | ❌ not defined | — | See §3 proposal |
-| Typography spec | ❌ not defined | — | See §3 proposal |
-| Sticker die-cut templates | ❌ | — | Vendor blocker |
-| Laptop-cover templates (13" / 14" / 16") | ❌ | — | Vendor blocker |
-| Pull-up banner / backdrop | ❌ | — | Out of scope until first sponsored booth |
+| Color palette | ❌ not defined | -- | See §3 proposal |
+| Typography spec | ❌ not defined | -- | See §3 proposal |
+| Sticker die-cut templates | ❌ | -- | Vendor blocker |
+| Laptop-cover templates (13" / 14" / 16") | ❌ | -- | Vendor blocker |
+| Pull-up banner / backdrop | ❌ | -- | Out of scope until first sponsored booth |
 
-## 2. What's missing (placeholder — to land in a follow-up)
+## 2. What's missing (placeholder -- to land in a follow-up)
 
 Before the first vendor quote goes out, create `docs/devrel/swag-assets/` (not committed yet) with:
 
-- `logo-mark.svg` — vector original, outlined paths, no embedded raster
-- `logo-mark-mono.svg` — single-ink variant for one-color print
-- `logo-wordmark.svg` — text-only lockup for narrow spaces
-- `logo-combined.svg` — mark + wordmark, horizontal + stacked
-- `logo-mark-@1x.png`, `@2x.png`, `@3x.png` — for web use
-- `logo-mark-print-300dpi.png` — CMYK-safe export for print
-- `palette.md` — hex + RGB + CMYK + Pantone equivalents (see §3)
-- `typography.md` — display + body font, license, fallback stack
+- `logo-mark.svg` -- vector original, outlined paths, no embedded raster
+- `logo-mark-mono.svg` -- single-ink variant for one-color print
+- `logo-wordmark.svg` -- text-only lockup for narrow spaces
+- `logo-combined.svg` -- mark + wordmark, horizontal + stacked
+- `logo-mark-@1x.png`, `@2x.png`, `@3x.png` -- for web use
+- `logo-mark-print-300dpi.png` -- CMYK-safe export for print
+- `palette.md` -- hex + RGB + CMYK + Pantone equivalents (see §3)
+- `typography.md` -- display + body font, license, fallback stack
 
 **Until `logo-mark.svg` exists, no sticker / apparel / pull-up-banner order ships.** Screen-only uses (slide decks, booth loop, website) may use the existing raster with Jackie's sign-off on the specific deployment.
 
-## 3. Brand constraints (proposed — ratify before first print)
+## 3. Brand constraints (proposed -- ratify before first print)
 
 ### Color palette (proposal)
 
-> To be ratified by Russell Dalrymple (UX) and Jackie Chiles (trademark). Numbers are placeholders — update once the palette PR lands.
+> To be ratified by Russell Dalrymple (UX) and Jackie Chiles (trademark). Numbers are placeholders -- update once the palette PR lands.
 
 | Role | Hex | RGB | CMYK | Pantone (nearest) |
 |---|---|---|---|---|
@@ -65,9 +65,9 @@ All logo variants: 0.5× the cap-height of the wordmark on every side. Don't cro
 
 - No rotating, skewing, or outlining the mark
 - No recolors outside the palette without clearance
-- No placement on photography or busy backgrounds — use the mono variant if the substrate isn't flat
-- No Seinfeld character art on swag — that's internal persona shorthand, not public brand (Jackie's remit, hard "no")
-- No Microsoft / Azure logos on any swag we hand out — we're Azure-adjacent, not Azure-branded (COI hygiene)
+- No placement on photography or busy backgrounds -- use the mono variant if the substrate isn't flat
+- No Seinfeld character art on swag -- that's internal persona shorthand, not public brand (Jackie's remit, hard "no")
+- No Microsoft / Azure logos on any swag we hand out -- we're Azure-adjacent, not Azure-branded (COI hygiene)
 
 ## 4. Trademark / licensing clearance
 
@@ -95,9 +95,9 @@ See also [`docs/licensing-audit.md`](../licensing-audit.md).
 
 ### T-shirts (booth giveaway)
 
-- **Blank:** unisex tri-blend, S–3XL range, neutral heather color
+- **Blank:** unisex tri-blend, S-3XL range, neutral heather color
 - **Print:** single-color screen print, accent green on dark garment OR near-black on light garment
-- **Placement:** left-chest mark (2" wide) *or* full-chest wordmark (9" wide) — pick one per run
+- **Placement:** left-chest mark (2" wide) *or* full-chest wordmark (9" wide) -- pick one per run
 - **Quantity:** 50 for a meetup; 150 for a conference booth
 
 ### Laptop-cover stickers (large format)
@@ -108,7 +108,7 @@ See also [`docs/licensing-audit.md`](../licensing-audit.md).
 
 ## 6. Distribution policy (events)
 
-> Distribute swag like you'd offer a good seat at a diner — warmly, without pressure, and never in exchange for an email.
+> Distribute swag like you'd offer a good seat at a diner -- warmly, without pressure, and never in exchange for an email.
 
 - **No lead-capture requirement.** We do not trade stickers for badge scans. If an event form forces lead capture on table items, we don't put swag on the table.
 - **Ask before applying.** Never stick a sticker on anyone's laptop for them. Hand it over. Let them choose.
@@ -129,7 +129,7 @@ See also [`docs/licensing-audit.md`](../licensing-audit.md).
 
 **Do not commit to a booth inside the 6-week window without explicit Jackie-cleared assets on hand.** The lead-time is the brief.
 
-## 8. Booth-in-a-box (kit manifest — placeholder)
+## 8. Booth-in-a-box (kit manifest -- placeholder)
 
 First full kit ships after the first sponsored event. Expected contents, for planning:
 
@@ -146,4 +146,4 @@ Update this section when the first kit is actually built; the numbers are a plan
 
 ---
 
-— *Keith Hernandez. Swag is a promise. Ship it like one.*
+-- *Keith Hernandez. Swag is a promise. Ship it like one.*

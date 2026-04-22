@@ -5,7 +5,7 @@
 ## Prerequisites
 
 - [**preflight**](preflight.md) has passed on every code change
-- You know which agent(s) are co-authoring this change — the cast matters for the commit body
+- You know which agent(s) are co-authoring this change -- the cast matters for the commit body
 
 ## Commit message format
 
@@ -14,7 +14,7 @@ Conventional Commits, lowercase type, optional scope:
 ```
 <type>(<scope>): <imperative subject, ≤72 chars>
 
-<body — wrap at 72 cols. Explain the why, not the what.>
+<body -- wrap at 72 cols. Explain the why, not the what.>
 
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 ```
@@ -56,7 +56,7 @@ Human contributors should sign normally.
 ## Pushing to a branch / PR
 
 - Branch naming: `<agent-or-initial>/<kebab-topic>` (e.g., `kramer/foundry-routing`, `ch/espanso-wsl`).
-- Open the PR immediately so CI runs — don't hoard local commits.
+- Open the PR immediately so CI runs -- don't hoard local commits.
 - PR title mirrors the commit subject; PR body can quote the commit body.
 
 ## What a good commit looks like

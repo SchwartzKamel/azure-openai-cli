@@ -29,7 +29,7 @@ Standards:
 - Visual decisions are documented, not defended in code review by vibe alone
 
 Deliverables:
-- `docs/ux-guidelines.md` — tone, structure, visual standards, do/don't gallery
+- `docs/ux-guidelines.md` -- tone, structure, visual standards, do/don't gallery
 - Help-text audit template and recurring review
 - First-run experience spec and prototype
 - Brand sheet: palette (with Mickey's accessibility constraints), glyph set, typography for docs

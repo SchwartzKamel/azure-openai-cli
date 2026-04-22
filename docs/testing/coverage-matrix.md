@@ -2,7 +2,7 @@
 
 > **Purpose:** catalogue, not cure. This file answers "what flavour of test
 > coverage exists for each feature?" It does **not** propose fixes for
-> gaps — fixing gaps is a separate decision owned by Kramer / Puddy /
+> gaps -- fixing gaps is a separate decision owned by Kramer / Puddy /
 > FDR / Newman per feature.
 >
 > Coverage numbers are not the point; coverage of the **risky** paths is.
@@ -15,47 +15,47 @@
 | ✅ | Coverage exists and is non-trivial. |
 | 🟡 | Thin coverage (one happy-path case, or only asserts a weak invariant). |
 | ❌ | Coverage is absent. |
-| — | Not applicable. (A pure-stdout feature has no sensible "chaos" column.) |
-| ⏳ | Pending — planned but not yet implemented. |
+| -- | Not applicable. (A pure-stdout feature has no sensible "chaos" column.) |
+| ⏳ | Pending -- planned but not yet implemented. |
 
 "Contract" here means an explicit contract test under the
 [`contract-tests.md`](./contract-tests.md) definition.
 
-## Matrix — v2 surface
+## Matrix -- v2 surface
 
 | Feature / area | Unit | Integration | Contract | Chaos | Notes |
 |---|:---:|:---:|:---:|:---:|---|
-| `--version` / `--version --short` | ✅ | ✅ | ✅ | — | `VersionContractTests`, `integration_tests.sh` smoke. |
-| `--raw` stdout/stderr discipline | ✅ | ✅ | ✅ | — | `RawModeTests`. |
-| Ralph mode — exit codes | ✅ | ✅ | ✅ | — | `RalphExitCodeTests`, `RalphWorkflowTests`. |
-| Ralph validator — JSON tool-call shape | 🟡 | ❌ | ❌ | ❌ | Mode entry + exit codes covered; the validator's JSON output shape is not asserted. Audit gap §4. |
-| Ralph depth / loop bounds | ✅ | ✅ | — | ✅ | `RalphModeTests`, `tests/chaos/10_ralph_depth.sh`. |
-| Persona memory — read tail | ✅ | ❌ | — | ✅ | `PersonaMemoryHardeningTests` F1–F3; `tests/chaos/06_persona_memory.sh`, `11_persona_live.sh`. |
-| Persona name sanitisation (F3 traversal) | ✅ | ❌ | — | ✅ | `PersonaMemoryHardeningTests` F3 `[Theory]`; `SquadConfig.Load` validator. |
-| Squad config parsing (`.squad.json`) | ✅ | 🟡 | — | ✅ | `SquadTests`, `SquadInitializerTests`, `tests/chaos/05_squad_chaos.sh`. |
-| User config (`~/.azureopenai-cli.json`) | ✅ | ❌ | — | ✅ | `UserConfigTests`, `UserConfigQuietTests`, `tests/chaos/04_config_chaos.sh`. 🟡 HOME isolation — see audit C1 in test-sanity-audit. |
-| argv parsing | ✅ | ✅ | — | ✅ | `CliParserTests`, `CliParserPropertyTests`, `tests/chaos/01_argv_injection.sh`. |
-| stdin handling | 🟡 | ✅ | — | ✅ | `tests/chaos/02_stdin_evil.sh`; xUnit coverage is thin (most code paths are process-level). |
-| env var ingestion | ✅ | ✅ | — | ✅ | `UserConfigTests`, `V2FlagParityTests`, `tests/chaos/03_env_chaos.sh`. |
+| `--version` / `--version --short` | ✅ | ✅ | ✅ | -- | `VersionContractTests`, `integration_tests.sh` smoke. |
+| `--raw` stdout/stderr discipline | ✅ | ✅ | ✅ | -- | `RawModeTests`. |
+| Ralph mode -- exit codes | ✅ | ✅ | ✅ | -- | `RalphExitCodeTests`, `RalphWorkflowTests`. |
+| Ralph validator -- JSON tool-call shape | 🟡 | ❌ | ❌ | ❌ | Mode entry + exit codes covered; the validator's JSON output shape is not asserted. Audit gap §4. |
+| Ralph depth / loop bounds | ✅ | ✅ | -- | ✅ | `RalphModeTests`, `tests/chaos/10_ralph_depth.sh`. |
+| Persona memory -- read tail | ✅ | ❌ | -- | ✅ | `PersonaMemoryHardeningTests` F1-F3; `tests/chaos/06_persona_memory.sh`, `11_persona_live.sh`. |
+| Persona name sanitisation (F3 traversal) | ✅ | ❌ | -- | ✅ | `PersonaMemoryHardeningTests` F3 `[Theory]`; `SquadConfig.Load` validator. |
+| Squad config parsing (`.squad.json`) | ✅ | 🟡 | -- | ✅ | `SquadTests`, `SquadInitializerTests`, `tests/chaos/05_squad_chaos.sh`. |
+| User config (`~/.azureopenai-cli.json`) | ✅ | ❌ | -- | ✅ | `UserConfigTests`, `UserConfigQuietTests`, `tests/chaos/04_config_chaos.sh`. 🟡 HOME isolation -- see audit C1 in test-sanity-audit. |
+| argv parsing | ✅ | ✅ | -- | ✅ | `CliParserTests`, `CliParserPropertyTests`, `tests/chaos/01_argv_injection.sh`. |
+| stdin handling | 🟡 | ✅ | -- | ✅ | `tests/chaos/02_stdin_evil.sh`; xUnit coverage is thin (most code paths are process-level). |
+| env var ingestion | ✅ | ✅ | -- | ✅ | `UserConfigTests`, `V2FlagParityTests`, `tests/chaos/03_env_chaos.sh`. |
 | Tool registry / built-in tools | ✅ | ✅ | ✅ | ✅ | `ToolTests`, `ToolHardeningTests`, `tests/chaos/07_tool_chaos.sh`. |
-| `ShellExec` tool — adversarial | 🟡 | ❌ | ❌ | ❌ | `tests/README.md` claims "edge cases"; reality is echo-hello happy path. Audit §4 / test-sanity M8 still open. |
-| SSRF / symlink traversal | ✅ | ❌ | — | ✅ | `SecurityToolTests`, `ToolHardeningTests`, `tests/chaos/07_tool_chaos.sh`. |
-| Retry / backoff | ✅ | ❌ | — | ✅ | `RetryTests` (incl. wall-clock backoff). |
-| 429 rate-limit `Retry-After` parsing | ❌ | ❌ | — | 🟡 | Not asserted in unit tests; chaos defers (drill §F/9). Audit §4 gap. |
-| Cancellation / SIGINT | ✅ | ✅ | — | ✅ | `CancellationTests`, `tests/chaos/08_signal_chaos.sh`. |
-| Parallel tool execution | ✅ | — | — | — | `ParallelToolExecutionTests`. No wall-clock assertion (intentional — see audit c861c2e). |
-| Network failure handling | 🟡 | ❌ | — | ✅ | `tests/chaos/09_network_chaos.sh` (mock_server). xUnit coverage thin. |
-| Cost estimation | ✅ | ❌ | — | — | `CostEstimatorTests`. |
-| Prewarm / cache | ✅ | ❌ | — | — | `PrewarmTests`, `PromptCacheTests`. |
-| Foundry routing | ✅ | ❌ | — | — | `FoundryRoutingTests`. |
-| JSON source-generator contract | ✅ | — | — | — | `JsonSourceGeneratorTests`. |
-| Publish target / AOT packaging | ✅ | ✅ | — | — | `PublishTargetTests`, release workflows. |
-| Telemetry / observability | ✅ | ❌ | ✅ | — | `ObservabilityTests`, plus `VersionContractTests` pinning `ServiceVersion`. |
-| `SECURITY.md` doc / code agreement | — | — | ✅ | — | `SecurityDocValidationTests`. |
-| Console capture sequencing under parallel xUnit | ❌ | — | — | — | `[Collection("ConsoleCapture")]` convention exists; no test asserts capture ordering is deterministic. Audit §4 / test-sanity C2 open. |
-| Windows path / SkippableFact infra | ❌ | ❌ | — | — | CI dropped `windows-latest` (test-sanity H4). 26+ POSIX paths hardcoded. |
+| `ShellExec` tool -- adversarial | 🟡 | ❌ | ❌ | ❌ | `tests/README.md` claims "edge cases"; reality is echo-hello happy path. Audit §4 / test-sanity M8 still open. |
+| SSRF / symlink traversal | ✅ | ❌ | -- | ✅ | `SecurityToolTests`, `ToolHardeningTests`, `tests/chaos/07_tool_chaos.sh`. |
+| Retry / backoff | ✅ | ❌ | -- | ✅ | `RetryTests` (incl. wall-clock backoff). |
+| 429 rate-limit `Retry-After` parsing | ❌ | ❌ | -- | 🟡 | Not asserted in unit tests; chaos defers (drill §F/9). Audit §4 gap. |
+| Cancellation / SIGINT | ✅ | ✅ | -- | ✅ | `CancellationTests`, `tests/chaos/08_signal_chaos.sh`. |
+| Parallel tool execution | ✅ | -- | -- | -- | `ParallelToolExecutionTests`. No wall-clock assertion (intentional -- see audit c861c2e). |
+| Network failure handling | 🟡 | ❌ | -- | ✅ | `tests/chaos/09_network_chaos.sh` (mock_server). xUnit coverage thin. |
+| Cost estimation | ✅ | ❌ | -- | -- | `CostEstimatorTests`. |
+| Prewarm / cache | ✅ | ❌ | -- | -- | `PrewarmTests`, `PromptCacheTests`. |
+| Foundry routing | ✅ | ❌ | -- | -- | `FoundryRoutingTests`. |
+| JSON source-generator contract | ✅ | -- | -- | -- | `JsonSourceGeneratorTests`. |
+| Publish target / AOT packaging | ✅ | ✅ | -- | -- | `PublishTargetTests`, release workflows. |
+| Telemetry / observability | ✅ | ❌ | ✅ | -- | `ObservabilityTests`, plus `VersionContractTests` pinning `ServiceVersion`. |
+| `SECURITY.md` doc / code agreement | -- | -- | ✅ | -- | `SecurityDocValidationTests`. |
+| Console capture sequencing under parallel xUnit | ❌ | -- | -- | -- | `[Collection("ConsoleCapture")]` convention exists; no test asserts capture ordering is deterministic. Audit §4 / test-sanity C2 open. |
+| Windows path / SkippableFact infra | ❌ | ❌ | -- | -- | CI dropped `windows-latest` (test-sanity H4). 26+ POSIX paths hardcoded. |
 
-## Matrix — v1 surface (maintenance mode)
+## Matrix -- v1 surface (maintenance mode)
 
 v1 is maintenance-only per CONTRIBUTING. No new coverage is added; existing
 coverage listed above under the shared feature rows stays green.
@@ -65,10 +65,10 @@ coverage listed above under the shared feature rows stays green.
 - Not a TODO list. A ❌ cell is a *known* gap, not an auto-filed ticket.
   Filing requires a judgement call: is the gap worth the test cost?
   Puddy + feature owner decide per row.
-- Not a measure of quality. `✅` means "coverage exists" — not "coverage
+- Not a measure of quality. `✅` means "coverage exists" -- not "coverage
   is sufficient." A thinly-asserted test is still `✅` here; upgrading
   thin-to-thick is a separate exercise.
-- Not auto-generated. This file drifts — refresh quarterly or after any
+- Not auto-generated. This file drifts -- refresh quarterly or after any
   cross-cutting testing PR. Last refreshed: 2026-04-22, baseline v2.0.5.
 
 ## How to read a row as a reviewer
@@ -81,20 +81,20 @@ coverage listed above under the shared feature rows stays green.
 - **Chaos ✅ but unit ❌ / 🟡:** the bash script is the only proof. Consider
   an xUnit regression to pin the specific reproducer (F1/F2/F3 did this).
 - **Unit ✅ but integration ❌:** fine if the code path is pure. Not fine if
-  the path involves process exit codes, signal handling, or argv parsing —
+  the path involves process exit codes, signal handling, or argv parsing --
   those need real-binary coverage.
 
 ## Cross-references
 
-- [`README.md`](./README.md) — testing playbook.
-- [`contract-tests.md`](./contract-tests.md) — what earns the contract
+- [`README.md`](./README.md) -- testing playbook.
+- [`contract-tests.md`](./contract-tests.md) -- what earns the contract
   column.
-- [`chaos-drill-status.md`](./chaos-drill-status.md) — what the chaos
+- [`chaos-drill-status.md`](./chaos-drill-status.md) -- what the chaos
   column's ✅ cells currently prove.
-- [`flaky-triage.md`](./flaky-triage.md) — what the matrix cannot catch
+- [`flaky-triage.md`](./flaky-triage.md) -- what the matrix cannot catch
   (test quality under repeated runs).
 - [`../audits/docs-audit-2026-04-22-puddy.md`](../audits/docs-audit-2026-04-22-puddy.md)
-  — §4 coverage-gaps table the matrix extends and makes live.
+  -- §4 coverage-gaps table the matrix extends and makes live.
 
 *Either the cell is green or it isn't. This file is a map, not a promise.
 High-five.*

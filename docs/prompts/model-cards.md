@@ -2,7 +2,7 @@
 
 > *"If we're going to tell a user this model is appropriate for their task,
 > we owe them the card. Intended use. Failure modes. Known unknowns. All of
-> it."* — Maestro
+> it."* -- Maestro
 
 **Status:** policy + template. The card inventory (one card per
 default-eligible model) lands incrementally; see [roadmap](#roadmap).
@@ -11,7 +11,7 @@ default-eligible model) lands incrementally; see [roadmap](#roadmap).
 
 A **model card** is a short, structured document that captures what a model
 is *for*, what it is *not for*, how it fails, and what we have and have not
-measured. It is written from our integration's perspective — we are not
+measured. It is written from our integration's perspective -- we are not
 re-publishing the upstream vendor's card, we are describing how this CLI
 uses this model.
 
@@ -30,16 +30,16 @@ model OK for security review?"), the answer is not a Slack thread.
 
 Write a model card when **any** of the following is true:
 
-1. The model is (or is a candidate to be) a CLI default — `DEFAULT_MODEL`,
+1. The model is (or is a candidate to be) a CLI default -- `DEFAULT_MODEL`,
    a Ralph-mode override, or a persona-declared default.
 2. The model is referenced by an ADR as a routing target (Foundry, NIM,
    NVFP4).
 3. The model was evaluated in a shipped A/B (per [`ab-testing.md`](./ab-testing.md))
-   — whether it won or lost.
+   -- whether it won or lost.
 4. The model is used for a *safety-sensitive* task in the shipped product
    (security persona, refusal behavior, schema-constrained output).
 
-For every other model a user *could* configure — skip it. We do not card
+For every other model a user *could* configure -- skip it. We do not card
 the long tail. Azure has a catalog; we do not duplicate it.
 
 ## Card location
@@ -50,31 +50,31 @@ the long tail. Azure has a catalog; we do not duplicate it.
 - Cards are linked from [`README.md`](./README.md) (prompt library index)
   and from [`model-matrix.md`](./model-matrix.md) (once landed).
 - When a model is deprecated as a default, the card moves to
-  `docs/prompts/cards/archive/` with a deprecation note — do not delete it.
+  `docs/prompts/cards/archive/` with a deprecation note -- do not delete it.
 
 ## Required sections
 
 Every card has these sections, in this order. Missing sections fail the
 card review.
 
-1. **Header** — model name, vendor, deployment slug, date written, author.
-2. **Intended use in this CLI** — the tasks we route to this model today.
-3. **Not intended for** — explicit negative space. Where we route elsewhere.
-4. **Failure modes** — observed, not theoretical. One row per mode.
-5. **Fairness & representation notes** — what we have and have not tested.
-6. **Known unknowns** — what we *do not know* and would need to run to find
+1. **Header** -- model name, vendor, deployment slug, date written, author.
+2. **Intended use in this CLI** -- the tasks we route to this model today.
+3. **Not intended for** -- explicit negative space. Where we route elsewhere.
+4. **Failure modes** -- observed, not theoretical. One row per mode.
+5. **Fairness & representation notes** -- what we have and have not tested.
+6. **Known unknowns** -- what we *do not know* and would need to run to find
    out. Honesty here is load-bearing.
-7. **Evaluation evidence** — links to benchmarks, A/Bs, ADRs that justify
+7. **Evaluation evidence** -- links to benchmarks, A/Bs, ADRs that justify
    shipping this as a default (or rejecting it).
-8. **Change log** — one line per material change (new deployment, default
+8. **Change log** -- one line per material change (new deployment, default
    swap, deprecation).
 
 ## Template
 
-A copy-pasteable skeleton — start here for every new card.
+A copy-pasteable skeleton -- start here for every new card.
 
 ```markdown
-# Model card — <vendor>/<model> (<deployment-slug>)
+# Model card -- <vendor>/<model> (<deployment-slug>)
 
 > *One-sentence positioning: what we use this model for, in one breath.*
 
@@ -87,22 +87,22 @@ A copy-pasteable skeleton — start here for every new card.
 
 ## Intended use in this CLI
 
-- <Task 1 — e.g. Espanso text-fix via `--persona writer`>
-- <Task 2 — e.g. Ralph validator at temp 0.1>
+- <Task 1 -- e.g. Espanso text-fix via `--persona writer`>
+- <Task 2 -- e.g. Ralph validator at temp 0.1>
 - <Task 3>
 
 Cite the code path that routes here: `<file>:<line>`.
 
 ## Not intended for
 
-- <Task A — with one-line reason and the model we route there instead>
+- <Task A -- with one-line reason and the model we route there instead>
 - <Task B>
 - <Task C>
 
 ## Failure modes
 
 Observed in our harness or in production. Do not list modes you have not
-observed — that is the "known unknowns" section.
+observed -- that is the "known unknowns" section.
 
 | Mode | Symptom | Mitigation |
 |---|---|---|
@@ -126,9 +126,9 @@ know, not what we wish were true.
 
 The honest list. Each item is something a reviewer could run to answer.
 
-- <e.g. "Tool-call accuracy on nested schemas — never measured">
-- <e.g. "Refusal stability across 10 runs at temp 0 — measured once">
-- <e.g. "Latency P99 under sustained Ralph loop — unknown">
+- <e.g. "Tool-call accuracy on nested schemas -- never measured">
+- <e.g. "Refusal stability across 10 runs at temp 0 -- measured once">
+- <e.g. "Latency P99 under sustained Ralph loop -- unknown">
 
 ## Evaluation evidence
 
@@ -139,7 +139,7 @@ The honest list. Each item is something a reviewer could run to answer.
 
 ## Change log
 
-### v1 — YYYY-MM-DD — <author>
+### v1 -- YYYY-MM-DD -- <author>
 
 - Initial card. Status: <default | candidate | etc>.
 - Evidence: <short list>.
@@ -159,7 +159,7 @@ A PR that lands or materially updates a card needs:
 
 - **Vendor-quoting.** Do not paste the upstream card. Link it, summarize
   what we rely on, own the rest.
-- **Aspirational failure modes.** "May hallucinate under load" — if you
+- **Aspirational failure modes.** "May hallucinate under load" -- if you
   have not observed it, it goes in known unknowns, not failure modes.
 - **Stale benchmarks.** A card citing a benchmark older than the deployment
   API version is worse than no citation. Re-run or remove.
@@ -168,11 +168,11 @@ A PR that lands or materially updates a card needs:
 
 ## Roadmap
 
-- [ ] Write card for `gpt-4o-mini` (current `DEFAULT_MODEL`) — blocking
+- [ ] Write card for `gpt-4o-mini` (current `DEFAULT_MODEL`) -- blocking
       [`model-matrix.md`](./model-matrix.md) M4.
 - [ ] Write card for `gpt-5.4-nano` (Foundry candidate per ADR-005).
 - [ ] Write card for `Phi-4-mini-instruct` (NIM routing per ADR-006).
 - [ ] Wire `maestro-preflight` to verify every model referenced in code has
       a card (or is explicitly marked "long-tail, no card").
 
-— *Maestro*
+-- *Maestro*

@@ -23,7 +23,7 @@
 
 ---
 
-## 2. NuGet — transitive pinning
+## 2. NuGet -- transitive pinning
 
 `dotnet restore` reads `PackageReference` entries in
 `azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj`. We commit **exact versions**
@@ -73,7 +73,7 @@ For the full transitive closure, pull the SBOM from the release.
 - **Default feed:** `https://api.nuget.org/v3/index.json`. No private
   mirror, no pull-through cache.
 - **Alternate feeds:** **none configured** in the repo. Any `nuget.config`
-  addition must land via PR and inherits branch-protection review —
+  addition must land via PR and inherits branch-protection review --
   treat new feeds like new production dependencies.
 - **Prerelease policy:** v2 deliberately dropped the `Azure.AI.OpenAI
   2.3.0-beta.1` prerelease in favor of the `2.1.0` GA (see
@@ -100,7 +100,7 @@ gh attestation verify az-ai-v2-2.0.4-linux-musl-x64.tar.gz \
 ```
 
 This is the primary integrity guarantee for release artifacts. The
-attestation does **not** cover the SBOM file itself — see
+attestation does **not** cover the SBOM file itself -- see
 [`docs/security/sbom.md`](./sbom.md) §5.
 
 No Sigstore `cosign` keyless signing is wired in yet; the GitHub-native
@@ -131,7 +131,7 @@ digest is belt + suspenders.
 ## 6. GitHub Actions posture
 
 - **All third-party actions pinned by commit SHA** with a `# v<tag>`
-  comment. See `.github/workflows/ci.yml` and `release.yml` — every `uses:`
+  comment. See `.github/workflows/ci.yml` and `release.yml` -- every `uses:`
   line is pinned.
 - **Workflow permissions:** least-privilege at the job level (`contents:
   read` by default; `contents: write` + `id-token: write` only on the
@@ -171,12 +171,12 @@ registry outage with substitutions, malicious workflow run):
 
 ## 9. See also
 
-- [`docs/security/sbom.md`](./sbom.md) — CycloneDX generation + freshness.
-- [`docs/security/scanners.md`](./scanners.md) — Trivy / Grype.
-- [`docs/security/cve-log.md`](./cve-log.md) — advisory register.
+- [`docs/security/sbom.md`](./sbom.md) -- CycloneDX generation + freshness.
+- [`docs/security/scanners.md`](./scanners.md) -- Trivy / Grype.
+- [`docs/security/cve-log.md`](./cve-log.md) -- advisory register.
 - [`docs/runbooks/threat-model-v2.md`](../runbooks/threat-model-v2.md) § T-5.
-- `SECURITY.md` § 7 — high-level policy.
+- `SECURITY.md` § 7 -- high-level policy.
 
 ---
 
-*Trust is a chain. We're writing down every link.* — Newman
+*Trust is a chain. We're writing down every link.* -- Newman

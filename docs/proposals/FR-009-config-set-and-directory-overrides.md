@@ -5,9 +5,9 @@
 > reader). Future work on preferences, aliases, and directory overrides tracks
 > in [FR-014](FR-014-local-preferences-and-multi-provider.md).
 
-**Priority:** P1 — High  
+**Priority:** P1 -- High  
 **Impact:** Eliminates the need to hand-edit JSON for preferences; enables project-specific AI behavior  
-**Effort:** Medium (1–2 days)  
+**Effort:** Medium (1-2 days)  
 **Category:** Configuration UX
 
 ---
@@ -16,7 +16,7 @@
 
 ### Problem 1: UserConfig Has Fields Nobody Can Set
 
-FR-003 added preference fields to `UserConfig` (lines 22–27):
+FR-003 added preference fields to `UserConfig` (lines 22-27):
 
 ```csharp
 // FR-003: User preference overrides (nullable = only override when explicitly set)
@@ -26,20 +26,20 @@ public int? TimeoutSeconds { get; set; }
 public string? SystemPrompt { get; set; }
 ```
 
-And `GetEffectiveConfig` (line 300–308) already implements the precedence chain:
+And `GetEffectiveConfig` (line 300-308) already implements the precedence chain:
 
 ```csharp
 float temperature = opts.Temperature ?? config.Temperature ?? TryParseEnvFloat("AZURE_TEMPERATURE", DEFAULT_TEMPERATURE);
 int maxTokens = opts.MaxTokens ?? config.MaxTokens ?? TryParseEnvInt("AZURE_MAX_TOKENS", DEFAULT_MAX_TOKENS);
 ```
 
-**But there's no CLI command to set these values.** The only way to persist `Temperature: 0.2` is to manually edit `~/.azureopenai-cli.json`. There's `--set-model` for models (line 769–775), but nothing equivalent for temperature, max-tokens, timeout, or system prompt.
+**But there's no CLI command to set these values.** The only way to persist `Temperature: 0.2` is to manually edit `~/.azureopenai-cli.json`. There's `--set-model` for models (line 769-775), but nothing equivalent for temperature, max-tokens, timeout, or system prompt.
 
-The `--config show` command exists (line 926–993) and shows where each value comes from (`cli flag`, `config`, `env`, `default`). But it's read-only. The data model is ready; the CLI surface is not.
+The `--config show` command exists (line 926-993) and shows where each value comes from (`cli flag`, `config`, `env`, `default`). But it's read-only. The data model is ready; the CLI surface is not.
 
 ### Problem 2: One Config for All Contexts
 
-The config file lives at `~/.azureopenai-cli.json` — a single global file. This means:
+The config file lives at `~/.azureopenai-cli.json` -- a single global file. This means:
 
 - Working on a Terraform project? Same system prompt as when writing Python.
 - In a security-review repo? Same temperature as creative writing.
@@ -64,7 +64,7 @@ az-ai --config set system-prompt "You are a Terraform expert. Output only HCL."
 
 # Read a specific value with its source
 az-ai --config get temperature
-# Temperature: 0.2 (config) — default is 0.55
+# Temperature: 0.2 (config) -- default is 0.55
 
 # Reset a value to "not set" (falls through to env/default)
 az-ai --config reset temperature
@@ -76,7 +76,7 @@ az-ai --config show
 
 #### Implementation: Extend `HandleModelCommands` or New Config Router
 
-The cleanest approach is to expand the `--config` handling in `ParseCliFlags` (line 128–139). Currently:
+The cleanest approach is to expand the `--config` handling in `ParseCliFlags` (line 128-139). Currently:
 
 ```csharp
 else if (arg == "--config")
@@ -175,7 +175,7 @@ static int HandleConfigSet(UserConfig config, string key, string value)
 
 ### Part 2: Per-Directory Config Overrides
 
-Support a `.azureopenai-cli.json` file in the current working directory (or any parent directory, walking up to `/`). This file merges on top of the global `~/.azureopenai-cli.json` — local values override global, unset values fall through.
+Support a `.azureopenai-cli.json` file in the current working directory (or any parent directory, walking up to `/`). This file merges on top of the global `~/.azureopenai-cli.json` -- local values override global, unset values fall through.
 
 #### Lookup Order
 

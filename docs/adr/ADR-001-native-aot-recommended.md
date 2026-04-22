@@ -1,6 +1,6 @@
 # ADR-001: Native AOT as the Recommended Publish Mode
 
-- **Status**: Accepted — 2026-04-19
+- **Status**: Accepted -- 2026-04-19
 - **Deciders**: Core maintainers
 - **Related**: `FR-006-unblock-native-aot-compilation.md`, `docs/espanso-ahk-integration.md`, CHANGELOG v1.8.0
 
@@ -9,8 +9,8 @@
 The primary real-world use case for `azure-openai-cli` is text-injection
 automation via [Espanso](https://espanso.org/) and
 [AutoHotkey](https://www.autohotkey.com/). In that workflow, **every key
-expansion spawns a fresh CLI process**, which means cold-start latency — not
-throughput — dominates user-perceived UX. A 50 ms delay on every expansion is
+expansion spawns a fresh CLI process**, which means cold-start latency -- not
+throughput -- dominates user-perceived UX. A 50 ms delay on every expansion is
 noticeable; a 5 ms delay is not.
 
 .NET 10 offers three publish modes, each with different startup profiles:
@@ -44,7 +44,7 @@ absolute numbers vary with disk and CPU.
 
 - **Sub-10 ms cold start** makes Espanso/AutoHotkey integration feel
   instantaneous.
-- **Single-file distribution** (~9 MB) — users download one binary, no SDK or
+- **Single-file distribution** (~9 MB) -- users download one binary, no SDK or
   runtime install required.
 - **Smaller attack surface**: no shared .NET runtime on the host, no JIT at
   runtime, trimmed unused assemblies.
@@ -76,7 +76,7 @@ absolute numbers vary with disk and CPU.
 ### Self-contained, framework-dependent (rejected)
 
 Bundles the .NET runtime with the app. Produces 100+ MB artifacts and retains
-the full managed startup cost — cold start is *worse* than R2R because the
+the full managed startup cost -- cold start is *worse* than R2R because the
 runtime still JITs. No advantage over AOT for our use case.
 
 ### ReadyToRun (R2R) only (rejected as default)
@@ -86,7 +86,7 @@ managed startup. At ~54 ms cold start it is a meaningful improvement over
 pure framework-dependent but **still perceptibly laggy** in Espanso/AHK
 injection. Retained as `publish-fast` for developer workflows.
 
-### Alternative native compilers — Bflat, NativeAOT-LLVM (rejected)
+### Alternative native compilers -- Bflat, NativeAOT-LLVM (rejected)
 
 Bflat and similar tools produce smaller binaries but have a substantially
 smaller ecosystem, no first-party Microsoft support, and limited
@@ -95,9 +95,9 @@ leaving the official toolchain.
 
 ## References
 
-- [`FR-006-unblock-native-aot-compilation.md`](../proposals/FR-006-unblock-native-aot-compilation.md) — original feature
+- [`FR-006-unblock-native-aot-compilation.md`](../proposals/FR-006-unblock-native-aot-compilation.md) -- original feature
   proposal and measurement methodology.
-- [`docs/espanso-ahk-integration.md`](../espanso-ahk-integration.md) — latency
+- [`docs/espanso-ahk-integration.md`](../espanso-ahk-integration.md) -- latency
   measurements and integration recipes.
-- [`CHANGELOG.md`](../../CHANGELOG.md) v1.8.0 — promotion of AOT from
+- [`CHANGELOG.md`](../../CHANGELOG.md) v1.8.0 -- promotion of AOT from
   experimental to default.

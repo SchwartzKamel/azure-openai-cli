@@ -1,16 +1,16 @@
 # Persona A/B methodology
 
 > *"Two versions of a persona. One stage. Fixed seed. Matched fixtures.
-> Anything else is a rehearsal, not a test."* — Maestro
+> Anything else is a rehearsal, not a test."* -- Maestro
 
-**Status:** design-only. Complements [`eval-harness.md`](./eval-harness.md) —
+**Status:** design-only. Complements [`eval-harness.md`](./eval-harness.md) --
 the harness is the instrument; this doc is the tuning protocol. Use it when
 proposing a non-trivial change to any persona system prompt (per
 [`change-management.md`](./change-management.md) §"the contract").
 
 ## When you need an A/B, not just an eval
 
-The eval harness answers *"did this change break anything?"* — a regression
+The eval harness answers *"did this change break anything?"* -- a regression
 gate. It does **not** answer *"is the new prompt better?"* That is a
 different question and it requires a comparison, not a pass/fail.
 
@@ -49,7 +49,7 @@ heading. Paste the harness invocation verbatim.
 
 Minimum viable A/B: the full fixture file for the persona under test
 (`docs/prompts/fixtures/<persona>.json`). Do not add or remove fixtures for
-the A/B — if a fixture is missing, add it in a *separate PR* first, land it,
+the A/B -- if a fixture is missing, add it in a *separate PR* first, land it,
 then run the A/B against the stable fixture set.
 
 Recommended additions:
@@ -65,11 +65,11 @@ Recommended additions:
 ### 3. Run both variants
 
 ```bash
-# Variant A — current shipping prompt
+# Variant A -- current shipping prompt
 dotnet test --filter Category=prompts \
   -- env:PERSONA_VARIANT=A env:PERSONA_PROMPT_FILE=docs/prompts/personas/<p>.md
 
-# Variant B — candidate prompt
+# Variant B -- candidate prompt
 dotnet test --filter Category=prompts \
   -- env:PERSONA_VARIANT=B env:PERSONA_PROMPT_FILE=docs/prompts/personas/<p>.b.md
 ```
@@ -89,7 +89,7 @@ Capture for every fixture, for every variant:
 
 ### 4. Score with a trait-judge, not with a diff
 
-String-diffing completions is noise. Use a trait-judge — a separate model
+String-diffing completions is noise. Use a trait-judge -- a separate model
 invocation (cold temp, structured output) that reads the completion and
 answers yes/no per trait. Until the judge lands, score by hand; record the
 judge used (model + version) in the PR so a later reviewer can reproduce.
@@ -101,16 +101,16 @@ judge used (model + version) in the PR so a later reviewer can reproduce.
 - Per variant: arithmetic mean across fixtures.
 - **Do not average across personas.** Each persona is a separate A/B.
 
-### 5. Statistical significance — the honest version
+### 5. Statistical significance -- the honest version
 
-With `n = 10` runs per fixture on typical fixture counts (3–6 per persona),
+With `n = 10` runs per fixture on typical fixture counts (3-6 per persona),
 you are well inside small-sample land. Do not claim significance. Do report:
 
 - Median score per variant.
 - Inter-quartile range per variant.
 - Count of fixtures where B > A, A > B, tie.
 - Any fixture where either variant failed a `forbidden_traits` or
-  `safety_assertion` — **those fail the A/B regardless of aggregate score.**
+  `safety_assertion` -- **those fail the A/B regardless of aggregate score.**
 
 The shape of the claim you can honestly make is: *"B scored higher than A
 on k of n fixtures; no safety regressions; voice anchor held; recommend
@@ -123,7 +123,7 @@ it does, and consult Puddy on the stats before claiming it.
 
 ### 6. Human-judge baseline
 
-Every A/B ships with **one** human reviewer — not the author — reading five
+Every A/B ships with **one** human reviewer -- not the author -- reading five
 randomly selected completion pairs (A/B, blinded) and answering:
 
 - *Which one sounds more like the persona contract?* (A / B / tie)
@@ -133,7 +133,7 @@ This is not a vote. It is a sanity check on the trait-judge. If the human
 reviewer consistently disagrees with the judge, the judge is miscalibrated
 and the A/B does not ship until the judge is fixed.
 
-Record the reviewer's name and their five answers in the PR. Yes, by name —
+Record the reviewer's name and their five answers in the PR. Yes, by name --
 accountability beats anonymity on a 5-sample check.
 
 ### 7. Decision matrix
@@ -142,8 +142,8 @@ accountability beats anonymity on a 5-sample check.
 |---|---|---|---|
 | Holds | Holds | B ≥ A | **Ship B.** Update persona version, land goldens. |
 | Holds | Holds | B < A | **Keep A.** Close the PR with reasoning. |
-| Drifts | — | — | **Reject B.** Voice contract is load-bearing. |
-| — | Regresses | — | **Reject B.** Safety contract is non-negotiable. |
+| Drifts | -- | -- | **Reject B.** Voice contract is load-bearing. |
+| -- | Regresses | -- | **Reject B.** Safety contract is non-negotiable. |
 | Holds | Holds | Tie, n small | **Keep A.** Changes need to earn their way in. |
 
 ### 8. Write it up
@@ -181,10 +181,10 @@ has no baseline to compare against and the library regresses to folklore.
 ## Roadmap
 
 - Trait-judge implementation (separate invocation, cold temp, structured
-  output) — unblocks §4.
+  output) -- unblocks §4.
 - `seed`-pinning wired through `AzureOpenAIChatClient` once the provider
-  exposes it — unblocks single-sample §3.
+  exposes it -- unblocks single-sample §3.
 - CI job that blocks merge on missing `## A/B test` section in PRs that
-  modify `SystemPrompt` text — coordinate with Mr. Wilhelm.
+  modify `SystemPrompt` text -- coordinate with Mr. Wilhelm.
 
-— *Maestro*
+-- *Maestro*

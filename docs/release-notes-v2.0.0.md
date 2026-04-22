@@ -1,4 +1,4 @@
-# Azure OpenAI CLI v2.0.0 — Release Notes
+# Azure OpenAI CLI v2.0.0 -- Release Notes
 
 > **⚠️ v2.0.0 was tagged but never published.** `release.yml` run
 > [24736776551](https://github.com/SchwartzKamel/azure-openai-cli/actions/runs/24736776551)
@@ -9,7 +9,7 @@
 > "attempted release" marker. **`v2.0.1` supersedes this release on
 > every channel** (tarball, GHCR, Homebrew, Scoop, Nix). Post-mortem:
 > [`launch/v2-release-attempt-1-diagnostic.md`](launch/v2-release-attempt-1-diagnostic.md).
-> Notes below describe the v2.0.0 feature set — all of which ship
+> Notes below describe the v2.0.0 feature set -- all of which ship
 > identically under v2.0.1, plus the two packaging fixes captured in
 > [`CHANGELOG.md`](../CHANGELOG.md#201--2026-04-21).
 
@@ -21,9 +21,9 @@
 
 ## Headline
 
-v2.0.0 rebuilds `az-ai` on top of **Microsoft Agent Framework (MAF)** —
+v2.0.0 rebuilds `az-ai` on top of **Microsoft Agent Framework (MAF)** --
 swapping ~2,200 lines of hand-rolled chat, tool, and Ralph orchestration
-for first-party primitives — while preserving every v1 flag, env var,
+for first-party primitives -- while preserving every v1 flag, env var,
 exit code, and `--raw`/`--json` output byte-for-byte.
 
 ## Why you'll care
@@ -42,9 +42,9 @@ exit code, and `--raw`/`--json` output byte-for-byte.
   in parallel with prompt assembly. Buys back most of the MAF cold-start
   cost for interactive use.
 - **Same security posture as v1.** Every hardening Newman landed in
-  v1.0.x–v1.9.x — shell blocklist, HTTPS-only fetch, DNS-rebinding
+  v1.0.x-v1.9.x -- shell blocklist, HTTPS-only fetch, DNS-rebinding
   guards, symlink traversal blocks, exact tool-name matching, SIGINT
-  exit 130 — carries forward byte-for-byte. No new attack surface beyond
+  exit 130 -- carries forward byte-for-byte. No new attack surface beyond
   MAF/OTel themselves, which are reviewed in the licensing audit.
 
 ## Breaking changes
@@ -64,13 +64,13 @@ Subtle deltas that are _not_ breaking but worth calling out:
 - **`--max-rounds` loop accounting** now runs through MAF tool-call
   tracking. The cap itself is unchanged; logged round counts may differ
   by ±1 on edge cases.
-- **Ralph retry prompt** is shorter — the task is carried by
+- **Ralph retry prompt** is shorter -- the task is carried by
   `AgentThread`, and only accumulated error context is re-injected per
   iteration.
 - **Precedence chain** is unchanged from v1: persona `system_prompt`
   overrides `--system` overrides `SYSTEMPROMPT`; a non-empty persona
   `tools` array overrides `--tools` and forces `--agent` on.
-- **`--estimate` short-circuits before credential resolution** — it will
+- **`--estimate` short-circuits before credential resolution** -- it will
   not read `AZUREOPENAIAPI`, will not hit the network, and works offline.
 
 See [`docs/migration-v1-to-v2.md`](migration-v1-to-v2.md) §3 for the
@@ -87,7 +87,7 @@ az-ai-v2 --persona auto "Audit tokens.py for SSRF and injection"
 ```
 
 Personas live in `.squad.json` plus `.squad/history/<name>.md` per-persona
-memory. `--persona auto` picks by deterministic keyword match — no model
+memory. `--persona auto` picks by deterministic keyword match -- no model
 call to decide the persona. Full reference in
 [`docs/persona-guide.md`](persona-guide.md).
 
@@ -126,7 +126,7 @@ Opens the Azure OpenAI connection in parallel with prompt assembly.
 Recovers most of the MAF cold-start cost on the first interactive call.
 See [FR-007](proposals/FR-007-parallel-startup-and-connection-prewarming.md).
 
-### `--raw` — silent-by-design output contract (§7.1)
+### `--raw` -- silent-by-design output contract (§7.1)
 
 `--raw` is a **stable machine-readable output contract** for Espanso,
 AutoHotkey, `jq` pipelines, and shell scripts. Under `--raw`:
@@ -136,7 +136,7 @@ AutoHotkey, `jq` pipelines, and shell scripts. Under `--raw`:
 - No `[tokens: ...]` footer on stderr; no `[cache]` diagnostics.
 
 Silent-by-design means that on a slow network, the user sees **nothing**
-until the full response streams — this is intentional, not a bug.
+until the full response streams -- this is intentional, not a bug.
 Breaking `--raw` output is a breaking change under SemVer. The full
 rules are locked in at
 [`.github/contracts/color-contract.md`](../.github/contracts/color-contract.md)
@@ -163,7 +163,7 @@ None of these change CLI output format or exit codes.
 
 ## Performance & size
 
-Measured on `linux-x64` AOT (shipping form, 50 runs, 2 warmup) —
+Measured on `linux-x64` AOT (shipping form, 50 runs, 2 warmup) --
 [`docs/perf-baseline-v2.md`](perf-baseline-v2.md) has the full table.
 
 **Startup p95 is inside the ≤25% regression budget.** `--version --short`
@@ -172,12 +172,12 @@ lands at 1.12× v1 (12.58 ms mean p95 18.25 ms), `--help` at 1.23× v1
 (0.93× mean). RSS is at or below v1 on every scenario.
 
 **Binary size is bigger, but inside the gate.** The AOT single-file
-binary grew from 8.86 MB (v1.9.1) to **12.91 MB (v2.0.0)** — a
+binary grew from 8.86 MB (v1.9.1) to **12.91 MB (v2.0.0)** -- a
 **1.456× increase**, or about +4.05 MB. That is the cost of the MAF host
 + OpenTelemetry + the Azure SDK bump, net of a trim pass that reclaimed
 ~1.5 MB via `StackTraceSupport=false` and one related ILC flag. The
 proposed 1.5× ratio gate **passes without a waiver**. A further trim
-pass (targeting residual Azure.AI.OpenAI reflection, ~0.3–0.9 MB) is
+pass (targeting residual Azure.AI.OpenAI reflection, ~0.3-0.9 MB) is
 tracked for 2.0.1 but is not blocking.
 
 If your use case is latency-critical (Espanso triggers, AHK hotkeys),
@@ -190,7 +190,7 @@ the hot path is safe. If you deploy over metered bandwidth, the extra
   `ArgumentList`-based spawning, HTTPS-only fetch, DNS-rebinding guards,
   redirect-final-URL validation, symlink traversal blocks, exact-alias
   tool matching, SIGINT exit 130. No regressions; no relaxations.
-- **Licensing audit: clear.** 39 packages reviewed across the v2 graph —
+- **Licensing audit: clear.** 39 packages reviewed across the v2 graph --
   34 MIT, 4 Apache-2.0 (OpenTelemetry), 1 BSD-3-Clause (Google.Protobuf).
   Zero GPL / LGPL / AGPL / MPL / SSPL. Attribution obligations are
   discharged via `NOTICE` and `THIRD_PARTY_NOTICES.md` at the repo root.
@@ -208,7 +208,7 @@ Tracked in the issue tracker; not blockers for cutover.
 - **`--schema <json>` wire enforcement is deferred to 2.1.x.** The flag
   is parsed and captured, but not yet sent as a `response_format` strict
   schema. Use `--json` + post-validation for now.
-- **AOT binary is 1.456× v1 — inside the 1.5× ratio gate, no waiver
+- **AOT binary is 1.456× v1 -- inside the 1.5× ratio gate, no waiver
   needed.** A further trim pass (residual `Azure.AI.OpenAI` reflection,
   est. −0.3 to −0.9 MB additional headroom) is scheduled for 2.0.1 but
   is not blocking.
@@ -226,8 +226,8 @@ Tracked in the issue tracker; not blockers for cutover.
   Azure-OpenAI-only.
 - **Malformed `.squad.json` persona names surface as an uncaught
   `ArgumentException`** (exit 134) rather than a clean `[ERROR]` message.
-  Security is intact — the `SanitizePersonaName` validator rejects path
-  traversal, the exception is just cosmetic — but the UX is rough.
+  Security is intact -- the `SanitizePersonaName` validator rejects path
+  traversal, the exception is just cosmetic -- but the UX is rough.
   Patched in 2.0.1 (FR-021). Workaround: keep persona names in
   `.squad.json` to the documented `[a-z0-9_-]{1,64}` shape.
 - **Homebrew / Scoop / Nix NOTICE bundling lands in 2.0.1.** The
@@ -255,15 +255,15 @@ required; accumulated `.squad/` memory transfers untouched.
 your workflows are migrated, stay on the **v1.9.1 GitHub Release**
 tarball or the `ghcr.io/...:1.9.1` container. Native versioned pins
 (`brew install ...@1.9.1`, `scoop install ...@1.9.1`) require a
-versioned formula / a Scoop versions bucket — those land with the
+versioned formula / a Scoop versions bucket -- those land with the
 2.0.1 packaging sweep. Until then:
 
 ```bash
-# Homebrew — install the v1.8.1 formula directly from the repo ref:
+# Homebrew -- install the v1.8.1 formula directly from the repo ref:
 brew install --formula \
   https://raw.githubusercontent.com/SchwartzKamel/azure-openai-cli/v1.9.1/packaging/homebrew/Formula/az-ai.rb
 
-# Scoop — install the v1-pinned manifest directly:
+# Scoop -- install the v1-pinned manifest directly:
 scoop install \
   https://raw.githubusercontent.com/SchwartzKamel/azure-openai-cli/v1.9.1/packaging/scoop/az-ai.json
 
@@ -285,10 +285,10 @@ v2.0.0 development commits between `9e74961..488aebd`:
 ```
 
 Co-authored by GitHub Copilot across the v2 migration per project
-convention. Thanks also to the cross-agent roster — Costanza (PM),
+convention. Thanks also to the cross-agent roster -- Costanza (PM),
 Wilhelm (change mgmt), Elaine (docs), Kenny Bania (perf), Jackie Chiles
 (licensing), Newman (security), Kramer (Docker/AOT), Jerry (DevOps),
-Puddy (QA), and everyone else on the bench — for the review passes that
+Puddy (QA), and everyone else on the bench -- for the review passes that
 got us to the gate.
 
 ---

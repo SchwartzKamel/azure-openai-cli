@@ -1,4 +1,4 @@
-# Agent Mode — Use Cases & Examples
+# Agent Mode -- Use Cases & Examples
 
 > Comprehensive working examples for every agent mode feature in `az-ai`
 > (v2.0.0, Microsoft Agent Framework).
@@ -13,35 +13,35 @@ variables (`AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`).
 Agent mode now runs on Microsoft Agent Framework (MAF). The CLI surface is
 unchanged, but a few things are worth knowing up front:
 
-- **Tool loop** — MAF's `ChatClientAgent` drives the round-by-round tool
+- **Tool loop** -- MAF's `ChatClientAgent` drives the round-by-round tool
   loop. Each round is one `RunStreamingAsync` call that may emit multiple
   parallel tool invocations; the CLI accounts for it as a single round.
   `--max-rounds` (default `5`, max `20`) caps rounds, not tool calls.
-- **Persona overlay** — `--persona <name>` forces agent mode on, replaces
+- **Persona overlay** -- `--persona <name>` forces agent mode on, replaces
   the system prompt with the persona's, and replaces `--tools` with the
   persona's allow-list if the persona defines any. See
   [`persona-guide.md`](persona-guide.md).
-- **`--json` mode** — errors flow as structured JSON on stdout with `error`,
+- **`--json` mode** -- errors flow as structured JSON on stdout with `error`,
   `message`, and `exit_code` fields. Stderr stays for the spinner and tool
   banners; pair with `2>/dev/null` for a clean machine-readable stream.
-- **`--estimate`** — the cost estimator short-circuits **before** agent
+- **`--estimate`** -- the cost estimator short-circuits **before** agent
   construction. You can ask for a dollar estimate on an agent prompt with no
   credentials loaded.
-- **`--telemetry`** (opt-in) — OTel spans and per-call cost events go to
+- **`--telemetry`** (opt-in) -- OTel spans and per-call cost events go to
   stderr, unchanged by agent-mode framing.
 
 ---
 
 ## 1. Agent Mode Activation (`--agent`)
 
-The `--agent` flag enables **agentic mode** — the model can autonomously call tools
+The `--agent` flag enables **agentic mode** -- the model can autonomously call tools
 (shell, file, web, clipboard, datetime, delegate) and reason across multiple rounds
 instead of returning a single static response.
 
 ### Standard Mode (No Tools)
 
 ```bash
-# Standard mode: the model guesses or refuses — no tool access
+# Standard mode: the model guesses or refuses -- no tool access
 az-ai "What files are in my current directory?"
 ```
 
@@ -60,13 +60,13 @@ with your actual directory listing. The response is grounded in reality.
 ### When to Use Agent Mode
 
 ```bash
-# Questions about your system — agent mode
+# Questions about your system -- agent mode
 az-ai --agent "How much disk space do I have left?"
 
-# Questions about the world — agent mode with web
+# Questions about the world -- agent mode with web
 az-ai --agent "What is the latest version of Node.js?"
 
-# Pure knowledge questions — standard mode is fine
+# Pure knowledge questions -- standard mode is fine
 az-ai "Explain the difference between TCP and UDP"
 ```
 
@@ -129,7 +129,7 @@ The CLI exits with code **1**. Increase `--max-rounds` or simplify the task.
 ### Validation
 
 ```bash
-# Invalid: --max-rounds must be 1–20
+# Invalid: --max-rounds must be 1-20
 az-ai --agent --max-rounds 0 "hello"
 # → [ERROR] --max-rounds requires an integer 1-20
 
@@ -156,31 +156,31 @@ tools the model can call, using **short aliases** or full names.
 ### Select Specific Tools
 
 ```bash
-# Only allow shell and file tools — no network access
+# Only allow shell and file tools -- no network access
 az-ai --agent --tools shell,file "Scan my project for TODO comments"
 
-# Only web and datetime — safe for public-facing use
+# Only web and datetime -- safe for public-facing use
 az-ai --agent --tools web,datetime "What time does the London Stock Exchange open in my timezone?"
 
-# Only shell — locked down to command execution
+# Only shell -- locked down to command execution
 az-ai --agent --tools shell "Show me the top 10 largest files in this directory"
 ```
 
 ### Why Restrict Tools?
 
 1. **Security**: Remove `shell` to prevent any command execution.
-2. **Focus**: Give the model only what it needs — fewer tools means fewer distractions.
+2. **Focus**: Give the model only what it needs -- fewer tools means fewer distractions.
 3. **Cost control**: Fewer tool options means fewer round-trips.
 4. **Compliance**: Remove `web` to ensure no data leaves your network.
 
 ```bash
-# Read-only file analysis — no shell, no web, no clipboard
+# Read-only file analysis -- no shell, no web, no clipboard
 az-ai --agent --tools file "Review the code in src/auth.py for bugs"
 
-# Network research only — no local system access
+# Network research only -- no local system access
 az-ai --agent --tools web,datetime "Research the latest CVEs for OpenSSL"
 
-# Full lockdown — datetime only
+# Full lockdown -- datetime only
 az-ai --agent --tools datetime "What's the date 90 days from now?"
 ```
 
@@ -192,7 +192,7 @@ az-ai --agent --tools
 # → [ERROR] --tools requires comma-separated tool names (e.g., --tools shell,file,web)
 ```
 
-Unrecognized tool names are silently ignored — only recognized tools are registered.
+Unrecognized tool names are silently ignored -- only recognized tools are registered.
 
 ---
 
@@ -264,19 +264,19 @@ az-ai --agent "Edit my .bashrc with vim"
 The tool prevents bypass attempts via shell expansion:
 
 ```bash
-# $() command substitution — BLOCKED
+# $() command substitution -- BLOCKED
 # If the model tries: shell_exec { "command": "echo $(cat /etc/shadow)" }
 # → Error: shell substitution ($() and backticks) is blocked for safety.
 
-# Backtick substitution — BLOCKED
+# Backtick substitution -- BLOCKED
 # If the model tries: shell_exec { "command": "echo `whoami`" }
 # → Error: shell substitution ($() and backticks) is blocked for safety.
 
-# Process substitution — BLOCKED
+# Process substitution -- BLOCKED
 # If the model tries: shell_exec { "command": "diff <(ls dir1) <(ls dir2)" }
 # → Error: process substitution and eval/exec are blocked for safety.
 
-# eval/exec — BLOCKED
+# eval/exec -- BLOCKED
 # If the model tries: shell_exec { "command": "eval 'rm -rf /'" }
 # → Error: process substitution and eval/exec are blocked for safety.
 ```
@@ -286,7 +286,7 @@ The tool prevents bypass attempts via shell expansion:
 Every segment of a pipe chain is checked against the blocklist:
 
 ```bash
-# Piping to a blocked command — BLOCKED
+# Piping to a blocked command -- BLOCKED
 # If the model tries: shell_exec { "command": "echo test | rm" }
 # → Error: command 'rm' is blocked for safety.
 
@@ -346,7 +346,7 @@ the resolved symlink target are checked:
 | `/proc/self/cmdline`    | Process command-line arguments     |
 
 ```bash
-# Blocked paths — even if the model tries:
+# Blocked paths -- even if the model tries:
 # read_file { "path": "/etc/shadow" }
 # → Error: access to '/etc/shadow' is blocked for security.
 
@@ -409,7 +409,7 @@ az-ai --agent --tools web "What's the latest release of dotnet?"
 ### HTTPS-Only Enforcement
 
 ```bash
-# HTTP URLs are rejected — no unencrypted traffic
+# HTTP URLs are rejected -- no unencrypted traffic
 # web_fetch { "url": "http://example.com" }
 # → Error: only HTTPS URLs are allowed.
 
@@ -424,31 +424,31 @@ The tool resolves DNS **before** connecting and blocks private/loopback addresse
 It also re-checks **after** redirects to catch DNS rebinding attacks.
 
 ```bash
-# Direct private IP — BLOCKED
+# Direct private IP -- BLOCKED
 # web_fetch { "url": "https://192.168.1.1/admin" }
 # → Error: access to private/loopback addresses is blocked for security.
 
-# Localhost — BLOCKED
+# Localhost -- BLOCKED
 # web_fetch { "url": "https://127.0.0.1:8080/api" }
 # → Error: access to private/loopback addresses is blocked for security.
 
-# Redirect to private IP — BLOCKED (post-redirect validation)
+# Redirect to private IP -- BLOCKED (post-redirect validation)
 # https://evil.com → 302 → https://192.168.1.1/admin
 # → Error: redirect to private/loopback address is blocked for security.
 
-# Redirect to HTTP — BLOCKED
+# Redirect to HTTP -- BLOCKED
 # https://example.com → 302 → http://example.com/page
 # → Error: redirect to non-HTTPS URL is blocked for security.
 ```
 
 Blocked IP ranges:
-- `127.0.0.0/8` — Loopback
-- `10.0.0.0/8` — Private (RFC 1918)
-- `172.16.0.0/12` — Private (RFC 1918)
-- `192.168.0.0/16` — Private (RFC 1918)
-- `169.254.0.0/16` — Link-local
-- `fd00::/8` — IPv6 unique local (RFC 4193)
-- `fe80::/10` — IPv6 link-local
+- `127.0.0.0/8` -- Loopback
+- `10.0.0.0/8` -- Private (RFC 1918)
+- `172.16.0.0/12` -- Private (RFC 1918)
+- `192.168.0.0/16` -- Private (RFC 1918)
+- `169.254.0.0/16` -- Link-local
+- `fd00::/8` -- IPv6 unique local (RFC 4193)
+- `fe80::/10` -- IPv6 link-local
 
 ### Response Cap & Redirects
 
@@ -478,7 +478,7 @@ az-ai --agent "Review the code I just copied for bugs"
 # → Model analyzes the pasted code
 
 # Clipboard as context
-az-ai --agent "I copied a URL — fetch it and summarize the page"
+az-ai --agent "I copied a URL -- fetch it and summarize the page"
 # → Round 1: get_clipboard {} → "https://example.com/article"
 # → Round 2: web_fetch { "url": "https://example.com/article" }
 # → Model summarizes
@@ -516,12 +516,12 @@ parameter (e.g., `America/New_York`, `Asia/Tokyo`, `Europe/London`).
 # Current local time
 az-ai --agent --tools datetime "What time is it?"
 # → model calls: get_datetime {}
-# → 2025-01-15 14:32:07 -05:00 (Wednesday) — (UTC-05:00) Eastern Time (US & Canada)
+# → 2025-01-15 14:32:07 -05:00 (Wednesday) -- (UTC-05:00) Eastern Time (US & Canada)
 
 # Specific timezone
 az-ai --agent --tools datetime "What time is it in Tokyo?"
 # → model calls: get_datetime { "timezone": "Asia/Tokyo" }
-# → 2025-01-16 04:32:07 +09:00 (Thursday) — (UTC+09:00) Osaka, Sapporo, Tokyo
+# → 2025-01-16 04:32:07 +09:00 (Thursday) -- (UTC+09:00) Osaka, Sapporo, Tokyo
 
 # Multiple timezone comparison
 az-ai --agent --tools datetime "What time is it in London, New York, and Sydney?"
@@ -546,7 +546,7 @@ az-ai --agent --tools datetime "What day of the week is it today?"
 ### Invalid Timezone
 
 ```bash
-# Unknown timezone — graceful error
+# Unknown timezone -- graceful error
 # get_datetime { "timezone": "Mars/Olympus_Mons" }
 # → Error: unknown timezone 'Mars/Olympus_Mons'
 ```
@@ -592,7 +592,7 @@ Child agents can have their own tool restrictions:
 ```bash
 # Parent delegates with restricted tools
 # delegate_task { "task": "Fetch https://api.example.com/status and parse the response", "tools": "web" }
-# → Child agent can ONLY use web_fetch — no shell, no file access
+# → Child agent can ONLY use web_fetch -- no shell, no file access
 ```
 
 Default child tools: `shell,file,web,datetime` (clipboard excluded by default).
@@ -652,14 +652,14 @@ a single response from all three results in one round.
 ### More Parallel Scenarios
 
 ```bash
-# System health check — multiple tools in parallel
+# System health check -- multiple tools in parallel
 az-ai --agent "Give me a system health report: CPU load, memory usage, disk space, and uptime"
 # → Round 1 (parallel):
 #    shell_exec { "command": "uptime" }
 #    shell_exec { "command": "free -h" }
 #    shell_exec { "command": "df -h" }
 
-# Multi-timezone query — parallel datetime calls
+# Multi-timezone query -- parallel datetime calls
 az-ai --agent --tools datetime "What time is it in all US timezones?"
 # → Round 1 (parallel):
 #    get_datetime { "timezone": "America/New_York" }
@@ -668,7 +668,7 @@ az-ai --agent --tools datetime "What time is it in all US timezones?"
 #    get_datetime { "timezone": "America/Los_Angeles" }
 ```
 
-Parallel execution is **automatic** — the model decides when to batch calls. You
+Parallel execution is **automatic** -- the model decides when to batch calls. You
 don't need any special flag.
 
 ---
@@ -700,7 +700,7 @@ Here's what I found...               ← Final response on stdout
 ### Status Is stderr-Only
 
 ```bash
-# Status goes to stderr — stdout is clean for piping
+# Status goes to stderr -- stdout is clean for piping
 az-ai --agent "What time is it?" 2>/dev/null
 # → Only the model's text response appears
 
@@ -757,7 +757,7 @@ az-ai --agent --tools shell "What process is using port 8080?"
 
 The model identifies the process. Note: it **cannot** kill the process because
 `kill` is blocked. It will tell you the PID and suggest you run `kill <PID>`
-yourself. This is by design — the agent is read-only for destructive operations.
+yourself. This is by design -- the agent is read-only for destructive operations.
 
 ```
 Found: node (PID 12345) is listening on port 8080.
@@ -826,7 +826,7 @@ az-ai --agent --tools shell,datetime "Run a full system health check: uptime, lo
    uptime / free -h / df -h / current time
 🔧 Round 2: shell_exec              ← ip addr (or ifconfig)
 
-System Health Report — 2025-01-15 14:32 EST
+System Health Report -- 2025-01-15 14:32 EST
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Uptime: 45 days, 3:21
 Load:   0.42, 0.38, 0.35
@@ -882,6 +882,6 @@ az-ai --agent "your question" 2>/dev/null
 # Predict cost without calling the API
 az-ai --estimate --agent "your question"
 
-# Persona overlay — implies --agent, persona's tools win over --tools
+# Persona overlay -- implies --agent, persona's tools win over --tools
 az-ai --persona security "audit src/auth.py"
 ```

@@ -1,4 +1,4 @@
-# Hardening Checklist — v2 one-page rollup
+# Hardening Checklist -- v2 one-page rollup
 
 > *Hello. Newman.* One page. Copy it into a PR-review comment. Tick the
 > boxes. If a box is empty, the PR is not ready.
@@ -17,7 +17,7 @@ sanity check.
   `-p:PublishAot=true` and csproj declares AOT. No `PublishSingleFile` /
   `PublishTrimmed` drift in v2 build output.
 - [ ] **No credentials baked into image.** Search `COPY`/`ADD` in
-  `Dockerfile.v2` — only the compiled binary + minimum runtime deps.
+  `Dockerfile.v2` -- only the compiled binary + minimum runtime deps.
 - [ ] **Base image digest-pinned.** `Dockerfile.v2:80` has
   `@sha256:...`, not `:latest` or a floating tag.
 - [ ] **Non-root execution.** `USER appuser` before `ENTRYPOINT`.
@@ -60,17 +60,17 @@ sanity check.
   `Program.cs:604, 619`. See [`redaction.md`](./redaction.md).
 - [ ] **Exception chain unwrapped ≤ 5 levels before redaction.**
 - [ ] **No API key echoed under debug flag.** `grep -n 'AZUREOPENAIAPI' azureopenai-cli-v2/`
-  — no `Console.WriteLine`, no log emission, no attribute tagging.
+  -- no `Console.WriteLine`, no log emission, no attribute tagging.
 - [ ] **`--raw` + `--json` suppress config-parse stderr noise.**
   `UserConfig.Load(quiet:)` respected.
 
 ## 5. Exit codes (script contract)
 
-- [ ] `0` — success.
-- [ ] `1` — validation / usage error, or Ralph `--max-iterations` exhaustion.
-- [ ] `2` — CLI parse error.
-- [ ] `99` — unhandled error.
-- [ ] `130` — SIGINT / user interrupt, preserved end-to-end.
+- [ ] `0` -- success.
+- [ ] `1` -- validation / usage error, or Ralph `--max-iterations` exhaustion.
+- [ ] `2` -- CLI parse error.
+- [ ] `99` -- unhandled error.
+- [ ] `130` -- SIGINT / user interrupt, preserved end-to-end.
 
 Any CI script consuming CLI output MUST treat all non-zero as failure and
 MUST NOT retry on `130` (operator interrupt is intentional).
@@ -80,7 +80,7 @@ MUST NOT retry on `130` (operator interrupt is intentional).
 - [ ] **Direct deps pinned exact** in csproj (no `*` or range specifiers).
   See [`supply-chain.md`](./supply-chain.md).
 - [ ] **Actions pinned by SHA.** `grep -rn 'uses:' .github/workflows/`
-  — every line has `@<sha>` with `# v<tag>` comment.
+  -- every line has `@<sha>` with `# v<tag>` comment.
 - [ ] **Trivy gate green on PR.** `.github/workflows/ci.yml:119`.
 - [ ] **No new alternate NuGet feed added** without Newman + Jerry sign-off.
 - [ ] **SBOM attached to release.** See [`sbom.md`](./sbom.md) §3.
@@ -118,4 +118,4 @@ veto.
 
 ---
 
-*The paperwork is the discipline. Fill in the boxes.* — Newman
+*The paperwork is the discipline. Fill in the boxes.* -- Newman

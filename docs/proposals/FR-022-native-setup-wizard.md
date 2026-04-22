@@ -1,4 +1,4 @@
-# FR-022 — Native `az-ai setup` credential wizard
+# FR-022 -- Native `az-ai setup` credential wizard
 
 **Status:** Proposed
 **Target:** 2.1
@@ -8,9 +8,9 @@
 
 ## Motivation
 
-`az-ai` today expects `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` / `AZUREOPENAIMODEL` in the process environment. On a fresh install — especially on WSL invoked by espanso/AHK — getting those three variables into the right rc file, with the right permissions, at the right shell-invocation scope (login vs. non-login vs. interactive vs. `bash -lc`), is nontrivial. The 2.0.0 silent-fail of `:aifix` we fixed in [`46e8652`](https://github.com/SchwartzKamel/azure-openai-cli/commit/46e8652) came straight from this class of error.
+`az-ai` today expects `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` / `AZUREOPENAIMODEL` in the process environment. On a fresh install -- especially on WSL invoked by espanso/AHK -- getting those three variables into the right rc file, with the right permissions, at the right shell-invocation scope (login vs. non-login vs. interactive vs. `bash -lc`), is nontrivial. The 2.0.0 silent-fail of `:aifix` we fixed in [`46e8652`](https://github.com/SchwartzKamel/azure-openai-cli/commit/46e8652) came straight from this class of error.
 
-2.0 ships `scripts/setup-secrets.sh` as a bootstrap — a shell wizard that picks a storage tier (chmod 600 plaintext or GPG-symmetric) and installs an auto-source hook into `~/.profile` + `~/.zshenv`. That's fine for Linux/WSL, but:
+2.0 ships `scripts/setup-secrets.sh` as a bootstrap -- a shell wizard that picks a storage tier (chmod 600 plaintext or GPG-symmetric) and installs an auto-source hook into `~/.profile` + `~/.zshenv`. That's fine for Linux/WSL, but:
 
 - **Not cross-platform.** No Windows-native story, no macOS Keychain story.
 - **Not self-discoverable.** User has to know the script exists and run it from the repo. A freshly `brew install`'d binary has no reference to it.
@@ -22,7 +22,7 @@ A native `az-ai setup` subcommand closes all three gaps and makes the credential
 
 Add an interactive `az-ai setup` subcommand (no positional args) that:
 
-1. **Detects platform and shell** — WSL / Linux / macOS / Windows-native; zsh / bash / fish / PowerShell / cmd.
+1. **Detects platform and shell** -- WSL / Linux / macOS / Windows-native; zsh / bash / fish / PowerShell / cmd.
 2. **Prompts for credentials** with hidden input on the API key, sensible defaults from any existing env/config.
 3. **Offers a platform-appropriate storage backend**, picked from a short list:
 
@@ -33,8 +33,8 @@ Add an interactive `az-ai setup` subcommand (no positional args) that:
    | Windows | DPAPI via `cmdkey` / Credential Manager | chmod 600 fallback |
 
 4. **Writes the shell hook**, platform-correct, idempotent. Same `# >>> az-ai creds hook >>>` / `# <<< az-ai creds hook <<<` markers as the 2.0 bootstrap script for compatibility and migration.
-5. **Verifies** — replays the 3 probes the bootstrap script runs (env reaches `bash -lc`, binary on PATH, clipboard non-empty) with GREEN/RED output.
-6. **Shows next steps** — platform-appropriate reload command, link to espanso docs.
+5. **Verifies** -- replays the 3 probes the bootstrap script runs (env reaches `bash -lc`, binary on PATH, clipboard non-empty) with GREEN/RED output.
+6. **Shows next steps** -- platform-appropriate reload command, link to espanso docs.
 
 Also: `az-ai setup --rotate` (rotate the key in-place, reuse endpoint/model), `az-ai setup --verify` (run probes only, no prompts), `az-ai setup --uninstall` (remove hook + secret file + optionally keychain entry).
 
@@ -97,9 +97,9 @@ The shell-hook writer is its own abstraction (`IShellHookWriter`) with implement
 
 ## Fleet sign-off
 
-- **Costanza (PM):** go — user-facing friction, clear UX win.
-- **Kramer (eng):** scoped — 2 days of work, no deps, fits AOT.
+- **Costanza (PM):** go -- user-facing friction, clear UX win.
+- **Kramer (eng):** scoped -- 2 days of work, no deps, fits AOT.
 - **Newman (security):** go, conditional on Keychain/DPAPI backends being default on their platforms.
 - **Mickey (a11y):** respects NO_COLOR, hidden input uses termios not ANSI tricks. Follows `.github/contracts/color-contract.md`.
 - **Elaine (docs):** deprecation banner + README walkthrough.
-- **Mr. Lippman (release):** 2.1.0, not 2.0.x — new subcommand is not a patch-level change.
+- **Mr. Lippman (release):** 2.1.0, not 2.0.x -- new subcommand is not a patch-level change.

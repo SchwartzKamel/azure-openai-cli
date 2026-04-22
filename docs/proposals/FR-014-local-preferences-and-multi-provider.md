@@ -1,8 +1,8 @@
-# FR-014 — Local User Preferences + Multi-Provider Profiles
+# FR-014 -- Local User Preferences + Multi-Provider Profiles
 
-**Status:** Design (Costanza, 2026-04-24 — supersedes 2026-04-20 stub)
+**Status:** Design (Costanza, 2026-04-24 -- supersedes 2026-04-20 stub)
 **Owner:** Costanza (product shape), Kramer (implementation), Jerry (AOT + HTTP pipeline), Newman (credential handling), Morty (rate-card integration), Elaine (docs + ADR)
-**Related & absorbed:** **FR-003** (local user preferences — *absorbed*), **FR-009** (`--config set` + directory overrides — *absorbed*), **FR-010** (model aliases & env-var normalization — *absorbed*). Downstream consumers: **FR-015** (cost estimator — per-provider rate cards), **FR-018** (llama.cpp/Ollama adapter), **FR-019** (gemma.cpp adapter), **FR-020** (NIM + per-trigger routing). Peer: **FR-013** (MCP tool allowlists feed the same preferences file).
+**Related & absorbed:** **FR-003** (local user preferences -- *absorbed*), **FR-009** (`--config set` + directory overrides -- *absorbed*), **FR-010** (model aliases & env-var normalization -- *absorbed*). Downstream consumers: **FR-015** (cost estimator -- per-provider rate cards), **FR-018** (llama.cpp/Ollama adapter), **FR-019** (gemma.cpp adapter), **FR-020** (NIM + per-trigger routing). Peer: **FR-013** (MCP tool allowlists feed the same preferences file).
 
 ---
 
@@ -18,7 +18,7 @@ One file. One schema. One precedence chain. Multiple providers. Ship it.
 
 | Decision | Call | Rationale |
 |---|---|---|
-| **File format** | **JSON, not TOML** | AOT is non-negotiable (FR-006/016). No mainstream TOML parser is source-gen / reflection-free — Tomlyn uses reflection; `System.Text.Json` already ships with a source generator we depend on. Every AOT trim/warning fight we avoid is 50 ms of cold-start banked. TOML stays on the FR-021+ wishlist; FR-018/020 references to `preferences.toml` are corrected in §12. |
+| **File format** | **JSON, not TOML** | AOT is non-negotiable (FR-006/016). No mainstream TOML parser is source-gen / reflection-free -- Tomlyn uses reflection; `System.Text.Json` already ships with a source generator we depend on. Every AOT trim/warning fight we avoid is 50 ms of cold-start banked. TOML stays on the FR-021+ wishlist; FR-018/020 references to `preferences.toml` are corrected in §12. |
 | **Canonical path** | **`~/.config/az-ai/preferences.json`** (XDG), with legacy fallback to `~/.azureopenai-cli.json` | The legacy path stays *readable forever*; the new path is *written* going forward. See §9. |
 | **Directory override** | **`./.az-ai/preferences.json`** (preferred) or `./.azureopenai-cli.json` (legacy) | Matches FR-009's walk-up-to-root behaviour; the `.az-ai/` directory also hosts local plugin/MCP manifests later. |
 | **Absorbs** | FR-003, FR-009, FR-010 | Their exit criteria become FR-014 exit criteria. Those files stay in the tree as historical context and get a `**Status: Superseded by FR-014**` banner. |
@@ -26,7 +26,7 @@ One file. One schema. One precedence chain. Multiple providers. Ship it.
 
 ---
 
-## 3. Preferences File — Location, Merge Order, Discovery
+## 3. Preferences File -- Location, Merge Order, Discovery
 
 ```
 Precedence (highest wins):
@@ -35,18 +35,18 @@ Precedence (highest wins):
   3. Active profile                     (profiles.<name> in the merged preferences)
   4. Directory override                 (./.az-ai/preferences.json walking up to /)
   5. Global preferences                 (~/.config/az-ai/preferences.json)
-  6. Legacy global                      (~/.azureopenai-cli.json — read-only)
-  7. Legacy .env file                   (.env at CWD — credentials only)
+  6. Legacy global                      (~/.azureopenai-cli.json -- read-only)
+  7. Legacy .env file                   (.env at CWD -- credentials only)
   8. Hardcoded defaults
 ```
 
-Merge semantics: deep-merge for objects; last-writer-wins for scalars; arrays replace (not concat) — concat semantics are a footgun for allowlists.
+Merge semantics: deep-merge for objects; last-writer-wins for scalars; arrays replace (not concat) -- concat semantics are a footgun for allowlists.
 
 Discovery: `az-ai --config show` prints the resolved value and the **source layer** for every key (already partially implemented per FR-009). New: it also prints which provider profile was resolved and the exact file path that contributed.
 
 ---
 
-## 4. Preferences Schema — Full Example
+## 4. Preferences Schema -- Full Example
 
 ```jsonc
 {
@@ -190,7 +190,7 @@ Discovery: `az-ai --config show` prints the resolved value and the **source laye
 }
 ```
 
-**Dollar-brace substitution** (`${ENV_VAR}`) is evaluated at load time. Missing vars are tolerated for optional fields and hard-fail only when the resolved value is *used* — lazy validation keeps cold-start fast when you're using only one provider.
+**Dollar-brace substitution** (`${ENV_VAR}`) is evaluated at load time. Missing vars are tolerated for optional fields and hard-fail only when the resolved value is *used* -- lazy validation keeps cold-start fast when you're using only one provider.
 
 ---
 
@@ -227,13 +227,13 @@ record ProviderContext(
 | Kind | Package / wire | Credential source | Tool calling | Streaming | Notes |
 |---|---|---|---|---|---|
 | `azure-openai` | `Azure.AI.OpenAI` (already in csproj) | `apiKeyEnv` → `DefaultAzureCredential` fallback | ✅ | ✅ | First-class; default. Unchanged from today. |
-| `openai` | `OpenAI` official SDK OR direct HTTP to `/v1/chat/completions` | `OPENAI_API_KEY` | ✅ | ✅ | **Phase 1** — cheapest adapter since wire == Azure's base. |
-| `anthropic` | Direct HTTP to `/v1/messages` + message translator | `ANTHROPIC_API_KEY` header `x-api-key` | ✅ (different schema) | ✅ (SSE) | **Phase 2** — needs a request/response transformer; use `IChatClient` adapter shim. |
-| `google-gemini` | Direct HTTP to `v1beta/models/{model}:generateContent` | `GEMINI_API_KEY` query or header | ✅ (`functionDeclarations`) | ✅ | **Phase 3** — translator similar to Anthropic. |
-| `openai-compatible` | Direct HTTP to `/v1/chat/completions` | Bearer-token env or anonymous | Capability-gated via preferences | ✅ | Covers **Ollama, llama.cpp, NIM, LM Studio, vLLM** — one adapter, N endpoints. |
+| `openai` | `OpenAI` official SDK OR direct HTTP to `/v1/chat/completions` | `OPENAI_API_KEY` | ✅ | ✅ | **Phase 1** -- cheapest adapter since wire == Azure's base. |
+| `anthropic` | Direct HTTP to `/v1/messages` + message translator | `ANTHROPIC_API_KEY` header `x-api-key` | ✅ (different schema) | ✅ (SSE) | **Phase 2** -- needs a request/response transformer; use `IChatClient` adapter shim. |
+| `google-gemini` | Direct HTTP to `v1beta/models/{model}:generateContent` | `GEMINI_API_KEY` query or header | ✅ (`functionDeclarations`) | ✅ | **Phase 3** -- translator similar to Anthropic. |
+| `openai-compatible` | Direct HTTP to `/v1/chat/completions` | Bearer-token env or anonymous | Capability-gated via preferences | ✅ | Covers **Ollama, llama.cpp, NIM, LM Studio, vLLM** -- one adapter, N endpoints. |
 | `gemma-cpp` (future) | Local subprocess + UDS (see FR-019) | none | ❌ | ✅ | FR-019 owns its own IChatClient wrapping the subprocess. |
 
-`IChatClient`-shaped adapters mean **zero changes** to Program.cs call sites — the existing `chatClient.CompleteStreamingAsync(...)` loop works for every provider.
+`IChatClient`-shaped adapters mean **zero changes** to Program.cs call sites -- the existing `chatClient.CompleteStreamingAsync(...)` loop works for every provider.
 
 ---
 
@@ -269,7 +269,7 @@ record ProviderContext(
 | `AZURE_OPENAI_*` | New canonical names (FR-010). Shim maps both. |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `NIM_BEARER_TOKEN` | Per-provider credentials. |
 
-### Precedence (repeat for clarity — this is *the* contract)
+### Precedence (repeat for clarity -- this is *the* contract)
 
 ```
 CLI flag  >  env var  >  --profile  >  routing[--trigger]  >
@@ -311,19 +311,19 @@ Routing lives in `Preferences/TriggerRouter.cs`. It is **pure** (no I/O except r
 
 ## 8. Credential Management (Newman's bar)
 
-1. **Never store secrets in `preferences.json`.** Parser rejects any value in `apiKey` fields that isn't a known dummy (`""`, `"ollama"`, `"not-needed"`). Real keys come from env vars or OS keyring only. Scanner runs at load time — `refuseKeyLikePatterns(["^sk-", "^AIza", "^xai-", "^[A-Za-z0-9]{40,}$"])`.
+1. **Never store secrets in `preferences.json`.** Parser rejects any value in `apiKey` fields that isn't a known dummy (`""`, `"ollama"`, `"not-needed"`). Real keys come from env vars or OS keyring only. Scanner runs at load time -- `refuseKeyLikePatterns(["^sk-", "^AIza", "^xai-", "^[A-Za-z0-9]{40,}$"])`.
 2. **`apiKeyEnv` is an env-var *name*, not a value.** The loader dereferences it lazily (only when that provider is selected). Typos in env-var names produce a clear error with the name it tried.
 3. **OS keyring hook (Phase 3).** `credentialSource: "keyring:az-ai/anthropic"` reads via `libsecret`/Keychain/WinCred through a platform shim. Not required for v1.
 4. **Redaction.** The loader wraps every credential in a `CredentialHandle` whose `ToString()` returns `"[REDACTED]"`. Logging subsystem uses type-based filters (not regex). Telemetry (`--json`) never includes credentials.
-5. **Existing `AZUREOPENAIAPI` keeps working** with zero user action — it's the default `apiKeyEnv` for `providers.azure`.
+5. **Existing `AZUREOPENAIAPI` keeps working** with zero user action -- it's the default `apiKeyEnv` for `providers.azure`.
 6. **Per-directory prefs** cannot declare credentials at all (parse-time refusal). Directory overrides can reference only pre-declared global provider profiles by name, or re-point `apiKeyEnv` to a different env-var name. This closes the "cloned a repo with a `.az-ai/preferences.json` that silently exfils my key" vector.
 
 ---
 
 ## 9. Integration with FR-015 Cost Estimator
 
-- Rate cards are provider-scoped: `RateCards/<provider>.json` (Azure, OpenAI, Anthropic, Gemini). Ollama/llama.cpp have no rate card; the estimator prints `"local — no cost"` rather than `$0.0000` (Morty: don't encode "free" into the UX).
-- Estimator consumes the *resolved* provider — selection happens *before* the estimator runs, not after.
+- Rate cards are provider-scoped: `RateCards/<provider>.json` (Azure, OpenAI, Anthropic, Gemini). Ollama/llama.cpp have no rate card; the estimator prints `"local -- no cost"` rather than `$0.0000` (Morty: don't encode "free" into the UX).
+- Estimator consumes the *resolved* provider -- selection happens *before* the estimator runs, not after.
 - Comparative-cost UX: `--estimate --compare azure,openai,anthropic` runs the estimator across providers in parallel and prints a table. Useful for convincing users Azure is cheaper without forcing them to switch.
 - `routing.<trigger>` entries get a per-trigger estimator output showing which provider fires for that trigger.
 
@@ -334,13 +334,13 @@ Routing lives in `Preferences/TriggerRouter.cs`. It is **pure** (no I/O except r
 | Type | Registration | Notes |
 |---|---|---|
 | `Preferences` (root) | `AppJsonContext` | Top-level deserialization target. |
-| `ProviderProfile`, `ProviderCapabilities`, `FallbackPolicy`, `RoutingEntry`, `RoutingTable`, `ProfileBundle`, `ToolConfig`, `HistoryConfig` | `AppJsonContext` | All `internal sealed`, all property-based (no constructor-arg-only records — source gen limitation). |
+| `ProviderProfile`, `ProviderCapabilities`, `FallbackPolicy`, `RoutingEntry`, `RoutingTable`, `ProfileBundle`, `ToolConfig`, `HistoryConfig` | `AppJsonContext` | All `internal sealed`, all property-based (no constructor-arg-only records -- source gen limitation). |
 | `Dictionary<string, ProviderProfile>`, `Dictionary<string, RoutingEntry>`, `Dictionary<string, ProfileBundle>`, `Dictionary<string, string>` | `AppJsonContext` | Already required for FR-010 aliases. |
 | `CredentialHandle` | NOT serialized | Marked `[JsonIgnore]` everywhere. |
 
-TOML is explicitly out — see §2. Re-evaluate in v2.2 if a Microsoft-blessed AOT-safe TOML lib ships.
+TOML is explicitly out -- see §2. Re-evaluate in v2.2 if a Microsoft-blessed AOT-safe TOML lib ships.
 
-Cold-start budget: the whole preferences load + merge + validate path must stay ≤ 1.5 ms on linux-x64 so we don't eat our 5.4 ms lead. Lazy provider-profile resolution is non-negotiable — we parse all providers but validate (env-var deref, endpoint check) only the one we actually use.
+Cold-start budget: the whole preferences load + merge + validate path must stay ≤ 1.5 ms on linux-x64 so we don't eat our 5.4 ms lead. Lazy provider-profile resolution is non-negotiable -- we parse all providers but validate (env-var deref, endpoint check) only the one we actually use.
 
 ---
 
@@ -350,7 +350,7 @@ Cold-start budget: the whole preferences load + merge + validate path must stay 
 2. **`--set-model`, `--config show`** keep working (already shipped).
 3. **`AZUREOPENAIAPI` / `AZUREOPENAIENDPOINT` / `AZUREOPENAIMODEL`** keep working forever. The new `AZURE_OPENAI_*` names are documented as canonical but legacy names never deprecate.
 4. **First run after upgrade:** if only the legacy file exists, print a one-line tip (`az-ai --config migrate` to move to the XDG path) and proceed. No forced migration.
-5. **`.env` files in Docker** keep flowing through — `.env` is credentials-plus-defaults and is now layer #7 in the precedence chain (above hardcoded defaults only).
+5. **`.env` files in Docker** keep flowing through -- `.env` is credentials-plus-defaults and is now layer #7 in the precedence chain (above hardcoded defaults only).
 6. **FR-003/009/010 JSON keys (`Temperature`, `MaxTokens`, `TimeoutSeconds`, `SystemPrompt`, `ModelAliases`)** are recognized and promoted into the new schema at load time. Users who already ran `--config set temperature 0.2` stay exactly where they were.
 
 ---
@@ -374,7 +374,7 @@ azureopenai-cli/
 │   ├─ ProviderRegistry.cs            // kind → factory map (AOT-safe, no reflection)
 │   ├─ AzureOpenAIProvider.cs         // wraps existing Azure.AI.OpenAI path (current behaviour)
 │   ├─ OpenAIProvider.cs              // Phase 1
-│   ├─ AnthropicProvider.cs           // Phase 2 — includes message translator
+│   ├─ AnthropicProvider.cs           // Phase 2 -- includes message translator
 │   ├─ GeminiProvider.cs              // Phase 3
 │   ├─ OpenAICompatibleProvider.cs    // Ollama / llama.cpp / NIM / vLLM / LM Studio
 │   └─ Translators/
@@ -384,7 +384,7 @@ azureopenai-cli/
 └─ JsonGenerationContext.cs           // add all Preferences + Provider types
 ```
 
-FR-018, FR-019, FR-020 all plug in as **`Providers/`-level contributions** — they do *not* modify `Preferences/`. Their schemas are the `[providers.nim]`-style blocks in §4. **FR-018/020 prose that references `preferences.toml` is corrected by this FR to `preferences.json`.** I will file a 10-line edit against those two docs after this design lands.
+FR-018, FR-019, FR-020 all plug in as **`Providers/`-level contributions** -- they do *not* modify `Preferences/`. Their schemas are the `[providers.nim]`-style blocks in §4. **FR-018/020 prose that references `preferences.toml` is corrected by this FR to `preferences.json`.** I will file a 10-line edit against those two docs after this design lands.
 
 ---
 
@@ -392,12 +392,12 @@ FR-018, FR-019, FR-020 all plug in as **`Providers/`-level contributions** — t
 
 | Phase | Scope | Duration | Exit gate |
 |---|---|---|---|
-| **P1 — Preferences spine + OpenAI-direct** | `Preferences/` tree; `AzureOpenAIProvider` (= today's code path, refactored behind factory); `OpenAIProvider`; `--provider`, `--profile`, `AZ_PROVIDER`, `AZ_PROFILE`; `--config migrate`; all FR-003/009/010 exit criteria met. | 4–5 days | `az-ai --provider openai "hello"` works with `OPENAI_API_KEY`; `az-ai "hello"` byte-identical to pre-FR-014. |
-| **P2 — Anthropic adapter** | `AnthropicProvider` + translator + capability probe; rate card feeds FR-015. | 3 days | `az-ai --provider anthropic --model opus "hello"` works; tool calls translate round-trip. |
-| **P3 — Gemini + `openai-compatible` (Ollama)** | `GeminiProvider` + `OpenAICompatibleProvider`; SSRF allowlist; `--list-providers`, `--check`; `allowLan` flag. | 3–4 days | `az-ai --provider ollama --model g3 "hello"` runs fully offline. |
-| **P4 — FR-018 local (llama.cpp)** | Owned by FR-018. Plugs into `OpenAICompatibleProvider` + capability gating. | (FR-018) | See FR-018 exit gates. |
-| **P5 — FR-020 NIM + per-trigger routing** | Owned by FR-020. `TriggerRouter` + routing table + length-gating ship in this phase even though the class lives in FR-014's tree. | (FR-020) | See FR-020 exit gates. |
-| **P6 — Keyring credential source (optional)** | `credentialSource: keyring:…`. Deferred unless a user asks. | 2 days if requested | libsecret/Keychain/WinCred pass-through. |
+| **P1 -- Preferences spine + OpenAI-direct** | `Preferences/` tree; `AzureOpenAIProvider` (= today's code path, refactored behind factory); `OpenAIProvider`; `--provider`, `--profile`, `AZ_PROVIDER`, `AZ_PROFILE`; `--config migrate`; all FR-003/009/010 exit criteria met. | 4-5 days | `az-ai --provider openai "hello"` works with `OPENAI_API_KEY`; `az-ai "hello"` byte-identical to pre-FR-014. |
+| **P2 -- Anthropic adapter** | `AnthropicProvider` + translator + capability probe; rate card feeds FR-015. | 3 days | `az-ai --provider anthropic --model opus "hello"` works; tool calls translate round-trip. |
+| **P3 -- Gemini + `openai-compatible` (Ollama)** | `GeminiProvider` + `OpenAICompatibleProvider`; SSRF allowlist; `--list-providers`, `--check`; `allowLan` flag. | 3-4 days | `az-ai --provider ollama --model g3 "hello"` runs fully offline. |
+| **P4 -- FR-018 local (llama.cpp)** | Owned by FR-018. Plugs into `OpenAICompatibleProvider` + capability gating. | (FR-018) | See FR-018 exit gates. |
+| **P5 -- FR-020 NIM + per-trigger routing** | Owned by FR-020. `TriggerRouter` + routing table + length-gating ship in this phase even though the class lives in FR-014's tree. | (FR-020) | See FR-020 exit gates. |
+| **P6 -- Keyring credential source (optional)** | `credentialSource: keyring:…`. Deferred unless a user asks. | 2 days if requested | libsecret/Keychain/WinCred pass-through. |
 
 P1 is the merge gate. Nothing downstream lands until P1 is green and FR-003/009/010 are formally marked *Superseded*.
 
@@ -435,20 +435,20 @@ P1 is the merge gate. Nothing downstream lands until P1 is green and FR-003/009/
 ## 16. Open Questions
 
 1. **Profile inheritance.** Should `profiles.code` be able to `extends: "work"`? Defer to v2.1 unless two users ask.
-2. **Hot-reload.** No — preferences are read once at startup. Matches FR-020 §12 Q9.
+2. **Hot-reload.** No -- preferences are read once at startup. Matches FR-020 §12 Q9.
 3. **Schema publication.** Do we publish `schemas/preferences-v1.json` for editor autocomplete? Low cost, high goodwill. Yes, Phase 1.
-4. **Per-profile tool allowlists.** Schema supports it (`profiles.code.tools.allow`)? Not in v1 — `tools.perProvider` is the v1 knob. Revisit when FR-013 lands.
+4. **Per-profile tool allowlists.** Schema supports it (`profiles.code.tools.allow`)? Not in v1 -- `tools.perProvider` is the v1 knob. Revisit when FR-013 lands.
 5. **Named system-prompt library.** `systemPrompts.<name>` referenced by profiles and routing entries. Probably lives in FR-015 (pattern library) not here.
 
 ---
 
-## 17. What This FR Consolidates — Recommendation
+## 17. What This FR Consolidates -- Recommendation
 
 | FR | Recommendation | Rationale |
 |---|---|---|
-| **FR-003** (local user preferences) | **Absorb — mark Superseded** | Its `UserConfig` expansion is a strict subset of FR-014 §4. Exit criteria map 1:1. |
-| **FR-009** (`--config set` + directory overrides) | **Absorb — mark Superseded** | FR-014 §3 directly adopts the walk-up-to-root behaviour; `--config set/get/reset --local` flags carry forward. |
-| **FR-010** (model aliases + env normalization) | **Absorb — mark Superseded** | Aliases are now per-provider in `providers.<x>.aliases`; env-var normalization lives in `envOverrides`. |
+| **FR-003** (local user preferences) | **Absorb -- mark Superseded** | Its `UserConfig` expansion is a strict subset of FR-014 §4. Exit criteria map 1:1. |
+| **FR-009** (`--config set` + directory overrides) | **Absorb -- mark Superseded** | FR-014 §3 directly adopts the walk-up-to-root behaviour; `--config set/get/reset --local` flags carry forward. |
+| **FR-010** (model aliases + env normalization) | **Absorb -- mark Superseded** | Aliases are now per-provider in `providers.<x>.aliases`; env-var normalization lives in `envOverrides`. |
 | **FR-015** (pattern library + cost estimator) | **Leave separate** | Different scope; FR-014 provides the provider resolution it consumes. |
 | **FR-018/019/020** | **Leave separate** | They are legitimate provider-adapter FRs that build *on top of* FR-014. |
 
@@ -456,4 +456,4 @@ After merge, the proposals tree should annotate FR-003, FR-009, FR-010 headers w
 
 ---
 
-*— Costanza. You want a piece of me? Fine. Cite the schema version.*
+*-- Costanza. You want a piece of me? Fine. Cite the schema version.*

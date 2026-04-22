@@ -1,7 +1,7 @@
 # Release artifact inventory
 
 > "If it isn't on this page, it doesn't ship. If it's on this page
-> and it isn't on the Release, we haven't shipped yet." — Mr. Lippman
+> and it isn't on the Release, we haven't shipped yet." -- Mr. Lippman
 
 Audience: release author running the pre-release checklist (gate 19)
 and anyone downstream (Homebrew, Nix, Scoop, Docker users) who needs
@@ -12,15 +12,15 @@ publishes for every v2.x release, per RID, with the filename patterns
 downstream packaging consumes.
 
 Companion docs:
-- [`pre-release-checklist.md`](pre-release-checklist.md) — gate 19
+- [`pre-release-checklist.md`](pre-release-checklist.md) -- gate 19
   validates every row below landed.
-- [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) — how the OCI
+- [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) -- how the OCI
   side of the inventory behaves over time.
-- [`semver-policy.md`](semver-policy.md) §2 item 9 — the filename
+- [`semver-policy.md`](semver-policy.md) §2 item 9 -- the filename
   pattern is a versioned contract.
 - [`../runbooks/packaging-publish.md`](../runbooks/packaging-publish.md)
-  — Bob's tap/bucket publish flow consumes the artifacts listed here.
-- [`../verifying-releases.md`](../verifying-releases.md) — user-facing
+  -- Bob's tap/bucket publish flow consumes the artifacts listed here.
+- [`../verifying-releases.md`](../verifying-releases.md) -- user-facing
   verification steps.
 
 **Scope.** v2 line. The v1 line uses the same workflow with different
@@ -34,8 +34,8 @@ RIDs and filenames; see the workflow `release.yml` directly.
 |------------------|--------------|---------|-------|-----------------------------|
 | `linux-x64`      | Linux        | x86_64  | glibc | Homebrew (Linux), direct    |
 | `linux-musl-x64` | Linux (musl) | x86_64  | musl  | Alpine, Nix (musl), Docker  |
-| `osx-arm64`      | macOS 11+    | ARM64   | —     | Homebrew (macOS), Rosetta 2 |
-| `win-x64`        | Windows 10+  | x86_64  | —     | Scoop, direct               |
+| `osx-arm64`      | macOS 11+    | ARM64   | --     | Homebrew (macOS), Rosetta 2 |
+| `win-x64`        | Windows 10+  | x86_64  | --     | Scoop, direct               |
 
 **`osx-x64` was dropped in v2.0.4.** Intel Mac users fall back to
 Rosetta 2 over the `osx-arm64` binary, Docker (`linux/amd64`), or
@@ -43,7 +43,7 @@ build-from-source. See CHANGELOG `[2.0.4]` banner and
 [`../runbooks/macos-runner-triage.md`](../runbooks/macos-runner-triage.md).
 
 Dropping a RID is **MAJOR** per SemVer §3, bent to PATCH at v2.0.4
-with a documented migration path — do not treat it as precedent.
+with a documented migration path -- do not treat it as precedent.
 
 ---
 
@@ -120,9 +120,9 @@ by the `docker-publish-v2` job. Tag behavior per
 
 Each pushed tag carries:
 
-- A manifest digest (`sha256:…`) — recorded in the GitHub Release
+- A manifest digest (`sha256:…`) -- recorded in the GitHub Release
   body per pre-release-checklist gate 19.
-- A Sigstore attestation — Rekor log index recorded in the release
+- A Sigstore attestation -- Rekor log index recorded in the release
   body.
 - An SBOM attached to the image (separate from the per-tarball
   `.sbom.json` above; both exist).
@@ -137,13 +137,13 @@ amd64 primary; arm64 parity tracked in the release workflow matrix.)
 
 Every release includes a Release body (Markdown) with:
 
-- Summary / headline — pulled from the CHANGELOG banner quote if one
+- Summary / headline -- pulled from the CHANGELOG banner quote if one
   exists.
-- **Artifact inventory** section — a table matching §2 above with
+- **Artifact inventory** section -- a table matching §2 above with
   filename, size, and SHA256 per file.
-- **Image digests** section — one line per platform leg, per
+- **Image digests** section -- one line per platform leg, per
   [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) §3.
-- **Attestations** section — Rekor log indexes for the image and
+- **Attestations** section -- Rekor log indexes for the image and
   (optionally) for each binary.
 - Upgrade notes and breaking-change callouts for MAJOR / notable
   MINOR releases.
@@ -172,11 +172,11 @@ then mirrors them to the external tap/bucket repos.
 | Scoop bucket (external) | `SchwartzKamel/scoop-az-ai`                        | mirrors `packaging/scoop`                  | Bob's publish flow         |
 
 The Homebrew tap and Scoop bucket repos **may or may not exist yet**
-— see [`../runbooks/packaging-publish.md`](../runbooks/packaging-publish.md)
+-- see [`../runbooks/packaging-publish.md`](../runbooks/packaging-publish.md)
 §0. Until they're live, user-facing install instructions point at the
 in-repo manifests. That is expected and does not block a release.
 
-**Downstream implication of filename drift** — every consumer in the
+**Downstream implication of filename drift** -- every consumer in the
 table above derives download URLs from the
 `az-ai-v2-<VERSION>-<RID>.<EXT>` pattern. A filename that doesn't
 match the version tag (audit C-1) breaks all of them simultaneously.
@@ -190,16 +190,16 @@ is non-negotiable.
 After the workflow completes, the release author runs gate 19:
 
 1. `gh release view v<VERSION> --json assets -q '.assets[].name' | sort`
-   — every row required in §2 appears, for every RID in §1.
+   -- every row required in §2 appears, for every RID in §1.
 2. For each tarball/zip, confirm its `.sha256` sidecar and
    `.sbom.json` are present.
 3. For each tarball/zip, confirm there's an attestation asset.
 4. `gh api /users/SchwartzKamel/packages/container/azure-openai-cli%2Faz-ai-v2/versions`
-   — the four tags from §3 resolve; capture the digest for each.
+   -- the four tags from §3 resolve; capture the digest for each.
 5. Paste the digests and the SHA256 list into the Release body under
    the `Image digests` / `Artifact inventory` sections.
 
 A missing asset is a **no-go**. Fix forward with a new version tag;
 do not mutate the existing Release.
 
-— Mr. Lippman, release management
+-- Mr. Lippman, release management

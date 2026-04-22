@@ -1,23 +1,23 @@
-# Telemetry Schema Freeze — v2.0.0
+# Telemetry Schema Freeze -- v2.0.0
 
 **Schema version:** `v2.0.0`
 **Owner:** Frank Costanza (SRE/telemetry), with Morty Seinfeld on cost-event schema and Newman on privacy guardrails.
-**Status:** **Frozen at 2.0.0**. Any change to a span name, attribute name, attribute type, meter name, cost-event field, or unit requires a formal schema bump and review — see §7.
+**Status:** **Frozen at 2.0.0**. Any change to a span name, attribute name, attribute type, meter name, cost-event field, or unit requires a formal schema bump and review -- see §7.
 **Authoritative code:**
-- [`azureopenai-cli-v2/Observability/Telemetry.cs`](../../azureopenai-cli-v2/Observability/Telemetry.cs) — `ActivitySource`, `Meter`, flag plumbing.
-- [`azureopenai-cli-v2/Observability/CostEvent.cs`](../../azureopenai-cli-v2/Observability/CostEvent.cs) — stderr JSON schema.
-- [`azureopenai-cli-v2/Observability/CostHook.cs`](../../azureopenai-cli-v2/Observability/CostHook.cs) — pricing + cost-event emission.
-- [`azureopenai-cli-v2/Program.cs`](../../azureopenai-cli-v2/Program.cs) (around line 494) — `az.chat.request` span.
-- [`azureopenai-cli-v2/Ralph/RalphWorkflow.cs`](../../azureopenai-cli-v2/Ralph/RalphWorkflow.cs) (around line 66) — `az.ralph.iteration` span.
+- [`azureopenai-cli-v2/Observability/Telemetry.cs`](../../azureopenai-cli-v2/Observability/Telemetry.cs) -- `ActivitySource`, `Meter`, flag plumbing.
+- [`azureopenai-cli-v2/Observability/CostEvent.cs`](../../azureopenai-cli-v2/Observability/CostEvent.cs) -- stderr JSON schema.
+- [`azureopenai-cli-v2/Observability/CostHook.cs`](../../azureopenai-cli-v2/Observability/CostHook.cs) -- pricing + cost-event emission.
+- [`azureopenai-cli-v2/Program.cs`](../../azureopenai-cli-v2/Program.cs) (around line 494) -- `az.chat.request` span.
+- [`azureopenai-cli-v2/Ralph/RalphWorkflow.cs`](../../azureopenai-cli-v2/Ralph/RalphWorkflow.cs) (around line 66) -- `az.ralph.iteration` span.
 **Cross-links:**
-- [`docs/observability.md`](../observability.md) — user-facing telemetry guide (same schema, different audience).
-- [`docs/ops/v2-sre-runbook.md`](v2-sre-runbook.md) §3 — operator decoder ring.
+- [`docs/observability.md`](../observability.md) -- user-facing telemetry guide (same schema, different audience).
+- [`docs/ops/v2-sre-runbook.md`](v2-sre-runbook.md) §3 -- operator decoder ring.
 
 > This document is the **schema contract**. `docs/observability.md` is the **user-facing tour**. They must agree. If they don't, this document wins for the schema definition and the user-facing doc gets a PR.
 
 ---
 
-## 1. Opt-in mechanism — the first and last rule
+## 1. Opt-in mechanism -- the first and last rule
 
 **Default: nothing leaves the machine.** Nothing. No spans, no metrics, no cost events, no phone-home, no "anonymous" anything. The `ActivitySource` and `Meter` are unlistened until the user opts in, so the hot path is no-op when telemetry is off.
 
@@ -30,11 +30,11 @@ Telemetry turns on only when exactly one of these triggers is set per invocation
 | `--otel` | CLI flag | spans only |
 | `--metrics` | CLI flag | meters + stderr cost events |
 
-**There is no other toggle.** Any other env var name, any other flag spelling — not real. If a user asks "how do I disable telemetry", the answer is "you don't have to, it's off by default". If they ask "how do I confirm nothing is leaving my machine", the answer is in §6.
+**There is no other toggle.** Any other env var name, any other flag spelling -- not real. If a user asks "how do I disable telemetry", the answer is "you don't have to, it's off by default". If they ask "how do I confirm nothing is leaving my machine", the answer is in §6.
 
 ### 1.1 What the flags do *not* do
 
-- They do **not** enable an OTLP collector. Users configure their own collector address with `OTEL_EXPORTER_OTLP_ENDPOINT` (default `http://localhost:4317` — localhost, because the CLI assumes the user is running their own collector).
+- They do **not** enable an OTLP collector. Users configure their own collector address with `OTEL_EXPORTER_OTLP_ENDPOINT` (default `http://localhost:4317` -- localhost, because the CLI assumes the user is running their own collector).
 - They do **not** change stdout. `--raw` consumers (Espanso, AHK) see byte-identical output whether telemetry is on or off.
 - They do **not** persist anything to disk in the CLI process. Retention is the user's collector's problem.
 
@@ -45,7 +45,7 @@ Telemetry turns on only when exactly one of these triggers is set per invocation
 **`ActivitySource` name:** `azureopenai-cli-v2`
 **`ActivitySource` version:** set from `Telemetry.ServiceVersion` constant.
 
-> ⚠️ **Drift observed at freeze time.** `Telemetry.ServiceVersion` in `azureopenai-cli-v2/Observability/Telemetry.cs:31` reads `"2.0.0-alpha.1"` at the v2.0.0 release commit, while the git tag and csproj `<Version>` are `2.0.0`. This is reported as-shipped and consumers should treat a `service.version=2.0.0-alpha.1` OTel resource attribute as equivalent to v2.0.0 for this release. Tracked for fix-forward in a future patch — no schema change, just a string correction. (Constraint: this doc does not modify code.)
+> ⚠️ **Drift observed at freeze time.** `Telemetry.ServiceVersion` in `azureopenai-cli-v2/Observability/Telemetry.cs:31` reads `"2.0.0-alpha.1"` at the v2.0.0 release commit, while the git tag and csproj `<Version>` are `2.0.0`. This is reported as-shipped and consumers should treat a `service.version=2.0.0-alpha.1` OTel resource attribute as equivalent to v2.0.0 for this release. Tracked for fix-forward in a future patch -- no schema change, just a string correction. (Constraint: this doc does not modify code.)
 
 ### 2.1 Span catalogue (exhaustive)
 
@@ -68,7 +68,7 @@ Telemetry turns on only when exactly one of these triggers is set per invocation
 `Telemetry.cs:178` wires `AddService(ServiceName, serviceVersion: ServiceVersion)`. Resource attributes emitted:
 - `service.name = azureopenai-cli-v2`
 - `service.version = 2.0.0-alpha.1` (see drift note in §2)
-- Plus whatever the OTel SDK defaults add (`telemetry.sdk.*`, `host.*` — these come from the SDK, not from this CLI).
+- Plus whatever the OTel SDK defaults add (`telemetry.sdk.*`, `host.*` -- these come from the SDK, not from this CLI).
 
 ---
 
@@ -85,8 +85,8 @@ Telemetry turns on only when exactly one of these triggers is set per invocation
 | `azai.tokens.input` | Counter | `tokens` | `model`, `mode` | `Telemetry.RecordRequest` |
 | `azai.tokens.output` | Counter | `tokens` | `model`, `mode` | `Telemetry.RecordRequest` |
 | `azai.cost.usd` | Histogram | `USD` | `model`, `mode` | `CostHook` |
-| `azai.ralph.iterations` | Histogram | `iterations` | — | Ralph path |
-| `azai.tool.invocations` | Counter | `invocations` | — | agent tool-dispatch path |
+| `azai.ralph.iterations` | Histogram | `iterations` | -- | Ralph path |
+| `azai.tool.invocations` | Counter | `invocations` | -- | agent tool-dispatch path |
 
 **No other meters.** Same rule as §2.1: new instruments require a schema bump.
 
@@ -95,17 +95,17 @@ Telemetry turns on only when exactly one of these triggers is set per invocation
 - `model`: Azure deployment name, string. User-configured.
 - `mode`: closed set `{standard, agent, ralph}`.
 
-Do not add high-cardinality tags (`request_id`, user-supplied prompts, tenant IDs) — they balloon aggregation costs for no operator value. See §4 for the explicit "never" list.
+Do not add high-cardinality tags (`request_id`, user-supplied prompts, tenant IDs) -- they balloon aggregation costs for no operator value. See §4 for the explicit "never" list.
 
 ---
 
 ## 4. Cost event (stderr JSON, one line per completed LLM request)
 
-Emitted when `--metrics` or `--telemetry` or `AZ_TELEMETRY=1` is set and a real LLM call completes. Goes to stderr — **never stdout**.
+Emitted when `--metrics` or `--telemetry` or `AZ_TELEMETRY=1` is set and a real LLM call completes. Goes to stderr -- **never stdout**.
 
 ### 4.1 Schema
 
-Source: [`CostEvent.cs`](../../azureopenai-cli-v2/Observability/CostEvent.cs), priced by [`CostHook.cs`](../../azureopenai-cli-v2/Observability/CostHook.cs). Serialized through `AppJsonContext` source-gen — reflection-free under AOT.
+Source: [`CostEvent.cs`](../../azureopenai-cli-v2/Observability/CostEvent.cs), priced by [`CostHook.cs`](../../azureopenai-cli-v2/Observability/CostHook.cs). Serialized through `AppJsonContext` source-gen -- reflection-free under AOT.
 
 ```json
 {"ts":"2026-04-20T12:34:56.789Z","kind":"cost","model":"gpt-4o-mini","input_tokens":1200,"output_tokens":340,"usd":0.000384,"mode":"standard"}
@@ -135,14 +135,14 @@ Source: [`CostEvent.cs`](../../azureopenai-cli-v2/Observability/CostEvent.cs), p
 
 The CLI **never** emits the following, under any flag combination, under any condition:
 
-- ❌ API keys. `AZUREOPENAIAPI`, bearer tokens, Entra client secrets — never tagged, never attributed, never in events, never in spans.
-- ❌ Endpoint URLs in full. `AZUREOPENAIENDPOINT` is not a span attribute. If we ever wanted host-level diagnostics we would add a `net.peer.name` attribute scrubbed to hostname only — that is a schema-bump event.
+- ❌ API keys. `AZUREOPENAIAPI`, bearer tokens, Entra client secrets -- never tagged, never attributed, never in events, never in spans.
+- ❌ Endpoint URLs in full. `AZUREOPENAIENDPOINT` is not a span attribute. If we ever wanted host-level diagnostics we would add a `net.peer.name` attribute scrubbed to hostname only -- that is a schema-bump event.
 - ❌ Prompts. The user's input text is never a span attribute, metric dimension, or cost-event field.
 - ❌ Completions. The model's output text is never a span attribute, metric dimension, or cost-event field.
 - ❌ Tool-call arguments or results. Ralph/agent tool invocations emit a count, not a payload.
 - ❌ Filesystem paths. `--file`/`--outfile` arguments are never emitted.
 - ❌ Process environment. No `ProcessStartInfo.EnvironmentVariables` dumping, no `/proc/self/environ` equivalent.
-- ❌ User identity. No `USER`, no `HOSTNAME`, no MAC address, no machine GUID, no stable install-level identifier. (OTel SDK *may* add `host.*` resource attributes — see §2.3. That is a known SDK behavior and users opting in accept it.)
+- ❌ User identity. No `USER`, no `HOSTNAME`, no MAC address, no machine GUID, no stable install-level identifier. (OTel SDK *may* add `host.*` resource attributes -- see §2.3. That is a known SDK behavior and users opting in accept it.)
 - ❌ Crash core dumps. Uncaught exceptions do not ship stack frames via telemetry.
 - ❌ Azure region / subscription IDs. Not inferred, not derived, not emitted.
 - ❌ Session IDs or conversation histories (ralph/agent).
@@ -151,7 +151,7 @@ This is Newman's list. He cares. Violating any entry here is a **hard rollback t
 
 ---
 
-## 6. Auditing — how a user proves the opt-in contract
+## 6. Auditing -- how a user proves the opt-in contract
 
 A user who wants to verify exactly what would leave their machine can do so without enabling an OTLP collector:
 
@@ -167,7 +167,7 @@ To inspect spans without a real collector, point OTLP at a local dump:
 OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4317 \
   az-ai-v2 --telemetry "hello"
 # Span payload arrives at whatever listener is bound to 4317. If nothing is
-# bound, the SDK drops silently — no network egress beyond loopback.
+# bound, the SDK drops silently -- no network egress beyond loopback.
 ```
 
 To confirm nothing egresses when telemetry is off:

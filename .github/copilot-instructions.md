@@ -12,31 +12,31 @@
 - 6 built-in tools: shell_exec, read_file, web_fetch, get_clipboard, get_datetime, delegate_task
 - Tool registry: `azureopenai-cli/Tools/ToolRegistry.cs`
 - User config: `azureopenai-cli/UserConfig.cs` (persists to `~/.azureopenai-cli.json`)
-- JSON source generators: `azureopenai-cli/JsonGenerationContext.cs` (`AppJsonContext` — AOT-compatible serialization)
+- JSON source generators: `azureopenai-cli/JsonGenerationContext.cs` (`AppJsonContext` -- AOT-compatible serialization)
 - Squad persona system: `azureopenai-cli/Squad/` (SquadConfig, SquadCoordinator, SquadInitializer, PersonaMemory)
 - Four modes: standard (single response), agent (tool-calling loop), Ralph mode (autonomous Wiggum loop), persona (squad member with persistent memory)
 
 ## Persona System (Squad)
-- Inspired by bradygaster/squad — AI team members with persistent memory
+- Inspired by bradygaster/squad -- AI team members with persistent memory
 - Config: `.squad.json` in project root (team, personas, routing rules)
-- Memory: `.squad/history/<name>.md` — per-persona, auto-managed, 32 KB cap
-- Decisions: `.squad/decisions.md` — shared log across all personas
+- Memory: `.squad/history/<name>.md` -- per-persona, auto-managed, 32 KB cap
+- Decisions: `.squad/decisions.md` -- shared log across all personas
 - 5 default personas: coder, reviewer, architect, writer, security
 - Routing: keyword-based scoring via SquadCoordinator (deterministic, zero-latency)
 - Flags: `--squad-init`, `--persona <name|auto>`, `--personas`
-- Zero new dependencies — built entirely with System.Text.Json
+- Zero new dependencies -- built entirely with System.Text.Json
 
 ## Key Conventions
 - All tool classes are `internal sealed class` implementing `IBuiltInTool`
 - Tools define their own JSON schema via `BinaryData ParametersSchema`
-- Tools use `TryGetProperty()` (not `GetProperty()`) for parameter access — graceful handling of missing fields
+- Tools use `TryGetProperty()` (not `GetProperty()`) for parameter access -- graceful handling of missing fields
 - Security-first: all tools validate inputs, block dangerous operations
-- Use `AppJsonContext` (in `JsonGenerationContext.cs`) for all new JSON serialization — required for AOT compatibility
-- Use `Azure.AI.OpenAI 2.1.0` (stable GA) — tool calling works correctly on this release; pre-release packages have been removed from the dependency set
-- Streaming via `CompleteChatStreamingAsync` — tool calls arrive as indexed fragments
+- Use `AppJsonContext` (in `JsonGenerationContext.cs`) for all new JSON serialization -- required for AOT compatibility
+- Use `Azure.AI.OpenAI 2.1.0` (stable GA) -- tool calling works correctly on this release; pre-release packages have been removed from the dependency set
+- Streaming via `CompleteChatStreamingAsync` -- tool calls arrive as indexed fragments
 - `ChatToolCall.CreateFunctionToolCall(id, name, BinaryData.FromString(args))` for tool call construction
 - Records for immutable data (`CliOptions`, `CliParseError`) defined in Program.cs
-- Use `ErrorAndExit()` helper for all fatal exit paths — consistent `[ERROR]` prefix on stderr + JSON-aware output. Do NOT duplicate inline error/exit patterns
+- Use `ErrorAndExit()` helper for all fatal exit paths -- consistent `[ERROR]` prefix on stderr + JSON-aware output. Do NOT duplicate inline error/exit patterns
 - `--raw` flag suppresses all formatting (spinner, newline, stderr). Use `isRaw` guard in any new output path
 - Shell substitution blocking: `ShellExecTool` rejects `$()`, backticks, `<()`, `>()`, `eval`, `exec`. Use `ArgumentList` (not `Arguments`) for OS-level escaping. New blocked patterns must have corresponding tests in `ToolHardeningTests`
 
@@ -46,22 +46,22 @@
 - Integration: `bash tests/integration_tests.sh`
 - Format: `dotnet format azure-openai-cli.sln --verify-no-changes`
 - Docker: `docker build -t azure-openai-cli:test .`
-- **Preflight (run before every code commit):** `make preflight` — see [`.github/skills/preflight.md`](skills/preflight.md). Non-negotiable for `.cs`/`.csproj`/`.sln`/workflow changes. Skipping this is how commit `180d64f` turned `main` red for five runs.
+- **Preflight (run before every code commit):** `make preflight` -- see [`.github/skills/preflight.md`](skills/preflight.md). Non-negotiable for `.cs`/`.csproj`/`.sln`/workflow changes. Skipping this is how commit `180d64f` turned `main` red for five runs.
 
 ## Skills
-- [`preflight`](skills/preflight.md) — format + build + test gates before commit
-- [`commit`](skills/commit.md) — Conventional Commits, Copilot co-author trailer, signing rules
-- [`ci-triage`](skills/ci-triage.md) — diagnosing and fix-forwarding a red CI run
+- [`preflight`](skills/preflight.md) -- format + build + test gates before commit
+- [`commit`](skills/commit.md) -- Conventional Commits, Copilot co-author trailer, signing rules
+- [`ci-triage`](skills/ci-triage.md) -- diagnosing and fix-forwarding a red CI run
 
 ## Environment Variables
-- `AZUREOPENAIENDPOINT` — Azure OpenAI endpoint URL (required)
-- `AZUREOPENAIAPI` — API key (required, note: not "KEY")
-- `AZUREOPENAIMODEL` — Default model deployment name (comma-separated for multi-model)
-- `RALPH_DEPTH` — Subagent recursion depth (0-3, set automatically by delegate_task)
+- `AZUREOPENAIENDPOINT` -- Azure OpenAI endpoint URL (required)
+- `AZUREOPENAIAPI` -- API key (required, note: not "KEY")
+- `AZUREOPENAIMODEL` -- Default model deployment name (comma-separated for multi-model)
+- `RALPH_DEPTH` -- Subagent recursion depth (0-3, set automatically by delegate_task)
 
 ## File Structure Rules
 - New tools go in `azureopenai-cli/Tools/` and must be registered in `ToolRegistry.Create()`
-- Squad system files go in `azureopenai-cli/Squad/` — persona config, routing, memory, initialization
+- Squad system files go in `azureopenai-cli/Squad/` -- persona config, routing, memory, initialization
 - Tests go in `tests/AzureOpenAI_CLI.Tests/` using xUnit
 - Integration tests go in `tests/integration_tests.sh` using bash assertions
 - Feature proposals go in `docs/proposals/FR-NNN-*.md`
@@ -91,6 +91,6 @@
 
 ## Agent Archetypes 🤖
 
-This project uses [GitHub Copilot custom agents](https://gh.io/customagents/config) — specialized AI personas defined in `.github/agents/`. The **main cast** of five drives the core build-ship loop: **Costanza** (product), **Kramer** (engineering), **Elaine** (docs), **Jerry** (DevOps), and **Newman** (security). A bench of **+20 supporting players** covers executive PM, release, marketing, QA, legal, FinOps, integrations, DevRel, SRE, prompt engineering, perf, accessibility, competitive analysis, speaking, AI ethics, i18n, UX, process, style gating, and red-team/chaos — **25 agents total**.
+This project uses [GitHub Copilot custom agents](https://gh.io/customagents/config) -- specialized AI personas defined in `.github/agents/`. The **main cast** of five drives the core build-ship loop: **Costanza** (product), **Kramer** (engineering), **Elaine** (docs), **Jerry** (DevOps), and **Newman** (security). A bench of **+20 supporting players** covers executive PM, release, marketing, QA, legal, FinOps, integrations, DevRel, SRE, prompt engineering, perf, accessibility, competitive analysis, speaking, AI ethics, i18n, UX, process, style gating, and red-team/chaos -- **25 agents total**.
 
 See [`AGENTS.md`](../AGENTS.md) for the full roster, per-agent capsule bios, and the end-to-end workflow pipeline (Planning → Design → Implementation → Testing → Hardening → Merge Gates → Release → Community → Operations). `AGENTS.md` is canonical; this file just points there.

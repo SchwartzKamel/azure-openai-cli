@@ -2,7 +2,7 @@
 
 **Run when CI is red on `main` or on a PR.** Goal: diagnose in under 5 minutes, fix forward within the hour.
 
-## Step 1 — find the failing run
+## Step 1 -- find the failing run
 
 ```bash
 gh run list --branch main --limit 5 --json databaseId,conclusion,displayTitle,workflowName
@@ -10,7 +10,7 @@ gh run list --branch main --limit 5 --json databaseId,conclusion,displayTitle,wo
 
 Or from an MCP session: `github-mcp-server-actions_list` with `workflow_runs_filter.status=completed`.
 
-## Step 2 — pull failed-job logs
+## Step 2 -- pull failed-job logs
 
 ```bash
 gh run view <run-id> --log-failed | tail -200
@@ -18,11 +18,11 @@ gh run view <run-id> --log-failed | tail -200
 
 Or: `github-mcp-server-get_job_logs` with `failed_only=true`, `return_content=true`, `tail_lines=200`.
 
-## Step 3 — classify the failure
+## Step 3 -- classify the failure
 
 | Signature | Class | Owner |
 |-----------|-------|-------|
-| `error WHITESPACE: Fix whitespace formatting` | Style — **preflight** was skipped | The Soup Nazi |
+| `error WHITESPACE: Fix whitespace formatting` | Style -- **preflight** was skipped | The Soup Nazi |
 | `error CS\d+:` (compile error) | Build break | Kramer |
 | `Test ... failed` | Test regression | Kramer + Puddy |
 | Flaky test (passes on rerun) | Flake | Puddy (triage), not retry |
@@ -30,14 +30,14 @@ Or: `github-mcp-server-get_job_logs` with `failed_only=true`, `return_content=tr
 | `docker build` failed | Container / Dockerfile | Jerry |
 | Timeout / network | Infra flake | Retry once, then Frank |
 
-## Step 4 — fix forward
+## Step 4 -- fix forward
 
 - **Style**: run `dotnet format azure-openai-cli.sln`, commit as `style: dotnet format cleanup`, push. See [`preflight.md`](preflight.md).
 - **Build/test**: reproduce locally first. Never commit a "maybe fix" blind.
 - **Flake**: do NOT add a retry loop. Quarantine the test with an `[Trait("Flaky", "true")]` and file a follow-up with repro steps. Consult Puddy.
 - **Security**: bump the dep; if no upgrade path exists, open an issue and tag Newman.
 
-## Step 5 — verify the fix
+## Step 5 -- verify the fix
 
 ```bash
 # After push:
@@ -46,7 +46,7 @@ gh run list --branch main --limit 1 --json conclusion,status,displayTitle
 
 Wait for `conclusion: success` before claiming victory. "It built locally" is not a green CI run.
 
-## Anti-patterns — do not do these
+## Anti-patterns -- do not do these
 
 - **Disabling the failing check** to unblock a push. If the check is wrong, fix the check; don't mute it.
 - **Rerunning the job hoping it passes.** That's flake denial.

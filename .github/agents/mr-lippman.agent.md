@@ -23,11 +23,11 @@ Focus areas:
   - Docs updated (README version refs, migration notes)
   - SBOM generated and attached; image digests recorded
   - Tag created from the release commit, signed where possible
-- Release-day coordination: sequence handoffs — Puddy signs off on QA, Newman on security, Jackie on licensing, Elaine on docs — before Lippman cuts the tag
+- Release-day coordination: sequence handoffs -- Puddy signs off on QA, Newman on security, Jackie on licensing, Elaine on docs -- before Lippman cuts the tag
 - Block releases with known regressions, missing notes, or unresolved license issues
 
 Standards:
-- No commit dumps in the CHANGELOG — every entry reads like prose a user can understand
+- No commit dumps in the CHANGELOG -- every entry reads like prose a user can understand
 - Breaking changes are called out loudly, with a migration path
 - Tag hygiene: semantic tags only, no retroactive tag moves, no force pushes to release branches
 

@@ -5,7 +5,7 @@
 > on `origin`.
 
 **Source of truth for the matrix:** `.github/workflows/release.yml`.
-If this runbook and the workflow disagree, the workflow wins — file a
+If this runbook and the workflow disagree, the workflow wins -- file a
 PR to sync this doc.
 
 **Post-v2.0.4 reality check:**
@@ -25,7 +25,7 @@ PR to sync this doc.
 |-----------|--------------|------------------------------------------------------------|
 | `VERSION` | `2.0.5`      | `azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj` `<Version>` |
 | `TAG`     | `v2.0.5`     | Git tag, annotated                                         |
-| `DATE`    | `2026-04-30` | `CHANGELOG.md` `[X.Y.Z] — DATE` header                     |
+| `DATE`    | `2026-04-30` | `CHANGELOG.md` `[X.Y.Z] -- DATE` header                     |
 
 SemVer: **patch** = hot-fixes / docs / dependency bumps, **minor** =
 backwards-compatible feature, **major** = breaking change to CLI flags,
@@ -36,23 +36,23 @@ config schema, or the persisted `~/.azureopenai-cli.json` contract.
 ## 1. Pre-flight checklist
 
 Run **in order**. Do not proceed past a red box. If any step fails,
-fix-forward on `main` — do **not** cut the tag and hope CI saves you.
+fix-forward on `main` -- do **not** cut the tag and hope CI saves you.
 
 ```bash
 # 1a. Working tree: clean, on main, up-to-date.
 git status
 git -c commit.gpgsign=false pull --rebase origin main
 
-# 1b. Format check — CI runs this with --verify-no-changes and will fail on drift.
+# 1b. Format check -- CI runs this with --verify-no-changes and will fail on drift.
 dotnet format azure-openai-cli.sln --verify-no-changes
 
-# 1c. Full v1 test suite — baseline 1025 tests.
+# 1c. Full v1 test suite -- baseline 1025 tests.
 dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity minimal
 
-# 1d. Full v2 test suite — baseline 485+ tests (grows each release).
+# 1d. Full v2 test suite -- baseline 485+ tests (grows each release).
 dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj --verbosity minimal
 
-# 1e. Binary smoke — build + confirm `--version --short` matches csproj.
+# 1e. Binary smoke -- build + confirm `--version --short` matches csproj.
 make publish-linux-x64
 ./artifacts/publish/linux-x64/az-ai-v2 --version --short
 #  ^ must print exactly `<csproj Version>\n` (≤ 10 bytes, trailing LF).
@@ -99,7 +99,7 @@ grep '<Version>' azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj
 
 Then edit `CHANGELOG.md` by hand:
 
-1. Insert a new `## [${VERSION}] — ${DATE}` section directly under
+1. Insert a new `## [${VERSION}] -- ${DATE}` section directly under
    `## [Unreleased]`.
 2. Move any `[Unreleased]` entries destined for this cut into the new
    section. Group by `Added` / `Changed` / `Fixed` / `Removed` /
@@ -114,7 +114,7 @@ Then edit `CHANGELOG.md` by hand:
 ```bash
 git add azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj CHANGELOG.md
 
-git -c commit.gpgsign=false commit -m "release: v${VERSION} — <one-line summary>
+git -c commit.gpgsign=false commit -m "release: v${VERSION} -- <one-line summary>
 
 <2-3 sentences of narrative; what shipped, why it matters. Mr. Lippman
 owns the longer release-body prose in docs/launch/; this is the commit
@@ -122,7 +122,7 @@ message, keep it tight.>
 
 Co-authored-by: Copilot <copilot@github.com>"
 
-git tag -a "${TAG}" -m "${TAG} — <one-line summary, same as commit subject>"
+git tag -a "${TAG}" -m "${TAG} -- <one-line summary, same as commit subject>"
 
 # Push commit BEFORE tag. If the tag lands before the commit, the
 # release workflow races and may build against a missing ref.
@@ -155,23 +155,23 @@ gh run watch "$RUN_ID"
 
 The `v2.*` tag path exercises three jobs in `release.yml`:
 
-1. **`build-binaries-v2`** — 4-leg matrix producing AOT single-file
+1. **`build-binaries-v2`** -- 4-leg matrix producing AOT single-file
    binaries, CycloneDX SBOMs, and SLSA build-provenance attestations:
    - `linux-x64` (ubuntu-latest)
    - `linux-musl-x64` (ubuntu-latest + musl toolchain)
    - `osx-arm64` (macos-14)
    - `win-x64` (windows-latest, PowerShell `Compress-Archive`)
-2. **`docker-publish-v2`** — builds `Dockerfile.v2`, pushes to
+2. **`docker-publish-v2`** -- builds `Dockerfile.v2`, pushes to
    `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:<version>` (plus
    `latest` on non-pre-releases), attests image provenance to Sigstore
    (logged to Rekor).
-3. **`release-v2`** — gated on both above; downloads all artifacts,
+3. **`release-v2`** -- gated on both above; downloads all artifacts,
    computes digests, creates the GitHub Release with auto-generated
    notes + SBOMs + binaries attached.
 
 > **Do not cross the streams.** The v1 jobs (`build-binaries`,
 > `docker-publish`, `release`) are `if`-gated on `v1.*` tags and
-> won't run for your `v2.*` tag. Confirm this in the run summary —
+> won't run for your `v2.*` tag. Confirm this in the run summary --
 > v1 jobs should show as "skipped", not "failed".
 
 ---
@@ -186,7 +186,7 @@ gh run rerun "$RUN_ID" --failed --repo SchwartzKamel/azure-openai-cli
 
 `--failed` preserves green legs (their artifacts are already uploaded
 and won't be rebuilt) and only reschedules failed/cancelled jobs. This
-is the first lever for transient flake — runner pool backlog, registry
+is the first lever for transient flake -- runner pool backlog, registry
 hiccup, actions/upload-artifact 5xx, `dotnet restore` network drop.
 
 ### 5.2 The `workflow_dispatch` HTTP 422 trap
@@ -207,9 +207,9 @@ in [`docs/launch/v2.0.2-publish-handoff.md`](../launch/v2.0.2-publish-handoff.md
 
 ### 5.3 Fix-forward re-tag (when a runner pool is wedged)
 
-When rerun-failed won't clear the backlog — a platform's runner pool
+When rerun-failed won't clear the backlog -- a platform's runner pool
 is persistently unavailable, or you've rerun twice and both times got
-stuck in `queued` — cut the next patch:
+stuck in `queued` -- cut the next patch:
 
 ```bash
 # 1. Fix the root cause on main (e.g., drop the flaky RID from the
@@ -223,11 +223,11 @@ Do **not** delete and re-push the broken tag. See §6 for the
 macos-runner escalation path, and [`macos-runner-triage.md`](macos-runner-triage.md)
 for the full macOS decision tree.
 
-### 5.4 Partial publish — Docker green, binaries red
+### 5.4 Partial publish -- Docker green, binaries red
 
 `docker-publish-v2` can succeed while `build-binaries-v2` has a leg
 still queued. GHCR will have the image but no GitHub Release exists
-yet (release-v2 needs both). That is **not a recovery emergency** —
+yet (release-v2 needs both). That is **not a recovery emergency** --
 the GHCR image is fine, published, attested. Let the binary leg
 finish; if it can't, fix-forward and the GHCR image for the new tag
 will supersede.
@@ -249,8 +249,8 @@ Quick summary of thresholds:
 | Elapsed in `queued` | Action                                                    |
 |---------------------|-----------------------------------------------------------|
 | < 30 min            | Wait. Normal.                                             |
-| 30–60 min           | Check githubstatus.com; note in `#release`; keep waiting. |
-| 60–90 min           | Post an explicit status comment on the release issue.     |
+| 30-60 min           | Check githubstatus.com; note in `#release`; keep waiting. |
+| 60-90 min           | Post an explicit status comment on the release issue.     |
 | 90 min              | `gh run rerun $RUN_ID --failed` (cancel first if needed). |
 | 2h                  | Open a GitHub Support ticket.                             |
 | Two cycles in a row | Consider a matrix cut (§5.3 + macos-runner-triage.md §5). |
@@ -273,7 +273,7 @@ gh release view "$TAG" --json assets --jq '.assets[].name' | sort
 #   az-ai-v2-${VERSION}-osx-arm64.tar.gz        + .cdx.json
 #   az-ai-v2-${VERSION}-win-x64.zip             + .cdx.json
 
-# 7b. Binary attestations — SLSA provenance verified against the repo.
+# 7b. Binary attestations -- SLSA provenance verified against the repo.
 gh attestation verify \
   --repo SchwartzKamel/azure-openai-cli \
   "az-ai-v2-${VERSION}-linux-x64.tar.gz"
@@ -302,7 +302,7 @@ assets and update:
 - `packaging/homebrew/Formula/az-ai.rb` (rolling formula, always
   points at latest)
 - `packaging/homebrew/Formula/az-ai-v2@${VERSION}.rb` (new sibling
-  formula, pinned to this release — copy from the previous `@X.Y.Z`
+  formula, pinned to this release -- copy from the previous `@X.Y.Z`
   formula and update `url`, `sha256`, and `version`)
 - `packaging/nix/flake.nix` (SRI-format SHA-256, `sha256-<base64>`)
 - `packaging/scoop/az-ai.json` (straight hex SHA-256, `win-x64` only)
@@ -344,17 +344,17 @@ is the canonical template.
 
 ## 9. Post-publish handoffs
 
-- **Bob Sacamano** — bump Homebrew tap + Scoop bucket + Nix flake
+- **Bob Sacamano** -- bump Homebrew tap + Scoop bucket + Nix flake
   consumers. Bob owns the downstream distribution fan-out once the
   manifests are updated.
-- **Keith Hernandez** — refresh the demo-gif + social snippets if the
+- **Keith Hernandez** -- refresh the demo-gif + social snippets if the
   release ships user-visible behavior. Skip for pure infra/docs
   releases.
-- **Mr. Lippman** — publish the long-form release narrative to
+- **Mr. Lippman** -- publish the long-form release narrative to
   `docs/launch/v${VERSION}-release-body.md` (if minor or major) and
   the GitHub Discussion announcement. Keep the GitHub Release notes
   auto-generated; the prose lives in `docs/launch/`.
-- **CHANGELOG** — confirm `[Unreleased]` is reset to a bare header
+- **CHANGELOG** -- confirm `[Unreleased]` is reset to a bare header
   and the new section is populated.
 
 ---
@@ -389,7 +389,7 @@ docker buildx imagetools create \
   ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:${PREV}
 
 # The ${VERSION} tag stays where it is (digest-pinned, attested);
-# we do not delete GHCR tags that have attestations — that would
+# we do not delete GHCR tags that have attestations -- that would
 # break Sigstore verification for any user who already pulled.
 ```
 
@@ -410,7 +410,7 @@ already on the prior version until they `nix flake update`.
 - CHANGELOG: add a `### Deprecated` entry to `[Unreleased]` naming the
   broken version and the replacement.
 - Release notes on the broken tag: edit to prepend a bold
-  "**⚠️ DEPRECATED — use v${PREV} or v${NEXT}**" header with a link to
+  "**⚠️ DEPRECATED -- use v${PREV} or v${NEXT}**" header with a link to
   the postmortem under `docs/launch/`.
 - Open a follow-up postmortem in `docs/launch/v${VERSION}-postmortem.md`
   following the template of existing `v2.0.x-release-attempt-diagnostic.md`
@@ -446,8 +446,8 @@ already on the prior version until they `nix flake update`.
 - [ ] If this release cut a platform from the matrix, update
       `docs/runbooks/macos-runner-triage.md` §1 and the "two cycles"
       example in §5.
-- [ ] `docs/launch/` — file the release-body (Lippman) and any demo
+- [ ] `docs/launch/` -- file the release-body (Lippman) and any demo
       refresh (Keith).
 
-> "We're going to press." — and we want to go to press with something
+> "We're going to press." -- and we want to go to press with something
 > that actually runs.

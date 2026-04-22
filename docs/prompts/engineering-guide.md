@@ -1,10 +1,10 @@
 # Prompt engineering guide
 
 > *"A prompt is not a pep talk. It is a score. If you find yourself writing
-> 'please' three times, you are not prompting — you are negotiating. Rewrite
-> it."* — Maestro
+> 'please' three times, you are not prompting -- you are negotiating. Rewrite
+> it."* -- Maestro
 
-**Audience:** contributors editing any prompt that ships in this CLI —
+**Audience:** contributors editing any prompt that ships in this CLI --
 persona `SystemPrompt` strings in `SquadInitializer.cs`, `DEFAULT_SYSTEM_PROMPT`
 and `SAFETY_CLAUSE` in `Program.cs`, the Ralph overlay in
 `RalphWorkflow.cs`, and any future tool `[Description]` copy.
@@ -25,7 +25,7 @@ thorough and detailed." The former is a contract; the latter is a wish.
 **Good:**
 ```
 Output exactly these sections, in order:
-1. Summary (one paragraph, 2–4 sentences)
+1. Summary (one paragraph, 2-4 sentences)
 2. Findings (bulleted; each line starts with [Critical|High|Medium|Low])
 3. Recommended next step (one sentence)
 ```
@@ -88,7 +88,7 @@ Prefer <tiebreaker heuristic>.
 The `coder` persona ("expert software engineer", "follow existing project
 conventions", "prefer small focused changes") is a good example. The
 audit's L1 complaint about `writer` ("avoid details that rot quickly") is
-a bad example — vague, not testable, model interprets it inconsistently.
+a bad example -- vague, not testable, model interprets it inconsistently.
 
 ### 5. One prompt, one job
 
@@ -102,7 +102,7 @@ intentional.
 
 The `SAFETY_CLAUSE` is appended at the invocation layer. Persona prompts
 still bake in `PERSONA_SAFETY_LINE`. This is defense-in-depth, not
-redundancy — a future code path that forgets the downstream concat still
+redundancy -- a future code path that forgets the downstream concat still
 has the persona-level refusal. Write safety text as if the downstream
 layer might not exist.
 
@@ -110,7 +110,7 @@ layer might not exist.
 
 The same words at 0.2 and 0.8 are two different prompts. A prompt author
 who does not declare a temperature is shipping an unfinished score. See
-the [temperature cookbook](./temperature-cookbook.md) — pick a band, cite
+the [temperature cookbook](./temperature-cookbook.md) -- pick a band, cite
 it in the persona spec, test at the declared value.
 
 ### 8. Write for the harness you will have to pass
@@ -203,29 +203,29 @@ you, once the hook lands) for any change to a prompt string:
 - [ ] Safety line present where persona prompt is shipped standalone.
 - [ ] No contradictions in the instruction list (e.g. "concise" + "thorough" without tiebreaker).
 - [ ] Structure specified where the output is parsed; schema used where practical.
-- [ ] Few-shot examples, if any, are justified (and counted 0, 1, or 3; or 5–7 for voice).
+- [ ] Few-shot examples, if any, are justified (and counted 0, 1, or 3; or 5-7 for voice).
 - [ ] No exhortation-only lines ("be careful", "try hard", "do your best").
 - [ ] A/B methodology followed if the change is voice-motivated or safety-adjacent
       (per `docs/prompts/ab-testing.md`).
 - [ ] Change log entry added to the persona spec under `## Change log`.
 ```
 
-If you ticked every box and the harness (when it exists) is green — ship.
-If you ticked every box and the harness is red — the harness wins.
+If you ticked every box and the harness (when it exists) is green -- ship.
+If you ticked every box and the harness is red -- the harness wins.
 
 ## Further reading
 
-- [`change-management.md`](./change-management.md) — the contract every
+- [`change-management.md`](./change-management.md) -- the contract every
   persona prompt change must satisfy.
-- [`eval-harness.md`](./eval-harness.md) — fixture format and regression
+- [`eval-harness.md`](./eval-harness.md) -- fixture format and regression
   gates.
-- [`ab-testing.md`](./ab-testing.md) — how to compare two versions of a
+- [`ab-testing.md`](./ab-testing.md) -- how to compare two versions of a
   persona.
-- [`temperature-cookbook.md`](./temperature-cookbook.md) — per-task
+- [`temperature-cookbook.md`](./temperature-cookbook.md) -- per-task
   recommended temperatures.
-- [`safety-clause.md`](./safety-clause.md) — the clause, the layers, the
+- [`safety-clause.md`](./safety-clause.md) -- the clause, the layers, the
   override behavior.
-- [`personas/_template.md`](./personas/_template.md) — the copy-paste
+- [`personas/_template.md`](./personas/_template.md) -- the copy-paste
   skeleton for a new persona spec.
 
-— *Maestro*
+-- *Maestro*

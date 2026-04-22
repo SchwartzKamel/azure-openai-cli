@@ -1,6 +1,6 @@
-# ADR-003: Behavior-Driven Development in xUnit — Zero New Dependencies
+# ADR-003: Behavior-Driven Development in xUnit -- Zero New Dependencies
 
-- **Status**: Accepted — 2026-04-20 *(see "Later revision" note below)*
+- **Status**: Accepted -- 2026-04-20 *(see "Later revision" note below)*
 - **Deciders**: Core maintainers
 - **Related**: [`ADR-001-native-aot-recommended.md`](./ADR-001-native-aot-recommended.md),
   [`ADR-002-squad-persona-memory.md`](./ADR-002-squad-persona-memory.md),
@@ -11,19 +11,19 @@
 > files" figure in the Context section is the snapshot at time of acceptance.
 > Current reality at the tip of `main` is **1,510 xUnit tests** (1,025 v1 +
 > 485 v2) across two projects (`tests/AzureOpenAI_CLI.Tests/` and
-> `tests/AzureOpenAI_CLI.V2.Tests/`). The ADR's *decision* — BDD naming and
-> one-behaviour-per-test, zero new dependencies — is unchanged and in force.
+> `tests/AzureOpenAI_CLI.V2.Tests/`). The ADR's *decision* -- BDD naming and
+> one-behaviour-per-test, zero new dependencies -- is unchanged and in force.
 > For the live test inventory see [`docs/testing/README.md`](../testing/README.md).
 
 ## Context
 
 The xUnit test suite has grown to **925 passing tests** across 19 files and
-~8 000 lines. The sanity audit (companion document) surfaced 27 findings —
+~8 000 lines. The sanity audit (companion document) surfaced 27 findings --
 most concern infrastructure (env / CWD globals, year-boundary flakes), but
 several are structural:
 
 - Test names are **noun-phrased** (`Create_WithNull_ReturnsAllFiveTools`)
-  rather than **behaviour-phrased** — a failing test tells you what *method*
+  rather than **behaviour-phrased** -- a failing test tells you what *method*
   broke, not what *user-observable behaviour* regressed.
 - Arrange/Act/Assert is already the default, but nothing enforces **one
   behaviour per test**; `Empty_Args_ReturnsDefaultOptions` asserts 14
@@ -35,8 +35,8 @@ several are structural:
   reconstruct "what is this verifying" from the method body instead of
   the method name.
 
-Behaviour-Driven Development (BDD) — **Given / When / Then** narrative
-naming plus one-behaviour-per-test — is a well-known structural fix for
+Behaviour-Driven Development (BDD) -- **Given / When / Then** narrative
+naming plus one-behaviour-per-test -- is a well-known structural fix for
 those issues.
 
 The question is **how** to introduce it.
@@ -51,7 +51,7 @@ The question is **how** to introduce it.
    surface. This is irrelevant to test-only code but sets the cultural
    norm: prefer source-visible plumbing over framework magic.
 3. **Single-developer audience.** Tests are read and written only by
-   contributors to this repo — no QA / BA / product stakeholders consume
+   contributors to this repo -- no QA / BA / product stakeholders consume
    them. The biggest BDD benefit that non-dev stakeholders would get
    (natural-language feature files) has **no audience here**.
 
@@ -106,11 +106,11 @@ readable in test-runner output.
 
 Tests are tagged with:
 
-- `[Trait("type", "behavior")]` — end-to-end behaviour scenarios
+- `[Trait("type", "behavior")]` -- end-to-end behaviour scenarios
   (`Given / When / Then`, typically via the DSL).
-- `[Trait("type", "property")]` — parameterised `[Theory]` tests that
+- `[Trait("type", "property")]` -- parameterised `[Theory]` tests that
   explore input space (e.g., the current `CliParserPropertyTests`).
-- `[Trait("type", "unit")]` — narrow unit tests retained as-is.
+- `[Trait("type", "unit")]` -- narrow unit tests retained as-is.
 
 CI can run `dotnet test --filter 'type=behavior'` for smoke runs or
 `'type!=slow'` to exclude the ≥2.5s backoff-timing test flagged in the
@@ -144,7 +144,7 @@ public void Given_ValidTemperature_When_Parsing_Then_ValueIsAccepted(
   ADR-001 and ADR-002. No Reqnroll, no SpecFlow transitive closure.
 - **Behaviour is legible at the method-name level.** A failing test
   reads `Given_NoFilter_When_CreatingRegistry_Then_AllSixToolsAreRegistered`
-  instead of `Create_WithNull_ReturnsAllFiveTools` — the *what* and the
+  instead of `Create_WithNull_ReturnsAllFiveTools` -- the *what* and the
   *expected* are in the name.
 - **One behaviour per test** is enforced by structural pressure: the
   DSL's single `When` → single `Then` chain makes bundling awkward,
@@ -203,7 +203,7 @@ because:
 - Brings ≥5 transitive dependencies, all of which enter the `dotnet
   restore` cache and the supply-chain review surface.
 - Gherkin's raison d'être is **collaboration with non-developers**;
-  this CLI has none — tests are authored and read by the same people
+  this CLI has none -- tests are authored and read by the same people
   who write the production code.
 - Code generation interacts with our AOT-adjacent norms: we prefer
   plumbing you can read.
@@ -252,15 +252,15 @@ parsers use naming-only BDD and skip the fluent helper.
 
 ## References
 
-- [`docs/testing/test-sanity-audit.md`](../testing/test-sanity-audit.md) —
+- [`docs/testing/test-sanity-audit.md`](../testing/test-sanity-audit.md) --
   companion audit that motivated this ADR.
-- [`docs/testing/bdd-guide.md`](../testing/bdd-guide.md) — developer-
+- [`docs/testing/bdd-guide.md`](../testing/bdd-guide.md) -- developer-
   facing how-to for writing BDD tests in this repo.
-- [`tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs`](../../tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs) —
+- [`tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs`](../../tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs) --
   the DSL implementation.
-- [`tests/AzureOpenAI_CLI.Tests/Bdd/ScenarioTests.cs`](../../tests/AzureOpenAI_CLI.Tests/Bdd/ScenarioTests.cs) —
+- [`tests/AzureOpenAI_CLI.Tests/Bdd/ScenarioTests.cs`](../../tests/AzureOpenAI_CLI.Tests/Bdd/ScenarioTests.cs) --
   DSL self-tests (pass / fail, sync / async, exception capture).
-- [`ADR-001-native-aot-recommended.md`](./ADR-001-native-aot-recommended.md) —
+- [`ADR-001-native-aot-recommended.md`](./ADR-001-native-aot-recommended.md) --
   zero-dep discipline origin.
-- [`ADR-002-squad-persona-memory.md`](./ADR-002-squad-persona-memory.md) —
+- [`ADR-002-squad-persona-memory.md`](./ADR-002-squad-persona-memory.md) --
   precedent for a zero-dep feature implemented in-tree.

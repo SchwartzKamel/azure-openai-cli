@@ -1,6 +1,6 @@
-# Scoop bucket — `az-ai-v2`
+# Scoop bucket -- `az-ai-v2`
 
-> "Scoop bucket? I got a guy. It's handled." — Bob Sacamano
+> "Scoop bucket? I got a guy. It's handled." -- Bob Sacamano
 
 This directory holds the Scoop manifests pinned in-repo. The actual
 **bucket repo** is published out-of-tree at:
@@ -8,7 +8,7 @@ This directory holds the Scoop manifests pinned in-repo. The actual
 - **`SchwartzKamel/scoop-az-ai`** (added by users as `schwartzkamel`).
 
 Manifests in this directory are canonical; the bucket repo mirrors
-them. Never hand-edit the bucket — always round-trip through this
+them. Never hand-edit the bucket -- always round-trip through this
 repo.
 
 ## Layout
@@ -29,7 +29,7 @@ packaging/scoop/
 convention so users can pin with `@<version>` without a bespoke
 bucket layout.
 
-v2.0.3 has no manifest — the tag was cancelled at cutover. v2.0.5
+v2.0.3 has no manifest -- the tag was cancelled at cutover. v2.0.5
 fix-forward is queued; when it lands, copy `az-ai.json` to
 `versions/az-ai-v2@2.0.4.json` (already present) and bump the
 tracking manifest.
@@ -85,7 +85,7 @@ scoop checkver az-ai-v2 -u
 
 That re-computes `version`, `url`, and `hash` from the GitHub Releases
 RSS feed and the `.sbom.json` sidecar. Do **not** run `checkver`
-against the pinned `versions/*.json` files — those are frozen by
+against the pinned `versions/*.json` files -- those are frozen by
 design.
 
 ## Hash provenance
@@ -93,7 +93,7 @@ design.
 SHA256s embedded in each manifest come from the GitHub Release's
 `digests.txt` artifact (produced by the `Compute digests` step in
 `.github/workflows/release.yml`). `autoupdate.hash.url` pulls from
-`$url.sbom.json`, which CycloneDX populates at release time — the
+`$url.sbom.json`, which CycloneDX populates at release time -- the
 two must agree. If they disagree, **the release is broken, not the
 manifest**.
 
