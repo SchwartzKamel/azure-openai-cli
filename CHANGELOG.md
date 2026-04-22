@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 ### Changed
+- **perf(telemetry):** Lazy-init OTLP exporters — the OpenTelemetry SDK
+  pipeline (TracerProvider / MeterProvider + `AddOtlpExporter`) is now only
+  constructed when `OTEL_EXPORTER_OTLP_ENDPOINT` is set. With no collector
+  configured, `--otel` / `--metrics` / `--telemetry` previously paid
+  ~2.7 ms / ~4.2 ms of cold-start tax building a pipeline that exported to
+  nothing. Measured drops on the reference rig (`malachor`, AOT linux-x64,
+  N=50 per variant): `--otel` −2.74 ms mean (−20.7 %), `--metrics` −4.58 ms
+  (−31.1 %), `--otel --metrics` −5.28 ms (−34.5 %). The stderr FinOps
+  cost-event channel is independent and continues to fire whenever
+  `--metrics`/`--telemetry` is set. When an endpoint IS configured, eager
+  construction is preserved so first-span export latency stays predictable.
+  See `docs/perf/v2.0.5-baseline.md` §4.3 for the full before/after table.
+  ([bania-v2-01])
 ### Deprecated
 ### Removed
 ### Fixed
