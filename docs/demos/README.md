@@ -2,7 +2,7 @@
 
 > Picture it: a terminal, a curious newcomer, a GIF that loads in under a second and tells the whole story before the scroll wheel turns. That is what this folder is for.
 
-This directory holds **playable, rehearsed terminal demos** for `az-ai`. Each script under [`scripts/`](scripts/) is a self-contained bash file that types its own commands at a watchable pace, runs the real binary, and shows real output. Pair it with `asciinema` to record, and with `agg` (or `svg-term`) to export to GIF/SVG for the README and the site.
+This directory holds **playable, rehearsed terminal demos** for `az-ai-v2`. Each script under [`scripts/`](scripts/) is a self-contained bash file that types its own commands at a watchable pace, runs the real binary, and shows real output. Pair it with `asciinema` to record, and with `agg` (or `svg-term`) to export to GIF/SVG for the README and the site.
 
 ## Contents
 
@@ -30,7 +30,7 @@ cargo install --git https://github.com/asciinema/agg
 npm install -g svg-term-cli
 ```
 
-You also need a working `az-ai` on `PATH` (`make install` from the repo root) and a populated `.env` with valid Azure OpenAI credentials. Scripts 01 and 03 hit the live API; script 02 can be demoed offline by stubbing the pipe (see its inline comments).
+You also need a working `az-ai-v2` on `PATH` (install from a v2 release archive, `brew install schwartzkamel/tap/az-ai-v2`, or `scoop install schwartzkamel/az-ai-v2`) and a populated `.env` with valid Azure OpenAI credentials. Scripts 01 and 03 hit the live API; script 02 can be demoed offline by stubbing the pipe (see its inline comments).
 
 ## Recording workflow
 
@@ -41,7 +41,7 @@ All paths below are relative to the repository root.
 ```bash
 asciinema rec docs/demos/recordings/01-standard.cast \
   --cols 100 --rows 24 \
-  --title "az-ai — standard prompt" \
+  --title "az-ai-v2 — standard prompt" \
   --command "bash docs/demos/scripts/01-standard-prompt.sh"
 ```
 
@@ -99,7 +99,7 @@ Before you hit `Ctrl-D` to end a cast:
 
 - [ ] Terminal cleared (`clear`) immediately before `asciinema rec` — no leaking previous output.
 - [ ] Prompt is plain (`PS1='$ '`), no branch names, no hostnames, no emoji clutter.
-- [ ] `.env` loaded, `az-ai --version` works, network is up.
+- [ ] `.env` loaded, `az-ai-v2 --version` works, network is up.
 - [ ] No secrets in scrollback — `history -c` before recording if in doubt.
 - [ ] Window resized to match `--cols/--rows`. Mismatched sizes cause wrapping artifacts in the GIF.
 

@@ -10,7 +10,7 @@ The asset lives at [`img/its_alive_too.gif`](../../img/its_alive_too.gif) and is
 # 1. Record (narrow frame reads better on GitHub's mobile view)
 asciinema rec docs/demos/recordings/hero.cast \
   --cols 88 --rows 18 \
-  --title "az-ai — it's alive" \
+  --title "az-ai-v2 — it's alive" \
   --command "bash docs/demos/scripts/01-standard-prompt.sh"
 
 # 2. Render to GIF at a slight speed-up so the loop feels snappy

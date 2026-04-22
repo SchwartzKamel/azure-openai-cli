@@ -2,6 +2,9 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # 01-standard-prompt.sh — The Hero Shot
 #
+# [hook, 0:00–0:10] A blank terminal. One question. Streaming tokens land like
+# camels cresting a dune. That's the whole pitch: ask → receive, no ceremony.
+#
 # Picture it: Marrakech, 1998. A traveling correspondent, deadline at dawn,
 # a battered laptop balanced on a tea crate. He needs one sentence — just one —
 # that captures the smell of cardamom and the sound of a muezzin at first
@@ -35,12 +38,16 @@ clear
 sleep 0.5
 
 # --- The setup -------------------------------------------------------------
-type_prompt 'az-ai --version --short'
+# [narrator] "First, we confirm the binary. Bare semver, one line, no banner —
+# that's the scripting contract the ecosystem leans on."
+type_prompt 'az-ai-v2 --version --short'
 sleep 0.8
 
 # --- The question ----------------------------------------------------------
 # One prompt. No system message. No tools. The bare metal of the tool.
-type_prompt 'az-ai "In one sentence, explain why a 5ms cold start matters for a text expander."'
+# [narrator] "No flags. No system message. Default mode. Watch the spinner
+# resolve into streaming tokens."
+type_prompt 'az-ai-v2 "In one sentence, explain why a 5ms cold start matters for a text expander."'
 sleep 1.0
 
 # --- The tag ---------------------------------------------------------------

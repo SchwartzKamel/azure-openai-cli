@@ -2,6 +2,10 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # 03-agent-tool-calling.sh — The Model Reaches for a Shell
 #
+# [hook, 0:00–0:10] A strange directory. One natural-language question. The
+# model decides — on its own — to run a shell command, reads the output, and
+# writes back a summary. That's agent mode in ten seconds.
+#
 # Buenos Aires, autumn. A developer at a café, laptop open to a directory
 # she has never seen — a freelance job, a zip file, a ticking clock. She
 # doesn't want to grep. She doesn't want to `ls -R`. She wants to *ask the
@@ -36,6 +40,11 @@ type_prompt() {
 clear
 sleep 0.5
 
+# --- Preflight: verify the v2 binary is on PATH ----------------------------
+# [narrator] "Confirm the binary before we hand the model a shell."
+type_prompt 'az-ai-v2 --version --short'
+sleep 0.6
+
 # --- Stage the sandbox -----------------------------------------------------
 # Create a tiny, self-contained directory tree so the demo is identical on
 # every machine — no surprises from the user's $PWD.
@@ -51,6 +60,7 @@ mkdir -p "$DEMO_DIR"/src/{api,web,db} "$DEMO_DIR"/tests
 cd "$DEMO_DIR"
 
 # --- Show the stage --------------------------------------------------------
+# [narrator] "Fresh directory. Unfamiliar tree. We won't grep. We'll ask."
 type_prompt 'pwd'
 sleep 0.4
 type_prompt 'ls'
@@ -60,7 +70,8 @@ sleep 1.0
 # A question the model cannot answer without actually looking. That forces
 # it to reach for shell_exec. The phrasing is kept tight on purpose — agent
 # prompts reward specificity.
-type_prompt 'az-ai --agent "Count the number of regular files under the current directory, grouped by top-level folder. Use shell_exec. Report the totals as a short table."'
+# [narrator] "One prompt. The model picks the tool. Watch for shell_exec."
+type_prompt 'az-ai-v2 --agent "Count the number of regular files under the current directory, grouped by top-level folder. Use shell_exec. Report the totals as a short table."'
 sleep 1.5
 
 # --- Tag -------------------------------------------------------------------
