@@ -14,7 +14,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
-## [2.0.5] — 2026-04-22
+## [2.0.6] — 2026-04-22
+
+> **Fix-forward from cancelled v2.0.5.** The v2.0.5 release-workflow run
+> failed at CI integration-test because `tests/integration_tests.sh`
+> Gate 2 hardcoded `"2.0.2"` as the expected output of
+> `az-ai-v2 --version --short` — the same stale-literal bug class
+> (C-1 / C-2) that v2.0.5 existed to eliminate. All release legs
+> (`linux-x64`, `linux-musl-x64`, `osx-arm64`, `win-x64`,
+> `docker-publish-v2`) were skipped, so no v2.0.5 binaries, tarballs,
+> or GHCR tags were published. The `v2.0.5` git tag remains on
+> `origin` (per tag-immutability policy in
+> `docs/release/ghcr-tag-lifecycle.md`) but is a no-op marker — treat
+> it as cancelled, same status as v2.0.3. v2.0.6 carries everything
+> v2.0.5 intended to ship, plus the integration-test fix.
+>
+> **No user impact.** There was nothing to downgrade from — v2.0.5
+> never produced artifacts. Users on v2.0.4 go straight to v2.0.6.
+
+### Fixed
+- **Integration-test version assertion (fix-forward from v2.0.5).**
+  `tests/integration_tests.sh` Gate 2 now reads the expected version
+  string dynamically from `azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj`
+  `<Version>` instead of carrying a hardcoded `"2.0.2"` literal. The
+  test was itself an instance of the C-1 / C-2 drift pattern — a
+  stale constant that nobody rolled forward. Now it self-adjusts on
+  every bump and hard-fails if the shipped binary disagrees with the
+  csproj, matching the contract already enforced by
+  `VersionContractTests.cs`.
+
+### Notes
+- **v2.0.5 status:** cancelled (tag pushed, workflow failed at CI
+  gate, zero artifacts published). The `v2.0.5` tag is preserved on
+  `origin` for audit-trail continuity; it is not a released version.
+  Documented precedent: v2.0.3 was cancelled on the same lifecycle
+  pattern (see v2.0.4 banner).
+
+## [2.0.5] — 2026-04-22 (cancelled)
+
+> **Cancelled.** This tag was pushed on 2026-04-22 but the release
+> workflow failed at CI integration-test before any build or publish
+> step executed. No binaries, tarballs, Docker images, or GHCR tags
+> were produced. All substantive content from this entry shipped in
+> v2.0.6. Entry retained for audit continuity only.
 
 > **Version-string fix + 50+ marathon findings closed.** The headline
 > defect: v2.0.3 and v2.0.4 binaries shipped with `--version --short`

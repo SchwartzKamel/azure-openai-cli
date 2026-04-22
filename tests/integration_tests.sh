@@ -539,8 +539,21 @@ run_v2_tests() {
         fail "v2 --version matches 2.x.y" "got: $ver_out"
     fi
 
-    # ── 3. --version --short is exactly "2.0.2\n" (Gate 2) ────────────────
-    assert_equals "v2 --version --short is exactly 2.0.2 (Gate 2)" "2.0.2" "$V2_BIN" --version --short
+    # ── 3. --version --short matches csproj <Version> (Gate 2) ───────────
+    # Source of truth: azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj <Version>.
+    # Fixed in v2.0.6 — prior revision hardcoded "2.0.2" and caused the
+    # v2.0.5 release workflow to be gated on the very drift that v2.0.5
+    # set out to fix (audit findings C-1 / C-2). Do not re-hardcode.
+    local expected_ver csproj_path
+    csproj_path="$(git rev-parse --show-toplevel 2>/dev/null || pwd)/azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj"
+    expected_ver=$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' "$csproj_path" | head -1)
+    if [[ -z "$expected_ver" ]]; then
+        fail "v2 --version --short matches csproj <Version> (Gate 2)" \
+             "could not parse <Version> from csproj"
+    else
+        assert_equals "v2 --version --short matches csproj <Version> (Gate 2)" \
+            "$expected_ver" "$V2_BIN" --version --short
+    fi
 
     # ── 4. --completions bash ─────────────────────────────────────────────
     assert_exit_code "v2 --completions bash exits 0" 0 "$V2_BIN" --completions bash
