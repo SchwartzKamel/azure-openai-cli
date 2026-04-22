@@ -82,7 +82,7 @@ Accepted types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
 If Copilot, Claude, or any other assistant helped write the change, add the
 trailer -- no exceptions, this is how we trace provenance:
 
-```
+```text
 feat(v2): add --estimate cost preview for chat
 
 Surfaces the FR-015 rate card before the request is sent so

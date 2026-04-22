@@ -203,6 +203,7 @@ USER appuser
 ```
 
 The process cannot:
+
 - Bind to privileged ports (< 1024).
 - Modify system files or install packages.
 - Access other users' files.
@@ -326,7 +327,7 @@ The CLI sends requests with bounded parameters:
 
 User preferences are stored in a JSON file at:
 
-```
+```text
 ~/.azureopenai-cli.json
 ```
 
@@ -400,7 +401,7 @@ a shared log surface when the hot path is working correctly.
 All communication with Azure OpenAI endpoints uses HTTPS (TLS 1.2+). The Azure
 SDK enforces this -- plain HTTP endpoints are rejected.
 
-```
+```text
 AZUREOPENAIENDPOINT=https://your-resource.openai.azure.com/
                     ^^^^^^
                     HTTPS is required
@@ -431,7 +432,7 @@ public internet.
 The container only needs outbound HTTPS (port 443) to your Azure OpenAI endpoint.
 In firewall-restricted environments, allowlist:
 
-```
+```text
 *.openai.azure.com:443
 ```
 
@@ -440,6 +441,7 @@ In firewall-restricted environments, allowlist:
 ## 7. Dependency Security
 
 > **Canonical references for this section:**
+>
 > - [`docs/security/sbom.md`](docs/security/sbom.md) -- CycloneDX SBOM generation, storage, freshness policy.
 > - [`docs/security/supply-chain.md`](docs/security/supply-chain.md) -- NuGet pinning, feed trust, SLSA provenance.
 > - [`docs/security/scanners.md`](docs/security/scanners.md) -- Trivy (CI gate) vs Grype (local convenience).
@@ -697,7 +699,7 @@ Use this checklist when deploying or operating the Azure OpenAI CLI:
 
 Blocked path prefixes:
 
-```
+```text
 /etc/shadow
 /etc/passwd
 /etc/sudoers
@@ -1003,7 +1005,7 @@ from tool outputs:
 
 ### Defense-in-Depth Summary
 
-```
+```text
 ┌──────────────────────────────────────────────┐
 │  CLI Argument Parsing                        │
 │  • --max-iterations capped at 1-50           │

@@ -45,6 +45,7 @@ az-ai --set-model gpt-4o           # Have to switch back
 ```
 
 Compare this to every other multi-model CLI tool:
+
 ```bash
 # What it should look like:
 az-ai --model mini "Quick question"    # One-off, doesn't change default

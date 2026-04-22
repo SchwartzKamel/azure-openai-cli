@@ -9,6 +9,7 @@
 We benchmark `az-ai` (this project) against 12 CLI tools that either serve adjacent use cases (terminal AI chat, text-injection, automation, agentic coding) or represent the 2025-2026 entrants that reshape the category.
 
 Methodology:
+
 - Neutral sources preferred (GitHub READMEs/releases, DeepWiki, independent 2026 comparison posts).
 - Vendor pricing pages cross-checked against third-party rate cards.
 - We call out archived/abandoned projects explicitly.
@@ -38,32 +39,41 @@ Methodology:
 ## 3. Research Question Answers
 
 ### Q1 -- Cold start winner
+
 **az-ai: 10.73 ms p50** (measured, linux-x64, `--help`, N=50, v2.0.6 on laptop reference rig -- see [`docs/perf/v2.0.5-baseline.md`](./perf/v2.0.5-baseline.md)). Nearest competitors: Rust single-binaries like `aichat` and Go binaries (`mods`/`crush`/`fabric`) land in the 30-150 ms range; Python tools (sgpt, llm, chatblade) are 300-1000 ms due to interpreter startup [^8]. Node tools (Gemini CLI, gh copilot) are 200-500 ms.
 
 ### Q2 -- AOT / single-binary / zero-Python
+
 az-ai, aichat, mods/crush, fabric, ollama, llama.cpp, Codex CLI, Claude Code. **Not** AOT: sgpt, llm, chatblade, gh copilot cli (Node), Azure AI CLI (Python).
 
 ### Q3 -- Azure OpenAI support
+
 **First-class, only target:** az-ai. **Via OpenAI-compatible base URL:** aichat, mods/crush, fabric, sgpt, llm (plugin). **None:** gh copilot cli, Codex CLI, Gemini CLI, Claude Code (use their own providers), ollama (local), chatblade.
 
 ### Q4 -- Espanso / text-injection
+
 **First-class (`--raw` mode, documented integration):** az-ai [^12]. Others can be shoehorned via stdout parsing but have startup cost and spinner/ANSI output that needs stripping. **This is our sharpest moat.**
 
 ### Q5 -- Tool-calling / agent quality
+
 Tiered:
+
 - **Tier 1 (mature, agent teams, sandbox):** Claude Code, Codex CLI, gh copilot cli.
 - **Tier 2 (solid single-agent + MCP):** aichat, crush, fabric, ollama+MCP, gemini-cli.
 - **Tier 3 (agent loop, smaller toolset):** **az-ai** (`--agent`, `--ralph` autonomous loop, `--persona`), llm (via toolbox plugins), sgpt.
 - **Tier 4:** chatblade (none), Azure AI CLI (none).
 
 ### Q6 -- Persona / persistent memory
+
 **Built-in persistent, per-persona memory:** az-ai (`.squad/`). **Via plugins or sessions:** llm (logs), aichat (roles+sessions), fabric (sessions). **Repo-level memory:** gh copilot, Claude Code.
 **az-ai's Squad pattern is genuinely differentiated** -- named teammates with scoped tools/system prompts and disk-persistent memory is not standard elsewhere.
 
 ### Q7 -- MCP state of the art (2026)
+
 MCP is now the *de facto* standard. All major enterprise CLIs shipped it in 2025-26: Claude Code, Codex CLI, gh copilot, Gemini CLI, crush, aichat, fabric, ollama-via-bridge. **az-ai not supporting MCP is now a competitive liability** -- see FR-013.
 
 ### Q8 -- User complaints (per-tool)
+
 - **sgpt / llm / chatblade:** Python cold start, dependency resolution delays [^8].
 - **mods:** officially archived; community frustration with migration to crush.
 - **gh copilot cli:** premium-request quota confusion [^4]; mandatory telemetry; requires paid Copilot seat.
@@ -73,7 +83,9 @@ MCP is now the *de facto* standard. All major enterprise CLIs shipped it in 2025
 - **aichat:** config complexity, RAG setup friction.
 
 ### Q9 -- Pricing model
+
 All CLI tools themselves are **free/OSS** *except*:
+
 - **GitHub Copilot CLI** -- requires Copilot seat ($10-$39/user/mo) [^4].
 - **Claude Code** -- Pro $20/mo, Max $100+/mo (no free tier) [^10].
 - **Codex CLI** -- OSS CLI but most practical usage is billed through ChatGPT Plus ($20/mo) quota.
@@ -81,6 +93,7 @@ All CLI tools themselves are **free/OSS** *except*:
 **Verdict for Morty:** "Free CLI + user pays model" is the dominant model. Charging for the CLI itself would put us on an island with the two premium entrants -- and they bundle a first-party model. We have no model to bundle, so **free is the right play**. Revenue opportunity lies *elsewhere* (managed deployment templates, enterprise support, regulated-industry consulting).
 
 ### Q10 -- FedRAMP / SOC2 / enterprise
+
 - **Azure OpenAI in Azure Government**: FedRAMP High + DoD IL5 (Aug 2024 onward), SOC2 inherited [^13] [^14].
 - **OpenAI (direct), Anthropic, Google Vertex**: various partner-cloud FedRAMP paths, but Azure OpenAI has the earliest and broadest US-Gov authorization.
 - **CLI tools targeting these**: az-ai is the only single-binary chat CLI that can target Azure Gov endpoints *today* with zero runtime deps (critical for locked-down workstations where installing Python/Node is forbidden).
@@ -137,19 +150,19 @@ Plus fixed subscription costs (CLI-licence):
 
 ## Footnotes (Sources)
 
-[^1]: TheR1D/shell_gpt releases -- https://github.com/TheR1D/shell_gpt/releases ; PyPI https://pypi.org/project/shell-gpt/
-[^2]: simonw/llm releases -- https://github.com/simonw/llm/releases ; https://simonwillison.net/2025/May/27/llm-tools/ ; DeepWiki plugin ecosystem https://deepwiki.com/simonw/llm/4.1-plugin-ecosystem
-[^3]: sigoden/aichat README -- https://github.com/sigoden/aichat/blob/main/README.md ; docs.rs/crate/aichat
-[^4]: GitHub Blog -- "GitHub Copilot CLI is now generally available" (2026-02-25) https://github.blog/changelog/2026-02-25-github-copilot-cli-is-now-generally-available/ ; pricing https://devtoolsreview.com/pricing/copilot-pricing/
-[^5]: charmbracelet/mods archived 2026-03-09 -- https://github.com/charmbracelet/mods ; successor https://github.com/charmbracelet/crush ; MCP impl https://deepwiki.com/charmbracelet/mods/5.1-mcp-tool-integration
-[^6]: danielmiessler/fabric -- https://pkg.go.dev/github.com/danielmiessler/fabric/cli ; https://deepwiki.com/danielmiessler/fabric/3.4-creating-custom-patterns
-[^7]: npiv/chatblade -- archival notice, https://github.com/npiv/chatblade ; PyPI 0.7.0 https://pypi.org/project/chatblade/
-[^8]: "AI in the Terminal: My Experience with Shell-GPT" -- https://pinnsg.com/ai-in-the-terminal-my-experience-with-shell-gpt/ ; TheR1D/shell_gpt Ollama wiki "not optimized for local models"
-[^9]: mcp-client-for-ollama (ollmcp) -- https://github.com/jonigl/mcp-client-for-ollama ; https://www.ollama.com/blog/connect-local-llm-mcp-server
-[^10]: 2026 terminal-agent comparisons -- https://gocodelab.com/en/blog/en-codex-cli-vs-claude-code-vs-gemini-cli-terminal-agent-comparison-2026 ; https://tokencalculator.com/blog/best-ai-ide-cli-tools-april-2026-claude-code-wins ; https://dev.to/rahulxsingh/claude-code-vs-codex-cli-vs-gemini-cli-which-ai-terminal-agent-wins-in-2026-55f5
-[^11]: az cognitiveservices reference -- https://learn.microsoft.com/en-us/cli/azure/cognitiveservices?view=azure-cli-latest
+[^1]: TheR1D/shell_gpt releases -- <https://github.com/TheR1D/shell_gpt/releases> ; PyPI <https://pypi.org/project/shell-gpt/>
+[^2]: simonw/llm releases -- <https://github.com/simonw/llm/releases> ; <https://simonwillison.net/2025/May/27/llm-tools/> ; DeepWiki plugin ecosystem <https://deepwiki.com/simonw/llm/4.1-plugin-ecosystem>
+[^3]: sigoden/aichat README -- <https://github.com/sigoden/aichat/blob/main/README.md> ; docs.rs/crate/aichat
+[^4]: GitHub Blog -- "GitHub Copilot CLI is now generally available" (2026-02-25) <https://github.blog/changelog/2026-02-25-github-copilot-cli-is-now-generally-available/> ; pricing <https://devtoolsreview.com/pricing/copilot-pricing/>
+[^5]: charmbracelet/mods archived 2026-03-09 -- <https://github.com/charmbracelet/mods> ; successor <https://github.com/charmbracelet/crush> ; MCP impl <https://deepwiki.com/charmbracelet/mods/5.1-mcp-tool-integration>
+[^6]: danielmiessler/fabric -- <https://pkg.go.dev/github.com/danielmiessler/fabric/cli> ; <https://deepwiki.com/danielmiessler/fabric/3.4-creating-custom-patterns>
+[^7]: npiv/chatblade -- archival notice, <https://github.com/npiv/chatblade> ; PyPI 0.7.0 <https://pypi.org/project/chatblade/>
+[^8]: "AI in the Terminal: My Experience with Shell-GPT" -- <https://pinnsg.com/ai-in-the-terminal-my-experience-with-shell-gpt/> ; TheR1D/shell_gpt Ollama wiki "not optimized for local models"
+[^9]: mcp-client-for-ollama (ollmcp) -- <https://github.com/jonigl/mcp-client-for-ollama> ; <https://www.ollama.com/blog/connect-local-llm-mcp-server>
+[^10]: 2026 terminal-agent comparisons -- <https://gocodelab.com/en/blog/en-codex-cli-vs-claude-code-vs-gemini-cli-terminal-agent-comparison-2026> ; <https://tokencalculator.com/blog/best-ai-ide-cli-tools-april-2026-claude-code-wins> ; <https://dev.to/rahulxsingh/claude-code-vs-codex-cli-vs-gemini-cli-which-ai-terminal-agent-wins-in-2026-55f5>
+[^11]: az cognitiveservices reference -- <https://learn.microsoft.com/en-us/cli/azure/cognitiveservices?view=azure-cli-latest>
 [^12]: az-ai Espanso/AHK integration guide -- `docs/espanso-ahk-integration.md` in this repo.
-[^13]: Microsoft Azure OpenAI FedRAMP High -- https://fedscoop.com/microsoft-azure-openai-service-fedramp/ ; https://www.fedramp.gov/ai/
-[^14]: ChatGPT Enterprise / API FedRAMP reference -- https://help.openai.com/en/articles/20001070-chatgpt-enterprise-and-api-platform-for-fedramp
-[^15]: Azure OpenAI 2026 pricing -- https://inference.net/content/azure-openai-pricing-explained/ ; https://devtk.ai/en/blog/openai-api-pricing-guide-2026/
-[^16]: Anthropic / Google 2026 pricing -- https://devtk.ai/en/blog/claude-api-pricing-guide-2026/ ; https://intuitionlabs.ai/articles/ai-api-pricing-comparison-grok-gemini-openai-claude
+[^13]: Microsoft Azure OpenAI FedRAMP High -- <https://fedscoop.com/microsoft-azure-openai-service-fedramp/> ; <https://www.fedramp.gov/ai/>
+[^14]: ChatGPT Enterprise / API FedRAMP reference -- <https://help.openai.com/en/articles/20001070-chatgpt-enterprise-and-api-platform-for-fedramp>
+[^15]: Azure OpenAI 2026 pricing -- <https://inference.net/content/azure-openai-pricing-explained/> ; <https://devtk.ai/en/blog/openai-api-pricing-guide-2026/>
+[^16]: Anthropic / Google 2026 pricing -- <https://devtk.ai/en/blog/claude-api-pricing-guide-2026/> ; <https://intuitionlabs.ai/articles/ai-api-pricing-comparison-grok-gemini-openai-claude>

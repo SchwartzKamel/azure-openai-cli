@@ -34,7 +34,7 @@ The primary use case for this tool is Espanso/AHK text expansion -- a user types
 
 Here's the problem: **text expansion triggers are often repetitive.** A developer explaining Docker networking to three different colleagues fires the same prompt three times. A support engineer using `:ai:summarize-ticket` on similar tickets gets semantically identical responses. Every invocation pays the full network round-trip cost:
 
-```
+```text
 Prompt → DNS → TLS → Azure API server processing (~300-500ms) → Stream response → Inject text
 ```
 
@@ -59,13 +59,14 @@ There is **zero caching** anywhere in the pipeline today. Every invocation is a 
 A simple file-based cache with deterministic keys:
 
 > **As shipped:**
+>
 > - Linux/macOS: `$XDG_CACHE_HOME/azureopenai-cli/v1/<hash>.json`, falling back to `~/.cache/azureopenai-cli/v1/<hash>.json`.
 > - Windows: `%LOCALAPPDATA%\azureopenai-cli\v1\<hash>.json`.
 > - Unix permissions: **files `0600`, directory `0700`** (enforced via `File.SetUnixFileMode`). Windows relies on `%LOCALAPPDATA%` ACLs.
 > - Schema version `v1` is baked into the path so a future layout change can coexist without wiping user data.
 > - Tests override the directory via `AZ_CACHE_DIR` (undocumented internal hook -- not a user-facing knob).
 
-```
+```text
 ~/.cache/azureopenai-cli/
 ├── responses/
 │   ├── a3f2b8c1...json    # SHA256(model + prompt + temperature + system_prompt)
@@ -92,6 +93,7 @@ static string ComputeCacheKey(string model, string systemPrompt, string userProm
 ```
 
 **Why these fields:**
+
 - `model` -- different models give different responses
 - `systemPrompt` -- changes behavior fundamentally
 - `userPrompt` -- the actual query
@@ -170,6 +172,7 @@ if (!opts.NoCache && responseBuilder != null)
 > | `AZ_CACHE_TTL_HOURS` | Env-fallback TTL override. |
 >
 > **Originally proposed:** `--no-cache` (cache default-on, opt-out) and `--cache-clear`. Both were reconsidered:
+>
 > - Default-on was reverted to **default-off** so users who upgrade don't silently acquire a new on-disk artifact they didn't ask for. Opt-in is the safer default; Espanso power-users add `--cache` once to their trigger config.
 > - `--cache-clear` was **deferred** to a follow-up (see bottom of this doc). `rm -rf ~/.cache/azureopenai-cli/v1` is the current workaround and is documented in the release notes.
 
@@ -285,6 +288,7 @@ internal static class PromptCache
 ```
 
 Register in `JsonGenerationContext.cs`:
+
 ```csharp
 [JsonSerializable(typeof(CachedResponse))]
 ```
@@ -313,6 +317,7 @@ The cache only applies to **standard single-shot mode** (the Espanso/AHK primary
 | Works offline | No | Yes | **New capability** |
 
 For an Espanso user who fires 50 expansions/day with ~30% prompt repetition:
+
 - **15 cache hits/day × 497ms saved = 7.5 seconds/day** of eliminated latency
 - **15 hits × ~500 tokens = 7,500 tokens/day** of API cost savings
 - **Qualitative:** repeated triggers feel instant, building trust in the tool

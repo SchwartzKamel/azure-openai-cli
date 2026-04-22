@@ -29,7 +29,7 @@ ADR-006 rolled these concerns into its decision section. Every future provider w
 
 Every `docker run`, `docker-compose.yml`, documentation snippet, and CI fixture references a third-party image by SHA-256 digest:
 
-```
+```text
 nvcr.io/nim/nvidia/gemma-4-9b-it-nvfp4@sha256:<64-hex>
 ```
 

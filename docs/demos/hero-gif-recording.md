@@ -156,7 +156,7 @@ Checklist before commit:
       visible in any frame.
 - [ ] No shell history bleed (`history -c` done before record).
 - [ ] Final frame is a completed response, not mid-token.
-- [ ] Loops cleanly — no jarring cut back to `$ ` after three seconds of
+- [ ] Loops cleanly — no jarring cut back to `$` after three seconds of
       empty buffer.
 
 If any checklist item fails: redo §3.1–§3.3. Do not ship a partial-pass
@@ -183,7 +183,7 @@ go install github.com/charmbracelet/vhs@latest
 VHS tape template (save as `docs/demos/hero.tape`, do **not** commit unless
 the agg pipeline is retired):
 
-```
+```text
 Output img/its_alive_too.gif
 Set FontFamily "JetBrains Mono"
 Set FontSize 18
@@ -262,7 +262,7 @@ five minutes before a talk and just wants the one command.
 | Streaming looks jumpy                      | Azure round-trip > 500 ms. Record on a better link or cache the prompt result upstream (script-side stubbing). |
 | `agg` errors on `--font-family`            | Old agg (< 1.4.3). Upgrade: `cargo install --git https://github.com/asciinema/agg --force`. |
 | Colors look washed out                     | `--theme monokai` not applied — confirm the flag spelled correctly. |
-| Prompt shows `bash-5.2$` instead of `$ `   | `PS1` not exported before `asciinema rec`. Redo §3.1.    |
+| Prompt shows `bash-5.2$` instead of `$`   | `PS1` not exported before `asciinema rec`. Redo §3.1.    |
 | Hostname visible in a frame                | Your PS1 carried it in. Redo §3.1 — the `exec bash --noprofile --norc` step strips it. |
 
 ---

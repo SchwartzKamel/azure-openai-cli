@@ -10,7 +10,7 @@
 
 The v1.9.0-alpha.1 Native AOT binary throws at runtime when processing a response from a modern Azure OpenAI Responses-API endpoint (e.g. `gpt-5.4-nano`):
 
-```
+```text
 [ERROR] InvalidOperationException: Reflection-based serialization has been disabled for this application.
 Either use the source generator APIs or explicitly configure the 'JsonSerializerOptions.TypeInfoResolver' property.
 ```

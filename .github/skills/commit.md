@@ -11,7 +11,7 @@
 
 Conventional Commits, lowercase type, optional scope:
 
-```
+```text
 <type>(<scope>): <imperative subject, ≤72 chars>
 
 <body -- wrap at 72 cols. Explain the why, not the what.>
@@ -27,7 +27,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
 Every commit authored with Copilot assistance **must** carry:
 
-```
+```text
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 ```
 
@@ -61,7 +61,7 @@ Human contributors should sign normally.
 
 ## What a good commit looks like
 
-```
+```text
 feat(foundry): route Foundry models to services.ai.azure.com (ADR-005)
 
 Adds a 30-line FoundryAuthPolicy that swaps Authorization: Bearer for
@@ -74,7 +74,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
 ## What a bad commit looks like
 
-```
+```text
 updates
 ```
 

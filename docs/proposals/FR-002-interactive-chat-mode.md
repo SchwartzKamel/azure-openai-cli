@@ -21,6 +21,7 @@ az-ai "Now add error handling to it"
 The user has to re-paste the entire prior response, plus their new question, into a single prompt. This is the #1 reason developers abandon CLI AI tools and go back to ChatGPT's web interface -- because the web UI *remembers*.
 
 Today, every invocation:
+
 1. Spins up a new Docker container (~1-2s overhead)
 2. Creates a brand new Azure OpenAI client
 3. Sends exactly 2 messages: system prompt + user prompt
@@ -40,7 +41,7 @@ Add a `--chat` flag that launches an interactive session:
 az-ai --chat
 ```
 
-```
+```text
 Azure OpenAI CLI -- Interactive Mode (gpt-4o)
 Type /help for commands, /exit to quit.
 
@@ -55,6 +56,7 @@ AI: Here's the async version using aiofiles...
 ```
 
 **Implementation:**
+
 - Simple `while(true)` loop around `Console.ReadLine()`
 - Maintain a `List<ChatMessage>` that grows with each exchange
 - Reuse the same `ChatClient` instance (no re-authentication per turn)
@@ -119,6 +121,7 @@ To manage context windows properly, the tool will eventually need token counting
 ### Ctrl+C Handling
 
 The REPL must handle `SIGINT` (Ctrl+C) gracefully:
+
 - During streaming: cancel the current response, stay in the loop
 - At the prompt: exit cleanly (or require double Ctrl+C)
 
@@ -129,6 +132,7 @@ The REPL must handle `SIGINT` (Ctrl+C) gracefully:
 This is what separates a "query tool" from a "thinking partner." The entire value proposition of AI is iterative refinement -- and this tool currently makes that impossible.
 
 **The competitive gap is glaring:**
+
 - `aichat` has full REPL mode with session management
 - `sgpt` has `--repl` mode  
 - `mods` supports conversation continuations
@@ -141,6 +145,7 @@ Without this feature, we're asking users to do their exploratory work in ChatGPT
 ## Exit Criteria
 
 ### Phase 1
+
 - [ ] `az-ai --chat` launches an interactive REPL
 - [ ] Conversation context is maintained across turns
 - [ ] `/exit`, `/clear`, `/help`, `/model` slash commands work
@@ -149,12 +154,14 @@ Without this feature, we're asking users to do their exploratory work in ChatGPT
 - [ ] `Makefile` has a `chat` target with `-it` flags
 
 ### Phase 2
+
 - [ ] Sessions are auto-saved to `~/.azureopenai-cli/sessions/`
 - [ ] `--continue` resumes the most recent session
 - [ ] `--sessions` lists all saved sessions with timestamps
 - [ ] Sessions can be deleted with `--delete-session <id>`
 
 ### Phase 3
+
 - [ ] `/context` shows current token usage and capacity
 - [ ] Conversations exceeding context window are automatically trimmed
 - [ ] System prompt is always preserved

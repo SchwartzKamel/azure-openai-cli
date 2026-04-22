@@ -1,5 +1,8 @@
 # Livestream Checklist
 
+<!-- markdownlint-disable-file MD051 -->
+<!-- TOC anchors follow GitHub's slug algorithm (preserves double dashes); markdownlint's slug heuristic differs. Links verified against github.com render. -->
+
 > I'm Keith Hernandez. The stream starts when the chat sees a clean terminal, not when OBS says "live." This is the checklist we run before every episode -- Twitch, YouTube Live, LinkedIn Live, doesn't matter. Two copies: one on paper next to the keyboard, one pinned in the producer's tab.
 
 **Owner:** Keith Hernandez (DevRel)

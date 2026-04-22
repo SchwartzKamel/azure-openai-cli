@@ -99,7 +99,7 @@ dd if=/dev/urandom bs=1M count=2 2>/dev/null | az-ai "analyze this"
 
 **Expected output on stderr:**
 
-```
+```text
 Error: stdin input exceeds 1 MB limit.
 ```
 
@@ -142,7 +142,7 @@ az-ai "Explain DNS" 2>/dev/null
 
 After every standard-mode response, the CLI prints a token summary on **stderr** in the format:
 
-```
+```text
   [tokens: X→Y, Z total]
 ```
 
@@ -160,13 +160,13 @@ az-ai "What is 2+2?"
 
 **Stdout:**
 
-```
+```text
 2 + 2 = 4.
 ```
 
 **Stderr:**
 
-```
+```text
   [tokens: 28→8, 36 total]
 ```
 
@@ -343,7 +343,7 @@ az-ai -t 2.5 "anything"
 
 **Expected (stderr):**
 
-```
+```text
 [ERROR] Temperature must be between 0.0 and 2.0
 ```
 
@@ -357,7 +357,7 @@ az-ai --temperature
 
 **Expected (stderr):**
 
-```
+```text
 [ERROR] --temperature requires a numeric value (e.g., --temperature 0.7)
 ```
 
@@ -401,7 +401,7 @@ az-ai --max-tokens 0 "anything"
 
 **Expected (stderr):**
 
-```
+```text
 [ERROR] Max tokens must be between 1 and 128000
 ```
 
@@ -415,7 +415,7 @@ az-ai --max-tokens 999999 "anything"
 
 **Expected (stderr):**
 
-```
+```text
 [ERROR] Max tokens must be between 1 and 128000
 ```
 
@@ -429,7 +429,7 @@ az-ai --max-tokens abc "anything"
 
 **Expected (stderr):**
 
-```
+```text
 [ERROR] --max-tokens requires an integer value (e.g., --max-tokens 5000)
 ```
 
@@ -495,7 +495,7 @@ az-ai --system
 
 **Expected (stderr):**
 
-```
+```text
 [ERROR] --system requires a value (e.g., --system "You are a pirate")
 ```
 
@@ -586,7 +586,7 @@ az-ai --schema '{ not valid json' "anything"
 
 **Expected (stderr):**
 
-```
+```text
 [ERROR] Invalid JSON schema: ...
 ```
 
@@ -606,7 +606,7 @@ az-ai --config show
 
 **Look for the line:**
 
-```
+```text
   Timeout:       120s (default)
 ```
 
@@ -620,7 +620,7 @@ AZURE_TIMEOUT=10 az-ai "Write a 5000-word essay on quantum physics"
 
 **Stderr output:**
 
-```
+```text
 [ERROR] Request timed out. Increase AZURE_TIMEOUT (seconds) if needed.
 ```
 
@@ -712,7 +712,7 @@ python3 -c "print('A' * 33000)" | az-ai "analyze"
 
 **Expected (stderr):**
 
-```
+```text
 [ERROR] Prompt too long (33008 chars). Maximum allowed is 32000 chars.
 ```
 
@@ -761,7 +761,7 @@ The CLI automatically retries **transient API errors** with exponential backoff.
 
 During retries, a progress indicator appears on stderr:
 
-```
+```text
 ⏳ Retry 1/3 in 1s...
 ⏳ Retry 2/3 in 2s...
 ⏳ Retry 3/3 in 4s...

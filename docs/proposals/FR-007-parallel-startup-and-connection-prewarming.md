@@ -11,7 +11,7 @@
 
 Every invocation follows a strictly sequential startup path. Here's what happens between the user pressing Enter and the first API byte leaving the machine, annotated with the code locations:
 
-```
+```text
 Program.Main entered
   │
   ├─ [1] ParseCliFlags (line 59)                          ~1ms
@@ -153,7 +153,7 @@ This saves the slower of the two (~5-10ms for DotEnv, ~2-5ms for UserConfig file
 
 ## Architecture Diagram
 
-```
+```text
 BEFORE (sequential):
   ┌─────────┐  ┌───────────┐  ┌──────────┐  ┌─────────────┐  ┌──────────────────┐
   │ DotEnv  │→│ UserConfig │→│ Parse    │→│ Create      │→│ CompleteChatStream │

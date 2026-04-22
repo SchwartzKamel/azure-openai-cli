@@ -81,7 +81,7 @@ Note that the OTLP exporter's managed DLL is already modest on disk (156 KB mana
 
 **Safety audit** -- every v2 catch site:
 
-```
+```text
 grep -n 'ex\.StackTrace\|Console\.Error.*ex\b' azureopenai-cli-v2/**/*.cs
 ```
 
@@ -91,7 +91,7 @@ returned **zero matches**. All 9 `catch (Exception ex)` sites in v2 emit only `e
 
 Baseline build emits, unchanged by any lever:
 
-```
+```text
 warning IL2104: Assembly 'Azure.AI.OpenAI' produced trim warnings.
 warning IL3053: Assembly 'Azure.AI.OpenAI' produced AOT analysis warnings.
 ILC: Method 'Azure.AI.OpenAI.Chat.AzureChatClient.PostfixSwapMaxTokens' will always throw
@@ -112,7 +112,7 @@ ILC: Method 'Azure.AI.OpenAI.Chat.AzureChatClient.PostfixClearStreamOptions' wil
 
 Reading the v2 package graph:
 
-```
+```text
 Microsoft.Agents.AI            1.1.0
 Microsoft.Agents.AI.OpenAI     1.1.0  ──┐
 Azure.AI.OpenAI                2.1.0  ──┼──► OpenAI (transitive)

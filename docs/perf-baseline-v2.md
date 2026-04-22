@@ -40,12 +40,14 @@
   4. `--tools shell,file,web --max-rounds 10 --persona coder --json -- help-trigger` (ParseArgs heavy path; dies on env-var check pre-network)
   5. `--help` with 1 KB / 10 KB / 32 KB (cap) of random bytes piped to stdin -- verifies stdin cap does not block `--help`
 - Reproduce the numbers:
-  ```
+
+  ```text
   ./scripts/bench.sh --compare \
       azureopenai-cli/bin/Release/net10.0/AzureOpenAI_CLI.dll \
       azureopenai-cli-v2/bin/Release/net10.0/az-ai-v2.dll \
       --runs 50 --warmup 2
   ```
+
   AOT numbers were collected via a small companion loop (same timing logic, native binary directly). The AOT loop will be folded into `bench.sh` in a follow-up (`--aot` mode) -- tracked below.
 
 ## 3. Results
@@ -117,6 +119,7 @@ AOT tells the true story: v2 is competitive. `--version --short` (the command sp
 | **AOT single-file linux-x64** | **9,294,968 B** | 15,105,904 B (1.625×) | **13,533,472 B** | **1.456×** | ✅ **pass** |
 
 The AOT binary is the visible user-facing size (chocolatey/homebrew/winget tarball weight, Docker layer, espanso deploy). The initial v2 build landed at 1.625× -- 0.12× over the gate -- driven by:
+
 - `Microsoft.Extensions.AI` + MAF host assemblies pulled whole-subgraph through DI.
 - OpenTelemetry.Api + exporters.
 - `Azure.AI.OpenAI 2.1.0` -- emits IL2104 (not trim-friendly) and IL3053 (AOT warnings); ILC reports two methods that "will always throw" due to missing getters on `ChatCompletionOptions`. Trimmer cannot fully elide this subgraph.
@@ -145,6 +148,7 @@ Proposed gates (per task brief) and observed results:
 | Memory (RSS) | v2 ≤ 1.50× v1 | 0.88-1.00× | ✅ Pass |
 
 **Recommendation -- revise gates for v2.0.0 and beyond:**
+
 1. **Drop the mean-latency gate, keep p95.** Means are noisy on ms-scale cold starts; p95 is what the user perceives. Proposed: **AOT p95 ≤ 1.25× v1** and **absolute p95 ≤ 25 ms** on reference hardware. v2 passes both.
 2. **Keep the 1.5× ratio gate as-is.** Shipped v2 clears it at 1.456× post-trim. No waiver required.
 3. **Add a Gate-2 command gate explicitly.** `--version --short` p95 ≤ 20 ms on reference hardware, ≤ 1.25× v1. v2 passes.
@@ -164,6 +168,7 @@ Proposed gates (per task brief) and observed results:
 ## 6. Follow-ups
 
 ### 6.1 Binary-size reduction targets (ordered by expected win)
+
 1. **Strip OTel exporters from default publish** -- if OTel is opt-in at runtime, move `OpenTelemetry.Exporter.*` to a separate optional package / feature flag. Estimated saving: 1-2 MB.
 2. **Investigate `Azure.AI.OpenAI` trim warnings.** The two "will always throw" ILC warnings suggest the package's AOT story is incomplete. Options: pin to a leaner direct `OpenAI` client, file upstream issue, or authorize the unused-but-referenced subgraph for trim via `ILLink.Descriptors.xml`. Estimated saving: 0.5-1.5 MB.
 3. **`TrimMode=full` is already set** on v2 -- nothing more to tighten there without fighting MAF reflection.
@@ -171,10 +176,12 @@ Proposed gates (per task brief) and observed results:
 5. **R2R composite image for Docker.** Not a size win for the user binary, but changes the TCO story for the container layer.
 
 ### 6.2 Startup optimization targets (if needed after 6.1)
+
 - FR-007 "prewarm" (spec'd) -- only matters if espanso/AHK starts hitting p99 cliffs. Current p95 of 18.78 ms on v2 `--help` does not justify it yet.
 - Lazy-build the MAF host on first *agentic* invocation; keep the `--help`/`--version`/`--estimate` paths on a bare `Program.Main` fast-path. This would likely drop v2 `--help` mean from 14.64 ms to within v1 range (≤ 10 ms).
 
 ### 6.3 Harness follow-ups
+
 - Fold AOT benchmarking into `scripts/bench.sh` as `--aot` mode (no `dotnet` prefix). Current AOT numbers are collected via an inline companion loop with identical timing logic -- should be one script.
 - Wire `scripts/bench.sh --compare` into CI (linux-x64 self-hosted runner, pinned CPU class) and post a PR-diff comment with the regression table.
 - Baseline snapshot on `main` after each release tag; rolling 30-day p95 trend per scenario.
@@ -182,6 +189,7 @@ Proposed gates (per task brief) and observed results:
 - Add a cgroup-constrained run (`systemd-run --scope -p MemoryMax=…`) to catch regressions that only show up under pressure -- the `parse-heavy` RSS parity on unconstrained WSL2 is too clean to trust.
 
 ### 6.4 Not measured in this run (propose for CI later)
+
 - **Drop-caches cold starts.** No sudo in sandbox. In CI, prefix each cold run with `sync && echo 3 > /proc/sys/vm/drop_caches` on a dedicated runner.
 - **Cross-RID comparison.** Only linux-x64 measured. Windows-x64 (the espanso hot path on Windows) and osx-arm64 (dev laptops) will differ -- particularly binary size, where NativeAOT RIDs diverge by 10-20%.
 - **Container cold start.** `docker run --rm azureopenai-cli:v2 --help` wall time vs v1 image. Matters for one-shot Docker invocations.

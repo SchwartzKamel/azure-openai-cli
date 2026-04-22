@@ -19,6 +19,7 @@ However, the audit identified **10 findings** across the codebase. The most nota
 - **Description:** `Console.In.ReadToEnd()` reads the entirety of piped stdin into memory *before* the `MAX_PROMPT_LENGTH` (32 KB) validation on line 93. An attacker (or accidental misuse) piping gigabytes of data can exhaust process memory and crash the application with an `OutOfMemoryException`.
 - **Impact:** Denial of service against the local process. No remote attack vector, but relevant when the CLI is invoked in automated pipelines where stdin sources may be untrusted.
 - **Remediation:** Read stdin in chunks with a hard cap. For example, read up to `MAX_PROMPT_LENGTH + 1` characters and reject early if exceeded:
+
   ```csharp
   char[] buffer = new char[MAX_PROMPT_LENGTH + 1];
   int charsRead = Console.In.ReadBlock(buffer, 0, buffer.Length);
@@ -28,6 +29,7 @@ However, the audit identified **10 findings** across the codebase. The most nota
   }
   stdinContent = new string(buffer, 0, charsRead);
   ```
+
 - **Status:** Open
 
 ### MEDIUM-002: HTTP Endpoints Accepted -- API Key Sent in Plaintext
@@ -37,12 +39,14 @@ However, the audit identified **10 findings** across the codebase. The most nota
 - **Description:** Endpoint validation accepts both `https://` and `http://` schemes. When an `http://` endpoint is used, the Azure API key is transmitted unencrypted, exposing it to network-level interception (e.g., ARP spoofing, rogue Wi-Fi, compromised proxy).
 - **Impact:** Credential theft via man-in-the-middle attack if a user mistakenly configures an HTTP endpoint.
 - **Remediation:** Restrict to HTTPS only, or at minimum emit a prominent warning:
+
   ```csharp
   if (endpoint.Scheme != "https")
   {
       Console.Error.WriteLine("[SECURITY WARNING] Using non-HTTPS endpoint. API key will be sent in plaintext.");
   }
   ```
+
   Preferred: reject `http://` entirely unless an explicit `--allow-insecure` flag is passed.
 - **Status:** Open
 
@@ -53,10 +57,12 @@ However, the audit identified **10 findings** across the codebase. The most nota
 - **Description:** Third-party actions use mutable version tags (`actions/checkout@v4`, `actions/setup-dotnet@v4`) rather than immutable commit SHA digests. A compromised tag or supply chain attack against the `actions` org could inject malicious code into CI runs.
 - **Impact:** Arbitrary code execution in CI with access to repo secrets and `GITHUB_TOKEN`.
 - **Remediation:** Pin to full SHA digests:
+
   ```yaml
   - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
   - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
   ```
+
   Use Dependabot or Renovate to keep SHAs updated.
 - **Status:** Open
 
@@ -67,10 +73,12 @@ However, the audit identified **10 findings** across the codebase. The most nota
 - **Description:** Both `FROM` instructions use mutable tags (`mcr.microsoft.com/dotnet/sdk:10.0`, `mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine`). The Dockerfile itself contains comments acknowledging this should be done for production but hasn't been implemented.
 - **Impact:** A compromised or silently-updated base image could inject malicious code into the built artifact.
 - **Remediation:** Pin to digest:
+
   ```dockerfile
   FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:<digest> AS build
   FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine@sha256:<digest> AS runtime
   ```
+
 - **Status:** Open
 
 ### LOW-005: CI Workflow Missing Explicit Permissions Scope
@@ -80,10 +88,12 @@ However, the audit identified **10 findings** across the codebase. The most nota
 - **Description:** No top-level `permissions` block is defined. On `push` events to `main`, the `GITHUB_TOKEN` receives broad default permissions (`contents: write`, `packages: write`, etc.), violating the principle of least privilege.
 - **Impact:** If a step is compromised, the token has more access than necessary.
 - **Remediation:** Add a top-level permissions block:
+
   ```yaml
   permissions:
     contents: read
   ```
+
 - **Status:** Open
 
 ### LOW-006: `.env` Files Not Excluded from Docker Build Context
@@ -93,11 +103,13 @@ However, the audit identified **10 findings** across the codebase. The most nota
 - **Description:** The `.dockerignore` does not exclude `.env` files. If a developer has `azureopenai-cli/.env` with real credentials, `COPY azureopenai-cli/ ./` on Dockerfile line 9 copies it into the build stage. While the multi-stage build only carries the binary to runtime (line 53), the credential-containing layer persists in the Docker build cache and could be exposed if the build image is pushed to a registry.
 - **Impact:** Credential leakage via Docker layer history or build cache.
 - **Remediation:** Add to `.dockerignore`:
-  ```
+
+  ```text
   **/.env
   **/.env.*
   !**/.env.example
   ```
+
 - **Status:** Open
 
 ### LOW-007: Config File TOCTOU Permission Gap on Unix
@@ -125,9 +137,11 @@ However, the audit identified **10 findings** across the codebase. The most nota
 - **Description:** The catch-all exception handler outputs `ex.Message` directly to stderr. Azure SDK exceptions may contain internal URLs, deployment names, or partial request details. While API keys are not typically included in exception messages, the verbosity is higher than necessary.
 - **Impact:** Information disclosure of internal infrastructure details (endpoint paths, deployment names) to a user who may not be the operator.
 - **Remediation:** In non-debug mode, show a generic error message and suggest using `--verbose` or checking logs for details:
+
   ```csharp
   Console.Error.WriteLine("[ERROR] An unexpected error occurred. Set AZURE_DEBUG=1 for details.");
   ```
+
 - **Status:** Open
 
 ### LOW-010: Makefile ARGS Interpolation Without Quoting
@@ -157,6 +171,7 @@ However, the audit identified **10 findings** across the codebase. The most nota
 ## Recommendations
 
 **Priority 1 -- Address before next release:**
+
 1. **Cap stdin reads** (MEDIUM-001) -- Straightforward fix, prevents DoS in pipeline contexts
 2. **Enforce HTTPS-only** or warn on HTTP endpoints (MEDIUM-002) -- Prevents accidental credential exposure
 

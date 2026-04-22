@@ -174,7 +174,7 @@ lands at 1.12× v1 (12.58 ms mean p95 18.25 ms), `--help` at 1.23× v1
 **Binary size is bigger, but inside the gate.** The AOT single-file
 binary grew from 8.86 MB (v1.9.1) to **12.91 MB (v2.0.0)** -- a
 **1.456× increase**, or about +4.05 MB. That is the cost of the MAF host
-+ OpenTelemetry + the Azure SDK bump, net of a trim pass that reclaimed
+-- OpenTelemetry + the Azure SDK bump, net of a trim pass that reclaimed
 ~1.5 MB via `StackTraceSupport=false` and one related ILC flag. The
 proposed 1.5× ratio gate **passes without a waiver**. A further trim
 pass (targeting residual Azure.AI.OpenAI reflection, ~0.3-0.9 MB) is
@@ -280,7 +280,7 @@ features will land there.
 
 v2.0.0 development commits between `9e74961..488aebd`:
 
-```
+```text
 15  SchwartzKamel
 ```
 

@@ -23,7 +23,8 @@ of findings, one per line, prefixed by a severity tag" beats "please be
 thorough and detailed." The former is a contract; the latter is a wish.
 
 **Good:**
-```
+
+```text
 Output exactly these sections, in order:
 1. Summary (one paragraph, 2-4 sentences)
 2. Findings (bulleted; each line starts with [Critical|High|Medium|Low])
@@ -31,7 +32,8 @@ Output exactly these sections, in order:
 ```
 
 **Bad:**
-```
+
+```text
 Please provide a comprehensive and detailed analysis covering all
 important aspects of the code, being sure to flag anything serious.
 ```
@@ -79,7 +81,7 @@ contracts where five to seven is sometimes warranted.
 The model performs best when it knows who it is talking to and what rails
 it is on. Three short lines beat three paragraphs of flourish:
 
-```
+```text
 You are <role>. The reader is <audience with expertise level>.
 You may <capability list>. You must not <hard constraints>.
 Prefer <tiebreaker heuristic>.
@@ -124,7 +126,7 @@ prompt were broken?* That observable change is what your fixture asserts.
 
 ### The pep-talk
 
-```
+```text
 You are an expert! Be thorough! Think step by step! Don't rush! Be
 careful to consider all the edge cases! Take your time!
 ```
@@ -134,7 +136,7 @@ cleanly with zero measurable quality loss.
 
 ### The apology prefix
 
-```
+```text
 I'm an AI assistant, and while I'll do my best to help, please note...
 ```
 
@@ -143,7 +145,7 @@ in its output. System prompts are directives, not disclaimers.
 
 ### The runaway list
 
-```
+```text
 1. Be accurate. 2. Be concise. 3. Be helpful. 4. Be honest. 5. Be kind.
 6. Be thorough. 7. Be brief. 8. Be careful.
 ```
@@ -155,7 +157,7 @@ brevity would omit a critical warning, include it."*
 
 ### The leaky persona
 
-```
+```text
 You are Jerry Seinfeld. Also be factual. Also be security-conscious. Also
 use tools correctly. Also...
 ```
@@ -166,7 +168,7 @@ append security lines to a comedy persona.
 
 ### The aspirational schema
 
-```
+```text
 Respond in JSON.
 ```
 

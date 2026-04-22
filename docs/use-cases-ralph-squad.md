@@ -42,7 +42,7 @@ az-ai --ralph "Create a Python function that parses ISO 8601 dates with timezone
 3. With no `--validate` command, Ralph checks only the agent's exit code.
 4. Exit 0 → success; exit ≠ 0 → Ralph re-attempts with error context.
 
-```
+```text
 🔁 Ralph mode -- Wiggum loop active
    Max iterations: 10
 
@@ -91,7 +91,7 @@ az-ai --ralph --validate "docker build -t myapp ." \
 
 **Validation flow (example with `dotnet test`):**
 
-```
+```text
 🔁 Ralph mode -- Wiggum loop active
    Validate: dotnet test
    Max iterations: 10
@@ -184,7 +184,7 @@ az-ai --ralph --max-iterations 1 --validate "make check" \
 
 **When iterations are exhausted:**
 
-```
+```text
 ━━━ Iteration 5/5 ━━━
 📝 Agent response (1893 chars)
 🔍 Validating: dotnet test... ❌ FAILED (exit 1)
@@ -220,8 +220,10 @@ cat .ralph-log
 
 **Validation:** FAILED (exit 1)
 ```
+
 Validation output (truncated at 2 000 chars):
-```
+
+```text
   Failed UserServiceTests.GetUser_ReturnsNull_WhenNotFound
   NullReferenceException: Object reference not set to an instance...
 ```
@@ -320,7 +322,7 @@ az-ai --squad-init
 
 **Output:**
 
-```
+```text
 ✅ Squad initialized! Created .squad.json and .squad/ directory.
    Edit .squad.json to customize your personas.
    Use --persona <name> to select a persona.
@@ -328,7 +330,7 @@ az-ai --squad-init
 
 **Files created:**
 
-```
+```text
 your-project/
 ├── .squad.json            # Persona definitions + routing rules
 └── .squad/
@@ -340,7 +342,7 @@ your-project/
 If you run `--squad-init` again in a directory that already has `.squad.json`,
 it's a no-op:
 
-```
+```text
 Squad already initialized (.squad.json exists).
 ```
 
@@ -361,7 +363,7 @@ enables agentic mode.
 az-ai --persona coder "Implement a binary search in Python with type hints"
 ```
 
-```
+```text
 🎭 Persona: coder (Software Engineer)
 ```
 
@@ -374,7 +376,7 @@ project conventions and prefers small, focused changes.
 az-ai --persona reviewer "Review this PR for security issues"
 ```
 
-```
+```text
 🎭 Persona: reviewer (Code Reviewer)
 ```
 
@@ -388,7 +390,7 @@ ignores style/formatting unless it hides a bug.
 az-ai --persona architect "Design a microservice for user authentication"
 ```
 
-```
+```text
 🎭 Persona: architect (System Architect)
 ```
 
@@ -402,7 +404,7 @@ trade-offs. Important decisions are logged to `.squad/decisions.md`.
 az-ai --persona writer "Write docs for the /api/v2/users endpoint"
 ```
 
-```
+```text
 🎭 Persona: writer (Technical Writer)
 ```
 
@@ -416,7 +418,7 @@ edge cases).
 az-ai --persona security "Audit this codebase for vulnerabilities"
 ```
 
-```
+```text
 🎭 Persona: security (Security Auditor)
 ```
 
@@ -437,7 +439,7 @@ best match.
 az-ai --persona auto "Fix the authentication bug in the login handler"
 ```
 
-```
+```text
 🎭 Auto-routed to: coder (Software Engineer)
 ```
 
@@ -495,7 +497,7 @@ az-ai --personas
 
 **Output:**
 
-```
+```text
 Squad: Default Squad
   AI team for your project. Customize personas in .squad.json.
 
@@ -508,7 +510,7 @@ Squad: Default Squad
 
 This requires `.squad.json` to exist. If it doesn't:
 
-```
+```text
 No .squad.json found. Run --squad-init first.
 ```
 

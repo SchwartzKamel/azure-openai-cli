@@ -41,12 +41,14 @@ Existing `gpt-5.4-nano` / `gpt-4o-mini` users see zero diff: they don't set `AZU
 ## Consequences
 
 ### Positive
+
 - **Lean scope**: ~50-80 LOC in `Program.cs` (`ValidateConfiguration`, client construction, URL binding). No new dependencies.
 - **Phi-4-mini unblocked**: Morty can run cost benchmarks against live Foundry endpoint; Bania's harness feeds into v1.11.0 roadmap decision.
 - **Reversible**: if Foundry routing breaks, users fall back to Azure OpenAI by unsetting `AZURE_FOUNDRY_ENDPOINT`.
 - **MAF-clean**: this hand-rolled path doesn't conflict with MAF adoption in v2.0; the spike's Foundry `NotImplementedException` is independent.
 
 ### Negative
+
 - **Hard-coded model list**: updating the Foundry-routable models requires a code change. Mitigated by documenting the list in code comments + adding to CONTRIBUTING.md.
 - **Query-string URL binding**: if Foundry changes the api-version or URL structure, we re-bind at constructor. Small maintenance burden.
 - **No AAD support for Foundry in v1**: only API-key auth. AAD + Foundry ships under MAF in v2. Document as a known limitation.
@@ -55,7 +57,7 @@ Existing `gpt-5.4-nano` / `gpt-4o-mini` users see zero diff: they don't set `AZU
 
 1. **Extend `ValidateConfiguration()`**: add `AZURE_FOUNDRY_ENDPOINT` + model-list check. Return a flag indicating which path to take (Azure OpenAI vs. Foundry).
 2. **Client construction dispatch**: if Foundry path, build base URL with embedded api-version query param; pass to `ChatClient` constructor.
-3. **Test matrix**: 
+3. **Test matrix**:
    - Existing Azure OpenAI path (gpt-5.4-nano) still passes all tests.
    - New Foundry path (mock endpoint or skip if creds unavailable).
 4. **Document**: Add a note to `CONTRIBUTING.md` listing known Foundry models and the env-var precedence logic.

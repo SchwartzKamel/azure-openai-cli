@@ -59,7 +59,7 @@ az-ai --personas
 
 Interactive runs print a one-line banner to **stderr**:
 
-```
+```text
 🎭 Persona: coder (Software Engineer)
 ```
 

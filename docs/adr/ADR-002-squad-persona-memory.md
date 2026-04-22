@@ -45,7 +45,7 @@ The Squad system is implemented as four small, internal-sealed types under
 
 ### File layout
 
-```
+```text
 <project root>/
 ├── .squad.json              # team config (committed)
 └── .squad/

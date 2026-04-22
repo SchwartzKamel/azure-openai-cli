@@ -24,7 +24,7 @@
 `az-ai` is a CLI that calls Azure OpenAI and prints the response to stdout. When combined with a text expansion tool like [Espanso](https://espanso.org) or [AutoHotKey](https://www.autohotkey.com), it creates an invisible AI layer across your entire OS:
 
 - You're writing an email → type `:aifix` → your clipboard text gets grammar-corrected and pasted back
-- You're in Slack → type `:ai ` → a form pops up → you type a question → the answer replaces your trigger
+- You're in Slack → type `:ai` → a form pops up → you type a question → the answer replaces your trigger
 - You're coding → select a function, hit `Ctrl+Shift+E` → a 2-sentence explanation appears
 
 No browser tabs. No context switches. The AI meets you where you already are.
@@ -109,6 +109,7 @@ make alias
 > ```
 >
 > That dispatches to the right script for your environment:
+>
 > - **Linux / macOS / WSL** → `scripts/setup-secrets.sh` (bash/zsh; chmod 600 or GPG)
 > - **Windows (git-bash / MSYS / Cygwin)** → `scripts/setup-secrets.ps1` (user-scope env vars or DPAPI-encrypted file)
 >
@@ -505,7 +506,7 @@ If you *really* want to skip the login shell (say, to shave another 3-5 ms): put
 
 #### Full Path B WSL config (copy-paste)
 
-Drop this into `%APPDATA%\espanso\match\ai-wsl.yml` -- it mirrors the Linux trigger set 1:1 (`:ai `, `:aifix`, `:aiemail`, `:aiexplain`, `:aisum`, `:aien`, `:aishort`, `:aicommit`), routed through PowerShell → `wsl.exe` → the Linux AOT binary:
+Drop this into `%APPDATA%\espanso\match\ai-wsl.yml` -- it mirrors the Linux trigger set 1:1 (`:ai`, `:aifix`, `:aiemail`, `:aiexplain`, `:aisum`, `:aien`, `:aishort`, `:aicommit`), routed through PowerShell → `wsl.exe` → the Linux AOT binary:
 
 ```yaml
 # %APPDATA%\espanso\match\ai-wsl.yml
@@ -607,21 +608,27 @@ matches:
 > **If `:aifix` fires but the replacement is blank or nothing happens at all** -- 95% of the time it's one of these three. Check in order:
 >
 > **(1) Env vars aren't reaching WSL.** The old `wsl.exe -e …` pattern doesn't source `~/.bashrc` so `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` are missing; `az-ai` fails to stderr and espanso pastes an empty string. The config above uses `wsl.exe bash -lc …` to force a login shell -- if you've copy-pasted an older config, migrate. Verify: open PowerShell and run
+>
 > ```powershell
 > Get-Clipboard | wsl.exe bash -lc "az-ai --raw --system 'Fix grammar.'"
 > ```
+>
 > If you see `[ERROR] AZUREOPENAIENDPOINT is not set`, your env vars aren't in `~/.bashrc` (or wherever your login shell reads) -- fix that first.
 >
 > **(2) The `az-ai` binary isn't on PATH inside a login shell.** Test:
+>
 > ```powershell
 > wsl.exe bash -lc "command -v az-ai"
 > ```
+>
 > If that prints nothing, `az-ai` isn't in the PATH your login shell sees. Either install it to `/usr/local/bin` (`sudo cp ./az-ai /usr/local/bin/`) or add its directory to PATH in `~/.bashrc` (`export PATH="$HOME/tools/azure-openai-cli/dist/aot:$PATH"`).
 >
 > **(3) The clipboard is empty.** PowerShell's `Get-Clipboard` returns an empty string when the clipboard has image content, zero bytes, or was cleared by whatever espanso trigger fired before yours. Test:
+>
 > ```powershell
 > Get-Clipboard
 > ```
+>
 > If you see your text, continue. If not, select + copy something, then re-trigger.
 >
 > Run those three probes in order. The failure is always in one of them.
@@ -630,13 +637,15 @@ matches:
 2. **WSL default distro matters.** `wsl.exe bash -lc …` runs in whatever distro is default (`wsl --list --verbose` to check). If you've got multiple distros, pin it: `wsl.exe -d Ubuntu bash -lc "az-ai …"`.
 3. **Credentials must live *inside* WSL** (e.g. `~/.azureopenai-cli.json`, `/etc/environment`, or sourced in `~/.bashrc` -- see the *Secure env-var storage* section above). The Windows process environment doesn't cross the `wsl.exe` boundary unless you explicitly forward with `WSLENV`. `bash -lc` sources `~/.bashrc` (via `~/.bash_profile` / `~/.profile`), which is the simplest way to get those vars into the environment `az-ai` sees.
 4. **Clipboard encoding.** `Get-Clipboard` emits UTF-16 by default on some locales; if you see mojibake in non-ASCII input, force UTF-8 output from PowerShell before piping. Because `shell: powershell` means the whole `cmd:` value is already PowerShell, you can prepend the encoding setup inline -- no nested cmd+PS escaping:
+
    ```yaml
    cmd: "[Console]::OutputEncoding = [Text.UTF8Encoding]::new(); Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --system '…'\""
    shell: powershell
    ```
+
 5. **Path translation.** If you need to pass a Windows file path *to* `az-ai` in WSL, use `wslpath`: `wsl.exe bash -lc "az-ai --read-file $(wslpath -a 'C:\\temp\\file.txt')"`. Don't hand raw `C:\…` paths to a Linux binary.
 6. **Keep the binary on the WSL side, not a mounted Windows drive.** Running `az-ai` from `/mnt/c/tools/` adds filesystem-translation overhead on every syscall -- that ~11 ms startup becomes ~150 ms. Install to `/usr/local/bin` (native ext4), always.
-7. **Single-quote pitfall in the `:ai ` form.** `{{form1.prompt}}` is templated by Espanso *before* PowerShell sees it. If the user types a prompt containing a single quote (`don't`), it'll break the PS string. Same limitation exists on the Linux side -- punt on it or pre-sanitize in a wrapper script if it matters.
+7. **Single-quote pitfall in the `:ai` form.** `{{form1.prompt}}` is templated by Espanso *before* PowerShell sees it. If the user types a prompt containing a single quote (`don't`), it'll break the PS string. Same limitation exists on the Linux side -- punt on it or pre-sanitize in a wrapper script if it matters.
 8. **Cost note (Morty says):** the WSL path is 2-way text over stdin/stdout. Every byte of piped clipboard is an input token you pay for. A 32 KB clipboard is a 32 KB bill event. The CLI caps clipboard at 32 KB in agent mode (`Tools/GetClipboardTool.cs:12`), but here you're piping directly -- *you* enforce the cap with `--max-tokens` on output. Don't let a runaway paste become a runaway invoice.
 
 **Performance summary -- WSL AOT path vs alternatives:**
@@ -848,7 +857,7 @@ cmd: "... | az-ai --raw --temperature 0.8 --system '...'"
 
 The biggest latency and quality killer for text expansion is a chatty model that adds preamble like "Sure, here's the corrected text:" or "Here you go!". End every system prompt with a strict output directive:
 
-```
+```text
 Fix grammar and spelling. Output ONLY the corrected text, nothing else.
 ```
 
@@ -1091,7 +1100,7 @@ cmd: "... | az-ai --raw --persona writer --temperature 0.8"
 
 | Trigger | Tool | Action | Input Source |
 |---------|------|--------|-------------|
-| `:ai ` | Espanso | Free-form prompt | Form dialog |
+| `:ai` | Espanso | Free-form prompt | Form dialog |
 | `:aifix` | Espanso | Grammar/spelling fix | Clipboard |
 | `:aiemail` | Espanso | Professional email rewrite | Clipboard |
 | `:aiexplain` | Espanso | Code explanation | Clipboard |

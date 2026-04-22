@@ -113,6 +113,7 @@ The only non-MIT licenses are:
 ## Distribution implications
 
 `az-ai` (v2) is shipped as:
+
 - Native AOT binaries (Linux/macOS/Windows) -- produced by `dotnet publish -p:PublishAot=true`.
 - Container images -- `Dockerfile` multi-stage, publishes a self-contained binary.
 - Homebrew formula, Scoop manifest, Nix flake -- each points at a release tarball

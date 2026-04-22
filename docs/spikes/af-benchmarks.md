@@ -7,17 +7,20 @@
 ## How to populate
 
 1. Provide a `.env` at the repo root with:
-   ```
+
+   ```text
    AZUREOPENAIENDPOINT=https://<resource>.openai.azure.com/
    AZUREOPENAIAPI=<key>
    AZUREOPENAIMODEL=<deployment>
    AZURE_FOUNDRY_PROJECT_ENDPOINT=https://...   # optional, foundry path only
    ```
+
 2. Run `bash spike/agent-framework/bench.sh` (default `RUNS=10`).
 3. Each run appends a results section below with timestamp, averages, and binary sizes.
 4. Once enough runs accumulate (recommend ≥ 3 sessions on different days), fill in the verdict table in ADR-004.
 
 ## Pass thresholds (from plan.md / ADR-004)
+
 - Cold start regression ≤ **10%** (5.4 ms → max 5.9 ms)
 - TTFT regression ≤ **5 ms**
 - Streaming throughput regression ≤ **5%**
@@ -56,6 +59,7 @@
 ### End-to-end (real LLM call)
 
 **Handrolled is BROKEN against this endpoint.** Two independent pre-existing bugs surfaced and block any fair comparison:
+
 1. **AOT**: `InvalidOperationException: Reflection-based serialization has been disabled` -- reflection path still reachable in the streaming/response handling code despite `AppJsonContext` source-gen. Filed as a v1 regression; blocks AOT ship of v1.9.0-alpha.1 against modern endpoints.
 2. **JIT**: `HTTP 400 unsupported_parameter: max_tokens` -- newer Azure models (Responses API surface, gpt-5.x) require `max_completion_tokens` instead. Our `Azure.AI.OpenAI` 2.1.0 call still sends `max_tokens`.
 
@@ -83,10 +87,12 @@ As a result, the spike is currently the **only working path** against this endpo
 ### AAD path
 
 Wired correctly. Without AAD env setup, fails with the expected `CredentialUnavailableException`:
-```
+
+```text
 - EnvironmentCredential authentication unavailable. Environment variables are not fully configured.
 - WorkloadIdentityCredential authentication unavailable. The workload options are not fully configured.
 ```
+
 This is the correct behavior -- the MAF AAD path is ready for a real AAD deployment.
 
 ### Foundry path
@@ -103,4 +109,3 @@ Still a `NotImplementedException` stub. Requires real Foundry project endpoint; 
 - 🔴 **Handrolled v1 is broken** against this endpoint -- two pre-existing bugs (AOT reflection + max_tokens). Cannot be used as comparison baseline until fixed.
 
 **Implication for plan.md**: the hybrid adoption case is stronger than the plan assumed. Handrolled needs two fixes before it can even target modern Azure models (gpt-5.x Responses API); MAF handles both out of the box. File the handrolled bugs as `v1.9.1` hotfix candidates.
-

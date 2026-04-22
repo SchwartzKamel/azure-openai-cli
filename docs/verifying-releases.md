@@ -95,7 +95,7 @@ sha256sum azure-openai-cli-linux-x64.tar.gz
 
 Expected output for v1.8.1:
 
-```
+```text
 93c28f53d98c0fa699512d515f26522981ba32a24d668593e0830ca30520f03d  azure-openai-cli-linux-x64.tar.gz
 ```
 
@@ -112,7 +112,7 @@ gh attestation verify azure-openai-cli-linux-x64.tar.gz \
 
 Expected output (abbreviated):
 
-```
+```text
 Loaded digest sha256:93c28f53d98c0fa699512d515f26522981ba32a24d668593e0830ca30520f03d for file://azure-openai-cli-linux-x64.tar.gz
 Loaded 1 attestation from GitHub API
 
@@ -150,7 +150,7 @@ gh attestation verify \
 
 Expected output (abbreviated):
 
-```
+```text
 Loaded digest sha256:e050992d42e0338d892f7fe778aecf9e2cf512406aa126e700007b198b7a9286 for oci://ghcr.io/schwartzkamel/azure-openai-cli:1.8.1
 Loaded 1 attestation from GitHub API
 ...
@@ -181,7 +181,7 @@ jq -r '.components[].name' azure-openai-cli-linux-x64.sbom.json
 
 Expected output for v1.8.1:
 
-```
+```text
 {
   "format": "CycloneDX",
   "version": "1.7",

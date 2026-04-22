@@ -93,7 +93,7 @@ what power users want: "call my existing script with structured arguments."
 
 ## Architecture Sketch
 
-```
+```text
 Tools/Manifest/
 ├── ToolManifest.cs          (record; registered in AppJsonContext)
 ├── ManifestTool.cs          (IBuiltInTool wrapping ProcessStartInfo)

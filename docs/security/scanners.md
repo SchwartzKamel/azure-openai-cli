@@ -73,6 +73,7 @@ Symptom: Trivy reports `GHSA-xxxx-yyyy-zzzz: HIGH` on package `P@v1.2.3`,
 Grype says the same package is clean.
 
 Likely causes:
+
 1. **Database lag.** One DB ingested the advisory later. Check advisory
    publication date vs both DB update timestamps.
 2. **Different matching.** Trivy does SBOM-based matching; Grype does

@@ -179,7 +179,7 @@ Support a `.azureopenai-cli.json` file in the current working directory (or any 
 
 #### Lookup Order
 
-```
+```text
 1. CLI flags (--temperature 0.9)           ← highest precedence
 2. .azureopenai-cli.json in CWD            ← project-level
 3. .azureopenai-cli.json walking up to /   ← workspace-level
@@ -260,7 +260,7 @@ Replace `UserConfig.Load()` with `UserConfig.LoadWithOverrides()` on Program.cs 
 
 Show which config file(s) are active:
 
-```
+```text
 Azure OpenAI CLI Configuration
 ===============================
   Endpoint:      https://my-resource.openai.azure.com  (env)

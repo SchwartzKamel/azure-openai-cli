@@ -25,7 +25,7 @@ Azure OpenAI charges you for **two** things on every chat completion:
 
 Good news -- we already instrumented this. `az-ai` prints token usage on **stderr** after every call:
 
-```
+```text
   [tokens: 1250→480, 1730 total]
 ```
 
@@ -33,7 +33,7 @@ That's `input → output, total`. It's also in `--json` output as `input_tokens`
 
 ## 3. Model economics
 
-Prices change. Regions differ. PTU vs PAYG differs. **Always confirm at the source:** https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/
+Prices change. Regions differ. PTU vs PAYG differs. **Always confirm at the source:** <https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/>
 
 Rough order-of-magnitude as of **2026-04** (USD per 1M tokens, global PAYG, confirm before quoting in a PR):
 
@@ -50,13 +50,14 @@ Rough order-of-magnitude as of **2026-04** (USD per 1M tokens, global PAYG, conf
 
 > ⚠️ **Unverified numbers.** I am flagging these as estimates -- I cannot hit the live Azure pricing API from this doc. The **ratios** (mini ~15× cheaper than 4o, 4o output ~4× its input) are stable; the absolute dollars drift. Always cite the pricing page above in a PR that changes a model default.
 >
-> **gpt-5.4-nano pricing is STALE.** Last verified 2025-08-07 -- that is **~8 months old** as of this audit (2026-04-20). Nano-tier SKUs have repriced more than once in that window. Treat $0.20/$1.25 as *unverified since 2025-08-07 per https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/ -- verify before quoting in a PR or a cost estimate.* DeepSeek-V3.2 and both Phi-4-mini variants: Azure Foundry serverless catalog (Microsoft Community Hub + cloudprice.net, April 2026). Region and deployment type may drift prices ±10%.
+> **gpt-5.4-nano pricing is STALE.** Last verified 2025-08-07 -- that is **~8 months old** as of this audit (2026-04-20). Nano-tier SKUs have repriced more than once in that window. Treat $0.20/$1.25 as *unverified since 2025-08-07 per <https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/> -- verify before quoting in a PR or a cost estimate.* DeepSeek-V3.2 and both Phi-4-mini variants: Azure Foundry serverless catalog (Microsoft Community Hub + cloudprice.net, April 2026). Region and deployment type may drift prices ±10%.
 
 **Morty's rule of thumb:** if you can't write a one-sentence justification for why `gpt-4o-mini` *cannot* do the job, you're using the wrong model. "It feels smarter" is not a sentence. That's how you buy a Cadillac to go to the mailbox.
 
 ### 3.5 The new kids on the block
 
 > **TL;DR**
+>
 > - **Recommendation:** The **hardcoded fallback** stays `gpt-4o-mini`. A fresh install, no env, no config → you get the conservative, cheap, well-behaved SKU.
 > - **Operator override supported:** `AZUREOPENAIMODEL=gpt-5.4-nano` (or UserConfig `default_model`) flips the *operational* default per ADR-009's precedence chain. That's how the current operator runs today -- reasoning-forward workloads where the 4.3× input-cost bump pays for itself.
 > - **Revisit the fallback itself when:** a reasoning-required use case becomes the *majority* of fresh-install traffic, or Morty approves a new cost ceiling for the default-no-config user.
@@ -75,7 +76,7 @@ Latency matters? Maybe. If you're piping full files through `--max-tokens 100` i
 
 Alright, now here's where I get nervous. DeepSeek-V3.2 on Azure Foundry looks cheap on paper--$0.58 input, $1.68 output. That's 3.9× cheaper than `gpt-4o-mini` on input. Your son-in-law is already hearing the boat horn, isn't he?
 
-**But.** DeepSeek is *not OpenAI*. It's a non-OpenAI model from a Chinese research org. Now, Microsoft runs it on Azure Foundry with serverless deployment, so you get Azure's data centers and compliance framing. Here's what I don't like: **data residency and audit trail.** Your Espanso workflow reads clipboard content--potentially sensitive stuff: API keys, diff context, personal notes--and pipes it through an LLM. With OpenAI models, you get clear compliance: FedRAMP, BAA, SOC2. With DeepSeek on Foundry? You get Foundry's terms, which *are* enterprise-grade, but DeepSeek itself is a third-party model *routed through* Azure. If your clipboard contains secrets, or if you need auditable isolation, this is a **non-starter**. 
+**But.** DeepSeek is *not OpenAI*. It's a non-OpenAI model from a Chinese research org. Now, Microsoft runs it on Azure Foundry with serverless deployment, so you get Azure's data centers and compliance framing. Here's what I don't like: **data residency and audit trail.** Your Espanso workflow reads clipboard content--potentially sensitive stuff: API keys, diff context, personal notes--and pipes it through an LLM. With OpenAI models, you get clear compliance: FedRAMP, BAA, SOC2. With DeepSeek on Foundry? You get Foundry's terms, which *are* enterprise-grade, but DeepSeek itself is a third-party model *routed through* Azure. If your clipboard contains secrets, or if you need auditable isolation, this is a **non-starter**.
 
 The SECURITY.md in this repo caps clipboard at 32 KB for a reason -- we assume the content is sensitive. The threat model is "untrusted stdin, clipboard, and network responses." DeepSeek doesn't change the risk, but it *does* change the compliance profile. **Do not default to DeepSeek for Espanso workflows without signed approval from your security team.** For throw-away research or non-sensitive summarization? Sure, burn the tokens cheap. For the primary use case? No.
 
@@ -84,6 +85,7 @@ The SECURITY.md in this repo caps clipboard at 32 KB for a reason -- we assume t
 ### 3.6 The Phi-4-mini twins -- finally, something I can endorse
 
 > **TL;DR**
+>
 > - **Decision:** Do **not** swap the Espanso default to `Phi-4-mini-instruct` yet. `gpt-4o-mini` stands.
 > - **Why:** Cost wins are real (~6.5× cheaper per call), but empirical benchmarks (2026-04-20) show HTTP 422 on `--schema`, broken function calling, and 20% instruction-following failure on JSON-constrained prompts.
 > - **Revisit when:** Foundry ships fixes for strict-JSON / tool-call parity -- or when a new Phi-family release clears Bania's benchmark gate. Track via ADR-005 (Foundry routing) and the benchmark report linked below.
@@ -170,6 +172,7 @@ You paid HOW much for a model that can't even output JSON when you ask for JUST 
 Here's the thing: the cost savings are *real*. ¢0.000135 per call vs ¢0.000885 is a **6.5× reduction** -- at scale that's money you don't have to explain to anybody. The TTFT win (0.78s vs 1.14s, 46% faster) is also real. Phi-4-mini is built for exactly our use case. I get it.
 
 But look at the body count:
+
 - No `--schema` support (HTTP 422 hard error).
 - No agent mode (function calling emits garbage).
 - 20% instruction-following failure specifically on JSON-constrained prompts (the exact thing Espanso users want to do: "give me ONLY the fixed string").
@@ -203,9 +206,11 @@ Every token in your prompt is a token you're paying for on **every single call**
 ### Shave the system prompt
 
 The default is:
-```
+
+```text
 "You are a secure, concise CLI assistant. Keep answers factual, no fluff."
 ```
+
 (see `Program.cs:25`). That's ~15 tokens. Honestly? Fine. Leave it alone. But if *you* are shipping a feature with a 400-token system prompt full of "You are a highly skilled, world-class, senior-principal..." -- stop. The model doesn't care. You're paying to flatter a matrix.
 
 ### Cap output aggressively with `--max-tokens`
@@ -221,10 +226,12 @@ The default is:
 | Long-form writing               | 1500-2000                  |
 
 Example from `docs/espanso-ahk-integration.md`:
+
 ```bash
 xclip -selection clipboard -o | az-ai --raw --max-tokens 100 \
   --system 'Write a concise conventional commit message for this diff.'
 ```
+
 At `--max-tokens 100` on `gpt-4o-mini` you're talking fractions of a cent per call. That's the game. Valid range is 1-128000 (`Program.cs:141`, enforced; tests in `CliParserTests.cs:115`).
 
 ### Use `--raw` for machine-consumed output
@@ -243,7 +250,7 @@ The cheapest API call is the one you don't make. The *second* cheapest is the on
 
 **You are probably already eligible and not using it.** Azure OpenAI ships a server-side prompt cache for supported models -- the same primitive OpenAI documented in late 2024, exposed through the Azure endpoint. There is no flag to turn it on. You do not pay extra. If your **prompt prefix** matches a recently-seen prefix, the cached portion of *input* tokens bills at a discounted rate.
 
-**What qualifies (as of 2026-04-20; verify before quoting -- https://learn.microsoft.com/azure/ai-services/openai/how-to/prompt-caching):**
+**What qualifies (as of 2026-04-20; verify before quoting -- <https://learn.microsoft.com/azure/ai-services/openai/how-to/prompt-caching>):**
 
 - **Minimum prefix length:** ~1,024 tokens. Below that, no cache -- the whole prompt bills at full rate.
 - **Match must be an exact prefix:** byte-for-byte identical start of the prompt. System prompt + persona memory is the natural match boundary. Reorder one line near the top and you lose the whole cache.
@@ -266,7 +273,7 @@ The `usage` object on the chat completions response includes `prompt_tokens_deta
 
 **If you don't need the answer inside 24 hours, you are overpaying by 50%.** Azure OpenAI Batch API discounts both input *and* output by half on supported models in exchange for async execution with a 24-hour completion SLA (most jobs finish faster; the 24h is the *ceiling*).
 
-**Eligibility (as of 2026-04-20; verify -- https://learn.microsoft.com/azure/ai-services/openai/how-to/batch):**
+**Eligibility (as of 2026-04-20; verify -- <https://learn.microsoft.com/azure/ai-services/openai/how-to/batch>):**
 
 - Supported on most chat/completion Azure OpenAI SKUs (gpt-4o, 4o-mini, 4.1, o-series variants; check the live matrix before committing).
 - Input is a JSONL file of request bodies, uploaded to the deployment; output is a JSONL of responses. No streaming.
@@ -421,7 +428,7 @@ retry, too.** The provider doesn't refund tokens on a 5xx. Plan for it.
 
 **Worst-case formula** for a single user turn with `R` retries:
 
-```
+```text
 cost ≈ (R+1) × P_input × rate_in
      + (R+1) × P_cached_miss × cache_miss_delta          # if cache flaps
      + 1   × O_output × rate_out                          # only the winning attempt
@@ -430,7 +437,7 @@ cost ≈ (R+1) × P_input × rate_in
 
 **Realistic-case formula** for a retry that hits cache on the prefix:
 
-```
+```text
 cost ≈ (P_prefix × rate_cached + P_tail × rate_in)               # attempt 1
      + (P_prefix × rate_cached + P_tail × rate_in)               # attempt 2, cache hit
      + O_output × rate_out                                       # final success
@@ -475,7 +482,7 @@ explained by three inputs: **prompt length**, **retry rate**, and
 
 **Model:**
 
-```
+```text
 cost_per_call(persona) ≈ (P_system + P_persona_memory + P_user) × rate_in
                        + O × rate_out
                        + (tool_calls × avg_tool_roundtrip_tokens) × (rate_in + rate_out)
@@ -529,7 +536,7 @@ people expect.
 
 **First-order bound** (constant context):
 
-```
+```text
 cost_ralph ≈ N × cost_single_call
 ```
 
@@ -539,7 +546,7 @@ For `N=10` on a 2 K-token prompt at `gpt-5.4-nano`, that's roughly
 **Second-order bound** (context grows with each iteration -- the
 common case when the validator feeds previous attempts back in):
 
-```
+```text
 cost_ralph ≈ N × single_call_cost + prompt_growth_per_iter × N² / 2 × rate_in
 ```
 
@@ -587,14 +594,14 @@ default model.
 
 **Daily volume:**
 
-```
+```text
 input  = 100 calls × 500 tok  =  50,000 tok/day
 output = 100 calls × 200 tok  =  20,000 tok/day
 ```
 
 **Monthly volume** (22 working days; adjust for your team):
 
-```
+```text
 input  = 22 × 50,000 = 1,100,000 tok/mo  ≈ 1.1 M tokens
 output = 22 × 20,000 =   440,000 tok/mo  ≈ 0.44 M tokens
 ```
@@ -602,7 +609,7 @@ output = 22 × 20,000 =   440,000 tok/mo  ≈ 0.44 M tokens
 **At the current default (`gpt-5.4-nano`, rates from
 [`docs/cost/pricing-sourcing.md`](cost/pricing-sourcing.md) §1):**
 
-```
+```text
 input cost  = 1.1  M × $0.20  = $0.22/mo
 output cost = 0.44 M × $1.25  = $0.55/mo
 total       ≈ $0.77/seat/mo   # ≈ $9.24/seat/year
@@ -610,7 +617,7 @@ total       ≈ $0.77/seat/mo   # ≈ $9.24/seat/year
 
 **At the previous default (`gpt-4o-mini`):**
 
-```
+```text
 input cost  = 1.1  M × $0.15  = $0.165/mo
 output cost = 0.44 M × $0.60  = $0.264/mo
 total       ≈ $0.43/seat/mo   # ≈ $5.16/seat/year
@@ -619,7 +626,7 @@ total       ≈ $0.43/seat/mo   # ≈ $5.16/seat/year
 **At `Phi-4-mini-instruct`** (if the UX failures in §3.6 didn't rule it
 out for this workload -- they do, but for cost math only):
 
-```
+```text
 input cost  = 1.1  M × $0.075 = $0.083/mo
 output cost = 0.44 M × $0.30  = $0.132/mo
 total       ≈ $0.21/seat/mo   # ≈ $2.52/seat/year
@@ -627,7 +634,7 @@ total       ≈ $0.21/seat/mo   # ≈ $2.52/seat/year
 
 **At `gpt-4.1`** (premium; for the "but we need the muscle" argument):
 
-```
+```text
 input cost  = 1.1  M × $3.00  = $3.30/mo
 output cost = 0.44 M × $12.00 = $5.28/mo
 total       ≈ $8.58/seat/mo   # ≈ $103.00/seat/year -- 11× the nano default
@@ -637,7 +644,7 @@ total       ≈ $8.58/seat/mo   # ≈ $103.00/seat/year -- 11× the nano default
 prefix of ~400 of the 500 input tokens, cache discount ~50% on the
 cached portion:
 
-```
+```text
 cached input  = 100 cached tok × 22 × 100 ≈ 0.88 M tok cached (we still pay, but at cache rate)
 full input    = 0.22 M tok at full rate
                   # on gpt-5.4-nano: 0.88 × $0.10 + 0.22 × $0.20 = $0.088 + $0.044 = $0.132
@@ -677,4 +684,4 @@ a budget conversation.
 
 ---
 
-*See also: `SECURITY.md` (caps and guards), `docs/use-cases-standard.md` §8 (`--max-tokens`), `docs/espanso-ahk-integration.md` (real-world thin prompts), [`docs/cost/pricing-sourcing.md`](cost/pricing-sourcing.md) (rate provenance), [`docs/runbooks/finops-runbook.md`](runbooks/finops-runbook.md) (monthly review), Azure pricing: https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/*
+*See also: `SECURITY.md` (caps and guards), `docs/use-cases-standard.md` §8 (`--max-tokens`), `docs/espanso-ahk-integration.md` (real-world thin prompts), [`docs/cost/pricing-sourcing.md`](cost/pricing-sourcing.md) (rate provenance), [`docs/runbooks/finops-runbook.md`](runbooks/finops-runbook.md) (monthly review), Azure pricing: <https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/>*

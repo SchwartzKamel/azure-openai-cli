@@ -51,7 +51,7 @@ The supporting players are the executive suite and service bench behind the main
 
 The fleet runs as a multi-phase pipeline. Not every phase fires for every change -- small bugfixes skip most of it -- but at release boundaries and for anything user-visible, the full cast shows up.
 
-```
+```text
                               Feature Idea
                                    │
                                    ▼

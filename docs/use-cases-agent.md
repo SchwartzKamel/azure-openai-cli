@@ -88,6 +88,7 @@ az-ai --agent "Read my package.json, check what Node version I'm running, and li
 ```
 
 This task may take 3 rounds:
+
 1. `read_file` → package.json
 2. `shell_exec` → `node --version`
 3. `shell_exec` → `npm outdated`
@@ -120,7 +121,7 @@ az-ai --agent --max-rounds 1 "Read every .py file in src/, find security issues,
 
 If the model hits the round limit without producing a final text response, you'll see:
 
-```
+```text
 [WARN] Agent exhausted 1 tool-calling rounds without completing.
 ```
 
@@ -442,6 +443,7 @@ It also re-checks **after** redirects to catch DNS rebinding attacks.
 ```
 
 Blocked IP ranges:
+
 - `127.0.0.0/8` -- Loopback
 - `10.0.0.0/8` -- Private (RFC 1918)
 - `172.16.0.0/12` -- Private (RFC 1918)
@@ -601,7 +603,7 @@ Default child tools: `shell,file,web,datetime` (clipboard excluded by default).
 
 Delegation is capped at **3 levels deep** to prevent infinite recursion:
 
-```
+```text
 Level 0: Parent agent (your CLI invocation)
   └─ Level 1: Child agent (delegate_task)
        └─ Level 2: Grandchild agent (delegate_task)
@@ -637,11 +639,13 @@ az-ai --agent "Get the current time, read my .gitignore, and check disk space"
 ```
 
 **Round 1** (parallel):
-```
+
+```text
 🔧 Round 1: get_datetime shell_exec read_file
 ```
 
 The model sends three tool calls simultaneously:
+
 1. `get_datetime {}` → current time
 2. `shell_exec { "command": "df -h" }` → disk space
 3. `read_file { "path": ".gitignore" }` → file contents
@@ -680,7 +684,7 @@ pollute your stdout (important when piping `--json` output).
 
 ### What You'll See
 
-```
+```text
 ⚡ Agent mode                       ← Startup indicator
 🔧 Round 1: shell_exec read_file    ← Tool calls in this round
 🔧 Round 2: web_fetch               ← Next round
@@ -733,7 +737,8 @@ az-ai --agent --tools file,shell "Read my package.json, check which dependencies
 ```
 
 **Expected agent flow:**
-```
+
+```text
 ⚡ Agent mode
 🔧 Round 1: read_file               ← Reads package.json
 🔧 Round 2: shell_exec              ← Runs npm outdated
@@ -750,7 +755,8 @@ az-ai --agent --tools shell "What process is using port 8080?"
 ```
 
 **Expected agent flow:**
-```
+
+```text
 ⚡ Agent mode
 🔧 Round 1: shell_exec              ← Runs ss -tlnp | grep 8080 (or lsof -i :8080)
 ```
@@ -759,7 +765,7 @@ The model identifies the process. Note: it **cannot** kill the process because
 `kill` is blocked. It will tell you the PID and suggest you run `kill <PID>`
 yourself. This is by design -- the agent is read-only for destructive operations.
 
-```
+```text
 Found: node (PID 12345) is listening on port 8080.
 To stop it, run: kill 12345
 ```
@@ -771,7 +777,8 @@ az-ai --agent --tools web,datetime "What's the weather forecast for today? Use w
 ```
 
 **Expected agent flow:**
-```
+
+```text
 ⚡ Agent mode
 🔧 Round 1: get_datetime web_fetch   ← Gets current date + fetches https://wttr.in/?format=3
 ```
@@ -786,7 +793,8 @@ az-ai --agent --tools shell,file --max-rounds 10 "Find all Python files in src/,
 ```
 
 **Expected agent flow:**
-```
+
+```text
 ⚡ Agent mode
 🔧 Round 1: shell_exec              ← find src/ -name "*.py"
 🔧 Round 2: read_file read_file     ← Reads multiple .py files in parallel
@@ -805,7 +813,8 @@ az-ai --agent --max-rounds 8 "Give me a complete overview of this project: read 
 ```
 
 **Expected agent flow:**
-```
+
+```text
 ⚡ Agent mode
 🔧 Round 1: read_file shell_exec    ← README.md + ls -la (parallel)
 🔧 Round 2: shell_exec              ← find . -type f -name "*.cs" | head -20
@@ -820,7 +829,8 @@ az-ai --agent --tools shell,datetime "Run a full system health check: uptime, lo
 ```
 
 **Expected agent flow:**
-```
+
+```text
 ⚡ Agent mode
 🔧 Round 1: shell_exec shell_exec shell_exec get_datetime  ← All parallel
    uptime / free -h / df -h / current time
@@ -841,7 +851,8 @@ az-ai --agent --max-rounds 8 "I need a comparison of Redis vs Memcached. Researc
 ```
 
 **Expected agent flow:**
-```
+
+```text
 ⚡ Agent mode
 🔧 Round 1: web_fetch web_fetch shell_exec  ← Research + check local installs (parallel)
 🔧 Round 2: shell_exec                      ← redis-cli --version / memcached -h
@@ -849,7 +860,8 @@ az-ai --agent --max-rounds 8 "I need a comparison of Redis vs Memcached. Researc
 ```
 
 Or the model might delegate the research portion:
-```
+
+```text
 🔧 Round 1: delegate_task shell_exec
    ├─ Child agent: researches Redis vs Memcached via web
    └─ Parent: checks local installations

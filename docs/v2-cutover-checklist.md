@@ -30,7 +30,7 @@ The cutover **must not start** until all of the following are true. Owner initia
 
 The original [`v2-migration.md`](v2-migration.md) describes a "`v2` branch forked from `main`" that will be renamed into `main` at cutover. **That is not what actually happened.** Both v1 and v2 live side by side on `main`:
 
-```
+```text
 azureopenai-cli/            ← v1 project (AzureOpenAI_CLI.csproj, 1.9.1)
 azureopenai-cli-v2/         ← v2 project (AzureOpenAI_CLI_V2.csproj, 2.0.0-alpha.1)
 tests/AzureOpenAI_CLI.Tests/

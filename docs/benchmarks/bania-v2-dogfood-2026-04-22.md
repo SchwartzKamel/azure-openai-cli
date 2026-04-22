@@ -21,6 +21,7 @@
 ## 2. Methodology
 
 **Hardware / OS**
+
 - Host: `malachor` — Intel® Core™ i7-10710U @ 1.10 GHz (6c/12t), 23 GiB RAM
 - Kernel: Linux 6.8.0-106-generic (Ubuntu)
 - .NET SDK: 10.0.201
@@ -34,13 +35,15 @@
 | v2 AOT (`az-ai-v2` 2.0.2)         | `/tmp/az-ai-v2-aot/az-ai-v2`        | 13 591 712 B (13 MB) | `a92c31182d97989727f6e17a634e43dd40625b1098331c455502d4d282a7b507` |
 
 Both built with:
-```
+
+```text
 dotnet publish <project> -c Release -r linux-x64 --self-contained -p:PublishAot=true
 ```
 
 **Harness** — `bench_harness.py` (Python 3, `subprocess.run` + `time.perf_counter_ns()`). No `hyperfine` available on the host (apt required sudo); rolled our own.
 
 **Warm-up / sample policy**
+
 - Cold-start, help, OTel benches: **5–10 warm-up invocations discarded, then n = 50.** Reported mean / median / p95 / p99 / stdev / min / max.
 - First-token (network): 3 warm-up, **n = 20**. TTFB measured as (exec → first stdout byte).
 - Stream throughput: 2 warm-up, **n = 10** (500-token essay).
@@ -88,10 +91,12 @@ Clean run, n=50, 10-iteration warm-up per config, same process:
 | `--otel --metrics`      | 13.95 ms | 13.92 | 14.43 | 15.08 | 0.29 | **+5.08 ms** |
 
 **Gate check (mission):**
+
 - Aspiration: ≤ 1 ms overhead in no-collector mode → **NOT MET** for any flag. Observability always costs something on cold start.
 - Finding threshold: > 5 ms → **combined `--otel --metrics` is right at the trigger (5.08 ms).** Individually both are under 5 ms.
 
 **Interpretation**
+
 - `--otel` alone costs the SDK `ActivitySource` / `MeterProvider` wiring + OTLP exporter construction. 2.7 ms of cold-start tax for a never-listened-to span is… expensive but explicable.
 - `--metrics` alone is bigger (4.2 ms). Likely meter registration + exporter periodic-reader scheduling.
 - The combined cost is sub-additive (5.1 vs 2.7 + 4.2 = 6.9), consistent with shared init paths.
@@ -117,17 +122,20 @@ Clean run, n=50, 10-iteration warm-up per config, same process:
 ## 6. Recommendations
 
 **Celebrate** (tell Peterman, with sample sizes)
+
 - Tool round-trip is **36 % faster** on v2 — the MAF + in-process tool dispatch story is real. Demo-worthy.
 - Streaming throughput +15 %. The direct-stdout write path survived the v2 refactor.
 - Cold-start stdev dropped 2× (0.66 → 0.23 ms). v2 is *more predictable* at startup than v1 was.
 - Binary size is 13 MB — **2 MB better than the Phase 5 "~15 MB" claim.** Update marketing / README copy.
 
 **Fix / monitor**
+
 - **`BANIA-V2-01` — observability cold-start tax.** `--otel` costs 2.7 ms and `--metrics` costs 4.2 ms in no-collector mode. Target budget was 1 ms. Investigate whether exporter construction can be lazied behind the "any listener attached?" check so unused observability is free. If Kramer can't get either flag under 2 ms, publish the number honestly in `docs/benchmarks.md` and move on.
 - **`BANIA-V2-02` — cold-start p99 crept to 11.04 ms** once in 50 (still passes p50/p95 gate). Worth rechecking on the CI reference runner before pinning a stricter gate.
 - **`BANIA-V2-03` — bench hardware is not pinned.** These numbers were taken on an i7-10710U laptop under default governor. Before wiring a CI perf-bench job, pick a runner class, document it, and re-baseline there so PR-diff regression comments have a stable reference.
 
 **Keep an eye on**
+
 - Binary has grown 9 MB → 13 MB (+46 %). Under the 20 MB gate but trending the wrong way. When we add more MAF surface, Bob Sacamano's package consumers will feel it first.
 
 ---
@@ -135,11 +143,13 @@ Clean run, n=50, 10-iteration warm-up per config, same process:
 ## Raw artifacts
 
 Run logs archived locally (not committed — reproducible via harness):
+
 - `~/bench_cold.log`, `~/bench_help.log`, `~/bench_otel.log`, `~/bench_ttfb.log`, `~/bench_stream.log`, `~/bench_tool.log`
 - Harness source: `~/bench_harness.py` — candidate for promotion to `scripts/bench.py` in a follow-up (see Bania's charter deliverables).
 
 Reproduce from this commit with:
-```
+
+```text
 set -a; source .env; set +a
 export PATH="$HOME/.dotnet:$PATH"
 dotnet publish azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj -c Release -r linux-x64 --self-contained -p:PublishAot=true -o /tmp/az-ai-v2-aot

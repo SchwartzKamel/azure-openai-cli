@@ -36,6 +36,7 @@ breaking a single v1 flag. Every number in here has a file behind it.
 **Why me to give it:** I maintain `azure-openai-cli`, an indie OSS project. We shipped v2 on MAF without waiving the 1.5× size gate. I'm not selling a product — I'm showing the exact levers, the measurements behind them, and the warnings we *couldn't* silence.
 
 **Outline (5 bullets):**
+
 - The gate: why we chose ≤1.50× v1 AOT size and what it cost us to honor it.
 - First build: **15,105,904 bytes — 1.625×**. Over the gate. No waiver on the table.
 - Measured lever sweep: `IlcGenerateStackTraceData` (no-op on net10), `DebuggerSupport` (+16 bytes of noise), `HttpActivityPropagationSupport` (−41 KB but breaks OTLP). What worked: `OptimizationPreference=Size` (−495 KB) + `StackTraceSupport=false` (−1.05 MB) = **−1.50 MB, 1.456×.** Commit `056920f`.
@@ -45,6 +46,7 @@ breaking a single v1 flag. Every number in here has a file behind it.
 **Demo script summary:** Two-minute AOT size A/B — show the csproj diff, show `ls -lh az-ai-v2` at 12.91 MB, run `--version --short` and `--estimate` to prove the binary still works with zero Azure creds. The live section never touches the network.
 
 **Takeaways (3):**
+
 - On net10, `StackTraceSupport=false` is the real stack-trace knob; the older `Ilc…` property is a no-op.
 - Upstream AOT warnings you can't fix are still signal — suppress them and you lose the canary for the *next* regression.
 - "No waiver" is a cultural artifact: if your gate has an escape hatch, you'll use it. Sources: [`docs/aot-trim-investigation.md`](../aot-trim-investigation.md), [`docs/perf-baseline-v2.md`](../perf-baseline-v2.md) §3.4, [`docs/release-notes-v2.0.0.md`](../release-notes-v2.0.0.md).
@@ -64,6 +66,7 @@ breaking a single v1 flag. Every number in here has a file behind it.
 **Why me to give it:** I own the code that got exploited. FDR (our red-team persona) wrote the reproducers; Kramer shipped the fix in `a0ca066`. I'll walk through the three live-reproducible findings against real `azureopenai-cli-v2` bits and the exact patch that closed them. This is a post-mortem, not a marketing deck.
 
 **Outline (5 bullets):**
+
 - **F1 — RSS amplification.** `File.ReadAllText` on a 100 MB persona history peaked RSS at **431 MB** (`/usr/bin/time -v`), before any network I/O. Fix: tail-seek the last 32 KB via `FileStream.Seek(len − 32 KB, Begin)` + UTF-8 continuation-byte skip. `PersonaMemory.ReadHistory` / `ReadSeekableTail`.
 - **F2 — `/dev/urandom` hang.** `.squad/history/rogue.md` symlinked to `/dev/urandom` never hits EOF; the CLI hung until SIGTERM. Fix: **dual device-guard** — `FileAttributes.Device` check *plus* symlink-target canonicalization (`FileInfo.ResolveLinkTarget(returnFinalTarget: true)`) against the expected `_baseDir/history/` root. Belt + 5-second `CancellationTokenSource` if both fail.
 - **F3 — path traversal via persona name.** `Path.Combine(_baseDir, "history", $"{name}.md")` with `name = "../../canary"` produced `.squad/history/../../canary.md` — fully outside the sandbox. `ToLowerInvariant()` doesn't strip `/`. Fix: `SanitizePersonaName` rejects anything outside `^[a-z0-9_-]{1,64}$`, called on every entry point (read, append, log-decision, public `GetHistoryPath`).
@@ -73,6 +76,7 @@ breaking a single v1 flag. Every number in here has a file behind it.
 **Demo script summary:** Three reproducers, under 90 seconds each. `dd if=/dev/zero of=.squad/history/bloat.md bs=1M count=100` then `/usr/bin/time -v az-ai-v2 --persona bloat --estimate hi` shows the tail-seek (flat RSS). `ln -s /dev/urandom .squad/history/rogue.md` then the same invocation shows the device-guard log line. `az-ai-v2 --persona '../../canary' --estimate hi` shows the sanitizer rejecting the name with exit 1.
 
 **Takeaways (3):**
+
 - "It's a user's own directory" is not a trust boundary when `.squad.json` is committed and team-shared.
 - Dual-guard matters: `FileAttributes.Device` is not reliable on all Unix filesystems; symlink canonicalization is the belt to its suspenders.
 - A chaos drill without reproducible scripts is a story, not a test. Sources: [`docs/chaos-drill-v2.md`](../chaos-drill-v2.md), [`azureopenai-cli-v2/Squad/PersonaMemory.cs`](../../azureopenai-cli-v2/Squad/PersonaMemory.cs), [`docs/security-review-v2.md`](../security-review-v2.md) (Newman CLEAR verdict, 0 🔴 / 8 🟡).
@@ -92,6 +96,7 @@ breaking a single v1 flag. Every number in here has a file behind it.
 **Why me to give it:** I'm a cast member, not the cast itself. I can walk through the pipeline honestly — including the places where two agents editing the same file in parallel had to be serialized. This is an indie project's workflow report, not a vendor pattern.
 
 **Outline (5 bullets):**
+
 - The roster: **25 archetype agents** under [`.github/agents/`](../../.github/agents/) — PM (Costanza), implementer (Kramer), security (Newman), chaos (FDR), SRE (Frank Costanza), perf (Bania), release (Lippman), docs (Elaine), a11y (Mickey), licensing (Jackie), change mgmt (Wilhelm), DevRel (me), and more. Each has a `.agent.md` skill file defining voice, scope, deliverables, and standards.
 - The dispatch pattern: PM writes the gate matrix → specialist agents fan out in parallel → captain serializes merges. Concrete example from v2 cutover: Bania on AOT trim (`056920f`), Newman on security review (`3c35ecf`), FDR on chaos drill (`835b95e`) — all ran in parallel; `a0ca066` (PersonaMemory fixes) merged after FDR filed F1/F2/F3.
 - What worked: specialized voices force specialized reviews. Newman's clipboard is not Bania's clipboard. The FR-008 cache shipped with three documented deviations from the proposal (opt-in not opt-out, 7-day TTL not 24h, mtime eviction not strict LRU) because Costanza ruled on each one in writing — [`docs/proposals/FR-008-prompt-response-cache.md`](../proposals/FR-008-prompt-response-cache.md), commit `632068a`.
@@ -101,6 +106,7 @@ breaking a single v1 flag. Every number in here has a file behind it.
 **Demo script summary:** Open three `.agent.md` skill files side-by-side (Newman, Kramer, Costanza) — show the voice / scope contrast. Walk through the v2 cutover decision doc's precondition matrix live. End with the release notes and the commit graph — no API calls, no slideware charts the audience can't verify.
 
 **Takeaways (3):**
+
 - Archetype-per-concern is cheaper than role-per-task; the voice enforces the scope.
 - Serialize on file paths, parallelize on archetypes. Two agents editing the same `.cs` is a merge conflict waiting to happen.
 - A proposal that disagrees with the shipped code is a culture cost. FR-008's "Shipped deviations" block is the pattern to copy. Sources: [`.github/agents/`](../../.github/agents/), [`docs/v2-cutover-decision.md`](../v2-cutover-decision.md), commits `4f1acdd`, `a0ca066`, `632068a`, `2716be0`, `cb251d1`.
@@ -197,6 +203,7 @@ awk '/OptimizationPreference|StackTraceSupport/' \
 ```
 
 **Safety rails:**
+
 - Demo machine has `AZUREOPENAIAPI` unset for all non-step-12 work. Step 12 is pre-loaded offstage.
 - Every `ls -lh` and `stat` runs against files produced in-session; the audience sees the bytes.
 - If WiFi dies, steps 1–11 + 13–15 still run. The only network-dependent step is the optional step 12 — cut it.
@@ -220,6 +227,7 @@ Pick one. Each ≤ 25 words. Rehearsed three times before stage.
 Ordered. At the 25-minute mark on a 30-minute slot, start cutting from the top.
 
 **Abstract A cut-list:**
+
 1. Cut the framework-dependent benchmark section (Perf §3.1). AOT is the story; JIT is an appendix. (Saves ~2 min.)
 2. Cut the `Azure.AI.OpenAI` direct-SDK rewrite exploration (future work). Point at the doc and move on. (Saves ~1.5 min.)
 3. Cut the `HttpActivityPropagationSupport` anecdote. Interesting, not essential. (Saves ~1 min.)
@@ -227,6 +235,7 @@ Ordered. At the 25-minute mark on a 30-minute slot, start cutting from the top.
 5. **Do not cut:** the two-line csproj diff, the 1.625×→1.456× before/after, the "why we kept IL3053 visible."
 
 **Abstract B cut-list:**
+
 1. Cut F4–F8 (the 🟡 findings). They're honest scoping but not the narrative. (Saves ~2 min.)
 2. Cut the harness architecture diagram — just show `tests/chaos/` in a terminal. (Saves ~1.5 min.)
 3. Cut the Windows/macOS symlink-semantics footnote. Linux is enough. (Saves ~1 min.)
@@ -234,6 +243,7 @@ Ordered. At the 25-minute mark on a 30-minute slot, start cutting from the top.
 5. **Do not cut:** the live 5 GB log repro, the `../../canary` name, the dual device-guard explanation.
 
 **Abstract C cut-list:**
+
 1. Cut the full 25-archetype roster read-out. Show four on screen, name-check the rest. (Saves ~2 min.)
 2. Cut the FR-008 three-deviation walkthrough — reference it, don't narrate it. (Saves ~2 min.)
 3. Cut the "release captain" commit-graph flyover. Audience can scan the repo. (Saves ~1.5 min.)

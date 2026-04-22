@@ -28,7 +28,7 @@ This guide gets you from a fresh WSL2 Ubuntu 24.04 on a Blackwell laptop to
 | GPU with NVFP4 support (native or TRT-LLM emulation) | Blackwell sm_10x/sm_11x (native), Ada sm_89, or Hopper sm_9x |
 | ≥ 8 GB VRAM (12 GB recommended) | `nvidia-smi --query-gpu=memory.total --format=csv` |
 | `curl`, `sudo`, and an internet connection | -- |
-| An NGC API key (free): https://ngc.nvidia.com/setup | -- |
+| An NGC API key (free): <https://ngc.nvidia.com/setup> | -- |
 
 **Ampere (sm_80/sm_86) is not supported.** NVFP4 requires Ada or newer.
 
@@ -232,10 +232,12 @@ fixes on a warm NIM. If your first-token latency exceeds that, see
 ### "systemctl --user" errors out
 
 - WSL2 needs user-systemd. Ensure `/etc/wsl.conf` contains:
+
   ```ini
   [boot]
   systemd=true
   ```
+
   Then `wsl --shutdown` from PowerShell and relaunch the distro.
 
 ### Port 8000 already in use
@@ -266,5 +268,5 @@ desired.
 - FR-020 -- NVIDIA NIM provider spec (pending)
 - [FR-018 -- Local-model provider (llama.cpp / Ollama)](proposals/FR-018-local-model-provider-llamacpp.md) -- dependency: provider abstraction
 - [Espanso / AHK integration](espanso-ahk-integration.md) -- downstream consumer
-- NGC setup: https://ngc.nvidia.com/setup
-- Gemma Terms of Use: https://ai.google.dev/gemma/terms
+- NGC setup: <https://ngc.nvidia.com/setup>
+- Gemma Terms of Use: <https://ai.google.dev/gemma/terms>

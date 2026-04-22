@@ -37,7 +37,7 @@ and to `sources` in `nix/flake.nix`.
 > (`az-ai-v2.exe` on Windows) alongside the v1 `az-ai` binary. All three
 > manifests install as `az-ai-v2` during this transition. Post-cutover, a
 > follow-up manifest update will rename back to plain `az-ai`.
-
+>
 > **NOTICE bundling:** every manifest now stages `LICENSE`, `NOTICE`, and
 > `THIRD_PARTY_NOTICES.md` alongside the binary so Mr. Lippman's
 > release-notes claim -- *"all distributed artifacts include NOTICE"* --
@@ -160,7 +160,7 @@ needing to install from a raw URL.
 Every tagged release gets a frozen sibling formula alongside the tracking
 `az-ai.rb`:
 
-```
+```text
 packaging/homebrew/Formula/
 ├── az-ai.rb                  # tracks latest (currently v2.0.1)
 └── az-ai-v2@2.0.0.rb         # frozen pin -- keg_only, class AzAiV2AT200
@@ -186,7 +186,7 @@ Scoop resolves `<bucket>/<pkg>@<version>` by looking for a manifest under
 [`scoopinstaller/versions`](https://github.com/ScoopInstaller/Versions)
 bucket convention:
 
-```
+```text
 packaging/scoop/
 ├── az-ai.json                       # tracks latest
 └── versions/

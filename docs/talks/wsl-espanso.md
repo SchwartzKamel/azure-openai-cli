@@ -221,7 +221,7 @@ espanso status    # expect: espanso is running
    sentence (Espanso sees the trigger and calls into WSL via its shell
    extension — no `wsl.exe` juggling because Espanso is running inside
    the WSL distro and writes back via the standard injection path).
-4. Type `:ai ` → a tiny modal form pops, type a question, Enter → the
+4. Type `:ai` → a tiny modal form pops, type a question, Enter → the
    answer lands where the form was.
 
 ### 4.4 Fallback (network dies)

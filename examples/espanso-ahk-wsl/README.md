@@ -123,7 +123,7 @@ espanso restart
 ### Smoke test
 
 1. In any text field (WSL terminal, VS Code, Linux Firefox under WSLg) type:
-   `:ai ` → a form pops up → type `say hi` → submit → response pastes.
+   `:ai` → a form pops up → type `say hi` → submit → response pastes.
 2. Copy any sentence with a typo, then type `:aifix` → corrected text replaces
    the trigger.
 
@@ -153,7 +153,7 @@ espanso restart
 
 ### Smoke test
 
-1. In Outlook / Teams / Notepad type `:ai ` → form → `say hi` → response pastes.
+1. In Outlook / Teams / Notepad type `:ai` → form → `say hi` → response pastes.
 2. Copy a sentence with a typo → type `:aifix` → corrected text pastes.
 
 If the first call takes ~1 s longer than subsequent ones, that's the WSL2 VM

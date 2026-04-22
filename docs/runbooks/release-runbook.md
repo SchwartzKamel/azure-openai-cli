@@ -9,6 +9,7 @@ If this runbook and the workflow disagree, the workflow wins -- file a
 PR to sync this doc.
 
 **Post-v2.0.4 reality check:**
+
 - Active ship path is **v2** (`azureopenai-cli-v2/`, binary `az-ai-v2`,
   GHCR image `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`).
 - Release matrix is **4 legs**: `linux-x64`, `linux-musl-x64`,
@@ -131,6 +132,7 @@ git push origin "${TAG}"
 ```
 
 **Rules:**
+
 - Tags **must** be annotated (`-a`). Lightweight tags break the
   release workflow's `actions/checkout` + metadata steps.
 - Signed (`-s`) is preferred if you have a key configured locally.

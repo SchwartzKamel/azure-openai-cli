@@ -1,7 +1,7 @@
 # v2.0.0 Release Attempt #1 — Diagnostic (NO-GO)
 
 **Status:** :red_circle: **FAILED.** Release not published. No manifests touched.
-**Run:** https://github.com/SchwartzKamel/azure-openai-cli/actions/runs/24736776551
+**Run:** <https://github.com/SchwartzKamel/azure-openai-cli/actions/runs/24736776551>
 **Tag:** `v2.0.0` → commit `b1fd2cd` (immutable; **do not re-tag**).
 **Decision owner:** repo maintainer. Lippman recommends **patch-forward to v2.0.1** from `main` after fixes land.
 
@@ -33,7 +33,7 @@ cross-build) **passed**. The two failures came from elsewhere.
 
 **Symptom (from job log, 17:36:15Z):**
 
-```
+```text
 >> Creating /d/a/azure-openai-cli/azure-openai-cli/dist/az-ai-v2-2.0.0-win-x64.zip
 stage.sh: error: 'zip' not on PATH — required to stage Windows artifact
 ##[error]Process completed with exit code 1.
@@ -71,7 +71,7 @@ deterministic across runners.
 
 **Symptom (from job log, 17:35:08Z):**
 
-```
+```text
 #19 DONE 20.3s                              ← dotnet publish succeeded
 #20 [runtime 5/7] COPY --from=build /app/az-ai-v2 /app/az-ai-v2
 #20 ERROR: failed to calculate checksum of ref ...: "/app/az-ai-v2": not found

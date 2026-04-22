@@ -20,7 +20,7 @@
 
 Every prompt currently follows this path:
 
-```
+```text
 User types command
   → Shell parses Makefile (50-100ms)
     → Docker creates container (~800-1500ms)
@@ -34,6 +34,7 @@ User types command
 **Estimated time to first token: 1.5-3.0 seconds.**
 
 For comparison:
+
 - `sgpt` (Python, no Docker): ~500ms to first token
 - `mods` (Go, native binary): ~300ms to first token
 - ChatGPT web: ~800ms to first token
@@ -93,7 +94,7 @@ Instead of creating a new container per invocation, keep a warm container runnin
 
 #### Architecture: Sidecar Daemon
 
-```
+```text
 az-ai "prompt" ──► Unix socket/named pipe ──► Warm container ──► Azure API
                                                     │
                                       (persistent process,
@@ -104,6 +105,7 @@ az-ai "prompt" ──► Unix socket/named pipe ──► Warm container ──�
 **Implementation:**
 
 1. `az-ai --daemon start` launches a long-lived container:
+
    ```bash
    docker run -d --name az-ai-daemon --env-file .env \
        -v /tmp/az-ai.sock:/tmp/az-ai.sock \
@@ -171,6 +173,7 @@ The Docker-first design is a genuine differentiator for security-conscious envir
 ## Exit Criteria
 
 ### Phase 1
+
 - [ ] Spinner/status indicator shows immediately on launch (stderr only)
 - [ ] Spinner clears when first token arrives
 - [ ] HTTPS pre-warm reduces TLS handshake latency
@@ -178,12 +181,14 @@ The Docker-first design is a genuine differentiator for security-conscious envir
 - [ ] Measured: Time to first token < 1.5s on warm Docker cache
 
 ### Phase 2
+
 - [ ] `--daemon start/stop/status` manages a persistent container
 - [ ] Prompt submission via Unix socket works end-to-end
 - [ ] Fallback to `docker run` when daemon is not running
 - [ ] Measured: Time to first token < 800ms with daemon
 
 ### Phase 3
+
 - [ ] Pre-built binaries available on GitHub Releases for linux-x64, osx-arm64, win-x64
 - [ ] `dotnet tool install` works
 - [ ] Measured: Time to first token < 400ms native

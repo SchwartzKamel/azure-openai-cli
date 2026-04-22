@@ -28,6 +28,7 @@ Three live-reproducible 🔴 findings in `Squad/PersonaMemory.cs` alone (F1/F2/F
 ## 🔴 Findings (ship blockers)
 
 ### F1 -- `PersonaMemory.ReadHistory` amplifies arbitrary file size into process RSS
+
 **File:** `azureopenai-cli-v2/Squad/PersonaMemory.cs:30-43`
 **Severity:** 🔴 High (reliability / DoS; local privilege not required, just a writable `.squad/history/<persona>.md`)
 **Owner:** Kramer (author) / Frank Costanza (SRE)
@@ -45,6 +46,7 @@ Measured: 100 MB history → peak RSS **431 MB** (`/usr/bin/time -v`: `Maximum r
 **Fix direction:** stream the last 32 KB via `FileStream.Seek(-MaxHistoryBytes, SeekOrigin.End)` + `StreamReader`. Never load the whole file.
 
 ### F2 -- `PersonaMemory.ReadHistory` hangs on unbounded/device files
+
 **File:** same as F1
 **Severity:** 🔴 High (reliability; CLI becomes unresponsive, killed only by SIGTERM)
 **Owner:** Kramer / Frank
@@ -53,6 +55,7 @@ Measured: 100 MB history → peak RSS **431 MB** (`/usr/bin/time -v`: `Maximum r
 `File.ReadAllText` on `/dev/urandom` never returns EOF. With a persona bound to such a history file the CLI hangs; our drill reaped it with SIGTERM after 20 s. Respects neither `--timeout` nor SIGINT (Ctrl-C passes through but the read is in a finalizer-hostile path). Same root cause as F1 -- stream, don't slurp, and also stat the path up front and refuse symlinks outside `.squad/history/`.
 
 ### F3 -- Persona-name path traversal in `GetHistoryPath`
+
 **File:** `azureopenai-cli-v2/Squad/PersonaMemory.cs:108-109`
 **Severity:** 🔴 High (integrity; attacker-controlled `.squad.json` ⇒ history reads/writes escape `.squad/history/`)
 **Owner:** Kramer / Newman (security triage)
@@ -76,28 +79,34 @@ Observed: `--persona '../../canary'` accepted, banner prints `🎭 Persona: ../.
 ## 🟡 Findings (accepted / noisy, not crashes)
 
 ### F4 -- 50 MB config parse amplification
+
 `UserConfig.Load` reads the entire `.azureopenai-cli.json` before JSON-parsing it. A 50 MB malformed file produces warnings only, but transient memory spikes to ≥50 MB on every invocation in that cwd. Cap at 1 MB with a stat() check before read.
 Reproducer: `tests/chaos/04_config_chaos.sh:04a`. Owner: Kramer.
 
 ### F5 -- `--max-tokens` / `AZURE_MAX_TOKENS` / `AZURE_TEMPERATURE` accept nonsense values
+
 - `--max-tokens -1` → rc=0 (only estimate path exercises it; real calls will bounce off the API with a 400). Parser (`Program.cs:630`) is `int.TryParse` with no range.
 - `AZURE_TEMPERATURE=9e99` → `float.TryParse` returns `+Infinity`; passed through to the SDK, which will then explode. Cleanly-explode-via-API ≠ cleanly validated locally.
 - `--max-iterations` / `--max-rounds` DO have range checks (verified 10c/01h/01i); `--max-tokens`, `AZURE_MAX_TOKENS`, `AZURE_TEMPERATURE` do not.
 Reproducers: `01g`, `03j`, `03k`. Owner: Kramer.
 
 ### F6 -- World-writable config loaded without warning
+
 `.azureopenai-cli.json` chmod 0666 is loaded silently. In multi-user boxes or sloppy dev containers, another user can steer `default_model` / `defaults.temperature`. Either warn on `S_IWOTH`/`S_IWGRP` (Linux) or match the hardening `ssh` applies to its config. Reproducer: `04f`. Owner: Newman.
 
 ### F7 -- AOT "will always throw" warnings in `Azure.AI.OpenAI`
+
 `ILC: Method '[Azure.AI.OpenAI]Azure.AI.OpenAI.Chat.AzureChatClient.PostfixSwapMaxTokens' will always throw` (plus `PostfixClearStreamOptions`) -- latent NotSupportedException on any code path that invokes them. Caused by a missing accessor (`get_SerializedAdditionalRawData`) between the bound `Azure.AI.OpenAI 2.1.0` and its `OpenAI` dependency. Hand to Kramer to pin a matched version, or to Bob Sacamano to confirm the v2 dependency closure.
 Reproducer: stderr of `dotnet publish …` (captured in drill; full trace reproducible by re-running the publish command). Owner: Kramer / Bob Sacamano.
 
 ### F8 -- Baseline test failures at `488aebd`
-```
+
+```text
 AzureOpenAI_CLI.V2.Tests.ErrorAndExitTests.ErrorAndExit_JsonMode_WritesValidJson        [FAIL]
 AzureOpenAI_CLI.V2.Tests.V2FlagParityTests.ErrorAndExit_HonorsJsonMode(jsonMode: True…) [FAIL]
 Failed! -- Failed: 2, Passed: 299, Skipped: 0, Total: 301
 ```
+
 Both concern `--json` error output shape. Not introduced by this drill -- reproduced on a clean checkout. A v2.0.0 tag with 2 red tests is a Mr. Wilhelm change-advisory failure by itself.
 Reproducer: `dotnet test tests/AzureOpenAI_CLI.V2.Tests` on `488aebd`. Owner: Kramer (author) / Mr. Lippman (release gate).
 

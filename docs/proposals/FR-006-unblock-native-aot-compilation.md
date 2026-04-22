@@ -46,6 +46,7 @@ static void OutputJsonError(string message, int exitCode)
 ```
 
 This method:
+
 1. Uses an **anonymous type** (`new { error = true, ... }`) that cannot be analyzed by the JSON source generator at compile time
 2. Creates a **new `JsonSerializerOptions` instance on every call** -- a known performance anti-pattern even outside AOT (Microsoft's own docs warn against this)
 3. Falls back to **reflection-based serialization** because there's no source-generated context for the anonymous type
@@ -99,6 +100,7 @@ static void OutputJsonError(string message, int exitCode)
 ```
 
 This eliminates:
+
 - The anonymous type (AOT blocker)
 - The per-call `JsonSerializerOptions` allocation
 - All reflection-based serialization in the binary

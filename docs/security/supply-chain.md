@@ -115,6 +115,7 @@ story today. Adding a `cosign sign` step is tracked as follow-on work.
 - **Rebuild cadence:** weekly in CI (not release-tied), plus immediately
   after an Alpine or .NET security advisory.
 - **Update flow:**
+
   ```bash
   # 1. resolve the new digest for the intended tag
   docker buildx imagetools inspect mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine

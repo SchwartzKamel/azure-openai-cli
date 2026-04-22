@@ -63,7 +63,7 @@ see §3 leaf 3.
 
 ## 3. Decision tree
 
-```
+```text
 Is the release run failing or just slow?
 │
 ├─ All legs still queued, no linux leg started ──▶ §3.2  GitHub Actions outage
@@ -87,6 +87,7 @@ before the cut. It is **transient** and **not our code**.
    `#release` channel): *"macos-14 queued 60+ min on run `<id>`, holding
    before rerun."* This is how Frank knows you're on it.
 3. At 90 min, **rerun failed/cancelled legs only**:
+
    ```bash
    # DO NOT use `gh workflow run release.yml --ref <tag>` on an old tag --
    # workflow_dispatch needs the workflow_dispatch trigger to exist at
@@ -94,6 +95,7 @@ before the cut. It is **transient** and **not our code**.
    # added you get HTTP 422. This is the "workflow_dispatch trap."
    gh run rerun <run-id> --failed --repo SchwartzKamel/azure-openai-cli
    ```
+
    `--failed` reschedules only cancelled/failed legs and preserves the
    green ones -- their artifacts are already uploaded and won't be
    rebuilt.
@@ -175,6 +177,7 @@ from v2.0.4 is the template:
 ```
 
 Companion edits when cutting a RID:
+
 - `CHANGELOG.md` -- explicit `Removed` section with the substitution
   paths (Rosetta, Docker, source build). See [v2.0.4 entry](../../CHANGELOG.md).
 - `docs/verifying-releases.md` -- remove the RID from multi-platform

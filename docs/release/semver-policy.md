@@ -1,5 +1,8 @@
 # SemVer policy -- Azure OpenAI CLI
 
+<!-- markdownlint-disable-file MD051 -->
+<!-- §-anchors follow GitHub's slug algorithm; markdownlint's heuristic differs. Links verified against github.com render. -->
+
 > "We ship with discipline. The version number is a contract. Break it,
 > and we hear about it for the next three releases." -- Mr. Lippman
 
@@ -13,6 +16,7 @@ conservative bump and note it in the release PR.
 maintenance mode; see [§7](#7-v1-line-maintenance-mode).
 
 Companion docs:
+
 - [`pre-release-checklist.md`](pre-release-checklist.md) -- the gate
   every release runs through.
 - [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) -- OCI tag policy.

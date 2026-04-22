@@ -18,7 +18,7 @@ is merged. Specifically, we look at:
 
 Example trailer:
 
-```
+```text
 Co-authored-by: Jane Doe <jane@example.com>
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 ```

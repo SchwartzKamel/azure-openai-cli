@@ -9,6 +9,7 @@ behind which OCI tags on `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`
 exist, when they move, and when they don't.
 
 Companion docs:
+
 - [`semver-policy.md`](semver-policy.md) -- what counts as a
   "contract break" on the image.
 - [`pre-release-checklist.md`](pre-release-checklist.md) -- gate 18

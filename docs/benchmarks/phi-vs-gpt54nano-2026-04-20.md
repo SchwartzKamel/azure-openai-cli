@@ -68,15 +68,17 @@ Prompts (N=5) — temperature=0, max_tokens=128:
 | 3 | PASS | `1,2,3` | 1.049081s | 19/9 |
 | 4 | PASS | `The cat sat.` | 1.173784s | 22/8 |
 | 5 | PASS | `Positive` | 0.901260s | 21/5 |
+
 ### Phi-4-mini-instruct — 4/5 PASS
 
 | # | Result | Response (truncated 160c) | Latency | tokens in/out |
 |---|---|---|---:|---:|
 | 1 | PASS | `pong` | 0.875481s | 10/2 |
-| 2 | FAIL | ````json {"ok":true} ```` | 0.732833s | 15/10 |
+| 2 | FAIL | ````json {"ok":true}```` | 0.732833s | 15/10 |
 | 3 | PASS | `1, 2, 3` | 0.896374s | 16/8 |
 | 4 | PASS | `the cat sat.` | 0.652851s | 19/5 |
 | 5 | PASS | `Positive` | 0.527349s | 18/2 |
+
 ## 5. Strict JSON schema (response_format.json_schema, strict=true)
 
 | Model | Result | Notes |
@@ -119,4 +121,4 @@ Numbers above. Decision gates:
 2. If Phi passes strict JSON schema AND function calling, it is viable for structured automation; otherwise keep gpt-5.4-nano on any path that emits tool calls or enforced JSON.
 3. Cost delta per call is ¢0.0008 (gpt minus phi) — multiply by your expected call volume before over-indexing on it.
 
-_Methodology footnote: all numbers captured with N and stdev. Regex-based instruction-following is strict by design ("follow the literal instruction"); nothing is graded on intent._
+*Methodology footnote: all numbers captured with N and stdev. Regex-based instruction-following is strict by design ("follow the literal instruction"); nothing is graded on intent.*

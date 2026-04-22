@@ -112,7 +112,7 @@ vs. finalize) -- but it no longer gates stdout.
 When a tool-call round completes and we're about to invoke tools, emit a
 short delimiter so the streamed preamble is visually anchored:
 
-```
+```text
 <streamed preamble text on stdout>
 [stderr] 🔧 round 2: fs_read web_search
 <streamed text from next round on stdout>

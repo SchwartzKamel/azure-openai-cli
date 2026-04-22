@@ -165,6 +165,7 @@ The Given/When/Then is visible in the **method name**; the body is so
 short that the narrative wrapper would obscure rather than reveal.
 
 Use the DSL when:
+
 - The chain is async (narrative failure messages are especially
   valuable when await stack traces are noisy).
 - The test has 3+ assertions that form a coherent scenario.

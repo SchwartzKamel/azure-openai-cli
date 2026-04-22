@@ -27,7 +27,7 @@ of scope for this audit and covered by the umbrella project license.
 A full walk of `docs/demos/` and `img/` was performed on 2026-04-22
 (commit base: main @ `d14e753`):
 
-```
+```text
 docs/demos/hero-gif.md                              (Markdown — first-party)
 docs/demos/README.md                                 (Markdown — first-party)
 docs/demos/scripts/01-standard-prompt.sh             (shell — first-party, MIT)

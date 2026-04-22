@@ -40,14 +40,14 @@ Instances of abusive, harassing, or otherwise unacceptable behavior may be repor
 
 **How to report privately:**
 
-- **Preferred -- GitHub Security Advisories:** open a private advisory via the
+* **Preferred -- GitHub Security Advisories:** open a private advisory via the
   repository's **Security → Report a vulnerability** flow
   (<https://github.com/SchwartzKamel/azure-openai-cli/security/advisories/new>).
   This is the same private channel documented in
   [`SECURITY.md`](SECURITY.md) §8 "Reporting Vulnerabilities"; it is visible
   only to repository maintainers. Prefix the title with `[conduct]` so it is
   triaged as a CoC report rather than a security vulnerability.
-- **Alternative -- direct maintainer contact:** reach out to a maintainer
+* **Alternative -- direct maintainer contact:** reach out to a maintainer
   privately (e.g., via the email on their GitHub profile). If you are not
   sure who to contact, use the Security Advisory channel above and a
   maintainer will respond.

@@ -6,7 +6,7 @@ All three link the intended post-tag release URL: `https://github.com/SchwartzKa
 
 ## (a) X / Twitter — 280 char
 
-```
+```text
 az-ai v2.0.0: Microsoft Agent Framework replaces the hand-rolled agent loop. Every v1 flag/env/exit code unchanged. AOT 12.91 MB (1.456× v1). New: --estimate, opt-in --telemetry, --prewarm, personas wired.
 
 https://github.com/SchwartzKamel/azure-openai-cli/releases/tag/v2.0.0
@@ -18,7 +18,7 @@ https://github.com/SchwartzKamel/azure-openai-cli/releases/tag/v2.0.0
 
 ## (b) Mastodon / Bluesky — long-form, ≤500 char
 
-```
+```text
 azure-openai-cli v2.0.0 🚀
 
 We replaced ~2,200 lines of hand-rolled chat/tool/Ralph orchestration with Microsoft Agent Framework primitives. Every v1 flag, env var, exit code, and --raw byte is unchanged; your .squad/ memory transfers untouched.
@@ -37,7 +37,7 @@ https://github.com/SchwartzKamel/azure-openai-cli/releases/tag/v2.0.0
 
 ## (c) LinkedIn — 3–5 lines
 
-```
+```text
 Shipped: azure-openai-cli v2.0.0.
 
 We swapped ~2,200 lines of hand-rolled chat/tool orchestration for Microsoft Agent Framework primitives — without changing a single v1 flag, env var, or exit code. AOT single-file binary came in at 12.91 MB (1.456× v1), startup p95 inside the ≤25% regression budget, RSS at or below v1.

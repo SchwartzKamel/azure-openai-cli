@@ -139,11 +139,13 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 ## Documentation
 
 ### Architecture & decisions
+
 - [ARCHITECTURE.md](ARCHITECTURE.md) — system design, tool registry, squad internals
 - [AGENTS.md](AGENTS.md) — fleet dispatch pattern and the 25-agent roster
 - [docs/adr/](docs/adr/) — Architecture Decision Records
 
 ### Operating the CLI
+
 - [docs/prerequisites.md](docs/prerequisites.md) — required environment variables (single source of truth)
 - [docs/use-cases.md](docs/use-cases.md) — end-to-end workflow recipes (indexes the per-mode guides)
 - [docs/persona-guide.md](docs/persona-guide.md) — persona + Squad reference (`--persona`, `.squad.json`, memory)
@@ -151,22 +153,27 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 - [docs/cost-optimization.md](docs/cost-optimization.md) — token budgeting and per-persona cost profiles
 
 ### Security
+
 - [SECURITY.md](SECURITY.md) — threat model and reporting
 - [docs/verifying-releases.md](docs/verifying-releases.md) — cosign / attestation verification
 
 ### Accessibility
+
 - [docs/accessibility.md](docs/accessibility.md) — `NO_COLOR`, `--raw`, exit codes, keyboard-only workflows, known gaps
 
 ### Release & migration
+
 - [CHANGELOG.md](CHANGELOG.md) — release history
 - [docs/migration-v1-to-v2.md](docs/migration-v1-to-v2.md) — user-facing v1 → v2.0.0 upgrade notes
 - [docs/v2-migration.md](docs/v2-migration.md) — internal MAF-adoption phase plan
 - [CONTRIBUTING.md](CONTRIBUTING.md) — dev workflow and PR expectations
 
 ### Internationalization
+
 - [docs/i18n.md](docs/i18n.md) — `InvariantGlobalization` contract, USD-only cost policy, non-ASCII / RTL / CJK notes, reserved `--locale` flag
 
 ### Glossary
+
 - **Ralph mode (autonomous Wiggum loop)** — agentic self-correcting loop: run task → validate → feed errors back → retry. See [use-cases-ralph-squad.md](docs/use-cases-ralph-squad.md).
 
 ## License

@@ -48,7 +48,7 @@ Cost estimate is predicated on FR-014 having already shipped the preferences fil
 
 v2 already builds on `Microsoft.Extensions.AI.IChatClient` via `AsIChatClient()` (Program.cs:198). That is the seam. We do **not** invent a new abstraction -- we substitute the backing implementation:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │ CLI entry (Program.cs)                                      │
 │  flags → CliOptions → ProviderSelector                      │
@@ -155,7 +155,7 @@ New/extended flags (all additive; no breaking changes):
 
 Precedence chain (matches FR-014, extended):
 
-```
+```text
 --provider flag
   > $AZ_AI_PROVIDER
     > project-local ./.az-ai.toml [default_provider]
@@ -175,11 +175,13 @@ Algorithm:
 2. Cross-reference the declared `[providers.<name>.capabilities]` block from preferences.
 3. If the user invoked `--agent` or `--ralph`:
    - If `tool_calling = false` (declared) → **fail fast** with a clear error:
-     ```
+
+     ```text
      [ERROR] Provider 'local' has tool_calling=false in preferences.
              --agent requires tool-calling support.
              Edit ~/.config/az-ai/preferences.toml or switch providers with --provider azure.
      ```
+
    - If `tool_calling = true` (declared) → attempt. If the first assistant turn returns a non-empty `tool_calls[]`, proceed. If it returns plain text when a tool call was required by the prompt harness, log a one-time warning to stderr (suppressed under `--raw`) and continue in best-effort mode.
 4. Cache the probe result for the lifetime of the process. Do not re-probe on every call.
 

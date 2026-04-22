@@ -3,7 +3,7 @@
 > Last updated: 2026-04-24 -- After v1.9.1 release, FR-014 design landed, FR-003/009/010 superseded.
 >
 > This document is the **single source of truth** for FR status. Each row in the priority matrix reflects verified code state; the Status Details and v2.0.0 cutover-blocker sections below are evidence-based (grep + view against `azureopenai-cli/` (v1) and `azureopenai-cli-v2/` (v2)).
-
+>
 > **v2 migration in progress**: See [v2-migration.md](../v2-migration.md) for the Microsoft Agent Framework transition plan (v1 → v2.0). Feature requests below are v1.x scope unless noted.
 
 ---
@@ -42,9 +42,11 @@ Legend: ✅ shipped · 🔄 partial · 📋 planned · 📝 draft · 🪦 supers
 These must close before v2 can replace v1 as the shipping target.
 
 1. **SEC-REGRESSION-1 -- Unbounded stdin in v2** (`azureopenai-cli-v2/Program.cs:181`)
+
    ```csharp
    prompt = await Console.In.ReadToEndAsync(cts.Token);
    ```
+
    v1 fixed this via a 1 MB `char[]` buffer at `azureopenai-cli/Program.cs:584` per [SECURITY-AUDIT-001](SECURITY-AUDIT-001.md) MEDIUM-001. v2 port dropped the cap. **Port the cap before cutover.**
 2. **SEC-REGRESSION-2 -- HTTPS-only check missing in v2** (`azureopenai-cli-v2/Program.cs:143-197`)
    v1 rejects non-HTTPS endpoints at `azureopenai-cli/Program.cs:384` (`endpoint.Scheme != "https"`). v2 constructs `new AzureOpenAIClient(new Uri(endpoint), ...)` with zero scheme validation. SECURITY-AUDIT-001 MEDIUM-002 was closed in v1 by this check; v2 regresses it.
@@ -70,7 +72,7 @@ Ship order recommendation: (1) → (4) → (2) → (3). #1 is highest immediate 
 
 ## Critical path (multi-week features)
 
-```
+```text
 FR-014 (local prefs + multi-provider)           [~2 weeks]
    │   absorbs FR-003 / FR-009 / FR-010
    ▼
@@ -104,6 +106,7 @@ Fully implemented on 2026-04-08. Key capabilities delivered:
 ### 📋 FR-002: Interactive Chat Mode -- PLANNED
 
 No implementation started. Phases:
+
 1. **REPL mode** with `--chat` flag and `/exit`, `/clear`, `/help`, `/model` slash commands
 2. **Session persistence** with `--continue` and `--sessions`
 3. **Context window management** with token tracking

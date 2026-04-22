@@ -28,7 +28,7 @@ One file. One schema. One precedence chain. Multiple providers. Ship it.
 
 ## 3. Preferences File -- Location, Merge Order, Discovery
 
-```
+```text
 Precedence (highest wins):
   1. CLI flag                           (e.g. --provider, --model, --temperature)
   2. Environment variable               (AZ_PROVIDER, AZ_PROFILE, AZUREOPENAIAPI, …)
@@ -200,7 +200,7 @@ Discovery: `az-ai --config show` prints the resolved value and the **source laye
 
 Wrap it with a **thin factory**, not a second interface:
 
-```
+```text
 IProviderFactory
     ├─ IReadOnlyList<string> KnownKinds { get; }
     └─ IChatClient Create(ProviderProfile profile, ProviderContext ctx)
@@ -271,7 +271,7 @@ record ProviderContext(
 
 ### Precedence (repeat for clarity -- this is *the* contract)
 
-```
+```text
 CLI flag  >  env var  >  --profile  >  routing[--trigger]  >
   directory prefs  >  global prefs  >  legacy ~/.azureopenai-cli.json  >
     .env  >  hardcoded default
@@ -283,7 +283,7 @@ CLI flag  >  env var  >  --profile  >  routing[--trigger]  >
 
 The `routing` table is a `Dictionary<string, RoutingEntry>` where `RoutingEntry` is:
 
-```
+```text
 record RoutingEntry(
     string Provider,
     string? Model,
@@ -295,7 +295,7 @@ record RoutingEntry(
 
 Resolution algorithm (O(1) dict lookup, zero allocation on the hot path):
 
-```
+```text
 resolve(trigger, inputText):
     entry = routing.get(trigger) or return default_provider
     if entry.MaxInputWords and wordCount(inputText) > entry.MaxInputWords:
@@ -357,7 +357,7 @@ Cold-start budget: the whole preferences load + merge + validate path must stay 
 
 ## 12. Prototype Class Layout
 
-```
+```text
 azureopenai-cli/
 ├─ Preferences/
 │   ├─ Preferences.cs                 // root record + JsonSerializable types

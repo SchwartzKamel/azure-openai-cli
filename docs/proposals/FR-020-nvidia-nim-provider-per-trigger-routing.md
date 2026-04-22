@@ -81,7 +81,7 @@ block, and the `--provider` CLI flag. **If FR-018 slips, this FR slips.**
 
 ### 4.1 Architecture
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────┐
 │ CLI entry (Program.cs / v2)                                  │
 │   flags → CliOptions → TriggerRouter                         │
@@ -229,6 +229,7 @@ CI test: diff NIM output against Azure output on a fixed deterministic
 prompt, zero diff).
 
 **Screen-reader constraint (Mickey, non-negotiable):**
+
 - `--stream-mode atomic` (default when `--trigger` is set): **buffer the
   entire response, inject once.** Token-streaming into an active text field
   is a screen-reader announce-storm.
@@ -348,6 +349,7 @@ a style preference.
    history).
 
 `ToolHardeningTests` additions (mandatory before merge):
+
 - Bearer token redaction across every log path.
 - SSRF allow-list: each blocked range rejected; metadata endpoints blocked
   under `--allow-lan`.
@@ -476,6 +478,7 @@ Ultra 7 265H / WSL2 Ubuntu 24.04** reference box:
 | `:ai` (freeform) | 🟡 Yellow | **Azure default** | Unbounded scope demands the stronger orchestra. Users may opt into local via `--provider nim`. |
 
 **Prompt-engineering invariants for small models** (Maestro §2-4):
+
 - System prompts are cages, not suggestions. Explicit `Output ONLY …` for
   every transformation trigger.
 - `max_tokens = ceil(input_tokens × 1.3)` for `:aifix` / `:airw`.
@@ -487,6 +490,7 @@ Ultra 7 265H / WSL2 Ubuntu 24.04** reference box:
 
 **Forward-compat graduation ladder** (when NVFP4 Gemma-4 larger variants
 land):
+
 - **4B:** `:aiexp` graduates to local; `:airw` loses its Azure fallback.
 - **9B:** `:aitldr` goes fully local, length gate relaxes to ~1200 tokens;
   `:ai` becomes local-default with Azure opt-in.
@@ -582,11 +586,13 @@ tail from WAN variability. **Local warm wins; local cold loses; the whole
 game is keeping it warm.** That is why §4.5 is non-negotiable.
 
 CI gates (Bania §7):
+
 - `az-ai` cold start p95 ≤ 10 ms -- **non-negotiable AOT budget.**
 - HTTP client request overhead p95 ≤ 5 ms.
 - End-to-end mock round-trip p95 ≤ 25 ms.
 
 Nightly on reference box (live NIM):
+
 - Warm TTFT p95 ≤ 60 ms.
 - Decode tok/s p50 ≥ 120.
 - End-to-end `:aifix` wall-clock p95 ≤ 1.2 s.

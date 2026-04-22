@@ -18,12 +18,14 @@ By April 2026, **Model Context Protocol (MCP)** is the de facto integration stan
 ## 2. Goals / Non-Goals
 
 **Goals**
+
 - Ship `--mcp-server <name>` client support so az-ai's agent loop can call tools exposed by any spec-compliant MCP server over **stdio** transport.
 - Ship `az-ai mcp serve` so az-ai exposes its built-in tools (shell, read_file, web_fetch, delegate, …) to any MCP-compatible host.
 - Maintain **Native AOT** compatibility: zero new reflection-based JSON, all new types registered in `AppJsonContext`.
 - Preserve the sub-15 ms cold-start advantage on the *non-MCP* path (current v2.0.6: 10.7 ms p50 -- see [`docs/perf/v2.0.5-baseline.md`](../perf/v2.0.5-baseline.md)) -- MCP wiring is lazy/pay-for-what-you-use.
 
 **Non-Goals (v1)**
+
 - HTTP/SSE transport (deferred; stdio is what 95% of MCP servers ship today).
 - Resources, Prompts, Roots, Sampling -- MCP has multiple feature surfaces; v1 implements **Tools only**. Resources and Prompts land in v2.
 - Hot-reload of server config at runtime.
@@ -108,7 +110,7 @@ allowed_tools = ["search_repositories", "get_file_contents"]
 
 **Subcommands** (mirror `aichat` / Codex conventions -- users moving between tools should find the same verbs):
 
-```
+```text
 az-ai mcp list                            # list configured servers + reachability
 az-ai mcp add <name> -- <command> [args]  # append to preferences.toml
 az-ai mcp remove <name>
@@ -121,7 +123,7 @@ az-ai mcp doctor                          # spawn each server, run initialize, r
 
 ### 6.2 Server side
 
-```
+```text
 az-ai mcp serve [--stdio] [--tools shell,file,web] [--allow-shell] [--read-only]
 ```
 
@@ -188,9 +190,11 @@ Non-negotiable. Rules the implementation must follow:
 The money quote in the 1.10 release announcement:
 
 > Add az-ai to Claude Code with one line:
+>
 > ```json
 > { "mcpServers": { "az-ai": { "command": "az-ai", "args": ["mcp", "serve"] } } }
 > ```
+>
 > Now Claude can delegate Azure-specific prompts, read_file, web_fetch, and your Espanso text-injection pipeline. ~13 MiB binary, 10.7 ms p50 startup (v2.0.6), Azure-OpenAI-native, MCP-compliant.
 
 This is the first time az-ai has a **zero-friction on-ramp from a bigger tool's user base**. Peterman writes the blog post. Keith Hernandez demos it on stream. Bob Sacamano adds the snippet to Homebrew formula description. We do not ship Phase 2 without a coordinated launch.
@@ -199,7 +203,7 @@ This is the first time az-ai has a **zero-friction on-ramp from a bigger tool's 
 
 Design only -- the implementer lays out actual files. Target layout under `azureopenai-cli-v2/Mcp/`:
 
-```
+```text
 Mcp/
   McpConfig.cs          # records: McpServerConfig, McpClientOptions, parsed from FR-014 TOML
   McpClientSession.cs   # owns one child process; exposes StartAsync, ListToolsAsync, CallToolAsync, DisposeAsync
@@ -214,7 +218,7 @@ Mcp/
 
 ### Pseudocode -- stdio client, tools/list + tools/call
 
-```
+```text
 session = new McpClientSession(config):
     proc = Process.Start(config.Command, config.Args, env=scrub(config.Env), redirect stdin/stdout/stderr)
     stderr -> observability sink (non-fatal, diagnostic)
@@ -242,7 +246,7 @@ session.CallToolAsync(name, args):
 
 ### Pseudocode -- stdio server
 
-```
+```text
 mcp serve main:
     tools = ToolRegistry.CreateMafTools(options.EnabledTools)  // same path as agent mode
     filter out shell_exec unless --allow-shell
@@ -257,16 +261,19 @@ mcp serve main:
 ## 12. Testing Strategy
 
 **Client path** (no real servers needed):
+
 - Unit tests drive the codec against canned JSON-RPC fixtures in `tests/fixtures/mcp/`.
 - Integration tests spawn a **tiny scripted stub server** -- a bash script or a `dotnet run` helper in `tests/McpStub/` that reads NDJSON from stdin and replies from a fixture table. Covers initialize / tools/list / tools/call / error / timeout / malformed-frame scenarios.
 - One end-to-end test against the reference `@modelcontextprotocol/server-filesystem` npx server, gated behind `MCP_E2E=1` so CI without node still passes.
 
 **Server path** (no real client needed):
+
 - Unit tests invoke `McpServer.HandleMessageAsync(jsonRpc)` directly with fixture messages; assert on reply payloads.
 - Integration test: pipe-based -- start `az-ai mcp serve --stdio` as a child, send initialize + tools/list + tools/call via a Python or Bash driver in `tests/integration_tests.sh`, assert on responses. Zero external dependencies.
 - Golden test: **dogfood** -- once Phase 1 lands, `az-ai --mcp-server self` against `az-ai mcp serve` must round-trip `read_file` successfully. That's our smoke test forever.
 
 **Security tests** (Puddy + Newman):
+
 - Server rejects `tools/call` with arguments that would trip `ShellExecTool` blocklist.
 - Client strips control chars from server-provided `description`.
 - Client enforces per-server allowlist.

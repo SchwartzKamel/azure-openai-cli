@@ -10,6 +10,7 @@ bash tests/chaos/run_all.sh
 ```
 
 Every script writes to `tests/chaos/artifacts/`:
+
 - `<id>.out` -- first 1 KB of stdout per attack
 - `<id>.err` -- first 1 KB of stderr per attack
 - `results.tsv` -- id / label / rc / stdout / stderr, one row per attack

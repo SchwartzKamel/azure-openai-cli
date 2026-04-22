@@ -105,13 +105,15 @@ off the literal `[ERROR]` token -- `"bracket error bracket"` is parsed
 into a recognizable announcement, `"Error colon"` is not.
 
 Correct:
-```
+
+```text
 [ERROR] unknown flag: --nope
 [ERROR] AZUREOPENAIENDPOINT environment variable not set
 ```
 
 Incorrect:
-```
+
+```text
 Error: stdin input exceeds 1 MB limit.
 ERR: bad config
   [error] validation failed

@@ -26,7 +26,7 @@ for -- explicit negative space is load-bearing.>
 
 ## System prompt (v1)
 
-```
+```text
 <Paste the exact string literal as it appears in source, including
 whitespace and trailing `PERSONA_SAFETY_LINE` placeholder.>
 <PERSONA_SAFETY_LINE>

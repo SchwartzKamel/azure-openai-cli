@@ -13,7 +13,7 @@ them. Never hand-edit the tap -- always round-trip through this repo.
 
 ## Layout
 
-```
+```text
 packaging/homebrew/
 ├── README.md                      # this file
 └── Formula/

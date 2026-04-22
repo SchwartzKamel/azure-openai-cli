@@ -19,7 +19,7 @@ remaining RIDs.
 
 ## 1. Pipeline at a glance
 
-```
+```text
   ┌──────────────┐   ┌──────────┐   ┌──────────┐   ┌──────────────┐   ┌─────┐   ┌────────┐
   │ dotnet       │   │ stage.sh │   │ sha256   │   │ manifest     │   │ git │   │ GitHub │
   │ publish AOT  │──▶│ tar/zip  │──▶│ digest   │──▶│ fill         │──▶│ tag │──▶│ Release│
@@ -52,7 +52,7 @@ not `stage.sh`'s responsibility. Confirmed.
 
 **Tarball SHA256 (real, rehearsal build):**
 
-```
+```text
 93a658f7c321f82232c20da7a8356314ea343e1df7e9800da3d6385c45d3aea7  dist/az-ai-v2-2.0.0-linux-x64.tar.gz
 ```
 
@@ -102,7 +102,7 @@ Illustrative (do not apply):
 
 Nix wants SRI (base64) not hex. From the rehearsal tarball:
 
-```
+```text
 sha256-k6ZY98Mh+CIywg2nqDVjFOo0Ph336YANo9Y4XEXTrqc=
 ```
 
@@ -124,6 +124,7 @@ those tarballs.
 ## 4. Gap list
 
 ### 4.1 `stage.sh` RID coverage
+
 `stage.sh` **accepts** `linux-x64 | linux-arm64 | osx-x64 | osx-arm64 | win-x64 | win-arm64`.
 It does **not** loop over all of them — it's one-RID-per-invocation.
 **Implication:** the release pipeline needs to call `stage.sh <rid>` six times
@@ -133,24 +134,29 @@ target RID" but does not spell out the exact matrix. **Recommendation:** add a
 workflow. Not a blocker — a convenience.
 
 ### 4.2 Cross-platform tooling (win-* from Linux)
+
 `stage.sh` uses `zip -r` for `win-*` — available on a stock Linux GHA runner
 (`apt install zip` or pre-installed on `ubuntu-latest`). No PowerShell
 needed. **Verified by reading script.** `tar` alone is not enough because
 Scoop expects `.zip`. `stage.sh` already `die`s cleanly if `zip` is missing.
 
 ### 4.3 Homebrew versioned-pin note vs reality
+
 Formula comment says *"first pinnable version is 2.0.1."* This matches the
 cutover decision (`docs/v2-cutover-decision.md` §G6) which defers versioned
 pin scaffolding to 2.0.1. Consistent. **No action.**
 
 ### 4.4 Docker/GHCR
+
 Built separately in `.github/workflows/ci.yml` (`docker:` job, line ~96).
 **Not** `stage.sh`'s job. Confirmed. Release workflow will tag the image
 `ghcr.io/.../azure-openai-cli:2.0.0` independently. Lippman records the
 image digest in the release notes alongside the tarball digests.
 
 ### 4.5 Secret-leakage in `stage.sh`
+
 Reviewed. Script uses:
+
 - `set -euo pipefail` ✓
 - no `set -x` ✓
 - no env vars echoed ✓
@@ -162,13 +168,17 @@ Reviewed. Script uses:
 **Clean.** No action.
 
 ### 4.6 ⚠️ csproj Version vs shipped version — **low-severity metadata drift**
+
 `azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj` line 19:
+
 ```xml
 <Version>2.0.0-alpha.1</Version>
 ```
+
 …but `Program.cs` hardcodes `VersionSemver = "2.0.0"` and `stage.sh` hardcodes
 `VERSION="2.0.0"`. The binary ships `2.0.0` (runtime behavior is correct), but
 the assembly metadata claims `2.0.0-alpha.1`. This will leak into:
+
 - `az-ai-v2.dll` assembly version (ILC will bake it into the native image)
 - NuGet-style introspection tools
 - SBOM generators that read assembly metadata
@@ -182,12 +192,14 @@ runtime output, `stage.sh`, and the git tag all agree.
 doesn't ship metadata that contradicts the tag.
 
 ### 4.7 AOT trim warnings (Azure.AI.OpenAI)
+
 IL2104 + IL3053 + two "will always throw" ILC warnings against
 `Azure.AI.OpenAI.Chat.AzureChatClient.{PostfixSwapMaxTokens, PostfixClearStreamOptions}`.
 These are the **known** baseline documented in
 `docs/aot-trim-investigation.md`. No regression. Puddy already owns.
 
 ### 4.8 Binary linkage
+
 `file` reports *dynamically linked* — correct for NativeAOT on Linux
 (libc, libssl, libicu via `InvariantGlobalization=true` avoids ICU).
 **Not** "statically linked" as the task brief suggested; the brief's

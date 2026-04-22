@@ -35,7 +35,7 @@
 
 > **Instructions to the speaker:** copy this block into the event form, replace bracketed fields, and flip the checkboxes that apply. Do not paste the template verbatim.
 
-```
+```text
 Name: [Legal name as it should appear on the badge]
 Preferred on-stage name: [if different]
 Pronouns: [they/them | she/her | he/him | …]
@@ -97,7 +97,7 @@ Headshots are **not** committed yet. Cut a PR against `docs/devrel/headshots/` o
 
 > Paste this block verbatim into any CFP form or sponsor-track submission.
 
-```
+```text
 I maintain `azure-openai-cli`, an OSS CLI for Azure OpenAI. I have no
 employment, consulting, or financial relationship with Microsoft, OpenAI,
 or any Azure partner. I do not receive compensation or in-kind support
@@ -171,6 +171,7 @@ These three are drawn from the CFP packet at [`docs/launch/v2-conference-cfp.md`
 ## 8. What we say yes / no to
 
 **Yes:**
+
 - OSS-track conferences with published CFP rubrics
 - Community meetups (virtual or in person, travel permitting)
 - Technical podcasts with published episode lists
@@ -178,12 +179,14 @@ These three are drawn from the CFP packet at [`docs/launch/v2-conference-cfp.md`
 - Workshop slots up to half a day, when a co-maintainer is available
 
 **No (default; amend per-event if justified):**
+
 - Vendor-sponsored keynotes with a fee attached to *our* material
 - "Thought leadership" panels with no published agenda
 - Pre-recorded talks presented as live
 - Events that won't confirm code-of-conduct enforcement in writing
 
 **Ask first:**
+
 - Anything that asks for exclusive publishing rights to the recording
 - Anything that asks for the speaker to demo a *different* vendor's product as part of the talk
 - Anything happening within 6 weeks -- we rehearse demos on fresh machines and the calendar is load-bearing

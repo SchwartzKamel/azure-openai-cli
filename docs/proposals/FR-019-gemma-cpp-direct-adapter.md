@@ -37,6 +37,7 @@ Three credible implementations. Each is analyzed end-to-end; recommendation at t
 Spawn the user-installed `gemma` CLI binary as a child process, write the prompt on `stdin`, parse streaming `stdout` line-by-line, detect EOT/`<end_of_turn>` token, forward to the `--raw` sink.
 
 **Pros**
+
 - Works from AOT C# today via `System.Diagnostics.Process` -- zero new dependencies, zero native-interop risk, no AOT breakage.
 - Portable across Linux/macOS/Windows wherever the user can install gemma.cpp.
 - Clean process isolation: prompt injection cannot escape into the az-ai process.
@@ -44,6 +45,7 @@ Spawn the user-installed `gemma` CLI binary as a child process, write the prompt
 - Composes with FR-018's provider abstraction trivially -- gemma.cpp becomes `IModelProvider.GemmaCpp` that internally does not go over HTTP.
 
 **Cons**
+
 - No native streaming protocol. We are parsing free-form stdout, which means we must be defensive about stray log lines, ANSI colour codes (`--nocolors` flag), and tokenizer artefacts (pad tokens, `<start_of_turn>` / `<end_of_turn>`).
 - Process-per-request overhead. gemma.cpp cold-loads weights from disk on every invocation; for a 2B model that is ~1-2 s before first token. Mitigation: a **long-running worker process** with a simple length-framed JSON protocol on stdin/stdout (see Phase C).
 - No function calling (see §6) -- though this is a Gemma limitation, not an Option A limitation.
@@ -55,11 +57,13 @@ Spawn the user-installed `gemma` CLI binary as a child process, write the prompt
 Build (or adopt) a small daemon that links gemma.cpp as a library and exposes `POST /v1/chat/completions` in OpenAI-compatible form. gemma.cpp then looks identical to llama-server from az-ai's perspective, and the FR-018 HTTP provider handles it with zero new code in az-ai.
 
 **Pros**
+
 - Architectural symmetry with FR-018. gemma.cpp becomes "just another OpenAI-compat endpoint," which is the simplest story for users.
 - Reuses all streaming / error-handling / retry logic from FR-018.
 - A daemon can batch requests, reuse loaded weights, and serve multiple az-ai invocations cheaply.
 
 **Cons**
+
 - **Ships a second binary we must maintain.** That is a significant commitment -- CI builds, release artefacts, CVE response, platform matrix. Effectively a new mini-project.
 - Licensing & supply-chain complexity: the shim is *our* code wrapping someone else's code, which Jackie will want reviewed; cross-compile matrix balloons.
 - It is not obvious this is better than telling users to run Ollama, which already *is* such a shim and is maintained by someone else.
@@ -72,10 +76,12 @@ Build (or adopt) a small daemon that links gemma.cpp as a library and exposes `P
 Build `libgemma.so` / `libgemma.dylib` / `gemma.dll`, load it from C# via `DllImport`, call inference functions directly.
 
 **Pros**
+
 - Best latency -- no process boundary, no stdio parsing, direct token stream.
 - Most control over generation parameters.
 
 **Cons**
+
 - **AOT-hostile.** P/Invoke to a non-standard native library makes the single-file AOT binary story (FR-006) significantly more fragile -- now we ship `az-ai` *and* `libgemma.*` and keep them version-locked.
 - **Cross-platform build pain.** Every supported platform now needs a native build pipeline. gemma.cpp's build depends on Highway SIMD + CMake; that is not a casual dependency to take on.
 - **Newman's attack surface.** Any buffer-bug in gemma.cpp becomes a buffer-bug in az-ai. A subprocess crash is a degraded UX; a linked-library crash is a CVE.

@@ -217,7 +217,7 @@ Any test class that does **any** of the following MUST carry the
 
 Existing membership (non-exhaustive) -- treat as the reference set:
 
-```
+```text
 tests/AzureOpenAI_CLI.V2.Tests/
   CostEstimatorTests.cs
   ErrorAndExitTests.cs
@@ -412,7 +412,7 @@ built binary and assert it degrades cleanly rather than crashing.
 
 Scenarios (see `tests/chaos/README.md` for the full catalog):
 
-```
+```text
 01_argv_injection.sh   05_squad_chaos.sh     09_network_chaos.sh
 02_stdin_evil.sh       06_persona_memory.sh  10_ralph_depth.sh
 03_env_chaos.sh        07_tool_chaos.sh      11_persona_live.sh

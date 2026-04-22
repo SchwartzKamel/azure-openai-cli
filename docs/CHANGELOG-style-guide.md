@@ -16,7 +16,7 @@ Gate: [`release/pre-release-checklist.md`](release/pre-release-checklist.md) row
 
 ## 1. File anatomy
 
-```
+```text
 # Changelog
 
 All notable changes to Azure OpenAI CLI will be documented in this file.
@@ -93,15 +93,15 @@ Fixed, per Keep a Changelog, in this order when present:
 Project-specific sections (**optional**, appended after the standard
 six in this order):
 
-7. `### Performance` -- measurable perf delta. Include baseline vs.
+1. `### Performance` -- measurable perf delta. Include baseline vs.
    new numbers and a pointer to the benchmark doc.
-8. `### Tests` -- test-suite changes users should know about (new
+2. `### Tests` -- test-suite changes users should know about (new
    gates, baseline counts).
-9. `### Verified` -- platforms / configurations actually validated
+3. `### Verified` -- platforms / configurations actually validated
    this release.
-10. `### Packaging` -- post-publish hash-sync work landed on this tag
+4. `### Packaging` -- post-publish hash-sync work landed on this tag
     (Homebrew / Nix / Scoop / GHCR digests).
-11. `### Notes` -- context that is not itself a change (cancelled
+5. `### Notes` -- context that is not itself a change (cancelled
     predecessor, known issues carried over, migration pointer).
 
 Do **not** invent new top-level subheaders. If a change doesn't fit,

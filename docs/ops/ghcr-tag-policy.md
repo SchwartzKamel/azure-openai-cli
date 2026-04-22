@@ -4,6 +4,7 @@
 **Owner:** Jerry (ops/DevOps) + Mr. Lippman (release management)
 **Last reviewed:** 2026-04-22 (jerry-medium-sweep)
 **Related:**
+
 - [`docs/security/supply-chain.md`](../security/supply-chain.md) -- pinning + provenance.
 - [`docs/runbooks/release-runbook.md`](../runbooks/release-runbook.md) -- the ritual that produces these tags.
 - [`.github/workflows/release.yml`](../../.github/workflows/release.yml) -- the workflow that writes the tags.
@@ -74,6 +75,7 @@ If v2 published to the same image under a `2.x` tag, a `docker pull
 the v2 binary, which has a different artifact shape and CLI surface.
 
 Keeping the images **separate** until v1 formally EOLs means:
+
 - v1 users pulling `:latest` always get a v1 image.
 - v2 users pull the `/az-ai-v2` suffix explicitly.
 - Post-v1-EOL, we can retag or alias `/az-ai-v2` back to the canonical

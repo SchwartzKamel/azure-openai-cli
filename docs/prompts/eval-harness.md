@@ -78,7 +78,7 @@ dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj \
 
 Runner pseudocode (illustrative -- do not paste as-is):
 
-```
+```text
 for fixture in load("docs/prompts/fixtures/*.json"):
     persona = resolve_persona(fixture.persona)             // from SquadInitializer
     assert persona.version == fixture.persona_version      // pinning check

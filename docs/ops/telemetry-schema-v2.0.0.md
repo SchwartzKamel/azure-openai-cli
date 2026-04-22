@@ -4,6 +4,7 @@
 **Owner:** Frank Costanza (SRE/telemetry), with Morty Seinfeld on cost-event schema and Newman on privacy guardrails.
 **Status:** **Frozen at 2.0.0**. Any change to a span name, attribute name, attribute type, meter name, cost-event field, or unit requires a formal schema bump and review -- see §7.
 **Authoritative code:**
+
 - [`azureopenai-cli-v2/Observability/Telemetry.cs`](../../azureopenai-cli-v2/Observability/Telemetry.cs) -- `ActivitySource`, `Meter`, flag plumbing.
 - [`azureopenai-cli-v2/Observability/CostEvent.cs`](../../azureopenai-cli-v2/Observability/CostEvent.cs) -- stderr JSON schema.
 - [`azureopenai-cli-v2/Observability/CostHook.cs`](../../azureopenai-cli-v2/Observability/CostHook.cs) -- pricing + cost-event emission.
@@ -66,6 +67,7 @@ Telemetry turns on only when exactly one of these triggers is set per invocation
 ### 2.3 OTel resource attributes (auto-populated by SDK)
 
 `Telemetry.cs:178` wires `AddService(ServiceName, serviceVersion: ServiceVersion)`. Resource attributes emitted:
+
 - `service.name = azureopenai-cli-v2`
 - `service.version = 2.0.0-alpha.1` (see drift note in §2)
 - Plus whatever the OTel SDK defaults add (`telemetry.sdk.*`, `host.*` -- these come from the SDK, not from this CLI).
@@ -163,6 +165,7 @@ cat /tmp/audit.log
 ```
 
 To inspect spans without a real collector, point OTLP at a local dump:
+
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4317 \
   az-ai-v2 --telemetry "hello"
@@ -171,6 +174,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4317 \
 ```
 
 To confirm nothing egresses when telemetry is off:
+
 ```bash
 # No flags, no env var. Run under strace or equivalent and grep connect() calls.
 # Expect: only the Azure OpenAI endpoint for the actual chat request, nothing else.

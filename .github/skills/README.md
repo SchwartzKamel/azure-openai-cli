@@ -25,6 +25,7 @@ The Soup Nazi will reject PRs that skipped **preflight**. Mr. Wilhelm will rejec
 ## Adding a skill
 
 Open a PR that adds `<verb>.md` to this directory, linked from the catalog above. A skill earns its place by being:
+
 - **Invokable by any agent** (no persona-specific voice)
 - **Runnable as-is** (exact commands, no prose paraphrase)
 - **Small** (one page or less -- if it's bigger, it's probably two skills)

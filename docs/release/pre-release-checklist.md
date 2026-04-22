@@ -12,6 +12,7 @@ leave it blank.
 [`../runbooks/release-runbook.md`](../runbooks/release-runbook.md).
 
 Companion docs:
+
 - [`semver-policy.md`](semver-policy.md) -- how to pick the bump.
 - [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) -- what happens to
   container tags at publish time.

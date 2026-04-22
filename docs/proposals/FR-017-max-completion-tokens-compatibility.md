@@ -10,7 +10,7 @@
 
 The handrolled path sends `max_tokens` in the Azure OpenAI chat completion request. New-generation Azure deployments reject this:
 
-```
+```text
 [ERROR] ClientResultException: HTTP 400 (invalid_request_error: unsupported_parameter)
 Parameter: max_tokens
 Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.
@@ -23,6 +23,7 @@ Affected models include at least: `gpt-5.x`, `o1`, and likely the whole Response
 ## Fix
 
 Detect the deployment name / API shape and route token-cap to the correct field. In `Azure.AI.OpenAI` 2.1.0:
+
 - `ChatCompletionOptions.MaxOutputTokens` maps to `max_completion_tokens` on newer models (auto-switched by the SDK in recent versions)
 - Older SDK releases hardwired `max_tokens`
 

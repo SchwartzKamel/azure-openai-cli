@@ -15,6 +15,7 @@ one-line verdict (`green` / `yellow` / `red`), and any ADR drafts
 triggered by the findings.
 
 **Related docs:**
+
 - [`docs/cost-optimization.md`](../cost-optimization.md) -- the playbook
 - [`docs/cost/pricing-sourcing.md`](../cost/pricing-sourcing.md) --
   where the per-model rates come from

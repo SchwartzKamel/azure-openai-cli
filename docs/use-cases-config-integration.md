@@ -51,7 +51,7 @@ az-ai --config show
 
 **Expected output:**
 
-```
+```text
 Azure OpenAI CLI Configuration
 ===============================
   Endpoint:      https://your-resource.openai.azure.com (env)
@@ -71,7 +71,7 @@ Each value shows its source in parentheses: `cli flag`, `config`, `env`, or `def
 az-ai --config show --temperature 0.9 --system "You are a pirate."
 ```
 
-```
+```text
   Temperature:   0.9 (cli flag)
   System Prompt: You are a pirate. (cli flag)
 ```
@@ -90,7 +90,7 @@ az-ai --models
 
 **Expected output (multi-model setup):**
 
-```
+```text
 Available models:
 → gpt-4o *
   gpt-4o-mini
@@ -111,7 +111,7 @@ export AZUREOPENAIMODEL="gpt-4o,gpt-4o-mini,gpt-4-turbo"
 az-ai --models
 ```
 
-```
+```text
 No models configured.
 Configure models in your .env file using AZUREOPENAIMODEL (comma-separated for multiple):
   AZUREOPENAIMODEL=gpt-4,gpt-35-turbo,gpt-4o
@@ -129,7 +129,7 @@ Switch the active model. The selection persists in `~/.azureopenai-cli.json`.
 az-ai --set-model gpt-4o-mini
 ```
 
-```
+```text
 Active model set to: gpt-4o-mini
 ```
 
@@ -139,7 +139,7 @@ Active model set to: gpt-4o-mini
 az-ai --set-model gpt-4o
 ```
 
-```
+```text
 Active model set to: gpt-4o
 ```
 
@@ -149,7 +149,7 @@ Active model set to: gpt-4o
 az-ai --set-model gpt-3.5-turbo
 ```
 
-```
+```text
 [ERROR] Model 'gpt-3.5-turbo' not found in available models.
 Available models:
   - gpt-4o
@@ -185,7 +185,7 @@ Display the currently active model without listing all models.
 az-ai --current-model
 ```
 
-```
+```text
 Current model: gpt-4o
 ```
 
@@ -195,7 +195,7 @@ Current model: gpt-4o
 az-ai --current-model
 ```
 
-```
+```text
 No active model set.
 Use --set-model <model-name> to select a model, or configure AZUREOPENAIMODEL in your .env file.
 ```
@@ -257,7 +257,7 @@ nano ~/.azureopenai-cli.json
 
 **Error handling:** If the config file has invalid JSON, the CLI prints a warning to stderr and falls back to defaults:
 
-```
+```text
 [WARNING] Config file has invalid JSON, using defaults: ...
 ```
 
@@ -267,7 +267,7 @@ nano ~/.azureopenai-cli.json
 
 The full precedence chain (highest to lowest priority):
 
-```
+```text
 CLI flags  >  Config file  >  Env vars  >  Defaults
 ```
 
@@ -370,6 +370,7 @@ cat .env
 ```
 
 > **⚠️ Security:** Always add `.env` to your `.gitignore` to prevent committing API keys:
+>
 > ```bash
 > echo ".env" >> .gitignore
 > ```
@@ -505,9 +506,9 @@ Copy a git diff → type `:aicommit` → conventional commit message.
           cmd: "xclip -selection clipboard -o | az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'"
 ```
 
-#### Trigger 7: Free-form Prompt (`:ai `)
+#### Trigger 7: Free-form Prompt (`:ai`)
 
-Type `:ai ` (with trailing space) → a form pops up → type any question → AI answer replaces the trigger.
+Type `:ai` (with trailing space) → a form pops up → type any question → AI answer replaces the trigger.
 
 ```yaml
   - trigger: ":ai "
@@ -635,6 +636,7 @@ Copies selected text → summarizes it → pastes the summary.
 | `Ctrl+Shift+S` | Summarize text | Selected text |
 
 **Setup:**
+
 1. Install [AutoHotKey v2](https://www.autohotkey.com/)
 2. Save the full script as `ai-hotkeys.ahk`
 3. Double-click to run
@@ -721,7 +723,7 @@ az-ai -h
 
 **Expected output:**
 
-```
+```text
 Azure OpenAI CLI
 
 Usage:
@@ -799,7 +801,7 @@ az-ai -v
 
 **Expected output:**
 
-```
+```text
 Azure OpenAI CLI v1.0.0
 ```
 
@@ -1106,6 +1108,7 @@ docker run --rm \
 #### Minimal Attack Surface
 
 The runtime image is Alpine-based (`runtime-deps:10.0-alpine`), which has:
+
 - No shell beyond what's needed
 - No package managers in the final image
 - Minimal OS libraries

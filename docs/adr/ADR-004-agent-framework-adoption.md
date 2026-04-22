@@ -35,6 +35,7 @@ Continuing to maintain our own harness for *every* primitive is technical debt. 
 ## Pass thresholds (set before spike runs to avoid bias)
 
 For MAF to displace hand-rolled on the hot path:
+
 - Cold start regression ≤ **10%** (5.4 ms → max 5.9 ms)
 - TTFT regression ≤ **5 ms**
 - Streaming throughput regression ≤ **5%**
@@ -46,6 +47,7 @@ If MAF fails any of these on the hot path, the hot path stays hand-rolled. Cold-
 ## Spike scope (Phase 0)
 
 Code lives in `spike/agent-framework/`. Throwaway. Not in main test suite. Compares:
+
 - 3 auth paths: `apikey`, `aad`, `foundry`
 - vs current handrolled `az-ai` AOT binary
 - on identical prompts, same Azure model, same endpoint
@@ -55,6 +57,7 @@ Bench harness: `spike/agent-framework/bench.sh` writes to `docs/spikes/af-benchm
 ## Consequences
 
 ### Positive
+
 - **Speed preserved**: zero risk to Espanso users by gating hot-path adoption on benchmarks.
 - **Free leverage**: cold-path features (Ralph workflow checkpointing, OTel, MCP, AAD/Foundry auth, AIContextProvider) come from a Microsoft-maintained framework instead of our custom code.
 - **Multi-auth ships fast**: v1.10.0 carries the enterprise win without waiting for the MAF decision.
@@ -62,11 +65,13 @@ Bench harness: `spike/agent-framework/bench.sh` writes to `docs/spikes/af-benchm
 - **Hardening intact**: Newman's tool hardening (env scrub, blocklists, SSRF, curl restrictions, safety clause) wraps as AF function tools; the security code itself never ports.
 
 ### Negative
+
 - **Two runtimes to maintain** during transition. Mitigated by retiring the slower one (whichever loses) at v2.x+1 if benchmarks confirm a clear winner.
 - **AOT build matrix complexity**: MAF packages may carry trim/AOT warnings. Mitigated by Phase 0 trip-wire and documented exception list.
 - **Spike work** is throwaway if AOT fails. Cost: ~400 LOC + bench harness.
 
 ### Neutral
+
 - Persona on-disk format (`.squad/history/<name>.md`) is **byte-identical** before and after -- `AIContextProvider` reads/writes the existing files.
 - CLI flag contract is **fully preserved** for Espanso users.
 
@@ -78,6 +83,7 @@ Bench harness: `spike/agent-framework/bench.sh` writes to `docs/spikes/af-benchm
 4. How does MAF's `RunStreamingAsync` compare to raw `CompleteChatStreamingAsync` in token latency? → bench
 
 ## References
+
 - [Microsoft Agent Framework overview](https://learn.microsoft.com/en-us/agent-framework/overview/)
 - [`microsoft/agent-framework` GitHub](https://github.com/microsoft/agent-framework)
 - `plan.md` (session-state) -- Phase 0/1/2 details
@@ -101,6 +107,7 @@ Run against live `https://sierrahackingco.cognitiveservices.azure.com/` + `gpt-5
 | Foundry path wired | works or clean stub | `NotImplementedException` stub pending real endpoint | ⏳ |
 
 **Unexpected finding**: the handrolled v1.9.0-alpha.1 AOT binary is **broken** against modern Azure Responses-API endpoints (gpt-5.x):
+
 - AOT: `Reflection-based serialization has been disabled` -- reachable from streaming path
 - JIT: `HTTP 400 unsupported_parameter: max_tokens` (models now require `max_completion_tokens`)
 
@@ -109,6 +116,7 @@ These pre-existed the spike. They **strengthen** the case for MAF adoption becau
 **Decision (post-Phase-0)**: **Accept Agent Framework as the v2.0 core.** Hot-path replacement remains speed-gated per the original plan, but the Phase 0 data shows MAF meets all quantitative thresholds and the handrolled path has latent breakage that MAF avoids.
 
 **Follow-up** (file separately from v2.0 work):
+
 - `FR-016`: v1.9.1 hotfix -- fix AOT reflection regression (find the serialization path still using reflection; route through `AppJsonContext`)
 - `FR-017`: v1.9.1 hotfix -- send `max_completion_tokens` instead of `max_tokens` for new-generation models (`gpt-5.x`, `o1`, etc.)
 - Phase 0 pt 2: wire one AF function tool and re-measure tool round-trip latency to complete the benchmark matrix.

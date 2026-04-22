@@ -55,6 +55,7 @@ The `.env` file was a solid v1 choice -- simple, portable, Docker-friendly. But 
 ```
 
 **Precedence chain (highest wins):**
+
 1. Command-line flags (`--temperature 0.9`)
 2. Active profile settings
 3. UserConfig defaults

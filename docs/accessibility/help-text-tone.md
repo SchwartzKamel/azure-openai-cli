@@ -56,7 +56,7 @@ announce the parenthesis; that is the cue.
 
 **Do:** `--timeout <seconds>  Request timeout (env: AZURE_TIMEOUT, default: 120)`
 
-### 1.5 No control characters. Ever.
+### 1.5 No control characters. Ever
 
 No tabs in help text -- only spaces. No `\r`. No backspace cursor
 tricks. `cat -A az-ai-v2-help.txt` must be clean modulo `$` markers.
@@ -80,7 +80,7 @@ keeps `--help` output identical in CHROME and CLEAN classes (see
 
 The `Examples:` block uses `az-ai-v2 …` exactly, with straight
 double-quotes (`"`). No smart quotes, no backtick substitutions, no
-`$ ` prompt prefix (which some users' screen readers announce as
+`$` prompt prefix (which some users' screen readers announce as
 "dollar sign space" every line).
 
 ### 1.9 Flag synonyms are grouped on one line

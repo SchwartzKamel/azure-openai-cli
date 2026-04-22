@@ -121,7 +121,7 @@ It exercises the CLI's own input handling, encoding, and echo.
 
 When promoted to a CI gate, fixtures should live in:
 
-```
+```text
 tests/AzureOpenAICliV2.Tests/Fixtures/i18n-corpus.txt   (one string per line, NFC)
 tests/AzureOpenAICliV2.Tests/Fixtures/i18n-corpus-nfd.txt   (NFD variants)
 tests/AzureOpenAICliV2.Tests/I18nRoundTripTests.cs           (asserts byte-identity)

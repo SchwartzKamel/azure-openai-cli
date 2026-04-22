@@ -37,7 +37,7 @@ That is the rule. Sections 1-5 spell out what it means in practice.
 
 **Do:**
 
-```
+```text
 ✅ PASS -- 247 tests green
 🟡 CONCERN -- 3 flaky tests, see #412
 🔴 FAIL -- build broken on main
@@ -48,7 +48,7 @@ PASS" -- the "PASS" carries the load; the emoji is garnish.
 
 **Don't:**
 
-```
+```text
 | Build | `🟢` |
 | Tests | `🟡` |
 | Lint  | `🔴` |

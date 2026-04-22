@@ -186,7 +186,7 @@ A quarantined test comes out of quarantine only when **all** of:
 - [ ] The `Skip` attribute is removed in the same commit as the fix.
 - [ ] Commit message: `test: un-quarantine FlakyTestName -- fixed in <SHA>`.
 
-## 6. Retries are banned. Here's why.
+## 6. Retries are banned. Here's why
 
 ```csharp
 // ❌ NEVER

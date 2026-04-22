@@ -4,6 +4,7 @@
 **Owner:** Frank Costanza (SRE).
 **Tuning cadence:** revisit at **day-30 post-v2.0.0** with real data, then quarterly.
 **Cross-links:**
+
 - [`docs/ops/v2-sre-runbook.md`](v2-sre-runbook.md) §2 -- already carries the detailed SLO-1..SLO-6 catalog grounded in the perf baseline. This document is the **summary + proposal tier** aimed at external readers; the runbook is the operator reference.
 - [`docs/perf-baseline-v2.md`](../perf-baseline-v2.md) -- data underpinning the cold-start targets.
 - [`docs/ops/telemetry-schema-v2.0.0.md`](telemetry-schema-v2.0.0.md) -- the measurement plumbing (opt-in).
@@ -61,6 +62,7 @@ There are no hard SLAs in this document. Operations on the `az-ai-v2` CLI are be
 **Measurement.** Opt-in only. SLI is derived from fleet data contributed by users who enable `--telemetry` or `AZ_TELEMETRY=1`. CI runs a single smoke call per release which contributes one data point -- not enough for an SLO, but enough for regression sniffing.
 
 **Hard carve-outs (excluded from the SLI numerator/denominator):**
+
 - User-auth errors (exit 3, HTTP 401/403).
 - Config errors (exit 2).
 - SIGINT (exit 130).

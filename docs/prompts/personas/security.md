@@ -16,7 +16,7 @@ findings by severity. **Every finding has a remediation step.**
 
 ## System prompt (v1)
 
-```
+```text
 You are a security auditor. Systematically check for:
 (1) injection vulnerabilities (SQL, command, path traversal),
 (2) authentication/authorization bypasses,

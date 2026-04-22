@@ -37,36 +37,42 @@
 All numbers are grounded in `docs/perf-baseline-v2.md` §3.3 (AOT, linux-x64, reference hardware `AB-DM4MFJ4`). Ratios are v2/v1 where relevant; absolute ceilings are on reference hardware -- CI runners will re-baseline. Error budgets assume a rolling **30-day window**.
 
 ### SLO-1 -- Cold-start p95 (`--help`, AOT)
+
 - **SLI:** wall-clock ms from fork/exec to exit, 50-run rolling window from `scripts/bench.sh --aot` on CI reference runner. *(⚠️ **Planned.** Today's `scripts/bench.sh` times `dotnet <dll>`, not the AOT binary, and has no `--aot` flag -- it is scheduled under [`bania-v2-03`]. Current AOT SLI is captured via `python3 scripts/bench.py dist/aot/<bin>`. See [`docs/audits/docs-audit-2026-04-22-bania.md`](../audits/docs-audit-2026-04-22-bania.md) H2.)*
 - **SLO target:** p95 ≤ **25 ms** absolute, and ≤ **1.25× v1** (baseline 15.30 ms → ceiling ≈ 19.1 ms; 25 ms is the hardware-independent ceiling). Observed at release: 18.78 ms.
 - **Alert threshold:** page when 3 consecutive CI runs exceed 22 ms p95, or any single run exceeds 28 ms.
 - **Error budget:** 5% of CI runs may exceed target ⇒ ≈ 1.5 runs/day on the hourly cadence. Burn >50% in a week → freeze perf-affecting merges until Bania signs.
 
 ### SLO-2 -- `--version --short` p95 (Gate-2 command)
+
 - **SLI:** same harness, `--version --short` scenario.
 - **SLO target:** p95 ≤ **20 ms** absolute, and ≤ **1.25× v1** (v1 p95 16.34 ms; observed v2 18.25 ms, ratio 1.12×).
 - **Alert threshold:** page on 2 consecutive CI runs > 22 ms p95.
 - **Error budget:** 2% of runs. This is the tightest gate -- Espanso's hot path.
 
 ### SLO-3 -- `--estimate` p95 (offline path)
+
 - **SLI:** `--estimate "hello world"` under AOT, 50-run window.
 - **SLO target:** p95 ≤ **50 ms** absolute. Observed 15.48 ms at release (§3.3). <!-- TODO: Bania to ratify 50 ms or tighten to 25 ms once 2.0.1 data lands -->
 - **Alert threshold:** p95 > 40 ms for 2 consecutive runs.
 - **Error budget:** 5% of runs. Covers CI budget-gate consumers.
 
 ### SLO-4 -- Real-call success rate (opt-in telemetry)
+
 - **SLI:** among users who enabled `--telemetry` / `AZ_TELEMETRY=1`, the ratio of `az.chat.request` / `az.agent.request` spans with `status=Ok` to total spans. Classify out of budget: user/auth errors (exit `2`, `3` due to 401/403), client-side aborts (SIGINT/130).
 - **SLO target:** ≥ **99.5%** weekly, excluding user-classified failures.
 - **Alert threshold:** < 99.0% over any 24h rolling window.
 - **Error budget:** 0.5% ≈ 3.5 h of unavailability / 30 d. <!-- TODO: Bania/Costanza to backfill the first 30-day baseline once telemetry has fleet data; the 99.5% target is provisional, based on Azure OpenAI's own 99.9% regional SLA minus client-path overhead -->
 
 ### SLO-5 -- Cost regression (per-100k-completion-token spend)
+
 - **SLI:** rolling 7-day sum of `usd` field in stderr cost events (per `model`, per `mode`). Compared week-over-week.
 - **SLO target:** delta ≤ **+10%** vs prior week at fixed model/mode/traffic mix.
 - **Alert threshold:** >+15% over 48h on any model.
 - **Error budget:** two breaches per quarter. Third breach → Morty pauses feature merges that touch prompting/caching/model-default code until root-caused.
 
 ### SLO-6 -- Crash rate
+
 - **SLI:** exit code `99` (internal) or `139/134/137` (SIGSEGV/SIGABRT/SIGKILL) as a fraction of all invocations reported via telemetry. Exit `1` is not counted here -- it's generic/user-classified.
 - **SLO target:** ≤ **0.1%** weekly.
 - **Alert threshold:** > 0.3% over 24h, or any single SIGSEGV in CI.
@@ -219,11 +225,13 @@ Every playbook: **Detect → Diagnose → Mitigate → Follow-up.** Keep it shor
 - **Detect:** user reports `~/.cache/azureopenai-cli/` > 50 MB, or slow `--help`. v2 does minimal on-disk caching -- any growth > 50 MB is anomalous.
 - **Diagnose:** `du -sh ~/.cache/azureopenai-cli/ ~/.local/share/azureopenai-cli/ ~/.squad/` -- find the offender. Most commonly a runaway `.squad/history/<persona>.md` (covered by PersonaMemory tail-only read as of F1 fix, but the file itself can still grow on the *write* side).
 - **Mitigate:**
+
   ```bash
   rm -rf ~/.cache/azureopenai-cli/
   # per-persona:
   : > .squad/history/<persona>.md
   ```
+
 - **Follow-up:** file issue; if eviction logic is missing, cross-link to the FR tracker. <!-- TODO: Kramer to confirm whether v2 writes anything under ~/.cache/ at all; if not, this runbook entry is defensive only -->
 
 ### 4.6 `PersonaMemory` refusing on user's history file
@@ -265,6 +273,7 @@ Work top-down; stop at first match.
 ### 5.2 Mechanics (post-cutover)
 
 Homebrew:
+
 ```bash
 brew uninstall azure-openai-cli
 brew install schwartzkamel/tap/azure-openai-cli@1.9.1
@@ -272,6 +281,7 @@ brew pin azure-openai-cli@1.9.1
 ```
 
 Scoop (Windows):
+
 ```powershell
 scoop uninstall azure-openai-cli
 scoop install azure-openai-cli@1.9.1
@@ -279,6 +289,7 @@ scoop hold azure-openai-cli
 ```
 
 Nix:
+
 ```bash
 # pin via flake ref -- adjust <rev> to the v1.9.1 commit hash
 nix profile install github:SchwartzKamel/azure-openai-cli/v1.9.1
@@ -286,6 +297,7 @@ nix profile install github:SchwartzKamel/azure-openai-cli/v1.9.1
 <!-- TODO: Bob Sacamano to confirm the actual flake ref / tap name is published at v1.9.1; the versioned Homebrew/Scoop manifests and Nix flake are the 2.0.1 packaging sweep per release-notes-v2.0.0.md §Known limitations. Until then, the "universal" rollback is the GitHub Release tarball: https://github.com/SchwartzKamel/azure-openai-cli/releases/tag/v1.9.1 -->
 
 Manual / CI (GitHub Release tarball -- always works, zero dependencies):
+
 ```bash
 curl -LO https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v1.9.1/az-ai-linux-x64.tar.gz
 tar xf az-ai-linux-x64.tar.gz
@@ -293,6 +305,7 @@ install -m 0755 az-ai /usr/local/bin/az-ai
 ```
 
 Container:
+
 ```bash
 docker pull ghcr.io/schwartzkamel/azure-openai-cli:1.9.1
 # re-tag as `latest` locally if needed
@@ -310,7 +323,7 @@ If `az-ai --version --short` prints `2.x.x`, the rollback did not take -- check 
 
 ### 5.4 Comms template (release notes / GitHub Discussions)
 
-```
+```text
 Title: [Rolled back] az-ai 2.0.0 → 1.9.1
 
 We're rolling back v2.0.0 to v1.9.1 due to <one-line impact>, observed

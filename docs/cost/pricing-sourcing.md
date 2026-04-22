@@ -78,7 +78,7 @@ session. For those, "verification" means a screenshot or a breadcrumb:
    filter `Service name = Cognitive Services`, `Meter subcategory`
    contains the model name. The per-meter rate on a recent invoice
    line is ground truth for **what you actually paid**.
-2. Azure AI Foundry (https://ai.azure.com) → *Model catalog* →
+2. Azure AI Foundry (<https://ai.azure.com>) → *Model catalog* →
    select the model → *Pricing* tab. This is the rate the endpoint
    charges today.
 
@@ -123,6 +123,7 @@ the release second. Skipping a quarter is a finding, not a footnote.
 - **Q4 check:** first business day on/after **October 1**
 
 Additionally, perform a **spot-check** any time:
+
 - a new model is added to `CostHook.cs` `PriceTable`
 - the operational default model changes
   (see `cost-optimization.md §3.7` default-model change log)

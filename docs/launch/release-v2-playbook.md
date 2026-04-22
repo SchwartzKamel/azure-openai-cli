@@ -4,6 +4,7 @@ This is the exact ritual for cutting a `v2.x` tag now that
 `.github/workflows/release.yml` is tag-pattern gated.
 
 Use alongside:
+
 - `docs/launch/v2-tag-rehearsal-report.md` — proven `stage.sh` mechanics
 - `packaging/README.md` §Tag-time ritual — manifest hash-fill cookbook
 
@@ -75,6 +76,7 @@ tags are rejected by branch protection.
 | `win-x64`        | `windows-latest`| `dist/az-ai-v2-2.0.0-win-x64.zip`       |
 
 Each matrix leg:
+
 1. Checks out the tag
 2. `dotnet tool restore` + `dotnet-CycloneDX`
 3. `bash packaging/tarball/stage.sh <rid>`
@@ -101,6 +103,7 @@ Expect ~20–30 min wall-clock (CI is 8–10 min, matrix build is 6–12 min,
 Docker push is 3–5 min, release publish is < 1 min).
 
 Red-flag symptoms:
+
 - `build-binaries-v2 / linux-musl-x64` failing at the `stage.sh` step →
   NativeAOT musl cross-link issue. Check that `clang` + `zlib1g-dev`
   installed cleanly in the `Install musl AOT toolchain` step.

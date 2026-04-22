@@ -1,5 +1,8 @@
 # ADR-006 Appendix -- Roundtable Memos (verbatim)
 
+<!-- markdownlint-disable MD025 -->
+<!-- Appendix preserves verbatim agent memos; each memo retains its original H1 inside a blockquote. -->
+
 > **This document is not itself an ADR.** It preserves the seven verbatim
 > agent memos that were collated into [ADR-006](./ADR-006-nvfp4-nim-integration.md),
 > [ADR-007](./ADR-007-third-party-http-provider-security.md), and
@@ -79,6 +82,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > None are showstoppers. Footnotes in the docs.
 >
 > ## Verdict
+>
 > **Build it.** NIM path, config-only change on top of FR-018. *Giddyup.*
 
 ## A.2 -- Morty Seinfeld (FinOps)
@@ -107,11 +111,14 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > blended. This is where Gemma-4-31B-IT actually sits on quality.
 >
 > ## 2. Break-Even
+>
 > Fixed $65/mo, marginal $0.07/M, Azure 4.1 blended $5/M:
+>
 > - vs gpt-4.1: **13.2M tok/mo** (~440k/day)
 > - vs gpt-4o-mini: **197M tok/mo** (~6.5M/day) -- LOL
 >
 > ## 3. Hidden Costs
+>
 > - **NVAIE: ~$4,500/GPU/yr list** for prod; free dev tier. Commercial alone
 >   blows up Case A.
 > - HF gated-model agreement -- onboarding tax.
@@ -121,17 +128,20 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > - Blackwell-only native NVFP4. Ada/Hopper eats 2-4× perf penalty.
 >
 > ## 4. Who Is This For?
+>
 > - ✅ Power user with 5090/B200 already: marginal cost = electricity.
 > - 🟡 Startup ≥15M tok/mo premium-tier: run the spreadsheet.
 > - ❌ Casual <1M tok/mo: 400 months of gpt-4.1 for the price of the card.
 > - ❌ Anyone pre-Blackwell.
 >
 > ## 5. Telemetry Schema
+>
 > Log api_cost_usd AND amortized_cost_usd per-call; monthly rollup surfaces
 > local_effective_per_mtok side-by-side with Azure. No hiding CapEx in couch
 > cushions.
 >
 > ## 6. Recommendation
+>
 > **DEFER.** Provider abstraction (FR-018) is all that needs to exist today.
 > No dedicated NIM integration until a real user shows Blackwell + >10M tok/mo
 > premium + NVAIE willingness. Document the pattern in
@@ -143,21 +153,24 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 
 ## A.3 -- Newman (Security)
 
-> # Hello. NIM.
+> # Hello. NIM
 >
 > ## 1. Supply chain
+>
 > NIM pulls from `nvcr.io`. Unpinned tags are a silent-rollout vector.
 > **Mitigation:** pin by digest `nvcr.io/nim/...@sha256:…`, ingest NGC SBOM,
 > Trivy on every provider-CI run, HIGH gate blocking. Attack surface: HTTP
 > server + model runtime + Triton + Python -- lot of sockets for "just a model."
 >
 > ## 2. Endpoint auth
+>
 > NIM's default is localhost HTTP with no API key. **Mitigation:** az-ai
 > generates a random bearer token on first run, starts NIM with `NIM_API_KEY`
 > set, sends `Authorization: Bearer …`, stores token in OS keychain -- never in
 > config, never echoed, never logged. Auth header in an exception message = P1.
 >
 > ## 3. SSRF -- allow-list, not deny-list
+>
 > Default allow: `127.0.0.1/32`, `::1/128`, resolved `localhost`. `--allow-lan`
 > opt-in permits RFC1918 with a yellow banner. Always blocked (even under
 > `--allow-lan`): `169.254.169.254`, `fd00:ec2::254`, `100.100.100.200`,
@@ -165,33 +178,39 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > Post-redirect IP re-validation. DNS-rebind pinning.
 >
 > ## 4. User-supplied endpoint trust
+>
 > Non-loopback endpoints → interactive confirmation on first use, cached
 > per-host in a trust file. Structured logs record host+port+auth-scheme only --
 > never prompt, never response, never bearer. TLS required for non-loopback;
 > `--insecure-remote` loud.
 >
 > ## 5. Weights provenance
+>
 > Trust chain: Google → NVIDIA → us. Pin HF revision SHA (not branch), verify
 > SHA256 of every shard, record in `MODEL_PROVENANCE.md`. Trust digests, not
 > "latest," not "main."
 >
 > ## 6. Gemma ToU
+>
 > First `--provider nim --model gemma-*`: prompt, record attestation (user,
 > timestamp, model id, ToU URL hash), refuse without it. No silent accept.
 >
 > ## 7. Container escape
+>
 > We don't *run* the container; we document it. Hardened `docker run` recipe:
 > `--user` non-root, `--read-only` rootfs, `--cap-drop=ALL`,
 > `--security-opt=no-new-privileges`, `--network` dedicated bridge bound to
 > 127.0.0.1, never `--privileged`.
 >
 > ## 8. ToolHardeningTests additions
+>
 > New tool surface, new tests. Allow-list rejection, metadata block under
 > `--allow-lan`, post-redirect rejection, auth-header redaction, remote-endpoint
 > prompt non-logging, plain-HTTP refusal, weight-SHA verification, ToU
 > attestation requirement.
 >
 > ## Non-negotiables
+>
 > 1. Digest-pinned NIM + Trivy gate HIGH blocking.
 > 2. Bearer auth, keychain, redacted.
 > 3. SSRF allow-list; metadata blocked even under `--allow-lan`.
@@ -208,12 +227,14 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > # Jerry -- DevOps memo: NVFP4 / NIM / TensorRT-LLM
 >
 > ## 1. CI impact -- can we test this in GHA?
+>
 > No. GHA has no GPU. Options: (a) don't test in CI, smoke-test locally;
 > (b) self-hosted GPU runner -- who pays? who's on call? defer;
 > (c) mock the NIM HTTP endpoint in tests -- **this is the actual answer.**
 > Recommendation: (c) in CI + (a) for release smoke.
 >
 > ## 2. AOT impact
+>
 > NIM path is `System.Net.Http` all the way down. OpenAI-shaped JSON over
 > HTTPS. **Zero AOT impact.** FR-018's abstraction holds. TRT-LLM direct is a
 > nightmare to trim -- **massive AOT impact**, don't go there.
@@ -221,23 +242,28 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > **Verdict: NIM yes, TRT-LLM no.**
 >
 > ## 3. Docker story -- do we bundle?
+>
 > **No.** 20+ GB NIM container vs 40 MB Alpine static binary. We do not bundle
 > a house inside a toolshed. Ship a compose example under
 > `examples/compose/nim-gemma/docker-compose.yml` and done.
 >
 > ## 4. Base image compatibility
+>
 > Alpine/musl vs glibc -- **non-issue**. We're making HTTPS calls to a separate
 > container. musl talks TCP.
 >
 > ## 5. Release plumbing
+>
 > No new artifact. No "az-ai-nim" SKU. Docs page + compose example + CHANGELOG
 > line. Mr. Lippman owns the narrative, I own the compose file and the pin.
 >
 > ## 6. Dependency cadence
+>
 > **Pin.** `nvcr.io/nim/...:1.2.0`, not `:latest`. Monthly sweep -- Dependabot
 > doesn't cover NVCR. Digest-pin would be ideal; tag-pin is the pragmatic floor.
 >
 > ## 7. Developer experience
+>
 > A contributor working on the NIM adapter needs nothing installed. No CUDA, no
 > driver, no 31B weights. Mock the endpoint, write the adapter, `make
 > preflight`, ship. GPU is someone else's problem.
@@ -250,6 +276,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > # Costanza -- PM Memo: FR-020
 >
 > ## 1. Roadmap thesis
+>
 > az-ai is a fast Azure OpenAI CLI with a provider abstraction that grows
 > *outward from Azure*, not sideways into multi-cloud soup. NIM passes. NVIDIA
 > is an Azure AI Foundry first-class partner; a NIM endpoint on an Azure
@@ -258,12 +285,14 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > supports it.
 >
 > ## 2. User segmentation
+>
 > Narrow: Azure NC/ND Blackwell customers, on-prem ML platform teams piloting
 > NIM on DGX/HGX Blackwell, a handful of researchers with RTX 50-series. A
 > **power-user flagship feature**, not a mainline driver. Flagships sell the
 > mainline.
 >
 > ## 3. Latency -- THIS is the angle
+>
 > Our brand is sub-15 ms cold start (10.7 ms p50 on v2.0.6 -- see docs/perf/v2.0.5-baseline.md). Local NVFP4 on Blackwell can hit sub-100 ms
 > TTFT for 31B. Combined: **sub-120 ms end-to-end first-token on the user's own
 > iron.** Not a feature -- a different product. Chat loop feels like autocomplete,
@@ -277,6 +306,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > | llama.cpp (FR-018)     | < 400ms     | TBD           |
 >
 > ## 4. Sequencing
+>
 > - Before FR-018? No. Don't pour the second floor before the first.
 > - Before FR-019? No. FR-019 proves "Gemma on iron" on commodity HW.
 > - **Paired with FR-019** in a single release: yes. *"Gemma, everywhere you
@@ -285,6 +315,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > Target: FR-018 release N. FR-019 + FR-020 together release N+1.
 >
 > ## 5. Success criteria
+>
 > - Latency: p50 TTFT ≤ 150 ms on reference Blackwell SKU; p95 ≤ 250 ms.
 > - ≤ 1 config block (`providers.nim`), ≤ 1 CLI flag (`--provider nim`). No
 >   new top-level command. Wilhelm audits.
@@ -294,6 +325,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > - Newman signs off on credential handling (bearer, not disk-cached).
 >
 > ## 6. The pitch
+>
 > This is a prestige FR. Revenue is the NVIDIA + MSFT joint keynote slide, the
 > Foundry docs page, the GTC demo booth. Pitch to Pitt (the fork bullet):
 >
@@ -311,6 +343,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > A four-layer licensing lasagna. Let me itemize. Itemize!
 >
 > ## 1. License matrix -- HTTP boundary is our friend
+>
 > - az-ai: MIT. Permissive, no copyleft contagion.
 > - NIM: NVIDIA proprietary, governed by NVIDIA Software License + NVAIE for
 >   prod. Redistribution forbidden.
@@ -318,7 +351,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > - Gemma weights: **Gemma Terms of Use** (Google). Not OSI-approved. AUP:
 >   no weapons, no CSAM, no unlawful surveillance.
 > - NVIDIA NVFP4 re-quant: derivative of Gemma, distributed under Gemma Terms
->   + NVIDIA attribution. No separate weight EULA overlay -- but the NIM
+>   - NVIDIA attribution. No separate weight EULA overlay -- but the NIM
 >   **container** has its own EULA. Don't conflate.
 >
 > **Holding:** az-ai (MIT) invoking NIM over HTTP is **not** a derivative
@@ -326,6 +359,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > case law, well-established FSF guidance. Clean. *Confirmed.*
 >
 > ## 2. Redistribution -- non-negotiable
+>
 > az-ai **MUST NOT** bundle, mirror, vendor, re-host, or ship: the NIM image,
 > Gemma weights (original or NVFP4), NIM binaries, TRT-LLM engine plans, or
 > any NVIDIA artifact in release tarballs / Docker / Homebrew / installers.
@@ -334,6 +368,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > interference.
 >
 > ## 3. Gemma ToU UX
+>
 > az-ai does not distribute Gemma; not contractually on the hook. But
 > prudence: one-time interactive notice on first `nvidia` provider use, link
 > to Gemma ToU + NVIDIA terms, `y` to proceed, persist hash + timestamp in
@@ -343,6 +378,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > agent.
 >
 > ## 4. NVAIE -- de facto commercial dependency
+>
 > Production NIM requires NVAIE (paid). Dev/eval has a free tier with
 > restrictions. Required disclosure in `docs/providers/nvidia.md`:
 >
@@ -351,22 +387,26 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > > include this license."
 >
 > ## 5. Attribution -- NOTICE updates
+>
 > `THIRD_PARTY_NOTICES.md` entries for NVIDIA (NIM, TRT-LLM Apache-2.0) and
 > Google (Gemma, ToU link). Trademark line. No TRT-LLM NOTICE passthrough
 > unless we bundle it. We don't.
 >
 > ## 6. Export control
+>
 > Required boilerplate in `docs/providers/nvidia.md` + `SECURITY.md`: "Use of
 > NVIDIA GPUs and Gemma weights may be subject to EAR and the Gemma AUP.
 > Users are responsible for their own compliance. az-ai makes no
 > representation…"
 >
 > ## 7. HF gated-model download helper -- DO NOT BUILD
+>
 > Automating `hf auth` + gated acceptance makes us an intermediary in the
 > ToU flow. Users pull weights themselves. az-ai takes an endpoint URL and
 > an API key. Period. *Clean hands.*
 >
 > ## 8. Risk ranking
+>
 > 1. Redistribution violation (bundling) -- catastrophic.
 > 2. Gated-model download helper scope creep.
 > 3. Gemma AUP misuse by downstream users -- reputational.
@@ -383,12 +423,14 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 
 > # Bania -- Bench Angle on NIM + Gemma-4-31B-NVFP4
 >
-> ## 1. Benchable in CI? Honest answer.
+> ## 1. Benchable in CI? Honest answer
+>
 > **No. Not the GPU part.** GHA has no Blackwell, no NVFP4, no NIM, no CUDA.
 > Any "perf gate" we claim in GHA for *this provider* is theater. This
 > provider gets a **best-effort perf badge**, not a merge-blocking gate.
 >
 > ## 2. Catching regressions without GPU in CI -- three tiers
+>
 > 1. Nightly self-hosted Blackwell runner (opt-in `gpu-nvfp4` label), if/when
 >    org hardware exists. Until then: stubbed, clearly labeled.
 > 2. Manual run logs versioned under `benchmarks/manual/<date>-<host>.json` --
@@ -397,6 +439,7 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 >    Not CI-gated."*
 >
 > ## 3. Metrics (if we could bench)
+>
 > TTFT (cold, warm), steady-state throughput, TTFT-under-load at
 > 1/4/16/64 concurrent, queue depth tolerance, container cold start, model
 > load time, VRAM residency idle+peak, wall-clock vs az-ai overhead. All with
@@ -414,20 +457,24 @@ Original sources: `~/.copilot/session-state/<session>/files/roundtable/<agent>.m
 > gold. One-shot CLI on a cold box: **disaster.**
 >
 > ## 5. Mock-NIM bench for CI -- this we CAN gate
+>
 > `scripts/bench_mock_nim.py` -- local HTTP server mimics NIM OpenAI-compat
 > endpoint, fixed latency, scripted stream. Measure az-ai overhead: request
 > build, auth, stream parse, callback dispatch. Gate at ≥5% flag / ≥10% block,
 > same rules as everyone else.
 >
 > ## 6. "Gold" scenarios
+>
 > Long-context bulk summarization. Privacy / air-gapped. Offline / flaky
 > networks. Sustained batch jobs.
 >
 > ## 7. "Not gold" scenarios
+>
 > One-shot CLI on cold box. Low-volume interactive. Multi-model tool-calling
 > flows (Azure ecosystem more mature). Anyone pre-Blackwell.
 >
 > ## Bottom line
+>
 > Real-GPU perf: manual + nightly self-hosted, warning badge, no merge gate.
 > Plumbing perf: mock-NIM CI-gated, 5%/10% rules. Every published number ships
 > with sample size, variance, hardware. **It's gold when it's measured.

@@ -26,23 +26,26 @@ Compare this to how ChatGPT, GitHub Copilot, or even `glow` render output -- wit
 
 Detect when stdout is a TTY (not piped) and render markdown with ANSI formatting:
 
-```
+```text
 # Before (current):
 Here's a Python function:
 ```python
 def hello():
     print("Hello, world!")
 ```
+
 You can run it with `python hello.py`.
 
-# After (with rendering):
+#### After (with rendering)
+
 Here's a Python function:
   ┌────────────────────────────
   │ def hello():
   │     print("Hello, world!")
   └────────────────────────────
 You can run it with python hello.py.
-```
+
+```text
 
 **Implementation options:**
 - Use ANSI escape codes directly (zero dependencies, full control)
@@ -69,6 +72,7 @@ $ az-ai --shell "find all Python files modified in the last week"
 This is how GitHub Copilot CLI (`gh copilot suggest`) works, and it's the feature people demo on Twitter.
 
 **Safety model:**
+
 - **NEVER** auto-execute. Always show the command first and require explicit confirmation.
 - Display commands in a visually distinct box so they're not confused with explanatory text.
 - Log executed commands to `~/.azureopenai-cli/history.log` for audit.
@@ -87,6 +91,7 @@ $ az-ai "regex to validate email addresses"
 ```
 
 **Implementation:**
+
 - Detect single code block responses
 - If `--copy` flag is set, or response is a single code block and stdout is a TTY, auto-copy
 - Use `xclip`/`xsel` (Linux), `pbcopy` (macOS), or `clip.exe` (Windows/WSL)
