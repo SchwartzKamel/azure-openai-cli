@@ -30,11 +30,20 @@ There are no hard SLAs in this document. Operations on the `az-ai-v2` CLI are be
 
 | Metric | Target | Confidence | Source |
 |---|---|---|---|
-| p50 cold-start | ≤ **20 ms** | grounded (CI reference runner) | `scripts/bench.sh --aot` |
+| p50 cold-start | ≤ **20 ms** | grounded (CI reference runner) | `scripts/bench.sh --aot` *(planned — see note)* |
 | p99 cold-start | ≤ **100 ms** | provisional | p95 is already bounded at 25 ms by the runbook; p99 ceiling will be pinned after 2.0.1 CI data |
 | p95 cold-start | ≤ **25 ms** (authoritative) | grounded | `docs/ops/v2-sre-runbook.md` §2 SLO-1 |
 
 **Measurement.** CI runs `scripts/bench.sh --aot` on the reference runner; 50-run rolling window.
+
+> ⚠️ **`scripts/bench.sh --aot` is planned, not shipped.** Today's
+> `scripts/bench.sh` times `dotnet <dll>` (framework-dependent / JIT),
+> not the shipping AOT binary, and has no `--aot` flag. The AOT
+> baseline numbers in [`docs/perf-baseline-v2.md`](../perf-baseline-v2.md)
+> were collected via a separate companion loop. `--aot` mode is
+> scheduled under [`bania-v2-03`]; until then AOT cold-start is
+> measured with `python3 scripts/bench.py dist/aot/<bin>`. Track:
+> [`docs/audits/docs-audit-2026-04-22-bania.md`](../audits/docs-audit-2026-04-22-bania.md) C2 / H2.
 **Enforcement.** Hard fail (PR block) if p95 exceeds 25 ms over 3 consecutive CI runs; see `docs/ops/v2-sre-runbook.md` SLO-1 for the error-budget mechanics.
 **Open question at freeze:** p99 is provisional because we have not yet collected enough runs to separate CI-runner noise from real tail latency. Day-30 data gates the real number.
 

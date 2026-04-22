@@ -155,10 +155,20 @@ AZUREOPENAIENDPOINT=... AZUREOPENAIAPI=... AZUREOPENAIMODEL=gpt-4o-mini \
 # Gate 4: FDR chaos drill
 bash tests/adversarial/run-chaos-drill.sh --baseline 1.9.1   # zero P1, P2 triaged
 
-# Gate 5: Bania perf regression
+# Gate 5: Bania perf regression (⚠️ PLANNED — see note below)
 python scripts/bench.py --compare 1.9.1 --budget cold=10% --budget ttft=5ms \
        --budget stream=5% --budget binsize=15MB
 ```
+
+> ⚠️ **Gate 5 is planned, not shipped.** The `--compare` / `--budget`
+> surface above is the target CLI once [`bania-v2-03`] promotes the
+> harness. Today's `scripts/bench.py` is a positional cold-start timer
+> (`bench.py <binary> [-n RUNS] [-w WARMUP] [--args ...]`) with no
+> compare or budget mode. Until `bania-v2-03` lands, Gate 5 is
+> satisfied manually by re-running `python3 scripts/bench.py
+> dist/aot/<bin>` against a 1.9.1 AOT build and eyeballing the deltas
+> against [`docs/perf-baseline-v2.md`](perf-baseline-v2.md). Track:
+> [`docs/audits/docs-audit-2026-04-22-bania.md`](audits/docs-audit-2026-04-22-bania.md) C2.
 
 | Gate | Pass criterion | Signoff |
 |------|----------------|---------|

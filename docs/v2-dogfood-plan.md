@@ -82,7 +82,16 @@ A finding that reproduces on WSL but not on clean Linux CI is **automatically P1
 
 All deltas measured against a locked 1.9.1 baseline captured at commit of the `v1.9.1` tag. Methodology per [`docs/benchmarks.md`](benchmarks.md): ≥ 30 warm-up iterations, ≥ 100 measured iterations, outlier rejection, pinned reference hardware.
 
-| Metric | Budget vs 1.9.1 | Measurement |
+> ⚠️ **Planned, not shipped.** The `scripts/bench.py` flags cited in the
+> Measurement column below (`--cold`, `--iterations`, `--ttft`,
+> `--endpoint`, `--stream`, `--duration`) are the target CLI surface
+> once [`bania-v2-03`] promotes the current harness. Today's
+> `scripts/bench.py` is a positional cold-start timer
+> (`bench.py <binary> [-n RUNS] [-w WARMUP] [--args ...]`) — no TTFT,
+> no streaming, no budget mode. Track:
+> [`docs/audits/docs-audit-2026-04-22-bania.md`](audits/docs-audit-2026-04-22-bania.md) C2.
+
+| Metric | Budget vs 1.9.1 | Measurement (planned — see note above) |
 |--------|-----------------|-------------|
 | Cold start (AOT, p95) | Δ ≤ **+10%** | `scripts/bench.py --cold --iterations 100` |
 | TTFT (time-to-first-token, p95) | Δ ≤ **+5 ms** (absolute, not percent) | `scripts/bench.py --ttft --endpoint $AZUREOPENAIENDPOINT` |

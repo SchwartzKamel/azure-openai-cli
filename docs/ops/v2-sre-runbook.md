@@ -37,7 +37,7 @@
 All numbers are grounded in `docs/perf-baseline-v2.md` §3.3 (AOT, linux-x64, reference hardware `AB-DM4MFJ4`). Ratios are v2/v1 where relevant; absolute ceilings are on reference hardware — CI runners will re-baseline. Error budgets assume a rolling **30-day window**.
 
 ### SLO-1 — Cold-start p95 (`--help`, AOT)
-- **SLI:** wall-clock ms from fork/exec to exit, 50-run rolling window from `scripts/bench.sh --aot` on CI reference runner.
+- **SLI:** wall-clock ms from fork/exec to exit, 50-run rolling window from `scripts/bench.sh --aot` on CI reference runner. *(⚠️ **Planned.** Today's `scripts/bench.sh` times `dotnet <dll>`, not the AOT binary, and has no `--aot` flag — it is scheduled under [`bania-v2-03`]. Current AOT SLI is captured via `python3 scripts/bench.py dist/aot/<bin>`. See [`docs/audits/docs-audit-2026-04-22-bania.md`](../audits/docs-audit-2026-04-22-bania.md) H2.)*
 - **SLO target:** p95 ≤ **25 ms** absolute, and ≤ **1.25× v1** (baseline 15.30 ms → ceiling ≈ 19.1 ms; 25 ms is the hardware-independent ceiling). Observed at release: 18.78 ms.
 - **Alert threshold:** page when 3 consecutive CI runs exceed 22 ms p95, or any single run exceeds 28 ms.
 - **Error budget:** 5% of CI runs may exceed target ⇒ ≈ 1.5 runs/day on the hourly cadence. Burn >50% in a week → freeze perf-affecting merges until Bania signs.
