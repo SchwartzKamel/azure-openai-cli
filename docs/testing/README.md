@@ -117,6 +117,78 @@ git commit -m "fix: MyFeature regression on empty input"
 test that would have caught it. The test lands in the same commit as the
 fix, or in the immediately preceding commit.
 
+### 3.1. Worked example — RED → GREEN → REFACTOR
+
+A real case from this repo: the **year-boundary flake** (commit `c861c2e`,
+2026-04-19; audit H1 follow-up).
+
+**Context.** Several tests asserted captured CLI output contained
+`DateTime.Now.Year.ToString()`. On a test machine running straddling UTC
+midnight on Dec 31, the `get_datetime` tool wrote the old year into
+stdout and the assertion computed the new year — guaranteed failure once
+a year, impossible to reproduce the other 364.
+
+**RED — the failing test.** Reproducible with a clock stub fixed to
+`2025-12-31T23:59:59.900Z` (the pre-fix test, paraphrased):
+
+```csharp
+// tests/AzureOpenAI_CLI.Tests/ToolHardeningTests.cs:203 (pre-fix)
+var output = await CaptureGetDateTimeOutput();
+Assert.Contains(DateTime.Now.Year.ToString(), output);
+// ❌ output contains "2025" (tool was called at 23:59:59.900Z)
+// ❌ DateTime.Now.Year is 2026 by the time the assertion runs
+// Failed: expected "2026" in "...2025-12-31T23:59:59Z...".
+```
+
+The test proves the race exists — `Assert.Equal(expected, actual)` is the
+right shape, the literal being asserted is wrong.
+
+**GREEN — the simplest code that makes the test pass.** Replace the
+year-literal coupling with a structural match that cannot straddle a
+boundary:
+
+```csharp
+// tests/AzureOpenAI_CLI.Tests/ToolHardeningTests.cs:203 (post-fix)
+var output = await CaptureGetDateTimeOutput();
+Assert.Matches(@"20\d{2}", output);
+// ✅ matches any four-digit year in the 2000s range.
+// The test now asserts STRUCTURE (ISO year field present), not VALUE.
+```
+
+That's it. No clock abstraction, no `IDateTimeProvider` introduced, no
+production code touched. The simplest thing that turns the test green.
+
+**REFACTOR — tighten the narrative, not the assertion.** With both passing,
+look for duplicated flakes and for drift in surrounding comments:
+
+- Three more sites in `ParallelToolExecutionTests.cs` had the same literal
+  coupling → apply the same `20\d{2}` regex.
+- `ParallelToolExecutionTests:37` advertised a wall-clock timing claim
+  ("wall-clock should be close to 200 ms") that no assertion enforced →
+  rewrote the comment to state the real invariant (`Task.WhenAll` returns
+  all results intact) and added a loose ≤5 s catastrophe guard.
+- The commit message calls out the category (year-boundary flake) so the
+  next auditor finds the pattern by `git log --grep`.
+
+Net diff: four assertion replacements + one loosened bound + one rewritten
+comment. No retries. No `[Fact(Timeout=)]`. No new test infrastructure.
+The race is gone because the assertion no longer cares about the
+transient value that caused it.
+
+**Takeaways for future TDD loops on this codebase:**
+
+1. RED first. A test that never failed isn't evidence of anything.
+2. GREEN minimum. The smallest change that moves the bar from red to
+   green. No refactor yet.
+3. REFACTOR with the safety net. Once green, grep for the same bug
+   pattern, fix the sisters, and update surrounding narratives to match.
+4. One commit per phase is ideal; bundling is fine if the diff stays
+   readable and the commit message names all three phases.
+
+For flaky-adjacent cases, also walk the
+[`flaky-triage.md`](./flaky-triage.md) checklist before shipping the fix
+— the same race may hide in three more files you haven't looked at yet.
+
 ---
 
 ## 4. `ConsoleCapture` collection
@@ -235,6 +307,45 @@ Add one when:
 Do **not** add an integration test when a fast xUnit test can cover the
 same path — integration is slower, less debuggable, and more
 environment-dependent.
+
+### What `integration_tests.sh` covers (and doesn't)
+
+Live snapshot; refresh after any integration-facing PR.
+
+| Covered | Not covered (by design) | Not covered (gap) |
+|---|---|---|
+| `--version` / `--version --short` / `--help` output shape | Live Azure endpoint calls (skipped without creds) | `ShellExec` adversarial exit-code matrix (only echo-hello happy path) |
+| Exit-code contract for common flags (`--raw`, `--ralph`, unknown flag) | Windows path semantics (CI is Linux-only) | Ralph validator JSON tool-call shape |
+| `--raw` stdout cleanliness (no banners leak to stdout) | xUnit-unit-testable pure logic (argv parse, config merge) | 429 `Retry-After` end-to-end replay |
+| env-var precedence (`AZUREOPENAIMODEL`, `NO_COLOR`) | Multi-process concurrency | stdin multi-MB streaming end-to-end |
+| v1 vs v2 binary parity where promised (`V2FlagParity` mirror) | Anything needing a running mock server (chaos territory) | `UserConfig` rewrite atomicity under crash |
+| Cache-dir and `.squad/` file layout basics | AOT-specific failure modes (covered by `PublishTargetTests`) | Locale / LC_ALL-driven output drift |
+
+### When to add a row to `integration_tests.sh` vs a new xUnit test
+
+Add to `integration_tests.sh` when **any** of:
+
+- The promise is about the **process boundary** — exit code, signal,
+  real argv, real env-var inheritance, stdin/stdout bytes verbatim.
+- An xUnit test would need so much mocking that it stops proving the
+  real behaviour (e.g. faking `Environment.Exit`).
+- A downstream script (Espanso, shell wrapper, Homebrew formula test)
+  will exec the binary the same way — the integration test mirrors that
+  usage.
+
+Add an **xUnit** test instead when:
+
+- The logic is a pure function or a class in isolation.
+- You need to assert internal state, thrown exceptions, or multiple
+  behaviours cheaply per case.
+- You want sub-second feedback on a tight loop.
+
+Add **both** when a user-visible promise has both a process-level
+manifestation and an internal invariant — the xUnit test pins the
+invariant, the integration test pins the wire format. `--version` is the
+canonical example: `VersionContractTests` asserts the internal strings
+match the csproj; `integration_tests.sh` asserts `az-ai-v2 --version`
+exits 0 and prints the expected shape.
 
 ---
 
