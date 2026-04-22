@@ -1,11 +1,19 @@
 # ADR-003: Behavior-Driven Development in xUnit — Zero New Dependencies
 
-- **Status**: Accepted — 2026-04-20
+- **Status**: Accepted — 2026-04-20 *(see "Later revision" note below)*
 - **Deciders**: Core maintainers
 - **Related**: [`ADR-001-native-aot-recommended.md`](./ADR-001-native-aot-recommended.md),
   [`ADR-002-squad-persona-memory.md`](./ADR-002-squad-persona-memory.md),
   [`docs/testing/test-sanity-audit.md`](../testing/test-sanity-audit.md),
   [`docs/testing/bdd-guide.md`](../testing/bdd-guide.md)
+
+> **Later revision (2026-04-22, Puddy).** The "925 passing tests across 19
+> files" figure in the Context section is the snapshot at time of acceptance.
+> Current reality at the tip of `main` is **1,510 xUnit tests** (1,025 v1 +
+> 485 v2) across two projects (`tests/AzureOpenAI_CLI.Tests/` and
+> `tests/AzureOpenAI_CLI.V2.Tests/`). The ADR's *decision* — BDD naming and
+> one-behaviour-per-test, zero new dependencies — is unchanged and in force.
+> For the live test inventory see [`docs/testing/README.md`](../testing/README.md).
 
 ## Context
 

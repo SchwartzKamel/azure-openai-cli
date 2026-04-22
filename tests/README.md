@@ -1,6 +1,8 @@
 # Tests
 
-This directory contains **454+ unit tests** and **101+ integration tests** for the Azure OpenAI CLI.
+This directory contains **1,510+ xUnit tests** (1,025 v1 + 485 v2) and **~174 bash integration assertions** for the Azure OpenAI CLI.
+
+> **Counts measured:** `dotnet test` on both `AzureOpenAI_CLI.Tests/` and `AzureOpenAI_CLI.V2.Tests/` at the tip of `main`. The `+` acknowledges PRs in flight (e.g. new contract tests) — the floor is firm.
 
 ---
 
@@ -8,11 +10,23 @@ This directory contains **454+ unit tests** and **101+ integration tests** for t
 
 | Suite | Type | Count | Description |
 |-------|------|------:|-------------|
-| [`AzureOpenAI_CLI.Tests/`](AzureOpenAI_CLI.Tests/) | xUnit | 454+ | Unit tests — run via `dotnet test` |
-| [`integration_tests.sh`](integration_tests.sh) | Bash | 101+ | End-to-end CLI tests — no Azure credentials needed |
+| [`AzureOpenAI_CLI.Tests/`](AzureOpenAI_CLI.Tests/) | xUnit (v1) | 1,025 | Legacy v1 unit/contract/chaos/property tests — `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj` |
+| [`AzureOpenAI_CLI.V2.Tests/`](AzureOpenAI_CLI.V2.Tests/) | xUnit (v2) | 485 | v2 CLI tests under `azureopenai-cli-v2/` — `dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj` |
+| [`integration_tests.sh`](integration_tests.sh) | Bash | ~174 assertions | End-to-end CLI tests — no Azure credentials needed |
 | [`docker-image-optimization.sh`](docker-image-optimization.sh) | Bash | — | Dockerfile validation — checks build best practices |
+| [`chaos/`](chaos/) | Bash | — | Chaos / failure-injection harness (see `tests/chaos/` docs) |
 
-**Total: 555+ tests**
+**Total: 1,510+ xUnit tests across both projects.**
+
+Run all xUnit tests with a single command via the solution file:
+
+```bash
+dotnet test azure-openai-cli.sln --verbosity minimal
+# or
+make test          # runs both v1 and v2 projects
+```
+
+See [`docs/testing/README.md`](../docs/testing/README.md) for the full testing playbook (TDD workflow, `ConsoleCapture` collection, contract tests, flaky-test policy).
 
 ---
 

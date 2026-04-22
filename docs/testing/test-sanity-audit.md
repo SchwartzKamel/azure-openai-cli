@@ -1,9 +1,17 @@
 # Test Sanity Audit — `tests/AzureOpenAI_CLI.Tests/`
 
-- **Status**: Accepted — 2026-04-20
+- **Status**: Accepted — 2026-04-20 *(see "Later revision" note below)*
 - **Scope**: All 19 `*.cs` files under `tests/AzureOpenAI_CLI.Tests/` (925 tests, ~8k LOC)
 - **Reviewer**: Puddy (via Kramer)
 - **Companion**: [`ADR-003-behavior-driven-development.md`](../adr/ADR-003-behavior-driven-development.md)
+
+> **Later revision (2026-04-22, Puddy).** The audit scope above is frozen at
+> v1.x era. At the tip of `main` the xUnit surface is **1,510 tests across two
+> projects**: 1,025 tests in `tests/AzureOpenAI_CLI.Tests/` (28 `*.cs`) plus
+> 485 tests in `tests/AzureOpenAI_CLI.V2.Tests/` (38 `*.cs`). The findings and
+> scoring below still stand for the files they reference — they have not been
+> re-audited against the expanded surface. See
+> [`docs/testing/README.md`](./README.md) for the live inventory.
 
 ## Method
 
