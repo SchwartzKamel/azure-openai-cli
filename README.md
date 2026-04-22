@@ -9,15 +9,13 @@
 [![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macOS%20%7C%20windows-informational)](#install)
 [![GHCR](https://img.shields.io/badge/ghcr.io-azure--openai--cli-2496ED?logo=docker)](https://github.com/SchwartzKamel/azure-openai-cli/pkgs/container/azure-openai-cli)
 
-![It's alive!](img/its_alive_too.gif)
-
 ## Why
 
 - 🚀 **5.4 ms cold start** — Native AOT single-file binary, fast enough to feel synchronous inside text expanders.
 - 🧰 **5 execution modes** — one-shot prompts, tool-calling agent, autonomous self-correcting loops, named personas with persistent memory, raw-pipe mode for Espanso/AHK.
 - 🔒 **Security hardened** — shell-injection blocklist, SSRF protection on `web_fetch`, file-read denylist, bounded sub-agent recursion. See [SECURITY.md](SECURITY.md).
 - 🖥️ **Cross-platform** — Pre-built AOT binaries for Linux (glibc/musl/arm64), macOS (x64/arm64), and Windows (x64/arm64).
-- 🧪 **538 passing tests**, .NET 10, `Azure.AI.OpenAI 2.1.0` stable.
+- 🧪 **1,510+ passing tests** (1,025 v1 + 485 v2 xUnit, plus ~174 bash integration assertions), .NET 10, `Azure.AI.OpenAI 2.1.0` stable.
 
 ## Quickstart
 
@@ -161,11 +159,17 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 - [SECURITY.md](SECURITY.md) — threat model and reporting
 - [docs/verifying-releases.md](docs/verifying-releases.md) — cosign / attestation verification
 
+### Accessibility
+- [docs/accessibility.md](docs/accessibility.md) — `NO_COLOR`, `--raw`, exit codes, keyboard-only workflows, known gaps
+
 ### Release & migration
 - [CHANGELOG.md](CHANGELOG.md) — release history
 - [docs/migration-v1-to-v2.md](docs/migration-v1-to-v2.md) — user-facing v1 → v2.0.0 upgrade notes
 - [docs/v2-migration.md](docs/v2-migration.md) — internal MAF-adoption phase plan
 - [CONTRIBUTING.md](CONTRIBUTING.md) — dev workflow and PR expectations
+
+### Internationalization
+- [docs/i18n.md](docs/i18n.md) — `InvariantGlobalization` contract, USD-only cost policy, non-ASCII / RTL / CJK notes, reserved `--locale` flag
 
 ### Glossary
 - **Ralph mode (autonomous Wiggum loop)** — agentic self-correcting loop: run task → validate → feed errors back → retry. See [use-cases-ralph-squad.md](docs/use-cases-ralph-squad.md).
