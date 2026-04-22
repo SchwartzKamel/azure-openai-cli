@@ -57,17 +57,19 @@ Rough order-of-magnitude as of **2026-04** (USD per 1M tokens, global PAYG, conf
 ### 3.5 The new kids on the block
 
 > **TL;DR**
-> - **Decision:** Keep `gpt-4o-mini` as the default. Do **not** adopt `gpt-5.4-nano` or `DeepSeek-V3.2` for Espanso workflows.
-> - **Why:** `gpt-5.4-nano` is 4.3× more expensive on input for reasoning you don't need; DeepSeek is a third-party model with a weaker compliance story for clipboard data.
-> - **Revisit when:** a reasoning-required use case lands (nano) or security signs off on non-OpenAI Foundry routing with a documented data-residency story (DeepSeek).
+> - **Recommendation:** The **hardcoded fallback** stays `gpt-4o-mini`. A fresh install, no env, no config → you get the conservative, cheap, well-behaved SKU.
+> - **Operator override supported:** `AZUREOPENAIMODEL=gpt-5.4-nano` (or UserConfig `default_model`) flips the *operational* default per ADR-009's precedence chain. That's how the current operator runs today — reasoning-forward workloads where the 4.3× input-cost bump pays for itself.
+> - **Revisit the fallback itself when:** a reasoning-required use case becomes the *majority* of fresh-install traffic, or Morty approves a new cost ceiling for the default-no-config user.
+
+**Canonicalization note (ADR-009):** the "default model" is a *resolution chain*, not a single value. Precedence: CLI flag → `AZUREOPENAIMODEL` env → UserConfig (`default_model` / smart-default) → hardcoded fallback (`Program.DefaultModelFallback = "gpt-4o-mini"`). Any doc that says "the default is X" without naming the tier is lying — call it out in review.
 
 Listen, Kramer came to me with two hot new models and I held his feet to the fire. Let me give it to you straight.
 
 **`gpt-5.4-nano`: The speedster with the price tag**
 
-So you got `gpt-5.4-nano` deployed now. It's a reasoning model — that means it thinks before it answers. You know what that sounds good for? *Nothing in your primary use case.* Your Espanso triggers need a yes/no, a rewrite, a commit message. You don't need reasoning, you need *speed* and *cost-predictability*. And guess what: `gpt-5.4-nano` is **4.3× more expensive** than `gpt-4o-mini` on input tokens (33% cheaper on output, but who cares — you're sending the big payload, not receiving it). 
+So you got `gpt-5.4-nano` deployed now. It's a reasoning model — that means it thinks before it answers. You know what that sounds good for? *Nothing in your primary use case.* Your Espanso triggers need a yes/no, a rewrite, a commit message. You don't need reasoning, you need *speed* and *cost-predictability*. And guess what: `gpt-5.4-nano` is **4.3× more expensive** than `gpt-4o-mini` on input tokens (33% cheaper on output, but who cares — you're sending the big payload, not receiving it).
 
-Latency matters? Maybe. If you're piping full files through `--max-tokens 100` in a real-time Espanso workflow, the ~200ms reasoning overhead might *feel* slower. Proof: measure it. But the bill? The bill is the opposite of "speedy." **The `gpt-4o-mini` default stands.** Use `gpt-5.4-nano` only when reasoning is non-negotiable—not just when it's "available."
+Latency matters? Maybe. If you're piping full files through `--max-tokens 100` in a real-time Espanso workflow, the ~200ms reasoning overhead might *feel* slower. Proof: measure it. But the bill? The bill is the opposite of "speedy." **For the fresh-install fallback, `gpt-4o-mini` stands.** Operators who *want* reasoning-forward behavior flip `AZUREOPENAIMODEL=gpt-5.4-nano` — that's a supported, documented override, not a contradiction of this section. The fallback remains conservative because "what a brand-new user gets by accident" and "what an informed operator chose deliberately" are not the same contract.
 
 **`DeepSeek-V3.2`: The bargain-basement trap**
 
