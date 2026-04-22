@@ -379,4 +379,302 @@ You paid HOW much for a pair of sneakers? And now you want the premium model for
 
 ---
 
-*See also: `SECURITY.md` (caps and guards), `docs/use-cases-standard.md` §8 (`--max-tokens`), `docs/espanso-ahk-integration.md` (real-world thin prompts), Azure pricing: https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/*
+## 9. Appendix — deeper cost mechanics
+
+> New in the 2026-04-22 medium sweep. The bones of the doc (§1–§8) are
+> unchanged. This appendix adds the accounting details that PR reviews
+> and monthly FinOps reviews keep asking for.
+>
+> Companion docs:
+> [`docs/cost/pricing-sourcing.md`](cost/pricing-sourcing.md) (where
+> every quoted rate comes from) and
+> [`docs/runbooks/finops-runbook.md`](runbooks/finops-runbook.md) (what
+> we actually do once a month).
+
+### 9.1 Retry-cost accounting
+
+When a call fails partway through and we retry, **you pay for the
+retry, too.** The provider doesn't refund tokens on a 5xx. Plan for it.
+
+**Rules of thumb (Azure OpenAI, as we use it):**
+
+1. **Full retry.** A network failure, a 5xx, or an `--agent` tool
+   handler crash that restarts the turn re-bills the **entire prompt**
+   on each attempt. `prompt_tokens` on attempt 2 equals `prompt_tokens`
+   on attempt 1 (modulo any tool-output growth between attempts).
+2. **Cached input survives retries — sometimes.** Azure native prompt
+   cache (see §5.1) applies on the retry if the prefix is stable. In
+   practice, for a deterministic Espanso-style call, attempt 2 hits
+   cache on most of the prompt and costs the cached rate, not the
+   full rate, on those tokens. **Do not assume this; verify with the
+   `usage.prompt_tokens_details.cached_tokens` field on the retry
+   response.**
+3. **Output tokens are billed only on the attempt that returns.**
+   Failed attempts that produce partial streamed output are not
+   re-billed for the partial output — but many providers bill the
+   output tokens generated so far when the stream is killed. Assume
+   worst-case for budgets; verify against your invoice.
+4. **Agent-mode tool retries compound.** If the model re-issues a
+   `tool_call` after a failed handler, that's a fresh completion —
+   new input (full conversation including failed tool result) plus
+   new output. One user turn, three completions, billable separately.
+
+**Worst-case formula** for a single user turn with `R` retries:
+
+```
+cost ≈ (R+1) × P_input × rate_in
+     + (R+1) × P_cached_miss × cache_miss_delta          # if cache flaps
+     + 1   × O_output × rate_out                          # only the winning attempt
+     + Σ_tool_retries (tool_input_tokens × rate_in + tool_output_tokens × rate_out)
+```
+
+**Realistic-case formula** for a retry that hits cache on the prefix:
+
+```
+cost ≈ (P_prefix × rate_cached + P_tail × rate_in)               # attempt 1
+     + (P_prefix × rate_cached + P_tail × rate_in)               # attempt 2, cache hit
+     + O_output × rate_out                                       # final success
+```
+
+Difference between the two is the value of a stable prefix.
+
+**Logging requirement (what to put on stderr):**
+
+- `[tokens: X→Y, Z total]` remains the per-attempt line. If you retry,
+  you should see **two** of these lines for one logical user turn —
+  don't silently concatenate them.
+- If your tooling aggregates, include an `attempts=N` field
+  (`[tokens: X→Y, Z total, attempts=2]`) so the monthly review can
+  distinguish retry-driven growth from prompt-bloat growth.
+- Surface `cached_tokens` from the response. A retry that didn't hit
+  cache when it should have is a bug — and an expensive one.
+
+**Budgeting guidance:**
+
+- For interactive flows, budget at **1.1×** single-call cost
+  (assume occasional retries).
+- For `--agent` mode, budget at **1.3×** — tool-call loops amplify
+  retry exposure.
+- For Ralph mode, retries are subsumed into the iteration count; see
+  §9.3.
+- For Batch API (§5.2), retries are on the provider; your bill reflects
+  the committed 50%-off rate regardless. One of the Batch API's
+  underrated wins.
+
+**Red flag:** a monthly review where output-token growth is flat but
+input-token growth is > 10% MoM is often retry-driven. Check
+`attempts=` distribution before blaming prompt bloat.
+
+---
+
+### 9.2 Per-persona cost breakdown
+
+Not every persona costs the same. The variance is almost entirely
+explained by three inputs: **prompt length**, **retry rate**, and
+**tool-call count**. Everything else is noise.
+
+**Model:**
+
+```
+cost_per_call(persona) ≈ (P_system + P_persona_memory + P_user) × rate_in
+                       + O × rate_out
+                       + (tool_calls × avg_tool_roundtrip_tokens) × (rate_in + rate_out)
+                       + retry_multiplier(persona)          # see §9.1
+```
+
+**Relative cost profile** (ordinal — absolute dollars depend on the
+active default; see [`docs/cost/pricing-sourcing.md`](cost/pricing-sourcing.md)):
+
+| Persona class | Typical P_sys+persona | Tool-call rate | Retry rate | Relative cost | Notes |
+|---|---:|---:|---:|---:|---|
+| **Espanso-thin** (plain text fix, no persona) | ~200 tok | 0 | low | **1.0×** | Baseline. `cost-optimization.md §4` + `espanso-ahk-integration.md` |
+| **Cost / style reviewer** (Morty, Soup Nazi) | ~1.5 K tok | 0–1 | low | ~1.3× | Persona memory is mostly prose; output is usually terse |
+| **General engineering** (Kramer, Jerry) | ~2–3 K tok | 0–2 | low | ~1.6× | Occasional code blocks push output length |
+| **SRE / security** (Frank Costanza, Newman) | ~3–5 K tok | 1–3 | low-med | ~2.0× | Heavier persona memory, tool calls to inspect configs |
+| **Docs / PM / DevRel** (Elaine, Costanza, Keith, Peterman) | ~3–5 K tok | 0 | low | ~1.8× | Long outputs dominate |
+| **Agent-mode any persona** (`--agent`) | persona + tool schemas (~2–8 K tok extra) | 2–10 | med | **3–6×** | Tool-schema re-sent every turn unless cached; see §5.1 |
+| **Ralph-mode any persona** | persona + growing context | N iterations | med | **N× to N²×** | See §9.3 |
+| **Squad / multi-persona fan-out** | sum of personas | sum | compounds | **N_personas ×** above | See §7 red flag 6 |
+
+**Takeaways:**
+
+- A cost-reviewer persona (Morty) is nearly free per call. A
+  squad-routed agent-mode SRE turn (Frank Costanza + tools + retries)
+  can be **10–20× more expensive** than the same question asked
+  plainly. Route accordingly.
+- The single biggest lever *within* a persona is **prompt_length**,
+  not model choice. Trim persona memory tails (the 32 KB cap is a
+  ceiling, not a goal). See `cost-optimization.md §4`.
+- The single biggest lever *across* personas is **avoid squad
+  fan-out on cheap questions** — if the question can be answered by
+  one persona, route to one persona.
+- **Stable prefixes compound.** A persona whose system+memory prefix
+  is stable call-to-call gets the Azure native cache discount (§5.1)
+  on almost all of the input tokens. A persona whose memory churns
+  every call pays full rate every call. This is the single biggest
+  reason two personas with the "same" prompt length cost different
+  money.
+
+**Action for persona authors:** keep the volatile parts
+(timestamps, session IDs, turn counters) **at the end** of the
+prompt. Prefix-match only works from the front.
+
+---
+
+### 9.3 Ralph-mode cost multiplier
+
+Ralph iterates until the validator says "stop" or `--max-iterations`
+is hit. Each iteration is a full completion. This adds up faster than
+people expect.
+
+**First-order bound** (constant context):
+
+```
+cost_ralph ≈ N × cost_single_call
+```
+
+For `N=10` on a 2 K-token prompt at `gpt-5.4-nano`, that's roughly
+10 × ~$0.003 ≈ **$0.03 per Ralph run**. Not scary on its own.
+
+**Second-order bound** (context grows with each iteration — the
+common case when the validator feeds previous attempts back in):
+
+```
+cost_ralph ≈ N × single_call_cost + prompt_growth_per_iter × N² / 2 × rate_in
+```
+
+That `N²` term is the killer. Example, same workload, with 200 tokens
+of validator feedback added per iteration:
+
+- `N=10`: constant term ~$0.03, quadratic term ~$0.002 — total ~$0.032
+- `N=25`: constant term ~$0.075, quadratic term ~$0.013 — total ~$0.088
+- `N=50` (hard cap): constant term ~$0.15, quadratic term ~$0.050 — total ~$0.20
+- `N=50` but on `gpt-4.1` (premium, ~15× more): **~$3.00 per Ralph run**
+
+**Practical guidance:**
+
+1. **Keep `--max-iterations` at the default 10.** The hard cap is 50
+   *precisely so you don't hit it*. If the validator isn't
+   converging in 10, fix the validator (see §7 red flag 1).
+2. **Use the cheap tier for Ralph.** Validator loops don't need a
+   premium model for most tasks; the premium cost is paid `N` times.
+3. **Route Ralph through Batch API where latency is okay.** §5.2;
+   50% off × N iterations compounds nicely.
+4. **Surface per-iteration token counts.** If your Ralph wrapper
+   doesn't emit a token line per iteration, you can't distinguish
+   "N=10 at constant context" from "N=10 with quadratic context
+   growth." Log the difference.
+5. **Budget at the quadratic bound, not the linear one.** A Ralph
+   budget that assumes constant context under-provisions by 30–80%
+   on validator-heavy workloads.
+
+**Red-flag threshold for the monthly review:** any Ralph workflow
+whose per-run cost has grown > 2× MoM with the same `N`. That is
+always prompt_growth, not provider drift.
+
+---
+
+### 9.4 Espanso / AHK worked example — the "heavy user"
+
+A concrete number for the back of a napkin and the bottom of a PR
+description.
+
+**Profile:** a single heavy Espanso/AHK user who fires **100 prompts
+per workday**, average **500 input tokens** (short code snippet or
+text block), average **200 output tokens** (rewrite, summary, or
+fix), no persona, no agent mode, no retries, current operational
+default model.
+
+**Daily volume:**
+
+```
+input  = 100 calls × 500 tok  =  50,000 tok/day
+output = 100 calls × 200 tok  =  20,000 tok/day
+```
+
+**Monthly volume** (22 working days; adjust for your team):
+
+```
+input  = 22 × 50,000 = 1,100,000 tok/mo  ≈ 1.1 M tokens
+output = 22 × 20,000 =   440,000 tok/mo  ≈ 0.44 M tokens
+```
+
+**At the current default (`gpt-5.4-nano`, rates from
+[`docs/cost/pricing-sourcing.md`](cost/pricing-sourcing.md) §1):**
+
+```
+input cost  = 1.1  M × $0.20  = $0.22/mo
+output cost = 0.44 M × $1.25  = $0.55/mo
+total       ≈ $0.77/seat/mo   # ≈ $9.24/seat/year
+```
+
+**At the previous default (`gpt-4o-mini`):**
+
+```
+input cost  = 1.1  M × $0.15  = $0.165/mo
+output cost = 0.44 M × $0.60  = $0.264/mo
+total       ≈ $0.43/seat/mo   # ≈ $5.16/seat/year
+```
+
+**At `Phi-4-mini-instruct`** (if the UX failures in §3.6 didn't rule it
+out for this workload — they do, but for cost math only):
+
+```
+input cost  = 1.1  M × $0.075 = $0.083/mo
+output cost = 0.44 M × $0.30  = $0.132/mo
+total       ≈ $0.21/seat/mo   # ≈ $2.52/seat/year
+```
+
+**At `gpt-4.1`** (premium; for the "but we need the muscle" argument):
+
+```
+input cost  = 1.1  M × $3.00  = $3.30/mo
+output cost = 0.44 M × $12.00 = $5.28/mo
+total       ≈ $8.58/seat/mo   # ≈ $103.00/seat/year — 11× the nano default
+```
+
+**With Azure native prompt cache** (§5.1) on a stable system+persona
+prefix of ~400 of the 500 input tokens, cache discount ~50% on the
+cached portion:
+
+```
+cached input  = 100 cached tok × 22 × 100 ≈ 0.88 M tok cached (we still pay, but at cache rate)
+full input    = 0.22 M tok at full rate
+                  # on gpt-5.4-nano: 0.88 × $0.10 + 0.22 × $0.20 = $0.088 + $0.044 = $0.132
+output        = $0.55
+total         ≈ $0.68/seat/mo   # ~12% savings vs. uncached
+```
+
+(The absolute savings are small at this volume; what matters is that
+the ratio is real and it compounds. At 100 seats × agent-mode
+workloads the same ratio is dollars, not cents.)
+
+**Team math:**
+
+| Team size | gpt-4o-mini | gpt-5.4-nano | gpt-4.1 |
+|---:|---:|---:|---:|
+| 1 seat | $5/yr | $9/yr | $103/yr |
+| 10 seats | $52/yr | $92/yr | $1,030/yr |
+| 100 seats | $516/yr | $924/yr | $10,300/yr |
+
+**The point of the worked example is not the $5.** It's that at this
+profile the *wrong model choice* (nano when mini would do, premium
+when nano would do) costs 2–12×, and **those ratios stay the same as
+volume scales**. Every team that grows tenfold without revisiting the
+model choice ships a tenfold mistake.
+
+**Check your own math:**
+
+```bash
+# Pipe stderr from a representative 50-call sample, compute averages,
+# then extrapolate. See docs/runbooks/finops-runbook.md §2b for the
+# aggregation command.
+```
+
+If your team's actual averages diverge from the 500/200 profile by >
+2×, run the math with your own numbers before citing this section in
+a budget conversation.
+
+---
+
+*See also: `SECURITY.md` (caps and guards), `docs/use-cases-standard.md` §8 (`--max-tokens`), `docs/espanso-ahk-integration.md` (real-world thin prompts), [`docs/cost/pricing-sourcing.md`](cost/pricing-sourcing.md) (rate provenance), [`docs/runbooks/finops-runbook.md`](runbooks/finops-runbook.md) (monthly review), Azure pricing: https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/*
