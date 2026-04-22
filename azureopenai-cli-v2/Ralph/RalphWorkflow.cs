@@ -57,6 +57,16 @@ internal static class RalphWorkflow
         var session = await agent.CreateSessionAsync(ct);
         var runOpts = new ChatClientAgentRunOptions { ChatOptions = Program.BuildModernChatOptions() };
 
+        // FDR v2 dogfood High-severity (fdr-v2-ralph-exit-code): explicitly
+        // track whether validation ever passed AND whether any iteration
+        // completed without the agent throwing. Ralph must return non-zero
+        // when max-iterations were exhausted without a validation pass, and
+        // also when every iteration errored. Prior code relied on fall-through
+        // and a bare `return 1` at loop exit; make the contract explicit.
+        bool validationPassed = false;
+        int successfulIterations = 0;
+        int completedIterations = 0;
+
         // First turn uses the original task text; subsequent turns use short retry feedback.
         string iterationInput = taskPrompt;
 
@@ -137,10 +147,15 @@ internal static class RalphWorkflow
                 CheckpointManager.WriteCheckpoint(iteration, iterationInput, agentExitCode,
                     agentResponse, null, null, null);
 
+                completedIterations++;
                 if (agentExitCode == 0)
                 {
+                    successfulIterations++;
+                    validationPassed = true; // single-pass: agent success IS the verdict
                     if (showStatus)
                         Console.Error.WriteLine($"\n✅ Ralph complete after {iteration} iteration(s)");
+                    CheckpointManager.WriteFinalEntry(
+                        $"Validation passed at iteration {iteration}/{maxIterations}");
                     Console.Write(agentResponse);
                     if (!string.IsNullOrEmpty(agentResponse) && !agentResponse.EndsWith('\n'))
                         Console.WriteLine();
@@ -162,13 +177,19 @@ internal static class RalphWorkflow
             CheckpointManager.WriteCheckpoint(iteration, iterationInput, agentExitCode,
                 agentResponse, validateCommand, validationExitCode, validationOutput);
 
+            if (agentExitCode == 0) successfulIterations++;
+            completedIterations++;
+
             if (validationExitCode == 0)
             {
+                validationPassed = true;
                 if (showStatus)
                 {
                     Console.Error.WriteLine("✅ PASSED");
                     Console.Error.WriteLine($"\n✅ Ralph complete after {iteration} iteration(s)");
                 }
+                CheckpointManager.WriteFinalEntry(
+                    $"Validation passed at iteration {iteration}/{maxIterations}");
                 Console.Write(agentResponse);
                 if (!string.IsNullOrEmpty(agentResponse) && !agentResponse.EndsWith('\n'))
                     Console.WriteLine();
@@ -187,11 +208,23 @@ internal static class RalphWorkflow
                 "Fix and retry.";
         }
 
-        // Exhausted iterations
-        var exhaustedMsg = $"Ralph loop exhausted {maxIterations} iterations without passing validation.";
+        // Exhausted iterations — return code contract (fdr-v2-ralph-exit-code):
+        //   0 = validation passed (handled above, never reaches here)
+        //   1 = max-iterations exhausted without validation pass, or every
+        //       iteration errored (agent threw on every attempt)
+        //   3 = SIGINT / cancellation (handled above)
+        string verdict;
+        if (!validationPassed && successfulIterations == 0 && completedIterations > 0)
+        {
+            verdict = $"Ralph loop errored on all {completedIterations} iteration(s) — agent failed every attempt.";
+        }
+        else
+        {
+            verdict = $"Ralph loop exhausted {maxIterations} iterations without passing validation.";
+        }
         if (showStatus)
-            Console.Error.WriteLine($"\n❌ {exhaustedMsg}");
-        CheckpointManager.WriteFinalEntry(exhaustedMsg);
+            Console.Error.WriteLine($"\n❌ {verdict}");
+        CheckpointManager.WriteFinalEntry(verdict);
         return 1;
     }
 

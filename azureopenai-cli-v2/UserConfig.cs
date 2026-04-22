@@ -68,8 +68,15 @@ internal sealed class UserConfig
     /// Load config from the given path (explicit <c>--config &lt;path&gt;</c>), or
     /// from project-local path, or from user-home path, in that precedence order.
     /// Missing files return an empty default <see cref="UserConfig"/>.
+    /// <para>
+    /// <paramref name="quiet"/> suppresses the stderr <c>[WARNING]</c> lines for
+    /// parse / IO / permission errors. The <c>--raw</c> contract (FDR v2 dogfood
+    /// High-severity finding) requires NOTHING on stderr for Espanso / AHK
+    /// consumers; a malformed <c>~/.azureopenai-cli.json</c> must degrade
+    /// silently to defaults rather than leak diagnostics into their pipe.
+    /// </para>
     /// </summary>
-    public static UserConfig Load(string? explicitPath = null)
+    public static UserConfig Load(string? explicitPath = null, bool quiet = false)
     {
         // Precedence: explicit path > ./local > ~/user > empty default
         var candidates = new List<string>();
@@ -98,15 +105,18 @@ internal sealed class UserConfig
             }
             catch (JsonException ex)
             {
-                Console.Error.WriteLine($"[WARNING] Config file '{path}' has invalid JSON: {ex.Message}");
+                if (!quiet)
+                    Console.Error.WriteLine($"[WARNING] Config file '{path}' has invalid JSON: {ex.Message}");
             }
             catch (IOException ex)
             {
-                Console.Error.WriteLine($"[WARNING] Could not read config '{path}': {ex.Message}");
+                if (!quiet)
+                    Console.Error.WriteLine($"[WARNING] Could not read config '{path}': {ex.Message}");
             }
             catch (UnauthorizedAccessException ex)
             {
-                Console.Error.WriteLine($"[WARNING] Permission denied reading config '{path}': {ex.Message}");
+                if (!quiet)
+                    Console.Error.WriteLine($"[WARNING] Permission denied reading config '{path}': {ex.Message}");
             }
         }
 

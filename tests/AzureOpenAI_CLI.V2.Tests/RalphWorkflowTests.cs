@@ -15,6 +15,7 @@ namespace AzureOpenAI_CLI.V2.Tests;
 ///     mangling even when the command contains quotes, spaces, or $.
 /// M7: checkpoint I/O failures surface on the Trace channel (was silent).
 /// </summary>
+[Collection("ConsoleCapture")]
 public class RalphWorkflowTests
 {
     // ── FakeChatClient: captures per-call message lists and returns canned text ──

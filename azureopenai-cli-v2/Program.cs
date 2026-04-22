@@ -135,7 +135,10 @@ internal class Program
 
         // Load UserConfig (FR-003/FR-009/FR-010). Reads explicit --config <path>
         // first, else project-local, else ~/.azureopenai-cli.json, else defaults.
-        var userConfig = UserConfig.Load(opts.ConfigPath);
+        // FDR v2 dogfood High-severity: pass quiet=opts.Raw so a malformed
+        // ~/.azureopenai-cli.json does NOT leak a [WARNING] onto stderr when
+        // the caller set --raw (Espanso / AHK consumers pipe stderr-clean).
+        var userConfig = UserConfig.Load(opts.ConfigPath, quiet: opts.Raw);
 
         // F-6: warn if the loaded user-config is world-writable. Suppressed under
         // --raw / --json to keep machine-readable surfaces clean.
@@ -591,9 +594,30 @@ internal class Program
             }
             return ErrorAndExit("Request timed out", 3, jsonMode: opts.Json);
         }
+        catch (Azure.RequestFailedException ex)
+        {
+            // FDR v2 dogfood High-severity (fdr-v2-err-unwrap): surface Azure
+            // SDK failures with actionable status + error code BEFORE the
+            // generic Exception branch. Users need "401 InvalidApiKey" not
+            // "A type initializer threw an exception".
+            var rfEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+            var rfApiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
+            var msg = $"Azure OpenAI request failed: {ex.Status} {ex.ErrorCode} — {ex.Message}";
+            return ErrorAndExit(UnsafeReplaceSecrets(msg, rfApiKey, rfEndpoint), 1, jsonMode: opts.Json);
+        }
         catch (Exception ex)
         {
-            return ErrorAndExit($"Request failed: {ex.Message}", 1, jsonMode: opts.Json);
+            // FDR v2 dogfood High-severity (fdr-v2-err-unwrap): unwrap up to 5
+            // InnerException levels so users see the real failure instead of
+            // "A type initializer threw an exception..." (AOT ILC surfaces
+            // TypeInitializationException for PostfixSwapMaxTokens). Redact
+            // apiKey + endpoint hostname before emitting.
+            var exEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+            var exApiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
+            var unwrapped = UnwrapException(ex);
+            return ErrorAndExit(
+                $"Request failed: {UnsafeReplaceSecrets(unwrapped, exApiKey, exEndpoint)}",
+                1, jsonMode: opts.Json);
         }
     }
 
@@ -1278,6 +1302,68 @@ internal class Program
         {
             // Best-effort advisory — never fail the invocation over a stat hiccup.
         }
+    }
+
+    /// <summary>
+    /// FDR v2 dogfood High-severity (fdr-v2-err-unwrap): walk the
+    /// <see cref="Exception.InnerException"/> chain up to <paramref name="maxDepth"/>
+    /// levels, collecting each non-empty <see cref="Exception.Message"/> and
+    /// joining with <c>" → "</c>. Includes <see cref="TypeInitializationException.TypeName"/>
+    /// when that surfaces (common under AOT when a static ctor blew up).
+    /// Cycle-safe: bails after <paramref name="maxDepth"/> hops or on a null.
+    /// </summary>
+    internal static string UnwrapException(Exception ex, int maxDepth = 5)
+    {
+        if (ex == null) return string.Empty;
+        var parts = new List<string>(maxDepth + 1);
+        var current = ex;
+        var seen = new HashSet<Exception>(ReferenceEqualityComparer.Instance);
+        for (int depth = 0; depth <= maxDepth && current != null; depth++)
+        {
+            if (!seen.Add(current)) break; // cycle guard
+            if (current is TypeInitializationException tie && !string.IsNullOrEmpty(tie.TypeName))
+            {
+                var msg = string.IsNullOrEmpty(current.Message)
+                    ? $"TypeInitializationException[{tie.TypeName}]"
+                    : $"{current.Message} [type: {tie.TypeName}]";
+                parts.Add(msg);
+            }
+            else if (!string.IsNullOrEmpty(current.Message))
+            {
+                parts.Add(current.Message);
+            }
+            current = current.InnerException;
+        }
+        return parts.Count == 0 ? ex.GetType().Name : string.Join(" → ", parts);
+    }
+
+    /// <summary>
+    /// FDR v2 dogfood High-severity (fdr-v2-err-unwrap): redact secrets from
+    /// any string before it hits stderr / stdout / logs. Replaces the raw
+    /// <paramref name="apiKey"/> and the endpoint hostname with
+    /// <c>[REDACTED]</c>. Safe on null/empty inputs. The "Unsafe" prefix is a
+    /// reminder that the INPUT contains secrets — the OUTPUT is the redacted
+    /// form callers should actually emit.
+    /// </summary>
+    internal static string UnsafeReplaceSecrets(string text, string? apiKey, string? endpoint)
+    {
+        if (string.IsNullOrEmpty(text)) return text ?? string.Empty;
+        var result = text;
+        if (!string.IsNullOrEmpty(apiKey) && apiKey.Length >= 4)
+        {
+            result = result.Replace(apiKey, "[REDACTED]", StringComparison.Ordinal);
+        }
+        if (!string.IsNullOrEmpty(endpoint))
+        {
+            // Replace the full endpoint string verbatim and, when parseable,
+            // the bare hostname too (covers cases where only the host leaked).
+            result = result.Replace(endpoint, "[REDACTED]", StringComparison.OrdinalIgnoreCase);
+            if (Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) && !string.IsNullOrEmpty(uri.Host))
+            {
+                result = result.Replace(uri.Host, "[REDACTED]", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        return result;
     }
 
     /// <summary>
