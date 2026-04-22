@@ -11,7 +11,8 @@ This directory holds **playable, rehearsed terminal demos** for `az-ai-v2`. Each
 | [`scripts/01-standard-prompt.sh`](scripts/01-standard-prompt.sh) | Default mode — streaming answer with spinner. The hero shot. |
 | [`scripts/02-raw-espanso.sh`](scripts/02-raw-espanso.sh) | `--raw` mode piped into a simulated Espanso expansion. |
 | [`scripts/03-agent-tool-calling.sh`](scripts/03-agent-tool-calling.sh) | `--agent` mode with a real `shell_exec` tool call. |
-| [`hero-gif.md`](hero-gif.md) | How to regenerate the top-of-README hero GIF. |
+| [`hero-gif.md`](hero-gif.md) | Short-form reference for the top-of-README hero GIF. |
+| [`hero-gif-recording.md`](hero-gif-recording.md) | **Full operator runbook** — locked parameters (88×18, JetBrains Mono 18, monokai, 1.25×), asciinema + agg pipeline, VHS alternative, `make demo-hero-gif`. Baseline v2.0.6. |
 | `recordings/` | Raw `.cast` files from `asciinema`. Regenerable; small enough to commit. |
 | `images/` | Rendered `.gif` / `.svg` outputs consumed by docs. |
 
@@ -103,7 +104,7 @@ Before you hit `Ctrl-D` to end a cast:
 - [ ] No secrets in scrollback — `history -c` before recording if in doubt.
 - [ ] Window resized to match `--cols/--rows`. Mismatched sizes cause wrapping artifacts in the GIF.
 
-See [`hero-gif.md`](hero-gif.md) for the specific incantation behind `img/its_alive_too.gif`.
+See [`hero-gif.md`](hero-gif.md) for the short-form incantation behind `img/its_alive_too.gif`, and [`hero-gif-recording.md`](hero-gif-recording.md) for the full operator runbook (locked parameters, VHS alternative, `make demo-hero-gif` target).
 
 ## See also — DevRel context
 

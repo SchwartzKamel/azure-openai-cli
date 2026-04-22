@@ -51,7 +51,8 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
 	publish-all bench install uninstall \
-	install-nim-gemma-2b uninstall-nim-gemma-2b nim-status nim-warmup
+	install-nim-gemma-2b uninstall-nim-gemma-2b nim-status nim-warmup \
+	demo-hero-gif
 
 ## Help: list available make targets (default target)
 help:
@@ -419,3 +420,18 @@ nim-warmup: ## Block until NIM is warm
 	  printf '.'; sleep 2; \
 	done; \
 	echo ""; echo ">> timeout waiting for NIM"; exit 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DevRel — hero GIF recording (see docs/demos/hero-gif-recording.md)
+# ─────────────────────────────────────────────────────────────────────────────
+
+demo-hero-gif: ## Record img/its_alive_too.gif via asciinema + agg (see docs/demos/hero-gif-recording.md)
+	@command -v asciinema >/dev/null 2>&1 || { echo "Error: asciinema not on PATH. See docs/demos/hero-gif-recording.md §1."; exit 1; }
+	@command -v agg >/dev/null 2>&1 || { echo "Error: agg not on PATH. Install: cargo install --git https://github.com/asciinema/agg"; exit 1; }
+	@mkdir -p docs/demos/recordings
+	asciinema rec docs/demos/recordings/hero.cast --overwrite --cols 88 --rows 18 \
+	  --title "az-ai-v2 — it's alive (v2.0.6)" \
+	  --command "bash docs/demos/scripts/01-standard-prompt.sh"
+	agg docs/demos/recordings/hero.cast img/its_alive_too.gif \
+	  --font-family "JetBrains Mono" --font-size 18 --theme monokai --speed 1.25
+	@ls -lh img/its_alive_too.gif
