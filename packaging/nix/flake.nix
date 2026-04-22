@@ -6,19 +6,26 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      version = "2.0.2";
+      version = "2.0.4";
       baseUrlFor = v: "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${v}";
 
       # Build the per-system sources attrset for a given release version.
       # All frozen versioned-pin derivations go through this helper so the
       # URL/arch shape stays consistent across releases.
-      sourcesFor = v: hashes: {
+      #
+      # ⚠️ Tarball-filename drift (audit finding C-1): v2.0.4 tarballs were
+      # uploaded with `2.0.2` in the filename because
+      # packaging/tarball/stage.sh VERSION was not rolled past 2.0.2 in
+      # the v2.0.3/v2.0.4 commits. The `tarballVersion` arg below lets
+      # pinned entries override the filename-version independently of
+      # the tag-version. Default = v (clean case). v2.0.4 passes "2.0.2".
+      sourcesFor = v: tarballVersion: hashes: {
         "x86_64-linux" = {
-          url = "${baseUrlFor v}/az-ai-v2-${v}-linux-x64.tar.gz";
+          url = "${baseUrlFor v}/az-ai-v2-${tarballVersion}-linux-x64.tar.gz";
           sha256 = hashes.linux-x64;
         };
         "aarch64-darwin" = {
-          url = "${baseUrlFor v}/az-ai-v2-${v}-osx-arm64.tar.gz";
+          url = "${baseUrlFor v}/az-ai-v2-${tarballVersion}-osx-arm64.tar.gz";
           sha256 = hashes.osx-arm64;
         };
         # NOTE: "x86_64-darwin" (osx-x64) dropped as of v2.0.4 — GHA
@@ -27,11 +34,12 @@
         # "aarch64-darwin" and pull the osx-arm64 binary), or the OCI image.
       };
 
-      # Hash table for the tracking (latest) release. Lippman replaces each
-      # `lib.fakeHash` with the real SRI digest when cutting a new tag.
+      # Hash table for the tracking (latest) release, filled from the
+      # v2.0.4 GitHub Release (run 24789065975, published 2026-04-22).
+      # SRI digests (sha256-<base64>) per Nix convention.
       latestHashes = {
-        linux-x64 = nixpkgs.lib.fakeHash;
-        osx-arm64 = nixpkgs.lib.fakeHash;
+        linux-x64 = "sha256-lZKpYgsN3jdF2wtXFwja0i1qYABobnwPB2E6lq6nmOY=";
+        osx-arm64 = "sha256-bDBRpKV0wJ9R95WbYZ4YeszjeykY2t2HmnnmfOfrmHQ=";
       };
 
       # Frozen hash tables for pinnable releases. These should only ever be
@@ -64,13 +72,29 @@
           osx-arm64 = nixpkgs.lib.fakeHash;
         };
         "2.0.2" = {
+          # v2.0.2 GitHub Release assets published via `gh run rerun --failed`
+          # recovery path (2026-04-22). Never hash-synced in-repo at the
+          # time — hashes retained as placeholders for parity. Users who
+          # want a verifiable pin should use "2.0.4" or build from the tag.
           linux-x64 = nixpkgs.lib.fakeHash;
           osx-x64   = nixpkgs.lib.fakeHash;
           osx-arm64 = nixpkgs.lib.fakeHash;
         };
+        "2.0.4" = {
+          # v2.0.4 — drop osx-x64 from matrix; FDR High fixes shipped.
+          # Digests from release run 24789065975 (published 2026-04-22).
+          # No osx-x64 key: platform dropped from the release matrix.
+          linux-x64 = "sha256-lZKpYgsN3jdF2wtXFwja0i1qYABobnwPB2E6lq6nmOY=";
+          osx-arm64 = "sha256-bDBRpKV0wJ9R95WbYZ4YeszjeykY2t2HmnnmfOfrmHQ=";
+        };
       };
 
-      sources = sourcesFor version latestHashes;
+      # Per-version tarball-filename overrides. Default to the tag version
+      # when absent. v2.0.4 tarballs were uploaded with a stale `2.0.2`
+      # filename (audit finding C-1); other tags use the clean pattern.
+      tarballVersionFor = v: if v == "2.0.4" then "2.0.2" else v;
+
+      sources = sourcesFor version (tarballVersionFor version) latestHashes;
       supportedSystems = builtins.attrNames sources;
 
       mkAzAi = { pkgs, system, v, srcMeta }:
@@ -142,7 +166,7 @@
             (mkAzAi {
               inherit pkgs system;
               v = v;
-              srcMeta = (sourcesFor v hashes).${system};
+              srcMeta = (sourcesFor v (tarballVersionFor v) hashes).${system};
             })
         ) pinnedHashes;
       in

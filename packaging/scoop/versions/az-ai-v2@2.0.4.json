@@ -1,0 +1,25 @@
+{
+    "_comment": "Versioned-pin manifest for az-ai-v2 v2.0.4. Install with `scoop install schwartzkamel/az-ai-v2@2.0.4`. Frozen at v2.0.4 — SHA256 below is the digest of the v2.0.4 GitHub Release artifact (run 24789065975, published 2026-04-22) and never changes once filled at tag time. No checkver/autoupdate on versioned manifests by design. v2.0.4 drops macOS Intel (osx-x64) from the release matrix and ships FDR High-severity fixes; v2.0.3 was tagged but the binary-matrix publish was cancelled at cutover (no GitHub Release for 2.0.3). Tarball-filename drift (audit finding C-1): the v2.0.4 zip was uploaded as `az-ai-v2-2.0.2-win-x64.zip` because packaging/tarball/stage.sh VERSION was not rolled past 2.0.2 in the v2.0.3/v2.0.4 commits; URL hardcodes the literal filename.",
+    "version": "2.0.4",
+    "description": "Azure OpenAI CLI v2 — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator (pinned to v2.0.4)",
+    "homepage": "https://github.com/SchwartzKamel/azure-openai-cli",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.0.4/az-ai-v2-2.0.2-win-x64.zip",
+            "hash": "2d3f8c6709b06f2409fe1471a62f29034499dcceadd9bcd1a1c6e0bcda755943"
+        }
+    },
+    "bin": [
+        [
+            "az-ai-v2.exe",
+            "az-ai-v2"
+        ]
+    ],
+    "post_install": [
+        "Write-Host 'az-ai-v2 v2.0.4 (pinned) installed. Third-party notices bundled next to the binary:'",
+        "Write-Host \"  $dir\\NOTICE\"",
+        "Write-Host \"  $dir\\THIRD_PARTY_NOTICES.md\"",
+        "Write-Host \"  $dir\\LICENSE\""
+    ]
+}

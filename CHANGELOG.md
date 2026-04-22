@@ -74,6 +74,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was cancelled at cutover; no GitHub Release exists for v2.0.3.
   v2.0.4 supersedes it.
 
+### Packaging (post-publish, hash-sync)
+- Homebrew, Nix, and Scoop manifests hash-synced against the v2.0.4
+  GitHub Release (run `24789065975`, published 2026-04-22). Digests:
+  - `linux-x64.tar.gz` — `sha256:9592a962…8e6` (SRI
+    `sha256-lZKpYgsN3jdF2wtXFwja0i1qYABobnwPB2E6lq6nmOY=`)
+  - `linux-musl-x64.tar.gz` — `sha256:48b0a81a…ceb` (Nix-only; Homebrew
+    does not model musl)
+  - `osx-arm64.tar.gz` — `sha256:6c3051a4…874` (SRI
+    `sha256-bDBRpKV0wJ9R95WbYZ4YeszjeykY2t2HmnnmfOfrmHQ=`)
+  - `win-x64.zip` — `sha256:2d3f8c67…943`
+- New frozen pin siblings: `packaging/homebrew/Formula/az-ai-v2@2.0.4.rb`,
+  `packaging/scoop/versions/az-ai-v2@2.0.4.json`, and a `"2.0.4"` entry
+  in `packaging/nix/flake.nix` `pinnedHashes`. Unversioned manifests
+  (`az-ai.rb`, `az-ai.json`, flake `latestHashes`) rolled to 2.0.4.
+- **Known issue — tarball-filename drift (audit finding C-1).** The
+  v2.0.4 tarballs were uploaded with `2.0.2` embedded in their
+  filenames because `packaging/tarball/stage.sh` `VERSION` and the
+  `Program.cs` / `Observability/Telemetry.cs` version constants were
+  not rolled past `2.0.2` in the v2.0.3/v2.0.4 commits. Manifest URLs
+  therefore hardcode the literal `az-ai-v2-2.0.2-<rid>.tar.gz`
+  filenames at the `v2.0.4` tag, and the shipped binary still reports
+  `--version --short` → `2.0.2`. `brew test az-ai-v2` will fail
+  against v2.0.4 until v2.0.5 rolls the version strings in lock-step.
+  Full diagnosis in `docs/audits/docs-audit-2026-04-22-lippman.md`
+  (Critical findings C-1 / C-2).
+- Tap / bucket publish is a separate workflow and is NOT done in this
+  commit (owner: Bob Sacamano).
+
 ## [2.0.3] — 2026-04-22
 
 > **Re-tag to recover from infra-stuck v2.0.2 release.** v2.0.2 (`fd4ddc7`)
