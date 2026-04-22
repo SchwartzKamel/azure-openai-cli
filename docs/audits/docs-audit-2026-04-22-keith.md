@@ -602,3 +602,21 @@ crowd.
   this audit unblocks, not the work it completes.
 
 — *Keith Hernandez. I'm an athlete. The CFPs go out clean.*
+
+---
+
+## 10. Resolution log
+
+Appended post-audit. Each entry notes when a finding closed and what landed.
+
+| Finding | Status | Closed | Landed in | Notes |
+|---|:-:|---|---|---|
+| C-1 | ✅ closed | earlier | `demo-scripts-v2` | `AZ_AI_BIN` parameterized across demo scripts |
+| C-2 | ✅ closed | 2026-04-22 | `keith-medium-sweep` | `docs/announce/v1.8.0-launch.md` → `docs/announce/archive/`; convention README at `docs/announce/README.md` pointing at current v2.x launch collateral |
+| H-1 | ✅ closed | earlier | — | Default model reconciled |
+| H-2 | ⏸ blocked | — | blocked on `keith-wsl-talk` ← `perf-numbers-refresh` | README perf refresh |
+| H-3 | ⏸ blocked | — | blocked on `keith-wsl-talk` ← `perf-numbers-refresh` | WSL binary / size / latency refresh |
+| H-4 | ⏸ blocked | — | blocked on `keith-wsl-talk` | Per-demo talk-track docs |
+| H-5 | ✅ closed | 2026-04-22 | `keith-medium-sweep` | [`docs/speaker-bureau.md`](../speaker-bureau.md) — bios (50/150/300), pronouns/handles template, COI block, headshot plan, 3 talk abstracts (Abstract C held as placeholder pending `keith-wsl-talk`) |
+| M-1 | ✅ closed | 2026-04-22 | `keith-medium-sweep` | [`docs/devrel/swag-brief.md`](../devrel/swag-brief.md) — asset inventory, palette proposal, vendor specs, distribution policy, lead-time, booth-in-a-box manifest. Art files deferred; brief unblocks. |
+| M-2 | ✅ closed | 2026-04-22 | `keith-medium-sweep` | [`docs/devrel/livestream-checklist.md`](../devrel/livestream-checklist.md) — T-24h / T-60m / T-15m / T-2m / live / fallback / Q&A / post-show. Show-run template + episode archive land under `docs/talks/livestream/` on episode one. |

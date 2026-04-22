@@ -104,3 +104,14 @@ Before you hit `Ctrl-D` to end a cast:
 - [ ] Window resized to match `--cols/--rows`. Mismatched sizes cause wrapping artifacts in the GIF.
 
 See [`hero-gif.md`](hero-gif.md) for the specific incantation behind `img/its_alive_too.gif`.
+
+## See also — DevRel context
+
+These scripts are the raw material; the surfaces that consume them live one directory up.
+
+- [`../speaker-bureau.md`](../speaker-bureau.md) — bios, COI disclosure, and the three talk abstracts these demos pair with.
+- [`../devrel/livestream-checklist.md`](../devrel/livestream-checklist.md) — pre-show environment setup (terminal 120×40, theme, env-var sanity), live risk-reduce rules, and the asciinema fallback to reach for when the WiFi dies.
+- [`../devrel/swag-brief.md`](../devrel/swag-brief.md) — vendor-ready brand constraints for the booth-in-a-box that ships next to these demos.
+- [`../announce/`](../announce/) — stable-URL announcement copy. Cite *these* from a blog post, not a v1-era archive.
+
+— *Keith Hernandez. The demo is the asset. The checklist is the seatbelt.*
