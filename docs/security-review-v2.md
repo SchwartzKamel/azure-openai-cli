@@ -71,13 +71,13 @@ Findings flagged for Kramer; Newman will not edit `.cs` or `.csproj`.
 
 | Hardening | v2 line | Equivalent? |
 |---|---|---|
-| `~` expansion before `GetFullPath` | 42-43 | ✅ |
-| `Path.GetFullPath` canonicalization (neutralises `..`) | 45 | ✅ |
-| `IsBlockedPath` on canonical path | 48 | ✅ |
-| Symlink resolution + re-check (`File.ResolveLinkTarget(..., returnFinalTarget: true)`) | 55-57 | ✅ |
-| Blocked prefixes (`/etc/shadow`, `/root/.ssh`, `~/.aws`, `~/.azure`, `/run/secrets`, docker.sock, etc.) | 15-31 | ✅ |
-| `.env` trap with example/sample/template allow | 81-89 | ✅ |
-| 256 KB read cap | 11, 60-61 | ✅ |
+| `~` expansion before `GetFullPath` | 42-43 | ✅ Yes |
+| `Path.GetFullPath` canonicalization (neutralises `..`) | 45 | ✅ Yes |
+| `IsBlockedPath` on canonical path | 48 | ✅ Yes |
+| Symlink resolution + re-check (`File.ResolveLinkTarget(..., returnFinalTarget: true)`) | 55-57 | ✅ Yes |
+| Blocked prefixes (`/etc/shadow`, `/root/.ssh`, `~/.aws`, `~/.azure`, `/run/secrets`, docker.sock, etc.) | 15-31 | ✅ Yes |
+| `.env` trap with example/sample/template allow | 81-89 | ✅ Yes |
+| 256 KB read cap | 11, 60-61 | ✅ Yes |
 
 **Adversarial inputs:**
 
@@ -104,15 +104,15 @@ security logic is byte-equivalent.**
 
 | Hardening | v2 line | Equivalent? |
 |---|---|---|
-| HTTPS-only scheme check | 33-34 | ✅ |
-| Pre-request DNS resolve + private/loopback block | 37-54 | ✅ |
-| `MaxAutomaticRedirections = 3` | 15, 61 | ✅ |
-| Post-redirect scheme revalidation | 76-78, 105-106 | ✅ |
-| Post-redirect private-IP revalidation (`ValidateRedirectedUriAsync`) | 100-125 | ✅ |
-| IPv4 ranges: 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16 | 141-158 | ✅ |
-| IPv6: loopback, `fd00::/8`, `fe80::/10`, IPv4-mapped folding | 132-138, 159-168 | ✅ |
-| 128 KB response cap | 13, 81-92 | ✅ |
-| 10 s timeout via linked CTS + `HttpClient.Timeout` | 14, 56-57, 65 | ✅ |
+| HTTPS-only scheme check | 33-34 | ✅ Yes |
+| Pre-request DNS resolve + private/loopback block | 37-54 | ✅ Yes |
+| `MaxAutomaticRedirections = 3` | 15, 61 | ✅ Yes |
+| Post-redirect scheme revalidation | 76-78, 105-106 | ✅ Yes |
+| Post-redirect private-IP revalidation (`ValidateRedirectedUriAsync`) | 100-125 | ✅ Yes |
+| IPv4 ranges: 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16 | 141-158 | ✅ Yes |
+| IPv6: loopback, `fd00::/8`, `fe80::/10`, IPv4-mapped folding | 132-138, 159-168 | ✅ Yes |
+| 128 KB response cap | 13, 81-92 | ✅ Yes |
+| 10 s timeout via linked CTS + `HttpClient.Timeout` | 14, 56-57, 65 | ✅ Yes |
 
 **Adversarial inputs:**
 
@@ -212,15 +212,15 @@ which is the correct mechanism.
 
 | Requirement | Evidence | Status |
 |---|---|---|
-| HTTPS-only guard | line 1017: `uri.Scheme != "https"` → silent return | ✅ |
-| Timeout | line 1022: `HttpClient.Timeout = 3s` | ✅ |
-| Fire-and-forget | line 226: `_ = PrewarmAsync(endpoint, apiKey)` (discarded) | ✅ |
-| No stdout/stderr output | no `Console.` calls in the method | ✅ |
-| `catch { }` silent degrade | line 1032-1035 | ✅ |
-| Response discarded | line 1028-1030 (never read `Content`) | ✅ |
+| HTTPS-only guard | line 1017: `uri.Scheme != "https"` → silent return | ✅ Pass |
+| Timeout | line 1022: `HttpClient.Timeout = 3s` | ✅ Pass |
+| Fire-and-forget | line 226: `_ = PrewarmAsync(endpoint, apiKey)` (discarded) | ✅ Pass |
+| No stdout/stderr output | no `Console.` calls in the method | ✅ Pass |
+| `catch { }` silent degrade | line 1032-1035 | ✅ Pass |
+| Response discarded | line 1028-1030 (never read `Content`) | ✅ Pass |
 | api-key handling | only placed on the outbound `api-key` header to the
   *same* endpoint the main chat call targets (line 1026-1027); never logged,
-  never serialized into an exception path (bare `catch`) | ✅ |
+  never serialized into an exception path (bare `catch`) | ✅ Pass |
 
 **Adversarial inputs:**
 
@@ -255,10 +255,10 @@ Confirmed with `diff` -- only lines 1 and 6 differ.
 | Property | v2 line | Assessment |
 |---|---|---|
 | 32 KB read tail cap on `ReadHistory` | 17, 38-39 | ✅ protects reader |
-| 32 KB read tail cap on `ReadDecisions` | 84-85 | ✅ |
+| 32 KB read tail cap on `ReadDecisions` | 84-85 | ✅ Yes |
 | `personaName.ToLowerInvariant()` path build | 109 | ⚠ no traversal guard |
 | `File.AppendAllText` on every session | 58, 71 | ⚠ unbounded disk growth |
-| No file lock / concurrent-write coordination | 58, 71 | ⚠ |
+| No file lock / concurrent-write coordination | 58, 71 | ⚠ Warn |
 
 **Adversarial inputs:**
 
@@ -342,12 +342,12 @@ return JsonSerializer.Deserialize(json, AppJsonContext.Default.SquadConfig);
 
 | Property | Evidence | Status |
 |---|---|---|
-| Default table is **hardcoded** in source | lines 20-30 | ✅ |
-| Override source is `AZAI_PRICE_TABLE` **local file path** only | line 68-74 | ✅ |
-| No `HttpClient`, no URL, no remote fetch anywhere in the class | full-file grep | ✅ |
-| `File.Exists` pre-check | line 69 | ✅ |
-| Parse failure silently falls back to hardcoded table | line 85-88 | ✅ |
-| AOT-safe via source-generated `AppJsonContext` | line 75 | ✅ |
+| Default table is **hardcoded** in source | lines 20-30 | ✅ Pass |
+| Override source is `AZAI_PRICE_TABLE` **local file path** only | line 68-74 | ✅ Pass |
+| No `HttpClient`, no URL, no remote fetch anywhere in the class | full-file grep | ✅ Pass |
+| `File.Exists` pre-check | line 69 | ✅ Pass |
+| Parse failure silently falls back to hardcoded table | line 85-88 | ✅ Pass |
+| AOT-safe via source-generated `AppJsonContext` | line 75 | ✅ Pass |
 
 **Adversarial inputs:**
 

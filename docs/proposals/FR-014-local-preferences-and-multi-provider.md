@@ -226,12 +226,12 @@ record ProviderContext(
 
 | Kind | Package / wire | Credential source | Tool calling | Streaming | Notes |
 |---|---|---|---|---|---|
-| `azure-openai` | `Azure.AI.OpenAI` (already in csproj) | `apiKeyEnv` → `DefaultAzureCredential` fallback | ✅ | ✅ | First-class; default. Unchanged from today. |
-| `openai` | `OpenAI` official SDK OR direct HTTP to `/v1/chat/completions` | `OPENAI_API_KEY` | ✅ | ✅ | **Phase 1** -- cheapest adapter since wire == Azure's base. |
+| `azure-openai` | `Azure.AI.OpenAI` (already in csproj) | `apiKeyEnv` → `DefaultAzureCredential` fallback | ✅ Yes | ✅ Yes | First-class; default. Unchanged from today. |
+| `openai` | `OpenAI` official SDK OR direct HTTP to `/v1/chat/completions` | `OPENAI_API_KEY` | ✅ Yes | ✅ Yes | **Phase 1** -- cheapest adapter since wire == Azure's base. |
 | `anthropic` | Direct HTTP to `/v1/messages` + message translator | `ANTHROPIC_API_KEY` header `x-api-key` | ✅ (different schema) | ✅ (SSE) | **Phase 2** -- needs a request/response transformer; use `IChatClient` adapter shim. |
-| `google-gemini` | Direct HTTP to `v1beta/models/{model}:generateContent` | `GEMINI_API_KEY` query or header | ✅ (`functionDeclarations`) | ✅ | **Phase 3** -- translator similar to Anthropic. |
-| `openai-compatible` | Direct HTTP to `/v1/chat/completions` | Bearer-token env or anonymous | Capability-gated via preferences | ✅ | Covers **Ollama, llama.cpp, NIM, LM Studio, vLLM** -- one adapter, N endpoints. |
-| `gemma-cpp` (future) | Local subprocess + UDS (see FR-019) | none | ❌ | ✅ | FR-019 owns its own IChatClient wrapping the subprocess. |
+| `google-gemini` | Direct HTTP to `v1beta/models/{model}:generateContent` | `GEMINI_API_KEY` query or header | ✅ (`functionDeclarations`) | ✅ Yes | **Phase 3** -- translator similar to Anthropic. |
+| `openai-compatible` | Direct HTTP to `/v1/chat/completions` | Bearer-token env or anonymous | Capability-gated via preferences | ✅ Yes | Covers **Ollama, llama.cpp, NIM, LM Studio, vLLM** -- one adapter, N endpoints. |
+| `gemma-cpp` (future) | Local subprocess + UDS (see FR-019) | none | ❌ No | ✅ Yes | FR-019 owns its own IChatClient wrapping the subprocess. |
 
 `IChatClient`-shaped adapters mean **zero changes** to Program.cs call sites -- the existing `chatClient.CompleteStreamingAsync(...)` loop works for every provider.
 

@@ -59,11 +59,11 @@ directly into its `SystemPrompt`:
 
 | Persona | Refusal line present? |
 |---|:-:|
-| `coder` | ✅ |
-| `reviewer` | ✅ |
-| `architect` | ✅ |
-| `writer` | ✅ |
-| `security` | ✅ |
+| `coder` | ✅ Yes |
+| `reviewer` | ✅ Yes |
+| `architect` | ✅ Yes |
+| `writer` | ✅ Yes |
+| `security` | ✅ Yes |
 
 Exposed as the internal constant
 `SquadInitializer.PERSONA_SAFETY_LINE`, kept byte-identical to

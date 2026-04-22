@@ -1051,13 +1051,13 @@ protection rules** (or the equivalent Rulesets) for the `main` branch:
 | Rule | Setting |
 |---|---|
 | Require a pull request before merging | ✅ -- at least **1** approving review |
-| Dismiss stale approvals on new commits | ✅ |
+| Dismiss stale approvals on new commits | ✅ Yes |
 | Require review from Code Owners | ✅ (when `CODEOWNERS` exists) |
 | Require status checks to pass before merging | ✅ -- `build-and-test`, `integration-test`, `docker` |
-| Require branches to be up to date before merging | ✅ |
-| Require signed commits | ✅ |
+| Require branches to be up to date before merging | ✅ Yes |
+| Require signed commits | ✅ Yes |
 | Require linear history | ✅ (recommended) |
-| Include administrators | ✅ |
+| Include administrators | ✅ Yes |
 | Restrict who can push to matching branches | ✅ -- maintainers only |
 | Allow force pushes | ❌ Disabled |
 | Allow deletions | ❌ Disabled |

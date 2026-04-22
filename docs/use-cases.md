@@ -30,10 +30,10 @@ az-ai --estimate --model gpt-4o "$(cat big-prompt.txt)"
 
 | Mode              | Flag(s)                      | Model can call tools? | Autonomous loop? | Memory    | Primary guide                                                                 |
 |-------------------|------------------------------|:---------------------:|:----------------:|-----------|-------------------------------------------------------------------------------|
-| **Standard**      | *(default)*                  | ❌                    | ❌               | ❌        | [`use-cases-standard.md`](use-cases-standard.md)                              |
-| **Raw**           | `--raw`                      | ❌                    | ❌               | ❌        | [`use-cases-standard.md`](use-cases-standard.md) (§ `--raw`)                  |
-| **Agent**         | `--agent` [`--tools`]        | ✅ (6 built-ins)      | ❌               | ❌        | [`use-cases-agent.md`](use-cases-agent.md)                                    |
-| **Ralph**         | `--ralph` [`--validate`]     | ✅ (implies `--agent`)| ✅               | ❌        | [`use-cases-ralph-squad.md`](use-cases-ralph-squad.md) (Part 1)               |
+| **Standard**      | *(default)*                  | ❌ No | ❌ No | ❌ No | [`use-cases-standard.md`](use-cases-standard.md)                              |
+| **Raw**           | `--raw`                      | ❌ No | ❌ No | ❌ No | [`use-cases-standard.md`](use-cases-standard.md) (§ `--raw`)                  |
+| **Agent**         | `--agent` [`--tools`]        | ✅ (6 built-ins)      | ❌ No | ❌ No | [`use-cases-agent.md`](use-cases-agent.md)                                    |
+| **Ralph**         | `--ralph` [`--validate`]     | ✅ (implies `--agent`)| ✅ Yes | ❌ No | [`use-cases-ralph-squad.md`](use-cases-ralph-squad.md) (Part 1)               |
 | **Persona/Squad** | `--persona <name\|auto>`     | ✅ (per persona)      | ❌ (unless `--ralph`) | ✅ (`.squad/`) | [`persona-guide.md`](persona-guide.md) + [`use-cases-ralph-squad.md`](use-cases-ralph-squad.md) (Part 2) |
 
 Config, Espanso/AHK integration, pipelines, Docker, and the security sandbox

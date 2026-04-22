@@ -240,8 +240,8 @@ The CLI persists user preferences to `~/.azureopenai-cli.json`. On Unix systems,
 | Max tokens | ✅ `MaxTokens` | `AZURE_MAX_TOKENS` | Config overrides env |
 | Timeout | ✅ `TimeoutSeconds` | `AZURE_TIMEOUT` | Config overrides env |
 | System prompt | ✅ `SystemPrompt` | `SYSTEMPROMPT` | Config overrides env |
-| Endpoint | ❌ | `AZUREOPENAIENDPOINT` | Environment only -- never persisted |
-| API key | ❌ | `AZUREOPENAIAPI` | Environment only -- never persisted (security) |
+| Endpoint | ❌ No | `AZUREOPENAIENDPOINT` | Environment only -- never persisted |
+| API key | ❌ No | `AZUREOPENAIAPI` | Environment only -- never persisted (security) |
 
 **Manually editing the config file:**
 

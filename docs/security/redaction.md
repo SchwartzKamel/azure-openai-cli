@@ -40,12 +40,12 @@ the intermediate messages.
 
 | Surface | Redacted? | Mechanism |
 |---|---|---|
-| `stderr` from CLI | ✅ | `Program.cs:604/619` call `UnsafeReplaceSecrets` before `Console.Error.WriteLine` |
-| `stdout` JSON error envelope (`--json` mode) | ✅ | Same helper, before serialization |
-| `.ralph-log` per-iteration transcript | ✅ | Errors routed through the same helper; transcript truncated at 64 KB |
-| Ralph validation-script stderr → model prompt | ✅ | `RalphWorkflow.cs` forwards redacted error strings, not raw exceptions |
+| `stderr` from CLI | ✅ Yes | `Program.cs:604/619` call `UnsafeReplaceSecrets` before `Console.Error.WriteLine` |
+| `stdout` JSON error envelope (`--json` mode) | ✅ Yes | Same helper, before serialization |
+| `.ralph-log` per-iteration transcript | ✅ Yes | Errors routed through the same helper; transcript truncated at 64 KB |
+| Ralph validation-script stderr → model prompt | ✅ Yes | `RalphWorkflow.cs` forwards redacted error strings, not raw exceptions |
 | OpenTelemetry spans (when opt-in) | ⚠️ Partial | Exception `Message` attribute is redacted; stack trace is not (frames are code paths, not secrets) |
-| Model-consumed tool-error messages | ✅ | Tool executors surface redacted error messages; raw exception objects never cross the tool boundary |
+| Model-consumed tool-error messages | ✅ Yes | Tool executors surface redacted error messages; raw exception objects never cross the tool boundary |
 | CI job log (from operator-run CI) | ⚠️ Indirect | We redact our own output. If the operator's CI also logs `env` or runs the CLI under `set -x`, that's outside our TCB |
 
 ---

@@ -49,7 +49,7 @@ Rationale: reuses the protocol codec from Phase 1, but requires harder decisions
 |-----------|-------------|----------------------------------|-----|
 | **stdio** (framed JSON-RPC over child process stdin/stdout) | Stable | ~95% of published servers | ✅ **yes** |
 | HTTP + SSE (streamable HTTP) | Stable | Growing, mostly hosted/enterprise | ⏳ v2 |
-| WebSocket | Draft/optional | Rare | ❌ |
+| WebSocket | Draft/optional | Rare | ❌ No |
 
 **v1 = stdio only.** Every consumer-facing MCP server (filesystem, git, github, postgres, playwright, sqlite, time, fetch, memory) ships stdio. HTTP/SSE becomes interesting only when az-ai is itself deployed server-side -- that's a post-v1 concern. Doing stdio first lets us spawn a child process, write newline-delimited JSON-RPC 2.0 frames, and read responses -- no HTTP stack, no TLS, no keepalives, and no AOT headaches.
 

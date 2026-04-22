@@ -12,9 +12,9 @@
 
 | Symbol | Meaning |
 |---|---|
-| ✅ | Coverage exists and is non-trivial. |
-| 🟡 | Thin coverage (one happy-path case, or only asserts a weak invariant). |
-| ❌ | Coverage is absent. |
+| ✅ Yes | Coverage exists and is non-trivial. |
+| 🟡 Partial | Thin coverage (one happy-path case, or only asserts a weak invariant). |
+| ❌ No | Coverage is absent. |
 | -- | Not applicable. (A pure-stdout feature has no sensible "chaos" column.) |
 | ⏳ | Pending -- planned but not yet implemented. |
 
@@ -25,35 +25,35 @@
 
 | Feature / area | Unit | Integration | Contract | Chaos | Notes |
 |---|:---:|:---:|:---:|:---:|---|
-| `--version` / `--version --short` | ✅ | ✅ | ✅ | -- | `VersionContractTests`, `integration_tests.sh` smoke. |
-| `--raw` stdout/stderr discipline | ✅ | ✅ | ✅ | -- | `RawModeTests`. |
-| Ralph mode -- exit codes | ✅ | ✅ | ✅ | -- | `RalphExitCodeTests`, `RalphWorkflowTests`. |
-| Ralph validator -- JSON tool-call shape | 🟡 | ❌ | ❌ | ❌ | Mode entry + exit codes covered; the validator's JSON output shape is not asserted. Audit gap §4. |
-| Ralph depth / loop bounds | ✅ | ✅ | -- | ✅ | `RalphModeTests`, `tests/chaos/10_ralph_depth.sh`. |
-| Persona memory -- read tail | ✅ | ❌ | -- | ✅ | `PersonaMemoryHardeningTests` F1-F3; `tests/chaos/06_persona_memory.sh`, `11_persona_live.sh`. |
-| Persona name sanitisation (F3 traversal) | ✅ | ❌ | -- | ✅ | `PersonaMemoryHardeningTests` F3 `[Theory]`; `SquadConfig.Load` validator. |
-| Squad config parsing (`.squad.json`) | ✅ | 🟡 | -- | ✅ | `SquadTests`, `SquadInitializerTests`, `tests/chaos/05_squad_chaos.sh`. |
-| User config (`~/.azureopenai-cli.json`) | ✅ | ❌ | -- | ✅ | `UserConfigTests`, `UserConfigQuietTests`, `tests/chaos/04_config_chaos.sh`. 🟡 HOME isolation -- see audit C1 in test-sanity-audit. |
-| argv parsing | ✅ | ✅ | -- | ✅ | `CliParserTests`, `CliParserPropertyTests`, `tests/chaos/01_argv_injection.sh`. |
-| stdin handling | 🟡 | ✅ | -- | ✅ | `tests/chaos/02_stdin_evil.sh`; xUnit coverage is thin (most code paths are process-level). |
-| env var ingestion | ✅ | ✅ | -- | ✅ | `UserConfigTests`, `V2FlagParityTests`, `tests/chaos/03_env_chaos.sh`. |
-| Tool registry / built-in tools | ✅ | ✅ | ✅ | ✅ | `ToolTests`, `ToolHardeningTests`, `tests/chaos/07_tool_chaos.sh`. |
-| `ShellExec` tool -- adversarial | 🟡 | ❌ | ❌ | ❌ | `tests/README.md` claims "edge cases"; reality is echo-hello happy path. Audit §4 / test-sanity M8 still open. |
-| SSRF / symlink traversal | ✅ | ❌ | -- | ✅ | `SecurityToolTests`, `ToolHardeningTests`, `tests/chaos/07_tool_chaos.sh`. |
-| Retry / backoff | ✅ | ❌ | -- | ✅ | `RetryTests` (incl. wall-clock backoff). |
-| 429 rate-limit `Retry-After` parsing | ❌ | ❌ | -- | 🟡 | Not asserted in unit tests; chaos defers (drill §F/9). Audit §4 gap. |
-| Cancellation / SIGINT | ✅ | ✅ | -- | ✅ | `CancellationTests`, `tests/chaos/08_signal_chaos.sh`. |
-| Parallel tool execution | ✅ | -- | -- | -- | `ParallelToolExecutionTests`. No wall-clock assertion (intentional -- see audit c861c2e). |
-| Network failure handling | 🟡 | ❌ | -- | ✅ | `tests/chaos/09_network_chaos.sh` (mock_server). xUnit coverage thin. |
-| Cost estimation | ✅ | ❌ | -- | -- | `CostEstimatorTests`. |
-| Prewarm / cache | ✅ | ❌ | -- | -- | `PrewarmTests`, `PromptCacheTests`. |
-| Foundry routing | ✅ | ❌ | -- | -- | `FoundryRoutingTests`. |
-| JSON source-generator contract | ✅ | -- | -- | -- | `JsonSourceGeneratorTests`. |
-| Publish target / AOT packaging | ✅ | ✅ | -- | -- | `PublishTargetTests`, release workflows. |
-| Telemetry / observability | ✅ | ❌ | ✅ | -- | `ObservabilityTests`, plus `VersionContractTests` pinning `ServiceVersion`. |
-| `SECURITY.md` doc / code agreement | -- | -- | ✅ | -- | `SecurityDocValidationTests`. |
-| Console capture sequencing under parallel xUnit | ❌ | -- | -- | -- | `[Collection("ConsoleCapture")]` convention exists; no test asserts capture ordering is deterministic. Audit §4 / test-sanity C2 open. |
-| Windows path / SkippableFact infra | ❌ | ❌ | -- | -- | CI dropped `windows-latest` (test-sanity H4). 26+ POSIX paths hardcoded. |
+| `--version` / `--version --short` | ✅ Yes | ✅ Yes | ✅ Yes | -- | `VersionContractTests`, `integration_tests.sh` smoke. |
+| `--raw` stdout/stderr discipline | ✅ Yes | ✅ Yes | ✅ Yes | -- | `RawModeTests`. |
+| Ralph mode -- exit codes | ✅ Yes | ✅ Yes | ✅ Yes | -- | `RalphExitCodeTests`, `RalphWorkflowTests`. |
+| Ralph validator -- JSON tool-call shape | 🟡 Partial | ❌ No | ❌ No | ❌ No | Mode entry + exit codes covered; the validator's JSON output shape is not asserted. Audit gap §4. |
+| Ralph depth / loop bounds | ✅ Yes | ✅ Yes | -- | ✅ Yes | `RalphModeTests`, `tests/chaos/10_ralph_depth.sh`. |
+| Persona memory -- read tail | ✅ Yes | ❌ No | -- | ✅ Yes | `PersonaMemoryHardeningTests` F1-F3; `tests/chaos/06_persona_memory.sh`, `11_persona_live.sh`. |
+| Persona name sanitisation (F3 traversal) | ✅ Yes | ❌ No | -- | ✅ Yes | `PersonaMemoryHardeningTests` F3 `[Theory]`; `SquadConfig.Load` validator. |
+| Squad config parsing (`.squad.json`) | ✅ Yes | 🟡 Partial | -- | ✅ Yes | `SquadTests`, `SquadInitializerTests`, `tests/chaos/05_squad_chaos.sh`. |
+| User config (`~/.azureopenai-cli.json`) | ✅ Yes | ❌ No | -- | ✅ Yes | `UserConfigTests`, `UserConfigQuietTests`, `tests/chaos/04_config_chaos.sh`. 🟡 HOME isolation -- see audit C1 in test-sanity-audit. |
+| argv parsing | ✅ Yes | ✅ Yes | -- | ✅ Yes | `CliParserTests`, `CliParserPropertyTests`, `tests/chaos/01_argv_injection.sh`. |
+| stdin handling | 🟡 Partial | ✅ Yes | -- | ✅ Yes | `tests/chaos/02_stdin_evil.sh`; xUnit coverage is thin (most code paths are process-level). |
+| env var ingestion | ✅ Yes | ✅ Yes | -- | ✅ Yes | `UserConfigTests`, `V2FlagParityTests`, `tests/chaos/03_env_chaos.sh`. |
+| Tool registry / built-in tools | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | `ToolTests`, `ToolHardeningTests`, `tests/chaos/07_tool_chaos.sh`. |
+| `ShellExec` tool -- adversarial | 🟡 Partial | ❌ No | ❌ No | ❌ No | `tests/README.md` claims "edge cases"; reality is echo-hello happy path. Audit §4 / test-sanity M8 still open. |
+| SSRF / symlink traversal | ✅ Yes | ❌ No | -- | ✅ Yes | `SecurityToolTests`, `ToolHardeningTests`, `tests/chaos/07_tool_chaos.sh`. |
+| Retry / backoff | ✅ Yes | ❌ No | -- | ✅ Yes | `RetryTests` (incl. wall-clock backoff). |
+| 429 rate-limit `Retry-After` parsing | ❌ No | ❌ No | -- | 🟡 Partial | Not asserted in unit tests; chaos defers (drill §F/9). Audit §4 gap. |
+| Cancellation / SIGINT | ✅ Yes | ✅ Yes | -- | ✅ Yes | `CancellationTests`, `tests/chaos/08_signal_chaos.sh`. |
+| Parallel tool execution | ✅ Yes | -- | -- | -- | `ParallelToolExecutionTests`. No wall-clock assertion (intentional -- see audit c861c2e). |
+| Network failure handling | 🟡 Partial | ❌ No | -- | ✅ Yes | `tests/chaos/09_network_chaos.sh` (mock_server). xUnit coverage thin. |
+| Cost estimation | ✅ Yes | ❌ No | -- | -- | `CostEstimatorTests`. |
+| Prewarm / cache | ✅ Yes | ❌ No | -- | -- | `PrewarmTests`, `PromptCacheTests`. |
+| Foundry routing | ✅ Yes | ❌ No | -- | -- | `FoundryRoutingTests`. |
+| JSON source-generator contract | ✅ Yes | -- | -- | -- | `JsonSourceGeneratorTests`. |
+| Publish target / AOT packaging | ✅ Yes | ✅ Yes | -- | -- | `PublishTargetTests`, release workflows. |
+| Telemetry / observability | ✅ Yes | ❌ No | ✅ Yes | -- | `ObservabilityTests`, plus `VersionContractTests` pinning `ServiceVersion`. |
+| `SECURITY.md` doc / code agreement | -- | -- | ✅ Yes | -- | `SecurityDocValidationTests`. |
+| Console capture sequencing under parallel xUnit | ❌ No | -- | -- | -- | `[Collection("ConsoleCapture")]` convention exists; no test asserts capture ordering is deterministic. Audit §4 / test-sanity C2 open. |
+| Windows path / SkippableFact infra | ❌ No | ❌ No | -- | -- | CI dropped `windows-latest` (test-sanity H4). 26+ POSIX paths hardcoded. |
 
 ## Matrix -- v1 surface (maintenance mode)
 

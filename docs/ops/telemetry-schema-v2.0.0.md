@@ -113,13 +113,13 @@ Source: [`CostEvent.cs`](../../azureopenai-cli-v2/Observability/CostEvent.cs), p
 
 | Field | Type | Required | Notes |
 |---|---|:---:|---|
-| `ts` | string (ISO-8601 UTC, `"O"` round-trip) | ✅ | Lexicographically sortable. |
-| `kind` | string, always `"cost"` | ✅ | Reserved namespace. Future event kinds may ship; consumers must ignore unknown `kind`. |
-| `model` | string | ✅ | Deployment name as configured. |
-| `input_tokens` | integer | ✅ | Prompt tokens. |
-| `output_tokens` | integer | ✅ | Completion tokens. |
-| `usd` | number \| **null** | ✅ | `null` when the model is missing from the price table. **Never faked.** |
-| `mode` | string (`standard` \| `agent` \| `ralph`) | ✅ | |
+| `ts` | string (ISO-8601 UTC, `"O"` round-trip) | ✅ Yes | Lexicographically sortable. |
+| `kind` | string, always `"cost"` | ✅ Yes | Reserved namespace. Future event kinds may ship; consumers must ignore unknown `kind`. |
+| `model` | string | ✅ Yes | Deployment name as configured. |
+| `input_tokens` | integer | ✅ Yes | Prompt tokens. |
+| `output_tokens` | integer | ✅ Yes | Completion tokens. |
+| `usd` | number \| **null** | ✅ Yes | `null` when the model is missing from the price table. **Never faked.** |
+| `mode` | string (`standard` \| `agent` \| `ralph`) | ✅ Yes | |
 
 ### 4.2 Consumer contract
 

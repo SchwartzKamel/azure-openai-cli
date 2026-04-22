@@ -140,9 +140,9 @@ Proposed gates (per task brief) and observed results:
 | Gate | Threshold | Observed (AOT, shipping form) | Result |
 |---|---|---|:---:|
 | Cold start mean | v2 ≤ 1.25× v1 | 1.16× (`--version --short`), **1.60× (`--help`)** | ⚠️ mixed |
-| Cold start p95 | v2 ≤ 1.25× v1 | 1.12× (`--version --short`), 1.23× (`--help`) | ✅ |
-| Binary size (AOT) | v2 ≤ 1.50× v1 | **1.456×** (post-trim, shipped) | ✅ |
-| Memory (RSS) | v2 ≤ 1.50× v1 | 0.88-1.00× | ✅ |
+| Cold start p95 | v2 ≤ 1.25× v1 | 1.12× (`--version --short`), 1.23× (`--help`) | ✅ Pass |
+| Binary size (AOT) | v2 ≤ 1.50× v1 | **1.456×** (post-trim, shipped) | ✅ Pass |
+| Memory (RSS) | v2 ≤ 1.50× v1 | 0.88-1.00× | ✅ Pass |
 
 **Recommendation -- revise gates for v2.0.0 and beyond:**
 1. **Drop the mean-latency gate, keep p95.** Means are noisy on ms-scale cold starts; p95 is what the user perceives. Proposed: **AOT p95 ≤ 1.25× v1** and **absolute p95 ≤ 25 ms** on reference hardware. v2 passes both.

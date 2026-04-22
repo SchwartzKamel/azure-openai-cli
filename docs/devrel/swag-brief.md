@@ -14,12 +14,12 @@
 |---|:-:|---|---|
 | Project wordmark "az-ai" / "azure-openai-cli" | ✅ text-only | n/a | Any print surface; plain-text typesetting fine |
 | Kramer-designed logo mark | ⚠️ raster only, no vendor-ready SVG | `img/` *(unconfirmed inventory -- see §2)* | Screen only until §2 closes |
-| Hero GIF (`its_alive_too.gif`) | ✅ | `img/its_alive_too.gif` | Booth demo loop (screen only, not print) |
+| Hero GIF (`its_alive_too.gif`) | ✅ Pass | `img/its_alive_too.gif` | Booth demo loop (screen only, not print) |
 | Color palette | ❌ not defined | -- | See §3 proposal |
 | Typography spec | ❌ not defined | -- | See §3 proposal |
-| Sticker die-cut templates | ❌ | -- | Vendor blocker |
-| Laptop-cover templates (13" / 14" / 16") | ❌ | -- | Vendor blocker |
-| Pull-up banner / backdrop | ❌ | -- | Out of scope until first sponsored booth |
+| Sticker die-cut templates | ❌ Fail | -- | Vendor blocker |
+| Laptop-cover templates (13" / 14" / 16") | ❌ Fail | -- | Vendor blocker |
+| Pull-up banner / backdrop | ❌ Fail | -- | Out of scope until first sponsored booth |
 
 ## 2. What's missing (placeholder -- to land in a follow-up)
 

@@ -96,13 +96,13 @@ terminal -- that depends on the terminal's font stack.
 
 | Terminal                     | CJK glyphs | Emoji ZWJ | Variation selectors | Notes                                |
 |------------------------------|------------|-----------|---------------------|--------------------------------------|
-| Windows Terminal (1.18+)     | ✅ correct  | ✅ most    | ✅                   | Emoji font fallback via Segoe UI Emoji. |
-| iTerm2 (macOS)               | ✅          | ✅         | ✅                   |                                      |
-| Alacritty                    | ✅          | partial   | partial             | Grapheme-cluster rendering is improving. |
-| Kitty                        | ✅          | ✅         | ✅                   | Best-in-class for complex sequences. |
-| GNOME Terminal / Konsole     | ✅          | ✅         | ✅                   | libvte / KDE renderer.               |
-| `xterm` (default font)       | varies     | ❌         | ❌                   | Upgrade or install `xterm-unicode`.  |
-| `conhost.exe` (legacy cmd)   | ❌          | ❌         | ❌                   | Use Windows Terminal.                |
+| Windows Terminal (1.18+)     | ✅ correct  | ✅ most    | ✅ Yes | Emoji font fallback via Segoe UI Emoji. |
+| iTerm2 (macOS)               | ✅ Yes | ✅ Yes | ✅ Yes |                                      |
+| Alacritty                    | ✅ Yes | partial   | partial             | Grapheme-cluster rendering is improving. |
+| Kitty                        | ✅ Yes | ✅ Yes | ✅ Yes | Best-in-class for complex sequences. |
+| GNOME Terminal / Konsole     | ✅ Yes | ✅ Yes | ✅ Yes | libvte / KDE renderer.               |
+| `xterm` (default font)       | varies     | ❌ No | ❌ No | Upgrade or install `xterm-unicode`.  |
+| `conhost.exe` (legacy cmd)   | ❌ No | ❌ No | ❌ No | Use Windows Terminal.                |
 
 Rendering gaps above are **not** CLI bugs.
 

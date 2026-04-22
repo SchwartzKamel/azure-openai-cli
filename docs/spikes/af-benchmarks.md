@@ -28,13 +28,13 @@
 
 | Probe | Handrolled | Spike (apikey) | Spike (aad) | Spike (foundry) | Pass? |
 |---|---|---|---|---|---|
-| Cold start (`--help`) | _ ms | _ ms | _ ms | _ ms | ☐ |
-| TTFT (1-line prompt) | _ ms | _ ms | _ ms | _ ms | ☐ |
-| End-to-end (10-token reply) | _ ms | _ ms | _ ms | _ ms | ☐ |
-| Streaming throughput | _ tok/s | _ tok/s | _ tok/s | _ tok/s | ☐ |
-| Tool round-trip (TBD Phase 0 pt 2) | _ ms | _ ms | _ ms | _ ms | ☐ |
+| Cold start (`--help`) | _ ms | _ ms | _ ms | _ ms | ☐ Todo |
+| TTFT (1-line prompt) | _ ms | _ ms | _ ms | _ ms | ☐ Todo |
+| End-to-end (10-token reply) | _ ms | _ ms | _ ms | _ ms | ☐ Todo |
+| Streaming throughput | _ tok/s | _ tok/s | _ tok/s | _ tok/s | ☐ Todo |
+| Tool round-trip (TBD Phase 0 pt 2) | _ ms | _ ms | _ ms | _ ms | ☐ Todo |
 | AOT binary size | _ MB | _ MB | _ MB | _ MB | n/a |
-| AOT warnings (new) | 0 | _ | _ | _ | ☐ |
+| AOT warnings (new) | 0 | _ | _ | _ | ☐ Todo |
 | AOT runtime crashes | 0 | _ | _ | _ | ☐ (must be 0) |
 
 ## Runs
@@ -50,7 +50,7 @@
 
 | Probe | Handrolled (AOT) | Spike (AOT, MAF) | Delta | Pass? |
 |---|---|---|---|---|
-| `--help` | 6.6 ms | 7.1 ms | +0.5 ms (+7.6%) | ✅ |
+| `--help` | 6.6 ms | 7.1 ms | +0.5 ms (+7.6%) | ✅ Pass |
 | `--version` | 6.4 ms | 7.4 ms | +1.0 ms (+15.6%) | ⚠️ tiny absolute |
 
 ### End-to-end (real LLM call)

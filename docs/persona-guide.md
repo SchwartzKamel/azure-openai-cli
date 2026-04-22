@@ -75,10 +75,10 @@ A `PersonaConfig` entry in `.squad.json`. Fields:
 
 | Field           | Required | Description                                                        |
 |-----------------|:--------:|--------------------------------------------------------------------|
-| `name`          | ✅       | Unique identifier, case-insensitive when matched by `--persona`    |
+| `name`          | ✅ Yes | Unique identifier, case-insensitive when matched by `--persona`    |
 | `role`          |          | Short human-readable title; printed in the 🎭 banner                |
 | `description`   |          | One-liner shown by `--personas`                                    |
-| `system_prompt` | ✅       | Full system prompt. Overrides `--system` on the command line.      |
+| `system_prompt` | ✅ Yes | Full system prompt. Overrides `--system` on the command line.      |
 | `tools`         |          | Tool names: any of `shell`, `file`, `web`, `clipboard`, `datetime`, `delegate`. Empty = no tool restriction; falls back to `--tools` or the default allow-list. |
 | `model`         |          | Optional per-persona model override. Reserved -- not yet wired in 2.0.0. |
 

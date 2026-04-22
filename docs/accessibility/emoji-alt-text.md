@@ -49,9 +49,9 @@ PASS" -- the "PASS" carries the load; the emoji is garnish.
 **Don't:**
 
 ```
-| Build | 🟢 |
-| Tests | 🟡 |
-| Lint  | 🔴 |
+| Build | `🟢` |
+| Tests | `🟡` |
+| Lint  | `🔴` |
 ```
 
 Status-by-emoji-alone fails three audiences at once: monochrome

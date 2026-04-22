@@ -83,10 +83,10 @@ Authoritative source: [`docs/observability.md`](../observability.md). This secti
 | Trigger | Spans | Meters | Cost events (stderr) | Default |
 |---|:---:|:---:|:---:|:---:|
 | (none) | -- | -- | -- | **off** |
-| `--telemetry` | ✅ | ✅ | ✅ | off |
-| `AZ_TELEMETRY=1` / `true` / `yes` | ✅ | ✅ | ✅ | off |
-| `--otel` | ✅ | -- | -- | off |
-| `--metrics` | -- | ✅ | ✅ | off |
+| `--telemetry` | ✅ Yes | ✅ Yes | ✅ Yes | off |
+| `AZ_TELEMETRY=1` / `true` / `yes` | ✅ Yes | ✅ Yes | ✅ Yes | off |
+| `--otel` | ✅ Yes | -- | -- | off |
+| `--metrics` | -- | ✅ Yes | ✅ Yes | off |
 | `--raw` (any combo) | suppressed on stdout | suppressed on stdout | **still on stderr** | -- |
 
 `AZ_TELEMETRY` parsing is case-insensitive; any other value keeps telemetry off. See [`azureopenai-cli-v2/Observability/Telemetry.cs:80`](../../azureopenai-cli-v2/Observability/Telemetry.cs) for the `IsEnabled` contract.

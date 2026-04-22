@@ -34,10 +34,10 @@ Every mode must run against at least one model from each family.
 
 | Mode | gpt-4o-mini | gpt-4o | gpt-5.4-nano | gpt-5.4 |
 |------|-------------|--------|--------------|---------|
-| `standard` (single response) | ✅ | ✅ | ✅ | ✅ |
-| `--agent` (tool-calling loop) | ✅ | ✅ | ✅ | ✅ |
-| `--ralph` (autonomous) | ✅ | -- | ✅ | ✅ |
-| `--persona <name>` | ✅ | -- | ✅ | -- |
+| `standard` (single response) | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |
+| `--agent` (tool-calling loop) | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |
+| `--ralph` (autonomous) | ✅ Yes | -- | ✅ Yes | ✅ Yes |
+| `--persona <name>` | ✅ Yes | -- | ✅ Yes | -- |
 
 `--ralph` uses `RALPH_DEPTH=2` and a seeded validator script. `--persona` runs all 25 personas against at least one model (§2.2).
 

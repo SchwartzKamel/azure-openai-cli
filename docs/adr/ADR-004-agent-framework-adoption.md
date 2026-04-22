@@ -90,14 +90,14 @@ Run against live `https://sierrahackingco.cognitiveservices.azure.com/` + `gpt-5
 
 | Criterion | Threshold | Measured | Pass? |
 |---|---|---|---|
-| Cold start regression | ≤ 10% | +7.6% (6.6 → 7.1 ms) | ✅ |
-| TTFT | ≤ +5 ms overhead | 948 ms (network-bound; MAF overhead < 5 ms) | ✅ |
+| Cold start regression | ≤ 10% | +7.6% (6.6 → 7.1 ms) | ✅ Pass |
+| TTFT | ≤ +5 ms overhead | 948 ms (network-bound; MAF overhead < 5 ms) | ✅ Pass |
 | Streaming throughput | ≤ 5% regression | 122 chars/s sustained | ✅ (handrolled unmeasurable -- see below) |
 | Tool round-trip | ≤ +5 ms | deferred to Phase 0 pt 2 | ⏳ |
-| AOT publish | zero new crashes | 0 | ✅ |
-| AOT warnings | no new | no new (same Azure.AI.OpenAI baseline) | ✅ |
+| AOT publish | zero new crashes | 0 | ✅ Pass |
+| AOT warnings | no new | no new (same Azure.AI.OpenAI baseline) | ✅ Pass |
 | Binary size | informational | 9.1 MB → 19 MB | ⚠️ trim follow-up |
-| AAD path wired | works or fails cleanly | fails with correct `CredentialUnavailableException` | ✅ |
+| AAD path wired | works or fails cleanly | fails with correct `CredentialUnavailableException` | ✅ Pass |
 | Foundry path wired | works or clean stub | `NotImplementedException` stub pending real endpoint | ⏳ |
 
 **Unexpected finding**: the handrolled v1.9.0-alpha.1 AOT binary is **broken** against modern Azure Responses-API endpoints (gpt-5.x):

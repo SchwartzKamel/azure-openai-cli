@@ -39,8 +39,8 @@ The `--raw` flag strips all of it:
 |----------|---------|---------|
 | Spinner on stderr | ✅ (if TTY) | Suppressed |
 | Token usage stats | ✅ (on stderr) | Suppressed |
-| Trailing newline | ✅ | Suppressed |
-| Response text on stdout | ✅ | ✅ |
+| Trailing newline | ✅ Yes | Suppressed |
+| Response text on stdout | ✅ Yes | ✅ Yes |
 
 **Always use `--raw` for text expansion.** Without it, Espanso/AHK may capture spinner artifacts or extra newlines.
 

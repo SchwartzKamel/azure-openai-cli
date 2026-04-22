@@ -60,19 +60,19 @@ Unix-family RIDs, `.zip` on Windows.
 
 | File                                                  | Contents                                                     | Required |
 |-------------------------------------------------------|--------------------------------------------------------------|:--------:|
-| `az-ai-v2-<VERSION>-linux-x64.tar.gz`                 | AOT ELF binary `az-ai-v2`, `LICENSE`, `NOTICE`, `README.md`. | ✅       |
-| `az-ai-v2-<VERSION>-linux-x64.tar.gz.sha256`          | SHA256 sidecar (single-line `<hex>  <filename>`).            | ✅       |
-| `az-ai-v2-<VERSION>-linux-x64.sbom.json`              | CycloneDX 1.5 JSON SBOM.                                     | ✅       |
-| `az-ai-v2-<VERSION>-linux-x64.tar.gz.sig` (or equiv.) | Sigstore attestation material (per workflow).                | ✅       |
+| `az-ai-v2-<VERSION>-linux-x64.tar.gz`                 | AOT ELF binary `az-ai-v2`, `LICENSE`, `NOTICE`, `README.md`. | ✅ Yes |
+| `az-ai-v2-<VERSION>-linux-x64.tar.gz.sha256`          | SHA256 sidecar (single-line `<hex>  <filename>`).            | ✅ Yes |
+| `az-ai-v2-<VERSION>-linux-x64.sbom.json`              | CycloneDX 1.5 JSON SBOM.                                     | ✅ Yes |
+| `az-ai-v2-<VERSION>-linux-x64.tar.gz.sig` (or equiv.) | Sigstore attestation material (per workflow).                | ✅ Yes |
 
 ### 2.2 `linux-musl-x64`
 
 | File                                              | Contents                                           | Required |
 |---------------------------------------------------|----------------------------------------------------|:--------:|
-| `az-ai-v2-<VERSION>-linux-musl-x64.tar.gz`        | AOT ELF binary, `LICENSE`, `NOTICE`, `README.md`.  | ✅       |
-| `az-ai-v2-<VERSION>-linux-musl-x64.tar.gz.sha256` | SHA256 sidecar.                                    | ✅       |
-| `az-ai-v2-<VERSION>-linux-musl-x64.sbom.json`     | CycloneDX 1.5 JSON SBOM.                           | ✅       |
-| `az-ai-v2-<VERSION>-linux-musl-x64.tar.gz.sig`    | Sigstore attestation.                              | ✅       |
+| `az-ai-v2-<VERSION>-linux-musl-x64.tar.gz`        | AOT ELF binary, `LICENSE`, `NOTICE`, `README.md`.  | ✅ Yes |
+| `az-ai-v2-<VERSION>-linux-musl-x64.tar.gz.sha256` | SHA256 sidecar.                                    | ✅ Yes |
+| `az-ai-v2-<VERSION>-linux-musl-x64.sbom.json`     | CycloneDX 1.5 JSON SBOM.                           | ✅ Yes |
+| `az-ai-v2-<VERSION>-linux-musl-x64.tar.gz.sig`    | Sigstore attestation.                              | ✅ Yes |
 
 Note: Homebrew does not model musl; this leg exists for Nix (musl)
 and container consumers who want a statically-linked binary.
@@ -81,10 +81,10 @@ and container consumers who want a statically-linked binary.
 
 | File                                         | Contents                                             | Required |
 |----------------------------------------------|------------------------------------------------------|:--------:|
-| `az-ai-v2-<VERSION>-osx-arm64.tar.gz`        | AOT Mach-O binary, `LICENSE`, `NOTICE`, `README.md`. | ✅       |
-| `az-ai-v2-<VERSION>-osx-arm64.tar.gz.sha256` | SHA256 sidecar.                                      | ✅       |
-| `az-ai-v2-<VERSION>-osx-arm64.sbom.json`     | CycloneDX 1.5 JSON SBOM.                             | ✅       |
-| `az-ai-v2-<VERSION>-osx-arm64.tar.gz.sig`    | Sigstore attestation.                                | ✅       |
+| `az-ai-v2-<VERSION>-osx-arm64.tar.gz`        | AOT Mach-O binary, `LICENSE`, `NOTICE`, `README.md`. | ✅ Yes |
+| `az-ai-v2-<VERSION>-osx-arm64.tar.gz.sha256` | SHA256 sidecar.                                      | ✅ Yes |
+| `az-ai-v2-<VERSION>-osx-arm64.sbom.json`     | CycloneDX 1.5 JSON SBOM.                             | ✅ Yes |
+| `az-ai-v2-<VERSION>-osx-arm64.tar.gz.sig`    | Sigstore attestation.                                | ✅ Yes |
 
 The binary is unsigned by Apple (we do not notarize). Users on
 Gatekeeper-strict macs must `xattr -d com.apple.quarantine` or run
@@ -94,10 +94,10 @@ under Rosetta via Docker. Documented in the Homebrew formula caveats.
 
 | File                                    | Contents                                                            | Required |
 |-----------------------------------------|---------------------------------------------------------------------|:--------:|
-| `az-ai-v2-<VERSION>-win-x64.zip`        | AOT PE binary `az-ai-v2.exe`, `LICENSE`, `NOTICE`, `README.md`.     | ✅       |
-| `az-ai-v2-<VERSION>-win-x64.zip.sha256` | SHA256 sidecar.                                                     | ✅       |
-| `az-ai-v2-<VERSION>-win-x64.sbom.json`  | CycloneDX 1.5 JSON SBOM.                                            | ✅       |
-| `az-ai-v2-<VERSION>-win-x64.zip.sig`    | Sigstore attestation.                                               | ✅       |
+| `az-ai-v2-<VERSION>-win-x64.zip`        | AOT PE binary `az-ai-v2.exe`, `LICENSE`, `NOTICE`, `README.md`.     | ✅ Yes |
+| `az-ai-v2-<VERSION>-win-x64.zip.sha256` | SHA256 sidecar.                                                     | ✅ Yes |
+| `az-ai-v2-<VERSION>-win-x64.sbom.json`  | CycloneDX 1.5 JSON SBOM.                                            | ✅ Yes |
+| `az-ai-v2-<VERSION>-win-x64.zip.sig`    | Sigstore attestation.                                               | ✅ Yes |
 
 The binary is unsigned by Microsoft (we do not Authenticode-sign yet).
 SmartScreen prompt on first run is expected; Scoop install path is
@@ -113,10 +113,10 @@ by the `docker-publish-v2` job. Tag behavior per
 
 | Tag                 | Class   | Published by workflow | Required |
 |---------------------|---------|-----------------------|:--------:|
-| `<VERSION>`         | version | yes                   | ✅       |
-| `<MAJOR>.<MINOR>`   | float   | yes (GA only)         | ✅       |
-| `<MAJOR>`           | float   | yes (GA only)         | ✅       |
-| `latest`            | float   | yes (GA only)         | ✅       |
+| `<VERSION>`         | version | yes                   | ✅ Yes |
+| `<MAJOR>.<MINOR>`   | float   | yes (GA only)         | ✅ Yes |
+| `<MAJOR>`           | float   | yes (GA only)         | ✅ Yes |
+| `latest`            | float   | yes (GA only)         | ✅ Yes |
 
 Each pushed tag carries:
 
