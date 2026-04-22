@@ -6,6 +6,8 @@ node_modules/
 tests/**/bin/**
 tests/**/obj/**
 docs/archive/
+docs/audits/
+docs/announce/archive/
 THIRD_PARTY_NOTICES.md
 NOTICE-assets.md
 CHANGELOG.md
