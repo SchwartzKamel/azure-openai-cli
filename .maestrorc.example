@@ -1,0 +1,179 @@
+# .maestrorc — per-project prompt-eval configuration (example)
+#
+# Copy to .maestrorc in your repo root and edit. The runtime does not yet
+# consume this file — this example is the FORWARD CONTRACT. Landing the
+# shape here first lets future runner work slot in without re-litigating
+# field names.
+#
+# Format: TOML. Pick TOML over JSON because humans edit this, humans read
+# this, and JSON's no-comments rule makes documentation-in-file impossible.
+#
+# Precedence (when the runner lands):
+#   CLI flag  >  env var (MAESTRO_*)  >  .maestrorc (this file)  >  built-in defaults
+#
+# It's Maestro. With an M.
+
+# ---------------------------------------------------------------------------
+# [meta] — self-identification. Required.
+# ---------------------------------------------------------------------------
+[meta]
+# Schema version. Bump when fields are renamed or removed. Additive changes
+# do not bump. Runner refuses to load an unknown schema_version.
+schema_version = 1
+
+# Free-text label for this project's prompt-eval profile. Shown in harness
+# output headers. Keep short.
+project = "azure-openai-cli"
+
+# ---------------------------------------------------------------------------
+# [fixtures] — where the harness looks for fixture files.
+# ---------------------------------------------------------------------------
+[fixtures]
+# Directory containing <persona>.json fixture files, relative to repo root.
+# Default matches the shipped layout.
+dir = "docs/prompts/fixtures"
+
+# Optional override: run only this subset. Empty / missing = run all.
+# include = ["coder", "reviewer"]
+
+# Optional: skip these even if present. Useful when a persona is mid-edit.
+# exclude = ["architect"]
+
+# ---------------------------------------------------------------------------
+# [models] — pins. Document what we evaluated against and when.
+# ---------------------------------------------------------------------------
+# Every pin here is a claim: "this model, at this API version, is what the
+# harness was last green against." Bumping a pin requires an A/B per
+# docs/prompts/ab-testing.md when the change is not a trivial patch.
+[models]
+# The model under test for persona evals unless a [personas.<name>] entry
+# overrides it. Matches the CLI's DEFAULT_MODEL.
+default = "gpt-4o-mini"
+
+# Trait-judge model. Use something other than the model under test when
+# possible — reduces generation/judging entanglement.
+judge = "gpt-4o"
+
+# Azure deployment slugs (deployment names you provisioned). These are
+# project-specific; copy from your Azure OpenAI resource.
+[models.deployments]
+"gpt-4o-mini" = "my-gpt4o-mini-dep"
+"gpt-4o"      = "my-gpt4o-dep"
+
+# Azure API version. Pin, do not float.
+[models.api]
+azure_api_version = "2024-10-21"
+
+# ---------------------------------------------------------------------------
+# [temperature] — per-task overrides. Cite the cookbook band in comments.
+# ---------------------------------------------------------------------------
+# The cookbook (docs/prompts/temperature-cookbook.md) is the source of truth.
+# Overrides here are project-level opinions, not replacements. Every non-
+# default value gets a one-line rationale in a comment.
+[temperature]
+# Global default the harness applies if a persona does not declare its own.
+# Matches CLI DEFAULT_TEMPERATURE.
+default = 0.55
+
+# Ralph validator: cold for determinism (cookbook "Validation / linting").
+ralph_validator = 0.1
+
+# Schema-constrained output: cold to reduce schema drift.
+schema_output = 0.1
+
+# ---------------------------------------------------------------------------
+# [personas] — per-persona pins that override [models] and [temperature].
+# ---------------------------------------------------------------------------
+# Uncomment and edit to pin a specific persona. Each override section is
+# optional.
+
+# [personas.coder]
+# model       = "gpt-4o-mini"
+# temperature = 0.3              # cookbook "Code gen — implementation"
+# max_tokens  = 2000
+
+# [personas.reviewer]
+# model       = "gpt-4o-mini"
+# temperature = 0.3              # cookbook "Code review"
+# max_tokens  = 3000
+
+# [personas.security]
+# model       = "gpt-4o"         # warrants the stronger model (audit)
+# temperature = 0.1              # cookbook "Security audit"
+# max_tokens  = 4000
+
+# ---------------------------------------------------------------------------
+# [judge] — trait-judge configuration.
+# ---------------------------------------------------------------------------
+# Controls how the eval harness scores expected_traits / forbidden_traits.
+[judge]
+# "trait" = one judge call per trait (slow, clearest signal).
+# "batch" = one judge call per fixture, returns per-trait booleans (cheap).
+# "disabled" = score by hand; runner emits completions, humans eyeball.
+mode = "batch"
+
+# Temperature for the judge. Keep cold. This is a classifier, not a poet.
+temperature = 0.0
+
+# Maximum retries if the judge returns malformed structured output.
+max_retries = 2
+
+# ---------------------------------------------------------------------------
+# [safety] — what we enforce during evals.
+# ---------------------------------------------------------------------------
+[safety]
+# Fail the run (nonzero exit) if any fixture's `safety_assertion` misfires.
+# Default true. Only flip off temporarily while debugging a specific fixture.
+fail_on_safety_regression = true
+
+# Fail the run if any fixture hits a forbidden_trait. Default true.
+fail_on_forbidden_trait = true
+
+# Emit a warning (but do not fail) if the shipped prompt is missing a
+# PERSONA_SAFETY_LINE marker. Tightens to an error in a future schema.
+warn_on_missing_persona_safety_line = true
+
+# ---------------------------------------------------------------------------
+# [output] — where the harness writes artifacts.
+# ---------------------------------------------------------------------------
+[output]
+# Golden-output snapshot directory. Harness writes per-fixture completions
+# here; git-diff these to see voice drift across PRs.
+goldens_dir = "tests/prompts/golden"
+
+# Run-log directory. One subdirectory per invocation with timestamped
+# artifacts (raw completions, judge verdicts, token counts, latency).
+runs_dir = ".maestro/runs"
+
+# Keep the last N runs under runs_dir. Older runs are deleted on next
+# invocation. Set to 0 to disable cleanup.
+keep_last_runs = 20
+
+# ---------------------------------------------------------------------------
+# [ab] — A/B-testing mode defaults (see docs/prompts/ab-testing.md).
+# ---------------------------------------------------------------------------
+[ab]
+# Samples per fixture per variant when seed-pinning is unavailable.
+# Higher n = more signal, more cost. Coordinate with Morty.
+samples_per_fixture = 10
+
+# Human-judge baseline sample size (blinded pair review).
+human_baseline_pairs = 5
+
+# Require that both variants pass their safety_assertion before any
+# aggregate scoring is reported. Default true — do not turn off.
+require_safety_pass_before_scoring = true
+
+# ---------------------------------------------------------------------------
+# [cost] — Morty's section. Soft budgets, not hard caps.
+# ---------------------------------------------------------------------------
+[cost]
+# Warn (not fail) when a single harness invocation projects to cost more
+# than this, in USD. Useful to catch accidental full-sweep A/Bs from CI.
+warn_if_run_usd_above = 2.00
+
+# Hard cap: refuse to start a run whose projected cost exceeds this.
+# Set to 0 to disable.
+abort_if_run_usd_above = 20.00
+
+# End of .maestrorc.example. It's Maestro. With an M.
