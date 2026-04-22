@@ -204,15 +204,15 @@ jobs:
           echo "::endgroup::"
 
       # ----------------------------------------------------------------------
-      # markdownlint-cli2 — standard hygiene (warn-only on first run).
-      # TODO(soup-nazi): flip continue-on-error to false once baseline is clean.
+      # markdownlint-cli2 -- standard hygiene.
+      # HARD-FAIL since Wave 6 (Soup Nazi baseline): zero-violation baseline
+      # established. Config + ignores live in .markdownlint-cli2.jsonc so
+      # local and CI runs are identical. Do not reintroduce `continue-on-error`.
       # ----------------------------------------------------------------------
-      - name: markdownlint-cli2 (warn-only)
+      - name: markdownlint-cli2
         id: markdownlint
-        continue-on-error: true
         run: |
-          npx --yes markdownlint-cli2 "**/*.md" "#node_modules" "#.git" "#.smith" "#**/bin/**" "#**/obj/**" "#docs/archive/**" || \
-            echo "::warning title=markdownlint::violations found — see log"
+          npx --yes markdownlint-cli2
 
       # ----------------------------------------------------------------------
       # Filename convention: kebab-case only under docs/ (excluding known
