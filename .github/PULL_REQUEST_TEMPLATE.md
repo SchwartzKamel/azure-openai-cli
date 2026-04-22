@@ -65,7 +65,7 @@ Fixes #
 - [ ] Docs updated where behavior changed: `README.md`, `ARCHITECTURE.md`, `CONFIGURATION.md`, `--help` text, man pages, `docs/…` -- whichever applies
 - [ ] Diff is scoped to one concern (no drive-by refactors, no unrelated renames)
 - [ ] No secrets, endpoints, or tokens committed
-- [ ] Commit subject is a [Conventional Commit](.github/skills/commit.md) (lowercase type, imperative, ≤ 72 chars)
+- [ ] Commit subject is a [Conventional Commit](skills/commit.md) (lowercase type, imperative, ≤ 72 chars)
 - [ ] **If AI-assisted**, the commit message includes the provenance trailer:
       `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 

@@ -16,7 +16,7 @@
 
 **Version:** v1 (initial cut -- bumps required per [`../change-management.md`](../change-management.md))
 **Source:** `<file>:<line-range>` (the `SystemPrompt` string location)
-**Fixture:** [`../fixtures/<name>.json`](../fixtures/<name>.json)
+**Fixture:** `../fixtures/<name>.json`
 
 ## Intent
 
@@ -41,7 +41,7 @@ the defense-in-depth rationale.
 - **User prompt:** <what kinds of prompts this persona is designed to receive>.
 - **Tools declared:** <list: `shell`, `file`, `web`, `datetime`, `clipboard`, or "none">.
 - **Agent mode:** <explicit / implicit via tool declaration / never>.
-- **Expected fixtures attached:** [`../fixtures/<name>.json`](../fixtures/<name>.json).
+- **Expected fixtures attached:** `../fixtures/<name>.json`.
 
 ## Expected output shape
 
@@ -96,7 +96,7 @@ the harness (or an A/B) to answer. Mirrors the model-card convention.>
 Any edit to the `<name>` `SystemPrompt` in `<file>` requires:
 
 1. Bump the version header above (`v1` → `v2`).
-2. Update [`../fixtures/<name>.json`](../fixtures/<name>.json) -- either a
+2. Update `../fixtures/<name>.json` -- either a
    new fixture covering the reason for the change, or an updated
    `expected_traits` row on an existing fixture.
 3. Attach before/after golden outputs to the PR.

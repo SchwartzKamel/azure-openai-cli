@@ -102,7 +102,7 @@ Override with `AZAI_PRICE_TABLE=/path/to/prices.json` -- JSON must match
 ## SLOs and error budgets
 
 Phase 5 deliverables include the Frank Costanza reliability catalog in
-[`docs/reliability.md`](reliability.md) (when it lands) -- SLOs for startup latency, chat
+`docs/reliability.md` (when it lands) -- SLOs for startup latency, chat
 success rate, and cost-schema emission completeness live there.
 
 If telemetry emission throws, the request path continues; the exception is swallowed inside

@@ -80,7 +80,7 @@ A finding that reproduces on WSL but not on clean Linux CI is **automatically P1
 
 ## 3. Performance gates (Bania)
 
-All deltas measured against a locked 1.9.1 baseline captured at commit of the `v1.9.1` tag. Methodology per [`docs/benchmarks.md`](benchmarks.md): ≥ 30 warm-up iterations, ≥ 100 measured iterations, outlier rejection, pinned reference hardware.
+All deltas measured against a locked 1.9.1 baseline captured at commit of the `v1.9.1` tag. Methodology per [`docs/benchmarks/`](benchmarks/): ≥ 30 warm-up iterations, ≥ 100 measured iterations, outlier rejection, pinned reference hardware.
 
 > ⚠️ **Planned, not shipped.** The `scripts/bench.py` flags cited in the
 > Measurement column below (`--cold`, `--iterations`, `--ttft`,

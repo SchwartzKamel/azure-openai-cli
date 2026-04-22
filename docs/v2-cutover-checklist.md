@@ -96,7 +96,7 @@ All work happens on branch `release/2.0.0` cut from `main`.
 
 | # | Action | Owner | Validation |
 |---|--------|-------|------------|
-| 18 | Add `## [2.0.0] - <date>` section. **Headline** under **Changed**: "Adopted Microsoft Agent Framework (MAF) -- `ChatClientAgent`, `Workflow`+`CheckpointManager`, `AgentSession`+`AIContextProvider` replace ~2200 LOC of hand-rolled harness. Zero CLI surface changes. See [ADR-004](docs/adr/ADR-004-agent-framework-adoption.md)." Include Added (opt-in telemetry flag, OTel spans, per-request cost hook), Changed (dependency graph now includes `Microsoft.Agents.AI.*`), Removed (dual-runtime `--agent-runtime` if not shipped; legacy squad session loader). Link the migration guide. | Mr. Lippman | Preview render on the PR |
+| 18 | Add `## [2.0.0] - <date>` section. **Headline** under **Changed**: "Adopted Microsoft Agent Framework (MAF) -- `ChatClientAgent`, `Workflow`+`CheckpointManager`, `AgentSession`+`AIContextProvider` replace ~2200 LOC of hand-rolled harness. Zero CLI surface changes. See [ADR-004](adr/ADR-004-agent-framework-adoption.md)." Include Added (opt-in telemetry flag, OTel spans, per-request cost hook), Changed (dependency graph now includes `Microsoft.Agents.AI.*`), Removed (dual-runtime `--agent-runtime` if not shipped; legacy squad session loader). Link the migration guide. | Mr. Lippman | Preview render on the PR |
 | 19 | Call out breaking changes loudly -- even if user-invisible, library consumers may see API surface drift | Mr. Lippman | Section starts "### ⚠️ Breaking changes" |
 | 20 | Date the section on the day the tag is cut, not the day the PR is opened | Mr. Lippman | Visual inspection |
 

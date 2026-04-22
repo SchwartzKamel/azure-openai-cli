@@ -190,7 +190,7 @@ code comment.
 - **In-repo links** -- relative paths in backticks, wrapped in a
   Markdown link:
 
-  `[`docs/audits/docs-audit-2026-04-22-lippman.md`](docs/audits/docs-audit-2026-04-22-lippman.md)`
+  `[`docs/audits/docs-audit-2026-04-22-lippman.md`](audits/docs-audit-2026-04-22-lippman.md)`
 
   Use the full relative path so the link works from both the repo
   root (GitHub web UI) and inside `CHANGELOG.md`.

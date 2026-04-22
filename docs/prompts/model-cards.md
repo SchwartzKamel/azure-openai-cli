@@ -17,7 +17,7 @@ uses this model.
 
 A model card is **not**:
 
-- A benchmark report. Benchmarks live in [`model-matrix.md`](./model-matrix.md)
+- A benchmark report. Benchmarks live in `model-matrix.md`
   (once it lands) and `docs/benchmarks/`.
 - A marketing page. We do not quote vendor hype.
 - A FAQ. User-facing "which model should I pick?" belongs in
@@ -48,7 +48,7 @@ the long tail. Azure has a catalog; we do not duplicate it.
   - Slug is lowercase, hyphen-separated, vendor-qualified. Examples:
     `azure-gpt-4o-mini.md`, `azure-gpt-5.4-nano.md`, `foundry-phi-4-mini-instruct.md`.
 - Cards are linked from [`README.md`](./README.md) (prompt library index)
-  and from [`model-matrix.md`](./model-matrix.md) (once landed).
+  and from `model-matrix.md` (once landed).
 - When a model is deprecated as a default, the card moves to
   `docs/prompts/cards/archive/` with a deprecation note -- do not delete it.
 
@@ -169,7 +169,7 @@ A PR that lands or materially updates a card needs:
 ## Roadmap
 
 - [ ] Write card for `gpt-4o-mini` (current `DEFAULT_MODEL`) -- blocking
-      [`model-matrix.md`](./model-matrix.md) M4.
+      `model-matrix.md` M4.
 - [ ] Write card for `gpt-5.4-nano` (Foundry candidate per ADR-005).
 - [ ] Write card for `Phi-4-mini-instruct` (NIM routing per ADR-006).
 - [ ] Wire `maestro-preflight` to verify every model referenced in code has

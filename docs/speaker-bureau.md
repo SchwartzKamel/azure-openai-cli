@@ -164,7 +164,7 @@ These three are drawn from the CFP packet at [`docs/launch/v2-conference-cfp.md`
 
 ### Recording / publishing answer
 
-> Consent to recording and publication on the conference's usual channels, CC-BY or equivalent. Request a copy of the raw recording for our own archive at [`docs/talks/`](talks/) (once that directory exists -- see the speaker-bureau README).
+> Consent to recording and publication on the conference's usual channels, CC-BY or equivalent. Request a copy of the raw recording for our own archive at `docs/talks/` (once that directory exists -- see the speaker-bureau README).
 
 ---
 

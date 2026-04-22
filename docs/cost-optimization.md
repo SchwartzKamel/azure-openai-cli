@@ -92,7 +92,7 @@ The SECURITY.md in this repo caps clipboard at 32 KB for a reason -- we assume t
 
 After the `gpt-5.4-nano` sticker-shock and the DeepSeek compliance headache, Kramer comes back with `Phi-4-mini`. Microsoft's own small language model family. 3.8B parameters. MIT-licensed. And -- get ready -- **seventy-five cents per million input tokens.** I read it twice. I made him read it twice. It's real.
 
-> **⚠️ UPDATE 2026-04-20 -- Empirical data arrived. Verdict: `Phi-4-mini-instruct` is NOT ready for the Espanso default.** The five open questions below are now answered with live benchmark data (Bania, commit `9dc4d2b`). Three kill-shots: HTTP 422 on `--schema`, broken function calling (emits `<|tool_call|>` as content, not valid `tool_calls[]`), and 20% instruction-following failure on JSON-constrained prompts. Cost wins are real (6.5× cheaper: ¢0.000135 vs ¢0.000885 per call), but UX regressions in core workflows would tank the product. **`gpt-4o-mini` default stands.** See [Benchmark Report](docs/benchmarks/phi-vs-gpt54nano-2026-04-20.md) for full data.
+> **⚠️ UPDATE 2026-04-20 -- Empirical data arrived. Verdict: `Phi-4-mini-instruct` is NOT ready for the Espanso default.** The five open questions below are now answered with live benchmark data (Bania, commit `9dc4d2b`). Three kill-shots: HTTP 422 on `--schema`, broken function calling (emits `<|tool_call|>` as content, not valid `tool_calls[]`), and 20% instruction-following failure on JSON-constrained prompts. Cost wins are real (6.5× cheaper: ¢0.000135 vs ¢0.000885 per call), but UX regressions in core workflows would tank the product. **`gpt-4o-mini` default stands.** See [Benchmark Report](benchmarks/phi-vs-gpt54nano-2026-04-20.md) for full data.
 
 Let me lay it out:
 
@@ -141,15 +141,15 @@ Phi-3.5 is a **strict Pareto loss** vs. Phi-4-mini: costs more, performs worse, 
 
 **Open questions before making `Phi-4-mini-instruct` the new default -- NOW ANSWERED:**
 
-1. **Strict JSON Schema mode (`--schema`):** ❌ **REJECTED -- HTTP 422 error.** Foundry's Phi endpoint does NOT respect `response_format: json_schema` with `strict: true`. Every `--schema` caller gets a hard error. This is a non-starter for structured-output workflows. (see [Benchmark Report](docs/benchmarks/phi-vs-gpt54nano-2026-04-20.md) §5)
+1. **Strict JSON Schema mode (`--schema`):** ❌ **REJECTED -- HTTP 422 error.** Foundry's Phi endpoint does NOT respect `response_format: json_schema` with `strict: true`. Every `--schema` caller gets a hard error. This is a non-starter for structured-output workflows. (see [Benchmark Report](benchmarks/phi-vs-gpt54nano-2026-04-20.md) §5)
 
-2. **Function-calling reliability under agent mode:** ❌ **FAIL.** The 3.8B model does NOT emit valid OpenAI-protocol `tool_calls[]`. Instead, it outputs the literal string `<|tool_call|>` as content. This breaks every `--agent` mode invocation. Gpt-5.4-nano: 1/1 PASS. Phi: 0/1 FAIL. (see [Benchmark Report](docs/benchmarks/phi-vs-gpt54nano-2026-04-20.md) §6)
+2. **Function-calling reliability under agent mode:** ❌ **FAIL.** The 3.8B model does NOT emit valid OpenAI-protocol `tool_calls[]`. Instead, it outputs the literal string `<|tool_call|>` as content. This breaks every `--agent` mode invocation. Gpt-5.4-nano: 1/1 PASS. Phi: 0/1 FAIL. (see [Benchmark Report](benchmarks/phi-vs-gpt54nano-2026-04-20.md) §6)
 
 3. **Availability in the user's region:** ⚠️ **Still unverified.** Phi-4-mini on Foundry may not be in every region yet. Out of scope for this benchmark sprint -- Bania focused on US-East. Regional parity check deferred.
 
-4. **Cold-start behavior on Foundry serverless:** ✅ **Phi WINS.** First-call latency: Phi ~0.78s, gpt-5.4-nano ~1.14s. Phi is 31% faster on cold-start TTFT. This is a genuine advantage for Espanso, which fires sporadically. (see [Benchmark Report](docs/benchmarks/phi-vs-gpt54nano-2026-04-20.md) §3)
+4. **Cold-start behavior on Foundry serverless:** ✅ **Phi WINS.** First-call latency: Phi ~0.78s, gpt-5.4-nano ~1.14s. Phi is 31% faster on cold-start TTFT. This is a genuine advantage for Espanso, which fires sporadically. (see [Benchmark Report](benchmarks/phi-vs-gpt54nano-2026-04-20.md) §3)
 
-5. **Instruction-following at 3.8B parameters:** ⚠️ **80% pass rate (4/5).** Phi nails single-word directives (P1, P3, P4, P5 -- all PASS). But P2 ("respond with only a JSON object") FAILS: Phi wraps the JSON in markdown fences (```json {...}```), which the regex strict-match rejects. This is a *specific failure mode* -- Phi has instruction-following capability but breaks when JSON is the **only** constraint (no preamble prose). Gpt-5.4-nano: 5/5 PASS. (see [Benchmark Report](docs/benchmarks/phi-vs-gpt54nano-2026-04-20.md) §4)
+5. **Instruction-following at 3.8B parameters:** ⚠️ **80% pass rate (4/5).** Phi nails single-word directives (P1, P3, P4, P5 -- all PASS). But P2 ("respond with only a JSON object") FAILS: Phi wraps the JSON in markdown fences (```json {...}```), which the regex strict-match rejects. This is a *specific failure mode* -- Phi has instruction-following capability but breaks when JSON is the **only** constraint (no preamble prose). Gpt-5.4-nano: 5/5 PASS. (see [Benchmark Report](benchmarks/phi-vs-gpt54nano-2026-04-20.md) §4)
 
 **Head-to-head numbers from Bania's full run:**
 
