@@ -105,7 +105,16 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
 Big features go through a proposal first so Costanza (PM) and Mr. Pitt
 (program) can slot them against the roadmap before you burn a weekend on
-code.
+code. The live roadmap — release queue, accepted proposals, open
+milestones — is enumerated in [`ROADMAP.md`](ROADMAP.md).
+
+### DCO / sign-off
+
+**No DCO is required.** We do not enforce `Signed-off-by:` trailers. The
+only provenance trailer this project asks for is the AI-assist
+`Co-authored-by: Copilot <…>` line shown above — and only when an
+assistant actually helped. If you prefer to also `git commit -s`, that's
+fine; it won't block the PR. Nothing else is required or checked.
 
 ---
 

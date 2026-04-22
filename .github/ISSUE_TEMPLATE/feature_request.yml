@@ -9,6 +9,20 @@ body:
         Thanks for helping shape az-ai. Feature requests that describe the
         *problem* first — not just the solution — are the easiest to act on.
 
+        **Small idea** (a flag, a message, a config key)? Stay here. File this form.
+
+        **Substantial feature** (new subcommand, new provider, new subsystem,
+        new output mode)? Please open an **FR proposal** under
+        [`docs/proposals/`](https://github.com/SchwartzKamel/azure-openai-cli/tree/main/docs/proposals)
+        instead — match the format of an existing `FR-NNN-*.md` and add your
+        row to the proposals index. That's where Costanza (PM) and Mr. Pitt
+        (program) sequence work against the roadmap
+        ([`ROADMAP.md`](https://github.com/SchwartzKamel/azure-openai-cli/blob/main/ROADMAP.md))
+        before code starts.
+
+        If you're not sure which bucket yours falls into, file the issue —
+        we'll migrate it to a proposal if it grows.
+
   - type: textarea
     id: problem
     attributes:
