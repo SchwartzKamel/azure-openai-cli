@@ -18,6 +18,16 @@ internal class Program
 {
     private const int DEFAULT_TIMEOUT_SECONDS = 120;
     private const float DEFAULT_TEMPERATURE = 0.55f;
+
+    /// <summary>
+    /// Low-temperature default applied when Ralph's <c>--validate &lt;cmd&gt;</c>
+    /// validation loop is active and the operator has not explicitly set a
+    /// temperature (via <c>--temperature</c> or <c>AZURE_TEMPERATURE</c>).
+    /// Validation loops need determinism — the normal 0.55 creative default
+    /// makes pass/fail oscillate across iterations. Precedence: CLI &gt; env &gt;
+    /// this validate default &gt; <see cref="DEFAULT_TEMPERATURE"/>.
+    /// </summary>
+    internal const float RALPH_VALIDATE_TEMPERATURE = 0.15f;
     private const int DEFAULT_MAX_TOKENS = 10000;
     private const string DEFAULT_SYSTEM_PROMPT = "You are a secure, concise CLI assistant. Keep answers factual, no fluff.";
 
@@ -1060,6 +1070,19 @@ internal class Program
                 { Fail("--temperature must be between 0.0 and 2.0"); }
             }
         }
+
+        // Ralph `--validate <cmd>` runs a deterministic validation loop: the
+        // model's output is fed to a shell command that must exit 0 to pass.
+        // A high sampling temperature makes that loop thrash (same input,
+        // different verdict). When the operator has NOT explicitly pinned a
+        // temperature (CLI flag or AZURE_TEMPERATURE env), default to a low
+        // value for determinism. Precedence: CLI > env > validate default
+        // (0.15) > DEFAULT_TEMPERATURE (0.55).
+        if (!temperature.HasValue && !string.IsNullOrEmpty(validateCommand))
+        {
+            temperature = RALPH_VALIDATE_TEMPERATURE;
+        }
+
         if (!maxTokens.HasValue)
         {
             var envTokens = Environment.GetEnvironmentVariable("AZURE_MAX_TOKENS");
@@ -1475,7 +1498,8 @@ Usage:
 
 Core Options:
   --model, -m <alias|name>  Model deployment or alias (env: AZUREOPENAIMODEL)
-  --temperature, -t <float> Sampling temperature 0.0-2.0 (env: AZURE_TEMPERATURE, default: 0.55)
+  --temperature, -t <float> Sampling temperature 0.0-2.0 (env: AZURE_TEMPERATURE, default: 0.55;
+                            0.15 when --validate is active and neither flag nor env is set)
   --max-tokens <int>        Max completion tokens (env: AZURE_MAX_TOKENS, default: 10000)
   --timeout <seconds>       Request timeout in seconds (env: AZURE_TIMEOUT, default: 120)
   --system, -s <text>       System prompt (env: SYSTEMPROMPT)

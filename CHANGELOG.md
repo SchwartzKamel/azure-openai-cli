@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 ### Changed
+- **feat(ralph):** Ralph `--validate <cmd>` validation loop now defaults to a
+  low sampling temperature (0.15) when the operator has not explicitly pinned
+  one via `--temperature` or `AZURE_TEMPERATURE`. High creative temperature
+  made the pass/fail verdict oscillate across iterations; 0.15 keeps the loop
+  deterministic. Precedence: CLI flag > env var > validate default (0.15) >
+  general default (0.55). Non-validate runs still get the 0.55 creative
+  default. `Program.RALPH_VALIDATE_TEMPERATURE`, 5 tests in
+  `ValidationTemperatureTests.cs`.
 - **perf(telemetry):** Lazy-init OTLP exporters — the OpenTelemetry SDK
   pipeline (TracerProvider / MeterProvider + `AddOtlpExporter`) is now only
   constructed when `OTEL_EXPORTER_OTLP_ENDPOINT` is set. With no collector
