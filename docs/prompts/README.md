@@ -13,11 +13,17 @@ code is the implementation of that spec.
 |---|---|
 | [`temperature-cookbook.md`](./temperature-cookbook.md) | Recommended `--temperature` per task category (H3). |
 | [`safety-clause.md`](./safety-clause.md) | `SAFETY_CLAUSE` refusal string — what it is, where it's applied, override behavior (H4/M1). |
+| [`change-management.md`](./change-management.md) | The contract every persona prompt change must satisfy — version bump, fixture, goldens, eval. |
+| [`eval-harness.md`](./eval-harness.md) | Fixture format, runner shape, regression gates. Design-only; runner not yet implemented. |
+| [`personas/coder.md`](./personas/coder.md) | `coder` persona spec (v1). |
+| [`personas/reviewer.md`](./personas/reviewer.md) | `reviewer` persona spec (v1). |
+| [`personas/security.md`](./personas/security.md) | `security` persona spec (v1) — load-bearing `SAFETY_CLAUSE` call-out. |
+| [`fixtures/coder.json`](./fixtures/coder.json) | Seed fixtures for the `coder` persona (3 cases incl. prompt-injection). |
 
 ## Roadmap (tracked in Maestro audit `docs/audits/docs-audit-2026-04-22-maestro.md`)
 
-- [ ] Per-prompt READMEs for the five Squad defaults (coder, reviewer, architect, writer, security) — H1.
-- [ ] Prompt-eval harness (`tests/prompts/`, golden snapshots) — H2.
+- [x] Per-prompt specs for `coder`, `reviewer`, `security` (user-facing three). `architect` / `writer` remain — H1 (partial).
+- [~] Prompt-eval harness — **design landed** ([`eval-harness.md`](./eval-harness.md)), runner not yet implemented — H2.
 - [ ] Ralph overlay doc (`ralph-overlay.md`) — M2.
 - [ ] Model comparison matrix — scheduled when Azure ships a new deployment.
 

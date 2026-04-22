@@ -95,6 +95,55 @@ linter rule — yet.
 
 ---
 
+## Known gaps
+
+### Ralph validator inherits the global temperature default (`0.55`)
+
+**Status:** documented, code fix deferred.
+
+Ralph mode (`--ralph --validate <cmd>`) today threads the single
+`opts.Temperature` value through `RalphWorkflow.RunAsync`
+(`Program.cs:428` → `azureopenai-cli-v2/Ralph/RalphWorkflow.cs:25`) to the
+agent loop that produces fix-up iterations. There is no separate
+temperature knob for the validator-feedback path: when the shell validator
+fails and the agent is asked to "fix and retry"
+(`RalphWorkflow.cs:205-208`), that retry runs at whatever the user passed
+— or `0.55` if they passed nothing.
+
+**Why this is the wrong default here.** A validator-driven fix loop is
+convergent by intent: same failing test, same error, same fix. Ambient
+`0.55` introduces run-to-run drift that produces spurious "new" attempts
+on unchanged input, inflates iteration count, and burns tokens on noise.
+Cookbook row says `0.0–0.1`; current behavior is 5× that.
+
+**The narrow fix** would be, in `Program.cs` argument-parse finalization,
+after the env-var fallback (`Program.cs:1049-1062`):
+
+```csharp
+// If Ralph is running a shell validator and the user specified no
+// explicit --temperature (flag or AZURE_TEMPERATURE env), default to
+// 0.1 — validator-driven fix loops are convergent and drift is noise.
+if (!temperature.HasValue && ralphMode && !string.IsNullOrWhiteSpace(validateCommand))
+{
+    temperature = 0.1f;
+}
+```
+
+**Why this isn't shipped in this episode.** The current episode's file
+scope was restricted to `docs/prompts/`. A Program.cs edit requires:
+
+1. Full V2 + V1 test-suite preflight (`dotnet test`, both suites).
+2. `dotnet format --verify-no-changes` sign-off.
+3. A fixture under `tests/AzureOpenAI_CLI.V2.Tests/` that exercises the
+   Ralph argument-parse branch — which doesn't exist yet.
+4. An entry in this cookbook moving Ralph from "known gap" to "applied
+   default" with a rationale line matching the `// temp 0.1: …` comment.
+
+Tracked as follow-up `ralph-low-temp-default` (deferred-and-documented).
+Any agent picking this up: keep the guard `!temperature.HasValue` exact
+— the user's explicit `--temperature` or `AZURE_TEMPERATURE` must still
+win. The point is to fix the *ambient* default, not to overrule intent.
+
 ## See also
 
 - [`safety-clause.md`](./safety-clause.md) — refusal clause applied to agent/ralph/delegate prompts.
