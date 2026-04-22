@@ -357,5 +357,34 @@ it. Accessibility bugs are triaged at the same severity as crashes.
 
 ---
 
+## Appendices (medium-sweep, 2026-04-22)
+
+The following companion files live under `docs/accessibility/` and
+expand this contract with worked examples. Each is independently
+readable; start with this page for the contract, follow the link for
+the patterns.
+
+- [`accessibility/keyboard-workflows.md`](accessibility/keyboard-workflows.md)
+  — stdin piping, `$EDITOR` integration, Ralph mode, Espanso/AHK, and
+  shell completions. No mouse, ever.
+- [`accessibility/tty-detection.md`](accessibility/tty-detection.md)
+  — the seven color-precedence rules, shown as worked invocations
+  with observed output classes (CLEAN / CHROME / CHROME-NC).
+- [`accessibility/help-text-tone.md`](accessibility/help-text-tone.md)
+  — the `--help` style guide: consistent verbs, no emoji, no tabs,
+  no sales copy. The 2026-04-22 audit snapshot and method.
+- [`accessibility/emoji-alt-text.md`](accessibility/emoji-alt-text.md)
+  — the project-wide emoji and image alt-text policy. Every emoji
+  pays rent in text; decorative-only images use `alt=""`.
+- [`accessibility/low-bandwidth-ssh.md`](accessibility/low-bandwidth-ssh.md)
+  — byte-budget guidance for 56 kbps / satellite / multi-hop SSH.
+  `--raw`, `ControlMaster`, `--cache`, and a worked byte table.
+- [`../man/az-ai-v2.1`](../man/az-ai-v2.1) — Unix man page (groff).
+  Preview with `man -l man/az-ai-v2.1`. Stub: NAME, SYNOPSIS,
+  DESCRIPTION, OPTIONS, ENVIRONMENT, EXIT STATUS, FILES, EXAMPLES,
+  ACCESSIBILITY, BUGS, SEE ALSO, AUTHORS.
+
+---
+
 *Color is garnish, never the entrée. Information must survive
 monochrome. If it can't be read aloud, it can't be shipped.* — M.A.
