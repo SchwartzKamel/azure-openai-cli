@@ -24,6 +24,21 @@ agg docs/demos/recordings/hero.cast \
 ls -lh img/its_alive_too.gif
 ```
 
+## Attribution
+
+`img/its_alive_too.gif` is a **first-party asset** — a terminal recording of
+this project's own binary, rendered through open-source tooling
+(`asciinema` + `agg`). It is licensed under MIT alongside the rest of
+the repository and is attributed in
+[`NOTICE-assets.md`](../../NOTICE-assets.md).
+
+The filename is a nominative reference to the 1931 *Frankenstein* "It's
+alive!" line; the bytes contain no footage, stills, or other protectable
+material from that film. If you regenerate the GIF with a new theme,
+binary, or prompt, update `NOTICE-assets.md` only if the provenance
+details shift (new recording script, new renderer). The license and
+copyright line do not change.
+
 ## Notes from the field
 
 - **Do not rename the output file.** The filename is linked from blog posts, release notes, and social cards outside this repo. A new look replaces the bytes, not the URL.

@@ -159,6 +159,14 @@ Homepage:    https://github.com/dotnet/runtime
 License-URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
 
 --------------------------------------------------------------------------------
+Bundled assets
+--------------------------------------------------------------------------------
+
+Non-code assets bundled with this project (images, recordings, etc.) are
+attributed in NOTICE-assets.md. First-party assets are licensed under MIT
+alongside the project's code. No third-party media is bundled as of v2.0.4.
+
+--------------------------------------------------------------------------------
 Trademarks (nominative use)
 --------------------------------------------------------------------------------
 
