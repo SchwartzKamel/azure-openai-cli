@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -19,6 +20,15 @@ internal class Program
     private const float DEFAULT_TEMPERATURE = 0.55f;
     private const int DEFAULT_MAX_TOKENS = 10000;
     private const string DEFAULT_SYSTEM_PROMPT = "You are a secure, concise CLI assistant. Keep answers factual, no fluff.";
+
+    /// <summary>
+    /// ADR-009: canonical hardcoded fallback when no CLI flag, no AZUREOPENAIMODEL env,
+    /// and no UserConfig default/smart-default resolves. Conservative default — keeps
+    /// fresh installs on the cheapest well-behaved SKU. Operators who prefer a different
+    /// default set <c>AZUREOPENAIMODEL</c> or <c>default_model</c> in
+    /// <c>~/.azureopenai-cli.json</c>. See <c>docs/adr/ADR-009-default-model-resolution.md</c>.
+    /// </summary>
+    internal const string DefaultModelFallback = "gpt-4o-mini";
 
     // SECURITY-AUDIT-001 MEDIUM-001: Bound stdin reads to 1 MB to prevent
     // unbounded memory allocation from a malicious/unbounded pipe. Ported
@@ -256,7 +266,7 @@ internal class Program
         var model = resolvedCliModel
             ?? Environment.GetEnvironmentVariable("AZUREOPENAIMODEL")
             ?? userConfig.ResolveSmartDefault()
-            ?? "gpt-4o-mini";
+            ?? DefaultModelFallback;
 
         // Resolve prompt: --task-file > positional arg > stdin if redirected > error
         var prompt = opts.Prompt;
@@ -1217,10 +1227,13 @@ internal class Program
     /// </summary>
     internal static int RunEstimate(CliOptions opts)
     {
-        // Resolve model (same precedence as the normal path)
+        // ADR-009: same precedence tail as the normal path — CLI flag > env > fallback.
+        // (Alias resolution and UserConfig smart-default are skipped here because estimate
+        // must work without a config file; operators who want the smart default should
+        // pass --model explicitly.)
         var model = opts.Model
             ?? Environment.GetEnvironmentVariable("AZUREOPENAIMODEL")
-            ?? "gpt-4o-mini";
+            ?? DefaultModelFallback;
 
         // Resolve prompt: --task-file > positional > stdin
         string? prompt = opts.Prompt;
@@ -1547,8 +1560,17 @@ Examples:
 ");
     }
 
-    private const string VersionSemver = "2.0.2";
-    private const string VersionFull = "az-ai-v2 2.0.2 (Microsoft Agent Framework)";
+    // Single-source-of-truth: the shipped version is the assembly version, which
+    // comes from <Version> in AzureOpenAI_CLI_V2.csproj. Hardcoded string literals
+    // here (as shipped through v2.0.4) produced "version drift" — the binary
+    // reported "2.0.2" on the v2.0.3 and v2.0.4 tags (audit finding C-1,
+    // docs/audits/docs-audit-2026-04-22-lippman.md). VersionContractTests pins
+    // this in place. AOT-safe: System.Reflection on the entry assembly works
+    // under NativeAOT (verified under PublishAot=true).
+    internal static readonly string VersionSemver =
+        typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+    internal static readonly string VersionFull =
+        $"az-ai-v2 {VersionSemver} (Microsoft Agent Framework)";
 
     private static void ShowVersion(bool shortForm)
     {
