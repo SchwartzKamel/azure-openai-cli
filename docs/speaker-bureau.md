@@ -132,15 +132,13 @@ These three are drawn from the CFP packet at [`docs/launch/v2-conference-cfp.md`
 - **Elevator (≤140 char):** A Markdown file store met an adversary who brought a 5 GB log, a `/dev/urandom` symlink, and a persona named `../../canary`. Three findings, one commit, green.
 - **Status:** CFP-ready. Demo is the chaos-drill reproducer set.
 
-### Abstract C — *A Seinfeld ensemble of AI agents shipped a v2* *(placeholder — WSL/fleet variant pending `keith-wsl-talk`)*
+### Abstract C — *Text expansion at the speed of a keystroke: az-ai-v2 under WSL with Espanso*
 
-- **Length:** 30–45 min (also a strong 60-min livestream episode)
-- **Track:** DevRel / process / AI-assisted development
-- **Target events:** All Things Open, Open Source Summit, Strange Loop, PyCon (community track), livestream pilot
-- **Elevator (≤140 char):** *Placeholder — final copy lands with `keith-wsl-talk`, which is blocked on `perf-numbers-refresh`. Keep this slot warm for the WSL / fleet-dispatch framing.*
-- **Status:** Placeholder. Do **not** submit this abstract to a dated CFP until the WSL talk work lands. Slot held for best livestream candidate.
-
-> When `keith-wsl-talk` lands, replace this subsection wholesale with the final elevator, outline, and demo-script summary from the CFP packet.
+- **Length:** 15 min (hard cap) + Q&A slot; scales to 30 min with extra demo (AHK path, fleet-dispatch teaser)
+- **Track:** DevRel / developer tools / WSL
+- **Target events:** Microsoft Reactor (WSL track), All Things Open lightning, Strange Loop meetups, PyCon hallway demo, .NET Conf community room, DevOps Days regionals
+- **Elevator (≤140 char):** `:aifix` fires in an Outlook draft. 10.73 ms AOT cold-start under WSL + Espanso. 12.97 MiB binary. `--raw` keeps the cursor from jumping.
+- **Status:** CFP-ready as of v2.0.6. Full packet — abstract, bio, outline, demo script, rehearsal notes, Q&A prep — at [`docs/talks/wsl-espanso.md`](talks/wsl-espanso.md). Fallback cast recording pending first booking.
 
 ---
 
