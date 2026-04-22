@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] — 2026-04-22
+
+> **Re-tag to recover from infra-stuck v2.0.2 release.** v2.0.2 (`fd4ddc7`)
+> shipped GHCR image cleanly, but `release-v2` publish was blocked by a
+> ~13-hour GitHub Actions `macos-13` runner backlog. The
+> `workflow_dispatch` recovery lever in `d2dc627` only applies to
+> workflows on `main`; at the v2.0.2 tag, `release.yml` predates that
+> commit and rejects `gh workflow run --ref v2.0.2` with HTTP 422. An
+> intermediate `gh run rerun --failed` re-queued the cancelled `osx-x64`
+> leg but hit the same pool saturation. Re-tagging at HEAD of `main`
+> puts `workflow_dispatch` in-tag and gives the release pipeline a fresh
+> queue slot. Post-mortem: [`docs/launch/v2.0.2-publish-handoff.md`](docs/launch/v2.0.2-publish-handoff.md).
+>
+> **No runtime changes from v2.0.2.** Same AOT binaries, same tool
+> surface, same security posture. GHCR images `2.0.2` and `2.0.3` are
+> bit-identical apart from version-embedded metadata.
+
+### Changed
+- `AzureOpenAI_CLI_V2.csproj` Version bump `2.0.2` → `2.0.3`.
+- Tag `v2.0.3` picks up `d2dc627` (workflow_dispatch on `release.yml`),
+  `641918d` (handoff doc), `ddb76ff` (corrected recovery recipe),
+  `315726b` (FDR dogfood report), `f7a83fb` (Bania dogfood report) —
+  all docs, no runtime delta.
+
 ## [2.0.2] — 2026-04-21
 
 > **Fix-forward from v2.0.1.** v2.0.1 was tagged on `039e6bd` but did not
