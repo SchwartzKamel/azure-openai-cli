@@ -6,7 +6,7 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      version = "2.0.4";
+      version = "2.0.6";
       baseUrlFor = v: "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${v}";
 
       # Build the per-system sources attrset for a given release version.
@@ -35,11 +35,11 @@
       };
 
       # Hash table for the tracking (latest) release, filled from the
-      # v2.0.4 GitHub Release (run 24789065975, published 2026-04-22).
+      # v2.0.6 GitHub Release (published 2026-04-22).
       # SRI digests (sha256-<base64>) per Nix convention.
       latestHashes = {
-        linux-x64 = "sha256-lZKpYgsN3jdF2wtXFwja0i1qYABobnwPB2E6lq6nmOY=";
-        osx-arm64 = "sha256-bDBRpKV0wJ9R95WbYZ4YeszjeykY2t2HmnnmfOfrmHQ=";
+        linux-x64 = "sha256-cy5CJyQ3m0DT79/DTUVc8hpWcF/a7kbsN4iXveMILDE=";
+        osx-arm64 = "sha256-V5SkFcBKEr8mrONch7xwddxVIF/F8QH1ic9/5krhPHQ=";
       };
 
       # Frozen hash tables for pinnable releases. These should only ever be
@@ -86,6 +86,25 @@
           # No osx-x64 key: platform dropped from the release matrix.
           linux-x64 = "sha256-lZKpYgsN3jdF2wtXFwja0i1qYABobnwPB2E6lq6nmOY=";
           osx-arm64 = "sha256-bDBRpKV0wJ9R95WbYZ4YeszjeykY2t2HmnnmfOfrmHQ=";
+        };
+        "2.0.6" = {
+          # v2.0.6 — clean-lockstep release. verify-version-strings.sh
+          # gate 4 green, tarball filenames match the tag version (no
+          # C-1 drift from v2.0.4), so URLs use the default clean pattern
+          # (tarballVersionFor returns v). v2.0.5 was queued in-tree as
+          # the lockstep roll but never produced a published packaging
+          # pin; v2.0.6 supersedes it. Digests captured 2026-04-22 from
+          # the v2.0.6 GitHub Release. The `linux-musl-x64` and `win-x64`
+          # keys are recorded here as a complete digest ledger for the
+          # release even though only `linux-x64` / `osx-arm64` are wired
+          # through `sourcesFor` into Nix-buildable derivations (musl
+          # needs a separate sourceRoot/autoPatchelf path; win-x64 has
+          # no x86_64-windows platform in nixpkgs). Nix ignores unknown
+          # keys on the attrset — safe to leave as data.
+          linux-x64      = "sha256-cy5CJyQ3m0DT79/DTUVc8hpWcF/a7kbsN4iXveMILDE=";
+          linux-musl-x64 = "sha256-mNjW2I9wGzxyFFTi7xIdXVbcOUmPa0wz+a4PFHA0du0=";
+          osx-arm64      = "sha256-V5SkFcBKEr8mrONch7xwddxVIF/F8QH1ic9/5krhPHQ=";
+          win-x64        = "sha256-rfORgTvRIG1UT/gbExXVnl1shedY/VslgZ9EDmMfZt8=";
         };
       };
 

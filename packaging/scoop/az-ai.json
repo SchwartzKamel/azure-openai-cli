@@ -1,17 +1,17 @@
 {
-    "_comment_hash": "SHA256 digests below are from the v2.0.4 GitHub Release (run 24789065975, published 2026-04-22). Do not invent digests.",
+    "_comment_hash": "SHA256 digest below is from the v2.0.6 GitHub Release (published 2026-04-22). Do not invent digests.",
     "_comment_bin": "Binary is az-ai-v2.exe during the dual-binary transition. Post-cutover the rename to az-ai.exe lands in a follow-up manifest update.",
     "_comment_notice": "Scoop has no doc directory concept, so the release tarball must place NOTICE + THIRD_PARTY_NOTICES.md + LICENSE at the extraction root next to az-ai-v2.exe. post_install surfaces their paths to the user so Lippman's 'all distributed artifacts include NOTICE' claim holds for Windows installs.",
-    "_comment_pin": "Versioned-pin support: sibling versions/ directory holds az-ai-v2@<version>.json manifests so users can `scoop install schwartzkamel/az-ai-v2@2.0.0`. Follows scoopinstaller/versions bucket conventions.",
-    "_comment_filename_drift": "v2.0.4 zip was uploaded as `az-ai-v2-2.0.2-win-x64.zip` — packaging/tarball/stage.sh VERSION was not rolled past 2.0.2 in the v2.0.3/v2.0.4 commits. URL below hardcodes the literal filename at the v2.0.4 tag. Audit finding C-1 (docs/audits/docs-audit-2026-04-22-lippman.md).",
-    "version": "2.0.4",
+    "_comment_pin": "Versioned-pin support: sibling versions/ directory holds az-ai-v2@<version>.json manifests so users can `scoop install schwartzkamel/az-ai-v2@2.0.6`. Follows scoopinstaller/versions bucket conventions.",
+    "_comment_filename_clean": "v2.0.6 rolls all version strings in lock-step with the tag (verify-version-strings.sh gate 4 green) — the v2.0.4 tarball-filename drift (audit finding C-1) is resolved. URL uses the clean az-ai-v2-$version-win-x64.zip pattern again; autoupdate can therefore rely on $version substitution mechanically.",
+    "version": "2.0.6",
     "description": "Azure OpenAI CLI v2 — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator",
     "homepage": "https://github.com/SchwartzKamel/azure-openai-cli",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.0.4/az-ai-v2-2.0.2-win-x64.zip",
-            "hash": "2d3f8c6709b06f2409fe1471a62f29034499dcceadd9bcd1a1c6e0bcda755943"
+            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.0.6/az-ai-v2-2.0.6-win-x64.zip",
+            "hash": "adf391813bd1206d544ff81b1315d59e5d6c85e758fd5b25819f440e631f66df"
         }
     },
     "bin": [
@@ -37,7 +37,7 @@
             }
         },
         "hash": {
-            "url": "$url.sbom.json"
+            "url": "$url.sha256"
         }
     }
 }

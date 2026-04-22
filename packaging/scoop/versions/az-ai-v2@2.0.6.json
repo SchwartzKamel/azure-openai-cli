@@ -1,0 +1,25 @@
+{
+    "_comment": "Versioned-pin manifest for az-ai-v2 v2.0.6. Install with `scoop install schwartzkamel/az-ai-v2@2.0.6`. Frozen at v2.0.6 — SHA256 below is the digest of the v2.0.6 GitHub Release artifact (published 2026-04-22) and never changes once filled at tag time. No checkver/autoupdate on versioned manifests by design. v2.0.6 is the clean-lockstep release: verify-version-strings.sh gate 4 green, filenames carry the tag version (no C-1 drift from v2.0.4), `az-ai-v2 --version --short` reports '2.0.6' on every RID.",
+    "version": "2.0.6",
+    "description": "Azure OpenAI CLI v2 — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator (pinned to v2.0.6)",
+    "homepage": "https://github.com/SchwartzKamel/azure-openai-cli",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.0.6/az-ai-v2-2.0.6-win-x64.zip",
+            "hash": "adf391813bd1206d544ff81b1315d59e5d6c85e758fd5b25819f440e631f66df"
+        }
+    },
+    "bin": [
+        [
+            "az-ai-v2.exe",
+            "az-ai-v2"
+        ]
+    ],
+    "post_install": [
+        "Write-Host 'az-ai-v2 v2.0.6 (pinned) installed. Third-party notices bundled next to the binary:'",
+        "Write-Host \"  $dir\\NOTICE\"",
+        "Write-Host \"  $dir\\THIRD_PARTY_NOTICES.md\"",
+        "Write-Host \"  $dir\\LICENSE\""
+    ]
+}

@@ -12,6 +12,7 @@ publishes for every v2.x release, per RID, with the filename patterns
 downstream packaging consumes.
 
 Companion docs:
+
 - [`pre-release-checklist.md`](pre-release-checklist.md) -- gate 19
   validates every row below landed.
 - [`ghcr-tag-lifecycle.md`](ghcr-tag-lifecycle.md) -- how the OCI
@@ -201,5 +202,40 @@ After the workflow completes, the release author runs gate 19:
 
 A missing asset is a **no-go**. Fix forward with a new version tag;
 do not mutate the existing Release.
+
+---
+
+## 7. Per-release digest log
+
+Canonical SHA256 digests for every v2 release, captured at publish
+time. Downstream packaging (`packaging/homebrew/`, `packaging/scoop/`,
+`packaging/nix/`) is hash-synced against this log. If a row here
+disagrees with the manifest in `packaging/`, the manifest is wrong
+-- not this table. Rows are append-only; never mutate a published
+digest. Retags, if ever, land as a new row with a `-1` suffix and a
+pointer to the diagnostic.
+
+### 7.1 v2.0.6 -- 2026-04-22
+
+Tag: [`v2.0.6`](https://github.com/SchwartzKamel/azure-openai-cli/releases/tag/v2.0.6).
+Clean-lockstep release -- filenames match the tag version (C-1 drift
+resolved).
+
+| Artifact                                  | SHA256                                                             |
+|-------------------------------------------|--------------------------------------------------------------------|
+| `az-ai-v2-2.0.6-linux-x64.tar.gz`         | `732e422724379b40d3efdfc34d455cf21a56705fdaee46ec378897bde3082c31` |
+| `az-ai-v2-2.0.6-linux-musl-x64.tar.gz`    | `98d8d6d88f701b3c721454e2ef121d5d56dc39498f6b4c33f9ae0f14703476ed` |
+| `az-ai-v2-2.0.6-osx-arm64.tar.gz`         | `5794a415c04a12bf26ace35c87bc7075dc55205fc5f101f589cf7fe64ae13c74` |
+| `az-ai-v2-2.0.6-win-x64.zip`              | `adf391813bd1206d544ff81b1315d59e5d6c85e758fd5b25819f440e631f66df` |
+
+GHCR manifest digest for `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:2.0.6`:
+
+```text
+sha256:b609f695e2e174ed118ce0422f40056f5a13c49da6d3d594b02220c62a84cfba
+```
+
+(Captured via anonymous GHCR pull-token against the v2 manifest
+endpoint; `docker buildx imagetools inspect` would yield the same
+digest. Recorded per §3 / gate 19.5 of the pre-release checklist.)
 
 -- Mr. Lippman, release management
