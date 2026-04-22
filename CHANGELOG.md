@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **docs(perf):** Reference-hardware pinning doc (`docs/perf/reference-hardware.md`)
+  captures the canonical bench rig (`malachor`, i7-10710U, linux-x64), the
+  pre-merge protocol (governor=performance, AC power, N=500, warm-up=5,
+  `--flag-matrix`), and the tolerance bands (±5 % noise, 10 – 20 %
+  regression flag, > 20 % regression block). ([bania-v2-03])
+- **docs(perf):** v2 cold-start p99 investigation
+  (`docs/perf/v2-cold-start-p99-investigation.md`) — closes the baseline's
+  p99 watchlist item as *rig noise, not a code defect*, with N=500 evidence
+  across flag matrix and a runtime-knob sweep. The 20.9 % `--help` p50
+  drift item stays open but is re-scoped to the pinned-rig re-run.
+  ([bania-v2-02])
+- **scripts(bench):** `scripts/bench.py` promoted to a first-class
+  pre-merge perf harness with `--n`, `--warmup`, `--flag-matrix`, and
+  `--json` options, plus an env fingerprint (CPU model, governor, kernel,
+  binary size) on every run. `make bench-full` wires the canonical
+  `N=500 --flag-matrix` sweep and writes dated JSON + text bundles to
+  `docs/perf/runs/`. ([bania-v2-03])
 ### Changed
 - **feat(ralph):** Ralph `--validate <cmd>` validation loop now defaults to a
   low sampling temperature (0.15) when the operator has not explicitly pinned
