@@ -21,9 +21,15 @@ the cast would tell you it's time for a retool.
 
 ### Season 2 -- Production & Polish
 
-| #        | Title              | Episode file                                        | Commit   | What happened                                           |
-|----------|--------------------|-----------------------------------------------------|----------|---------------------------------------------------------|
+| #        | Title              | Episode file                                        | Commit    | What happened                                           |
+|----------|--------------------|-----------------------------------------------------|-----------|---------------------------------------------------------|
 | S02E01   | *The Wizard*       | [s02e01-the-wizard.md](s02e01-the-wizard.md)        | `f57032f` | Interactive first-run wizard + per-OS LOLBin storage     |
+| S02E02   | *The Cleanup*      | [s02e02-the-cleanup.md](s02e02-the-cleanup.md)      | `f65adbd` | docs-lint green + whitespace-key guard across all stores |
+
+### Season 3 -- *(unaired)*
+
+[Blueprint](s03-blueprint.md) -- pre-season treatment, three candidate
+themes awaiting showrunner greenlight.
 
 ### Season 1 -- The Pilot Years
 
