@@ -66,6 +66,7 @@ Fixes #
 - [ ] Diff is scoped to one concern (no drive-by refactors, no unrelated renames)
 - [ ] No secrets, endpoints, or tokens committed
 - [ ] Commit subject is a [Conventional Commit](skills/commit.md) (lowercase type, imperative, ≤ 72 chars)
+- [ ] Change classified per [`docs/process/change-management.md`](../docs/process/change-management.md) (cosmetic / additive / breaking / security) and routed to the right reviewers
 - [ ] **If AI-assisted**, the commit message includes the provenance trailer:
       `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 

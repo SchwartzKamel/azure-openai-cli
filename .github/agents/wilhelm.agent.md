@@ -33,7 +33,7 @@ Standards:
 Deliverables:
 
 - `.github/PULL_REQUEST_TEMPLATE.md` -- maintained, reviewed quarterly
-- `docs/process.md` -- gates, branch protection, release flow, retro cadence
+- `docs/process/` (directory) -- change management, ADR stewardship, CAB-lite, retrospective cadence (see `docs/process/README.md`)
 - `docs/adr/` index maintenance alongside Elaine
 - Weekly change-advisory summary posted to the team channel / Discussions
 - Retro agenda templates and the follow-through tracker

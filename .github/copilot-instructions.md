@@ -58,6 +58,17 @@
 - [`preflight`](skills/preflight.md) -- format + build + test gates before commit
 - [`commit`](skills/commit.md) -- Conventional Commits, Copilot co-author trailer, signing rules
 - [`ci-triage`](skills/ci-triage.md) -- diagnosing and fix-forwarding a red CI run
+- [`episode-brief`](skills/episode-brief.md) -- canonical structure of every sub-agent dispatch prompt
+- [`exec-report-format`](skills/exec-report-format.md) -- spec for `docs/exec-reports/sNNeMM-*.md` (overrides `_template.md`)
+- [`fleet-dispatch`](skills/fleet-dispatch.md) -- orchestrator pre-flight + never-solo-background + wave-on-collision
+- [`shared-file-protocol`](skills/shared-file-protocol.md) -- orchestrator-owned files + sub-agent staging discipline
+- [`ascii-validation`](skills/ascii-validation.md) -- smart-quote / em-dash grep + ASCII enforcement
+- [`docs-only-commit`](skills/docs-only-commit.md) -- decision tree for markdown-only diffs (when to skip preflight)
+- [`changelog-append`](skills/changelog-append.md) -- `[Unreleased]` placement + push-timing serialization
+- [`writers-room-cast-balance`](skills/writers-room-cast-balance.md) -- the 5 casting rules + audit query
+- [`findings-backlog`](skills/findings-backlog.md) -- canonical entry format + 5-state lifecycle for every finding
+
+Process governance docs live in [`docs/process/`](../docs/process/) (change management, ADR stewardship, CAB-lite, retrospective cadence). Skills are *verbs*; process docs are the *rules around the verbs*.
 
 ## Environment Variables
 

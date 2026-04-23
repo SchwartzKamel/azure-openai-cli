@@ -27,6 +27,20 @@ in `seasons-roadmap.md`). Jerry leads S06 because the spine of the
 season is dev-workflow automation -- CI, scripts, the Makefile,
 release plumbing -- and Jerry has been bench-warm for too long.
 
+### Showrunner commitment for the S07 handoff
+
+The showrunner-of-showrunners has committed (2026-04-22) that **once
+S05 wraps and S06 enters pre-production, Larry David himself will
+draft the S07 blueprint via `az-ai`** -- the strongest possible
+dogfooding signal and, per Jerry's risk note, the strongest possible
+failure mode. The commitment is conditional on the S06 prerequisite
+chain landing first: **S05E05 *The Reciprocation*** (`az-ai mcp serve`),
+**S04E11 *The Gate*** (CI eval gate), and **S03E20 *The Persona,
+Multi-Provider***. Without those three, S07-blueprint-via-az-ai falls
+back to single-provider, no-MCP, no-gated-eval -- which would not be a
+real dogfooding test. Re-surface this commitment when S06 enters
+pre-production; do not action earlier.
+
 ## Theme statement
 
 `az-ai` becomes the tool we *ship* AND the tool we *use* daily to ship

@@ -122,7 +122,18 @@ Agents are *nouns* (who). Skills are *verbs* (how). Every cast member -- human o
 | **preflight** | Format + build + test + integration before every code commit | [`preflight.md`](.github/skills/preflight.md) |
 | **commit** | Conventional Commits, Copilot trailer, push rules | [`commit.md`](.github/skills/commit.md) |
 | **ci-triage** | Diagnose and fix-forward a red CI run | [`ci-triage.md`](.github/skills/ci-triage.md) |
+| **episode-brief** | Canonical structure of every sub-agent dispatch prompt | [`episode-brief.md`](.github/skills/episode-brief.md) |
+| **exec-report-format** | Spec for `docs/exec-reports/sNNeMM-*.md` (overrides `_template.md` on conflict) | [`exec-report-format.md`](.github/skills/exec-report-format.md) |
+| **fleet-dispatch** | Orchestrator pre-flight checklist + "never solo background dispatch" + wave-on-collision | [`fleet-dispatch.md`](.github/skills/fleet-dispatch.md) |
+| **shared-file-protocol** | Orchestrator-owned files + sub-agent staging discipline | [`shared-file-protocol.md`](.github/skills/shared-file-protocol.md) |
+| **ascii-validation** | Smart-quote / em-dash grep one-liner + ASCII enforcement | [`ascii-validation.md`](.github/skills/ascii-validation.md) |
+| **docs-only-commit** | Decision tree for markdown-only diffs (when to skip preflight) | [`docs-only-commit.md`](.github/skills/docs-only-commit.md) |
+| **changelog-append** | `[Unreleased]` placement + push-timing serialization + non-list | [`changelog-append.md`](.github/skills/changelog-append.md) |
+| **writers-room-cast-balance** | The 5 casting rules + audit query for mid-season checkpoints | [`writers-room-cast-balance.md`](.github/skills/writers-room-cast-balance.md) |
+| **findings-backlog** | Canonical entry format + 5-state lifecycle for every finding | [`findings-backlog.md`](.github/skills/findings-backlog.md) |
 
-**Enforcement:** The Soup Nazi blocks merges that skipped **preflight**. Mr. Wilhelm blocks commits that skipped **commit**. Jerry + Frank own **ci-triage** escalation. None of it is optional.
+Process governance lives in [`docs/process/`](docs/process/) (change management, ADR stewardship, CAB-lite, retrospective cadence -- introduced in S02E22 *The Process*). Skills are *verbs*; process docs are the *rules around the verbs*.
+
+**Enforcement:** The Soup Nazi blocks merges that skipped **preflight** or **ascii-validation**. Mr. Wilhelm blocks commits that skipped **commit** or **shared-file-protocol**. Jerry + Frank own **ci-triage** escalation. Mr. Pitt audits **writers-room-cast-balance** at E06/E12/E18 mid-season checkpoints. None of it is optional.
 
 The existence of these skills is a debt we paid in real incidents -- commit `180d64f` shipped without `dotnet format` and left `main` red for five consecutive runs before `ec03a37` cleaned it up. Every skill file is a ward against that class of mistake.

@@ -21,7 +21,7 @@ that?"* is the most valuable question in the room.
 
 See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.agent.md).
 
-## Aired so far
+## Aired so far (26 episodes; 4 main-arc remaining + 1 hotfix queued)
 
 | # | Title | Featured cast | Status |
 |---|-------|---------------|--------|
@@ -34,14 +34,39 @@ See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.age
 | S02E07 | *The Observability* | Frank Costanza (lead), Newman (guest) | aired |
 | S02E08 | *The Translation* | Babu Bhatt (lead), Mickey + Lloyd (guests) | aired |
 | S02E11 | *The Spec* | George Costanza (lead), Lloyd + Elaine (guests) | aired |
+| S02E12 | *The Apprentice* | Lloyd Braun (lead), Elaine + Jerry + Kramer (guests) | aired |
 | S02E13 | *The Inspector* | Newman (lead), FDR + Jackie (guests) | aired |
+| S02E14 | *The Container* | Jerry (lead), Newman (guest) | aired |
+| S02E15 | *The Lawyer* | Jackie Chiles (lead), Lloyd (guest) | aired |
+| S02E16 | *The Catalog* | Bob Sacamano (lead), Mr. Lippman (guest) | aired |
 | S02E17 | *The Newsletter* | Uncle Leo (lead), Elaine (guest) | aired |
+| S02E18 | *The Maestro* | The Maestro (lead), Kramer (guest) | aired |
 | S02E19 | *The Competition* | Sue Ellen Mischke (lead), Peterman (guest) | aired |
-| S02E12 | *The Apprentice* | Lloyd Braun (lead), Elaine + Jerry + Kramer (guests) | filming |
-| S02E15 | *The Lawyer* | Jackie Chiles (lead), Lloyd (guest) | filming |
-| S02E18 | *The Maestro* | The Maestro (lead), Kramer (guest) | filming |
-| S02E20 | *The Conference* | Keith Hernandez (lead), Peterman + Elaine (guests) | filming |
-| S02E21 | *The Conscience* | Rabbi Kirschbaum (lead), Newman (guest) | filming |
+| S02E20 | *The Conference* | Keith Hernandez (lead), Peterman + Elaine (guests) | aired |
+| S02E21 | *The Conscience* | Rabbi Kirschbaum (lead), Newman (guest) | aired |
+| S02E22 | *The Process* | Mr. Wilhelm (lead), Soup Nazi + Jerry (guests) | aired |
+| S02E23 | *The Adversary* | FDR (lead), Newman + Puddy (guests) | aired |
+| S02E27 | *The Bible* | Mr. Wilhelm (lead), Elaine (guest) | aired (off-roster) |
+| S02E28 | *The Style Guide* | Soup Nazi (lead), Newman (guest) | aired (off-roster) |
+| S02E29 | *The Casting Call* | Mr. Pitt (lead), Sue Ellen (guest) | aired (off-roster) |
+| S02E30 | *The Cast* | Elaine (lead), Kramer (guest) | aired (off-roster) |
+| S02E31 | *The Audition* | David Puddy (lead), Maestro (guest) | aired (off-roster) |
+
+**Remaining S02 main arc:** E09 *Receipt* (Morty), E10 *Press Kit* (Lippman -- after all bullet-emitting episodes), E24 *Finale* (Pitt + ensemble -- absolute last).
+
+**Off-roster pending:** E25 *Story Editor* (Elaine + Lloyd + Mickey -- doc-tree consolidation), E26 *Locked Drawer* (Newman + Kramer -- ReadFileTool blocklist extension; expanded from original E13 finding to cover the 7 home-dir paths E23 confirmed), **S02E32 *The Bypass*** (Newman + Kramer -- structural fix for the `${IFS}` shell-bypass surfaced by E23, see findings backlog).
+
+## Casting drift -- multi-lead floor failure (per writers-room-cast-balance audit)
+
+S02E29 *The Casting Call* introduced the cast-balance audit and immediately surfaced a failure: in the planned 24-arc, **Costanza, Elaine, Jerry, and Newman each had only ONE lead**. After this wave the actual aired counts are:
+
+- **Kramer:** 3 leads (E01, E02, E04) -- floor met.
+- **Elaine:** 2 leads (E03, E30) -- floor met after E30 corrective.
+- **Jerry:** 1 lead (E14) plus S06 blueprint off-roster -- still one short.
+- **Newman:** 1 lead (E13) -- still one short.
+- **Costanza (George):** 1 lead (E11) -- still one short.
+
+**Corrective:** S02E32 *The Bypass* will be Newman-led (raises him to 2). Costanza and Jerry need one more S02 lead each before the finale; candidates are E09 *Receipt* (Morty currently slated -- consider Costanza or Jerry guest-lead instead) and an additional off-roster TBD. Logged for the closing-wave dispatch decision.
 
 ## Casting corrective
 
@@ -310,13 +335,28 @@ an unaired special:
   with a redirect note. Triggered by 2026-04-22 audit -- 170+ doc files
   with no top-level discovery surface for non-episode docs.
 - **S02E26 *The Locked Drawer*** (Newman lead, Kramer guest). Surfaced
-  by E13 audit: extend `ReadFileTool.BlockedPathPrefixes` to cover
-  `~/.ssh`, `~/.kube`, `~/.gnupg`, `~/.netrc`, `~/.docker/config.json`,
-  `~/.git-credentials`, `~/.config/git/credentials`,
-  `~/.config/gh/hosts.yml`. One-PR scope + matching xUnit cases.
-  Touches production code -- preflight required.
+  by E13 audit; **expanded by S02E23 *The Adversary*** which confirmed 7
+  uncovered home-dir paths via xUnit. Extend
+  `ReadFileTool.BlockedPathPrefixes` to cover `~/.ssh`, `~/.kube`,
+  `~/.gnupg`, `~/.netrc`, `~/.docker/config.json`, `~/.git-credentials`,
+  `~/.config/git/credentials`, `~/.config/gh/hosts.yml`,
+  `~/.npmrc`/`~/.pypirc`. Activate the 7 currently-Skipped tests
+  in `tests/AzureOpenAI_CLI.Tests/Adversary/ReadFileSensitivePathTests.cs`.
+  One-PR scope. Preflight required.
+- **S02E32 *The Bypass*** (Newman lead, Kramer guest). Surfaced by
+  S02E23 finding `e23-shell-ifs-tokenization` (CVE-shape). `${IFS}` and
+  related tokenization tricks route any blocked command past the
+  `ShellExecTool` blocklist. Structural fix: word-boundary regex or
+  drop the shell pre-execution. Activate the 8 currently-Skipped
+  bypass tests in `tests/AzureOpenAI_CLI.Tests/Adversary/ShellExecBypassTests.cs`.
+  Preflight required. **Should dispatch BEFORE E26 in the security
+  hotfix wave** -- exploitable today, broader scope.
 - **Findings backlog from S02 audits** (becomes B-plots or one-line
-  fixes; do not lose):
+  fixes; do not lose). Per [`findings-backlog`](../../.github/skills/findings-backlog.md)
+  format. Per-episode findings detail lives in the sibling
+  `sNNeMM-findings.md` files; this is the rolled-up index.
+
+  **From early waves:**
   - Dual-telemetry reality (E07): v2 has opt-in OTel pipeline at
     `azureopenai-cli-v2/Observability/Telemetry.cs`.
   - `:F0` against current culture in `Program.cs:1445` (E08): latent
@@ -329,6 +369,98 @@ an unaired special:
     smells).
   - MCP support gap (E19): table-stakes among premium CLIs; already
     tracked as FR-013.
+
+  **From S02E12 *Apprentice*:**
+  - `AZUREOPENAIAPI` env var reads as a noun, costs ~10 min for new
+    contributors (smell, b-plot).
+  - Two source trees discoverability gap (`azureopenai-cli/` vs
+    `azureopenai-cli-v2/`) (smell, b-plot).
+
+  **From S02E18 *Maestro*:**
+  - **`ralph-mode-appendix` inherits temperature 0.55 instead of
+    0.0-0.1 for a convergent validator loop** (bug, queued-as-episode
+    -- candidate for S03 prompt arc).
+  - Orchestrator process: brief said "temperature-cookbook.md (new)"
+    when file already existed; verify file existence before brief
+    writes "new" (process improvement).
+
+  **From S02E14 *Container*:**
+  - `e14-trivy-non-blocking` (gap, b-plot): Trivy CI step uses
+    `exit-code: '0'`. HIGH/CRITICAL CVEs in shipped image will not
+    redden `main`. Jerry refused to flip mid-episode to avoid CI red
+    on an unowned CVE. Owner-decision needed.
+
+  **From S02E16 *Catalog* (path/process):**
+  - `packaging/nix/flake.nix` was already taken by v2-line; v1 lives
+    at `packaging/nix/azure-openai-cli/flake.nix`. Brief should
+    verify path availability (orchestrator process improvement,
+    same root cause as the E18 "(new)" miss).
+
+  **From S02E22 *Process*:**
+  - `e22-pr-template-process-doc-crosslink` (gap, one-line-fix):
+    PR template did not reference `docs/process/`. **FIXED in this
+    orchestrator batch.**
+  - `e22-wilhelm-archetype-deliverables-drift` (smell, one-line-fix):
+    Wilhelm archetype said `docs/process.md` (singular file); we
+    shipped a directory. **FIXED in this orchestrator batch.**
+  - `e22-agents-md-process-bucket-missing` (gap, one-line-fix):
+    AGENTS.md skills section did not enumerate process docs.
+    **FIXED in this orchestrator batch.**
+
+  **From S02E23 *Adversary* (full detail in `s02e23-findings.md`,
+  21 findings, 9 CVE-shape):**
+  - **`e23-shell-ifs-tokenization`** (bug, queued-as-S02E32 *The
+    Bypass*): `${IFS}` routes any blocked command past the gate.
+    Trivially exploitable. Highest priority.
+  - **`e23-readfile-{ssh-userdir,kube-config,gnupg,netrc,docker-config,git-credentials,npmrc-pypirc}-not-blocked`**
+    (7 gaps, queued-as-S02E26 *Locked Drawer*).
+  - **`e23-webfetch-dns-rebinding-toctou`** (CVE-shape, queued for
+    S03 hardening arc -- bigger episode, structural rewrite of
+    resolve-then-connect path).
+  - 7 additional shell-bypass attempts (`&&` after eval, tab/newline
+    separators, quoted/escaped/env-indirected command names, fullwidth
+    Unicode lookalikes) -- all queued for S02E32 *Bypass*.
+  - 3 additional WebFetch SSRF gaps (multicast/broadcast, CGNAT
+    100.64/10, decimal IP encoding) -- queued for S03 hardening.
+  - 2 stream-chaos findings (non-string param throws, delegate
+    negative-depth bypass) -- b-plot.
+
+  **From S02E30 *The Cast*:**
+  - Pre-existing em-dashes in 5 generic prompts and `PersonaMemory.cs`
+    would fail strict ASCII validation (lint, b-plot -- future Soup
+    Nazi + Elaine cleanup episode).
+  - **No prompt eval cases for the 12 cast personas** (gap,
+    queued-as-episode for S04 Maestro arc -- "no eval, no merge"
+    standard violated by shipping prompts without eval cases).
+  - No archetype-to-prompt regen tooling; voice drift in
+    `.github/agents/*.agent.md` requires manual re-compression
+    (gap, candidate for S03 or S06 Kramer code episode).
+
+  **From S02E31 *The Audition* (full detail in `s02e31-findings.md`,
+  9 findings):**
+  - **`e31-routing-substring-coder-overshadow`** (bug, b-plot):
+    Substring keyword matching causes wrong-persona dispatch in
+    `SquadCoordinator`. Routing test pinned as Skipped. Headline
+    find from the audition.
+  - 8 additional persona behavior gaps (no stay-in-character clause,
+    `write` not in writer keywords, auto-routing silent fallback,
+    no kebab/snake normalization, empty system prompt not validated,
+    tool-availability contradiction, ralph composition untested,
+    agent tool-override untested).
+
+  **Process / orchestration findings (orchestrator-owned):**
+  - **Four cross-sub-agent file sweeps via `git add -A`**
+    (`f3046e1`, `4a4b894`, `3bd0acb`, `93dfac7`). Pattern documented;
+    `shared-file-protocol.md` extended in this batch with explicit
+    "shared working tree" staging discipline rules.
+  - **Concurrent-dispatch collision on S02E27** (two parallel sub-agents
+    wrote the same skill files). `fleet-dispatch.md` "wave on collision
+    risk" rule applies; orchestrator process improvement: check
+    `list_agents` for in-flight names before dispatching.
+  - **Repo autocommit/sync layer surprise** (per S02E28 lessons): some
+    sub-agents report their commits were bundled under unrelated
+    subjects. Investigate or relax the prescribed-commit-message
+    contract in episode briefs. Wilhelm + Jerry follow-up.
 - Mac Keychain test-body rewrite (needs a Mac owner -- held open).
 - Linux `systemd-creds` provider (seam exists; not this season).
 - The `filename-convention` docs-lint step hard-flip when convenient

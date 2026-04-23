@@ -42,12 +42,26 @@ The append-only protocol:
 
 If two waves both have user-visible changes destined for `CHANGELOG.md`, the orchestrator serializes the appends -- second wave rebases on the first.
 
+## Shared working tree (staging discipline)
+
+Sub-agents in this project share a working directory. Concurrent in-flight sub-agents have unstaged WIP visible to each other in `git status`. The single biggest hazard: **one sub-agent's `git add -A` (or `git add .`) sweeps another sub-agent's WIP into its commit.** This has happened four times: `f3046e1` (comp-chart swept E27/E28 skill files), `4a4b894` (E29 swept E28 exec report), `3bd0acb` (E16 swept Squad WIP, reverted in `100c3fc`), `93dfac7` (E30 swept E14's CHANGELOG bullet -- self-resolved, content matched intent).
+
+The rules:
+
+1. **Never `git add -A` or `git add .` in this repo.** Stage explicit paths only: `git add path/one path/two`.
+2. **`git diff --cached --name-only` before every commit.** Verify the staged set matches what your brief said you'd touch. Echo the list in your exec report's Metrics section.
+3. **If the working tree is dirty with files you did not author**, do not silently sweep them. Stash them with a name (`git stash push -m "concurrent-sub-agent-wip" -- path/...`) only if their presence breaks your build, then restore (`git stash pop`) after your commit. Document the stash-isolate-restore maneuver in your exec report's Lessons.
+4. **If your `dotnet test` baseline is broken by another sub-agent's mid-refactor**, that is not your bug. Stash, re-run on baseline to confirm, restore, document. Do not "fix" code you did not author.
+5. **Build-broken concurrent WIP is a fact of parallel dispatch, not a fault.** It will keep happening. Discipline is what keeps it from corrupting commits.
+
 ## Anti-patterns
 
 - **"It is just one line in `AGENTS.md`."** It is one line that collides with three other one-liners. Defer.
 - **Force-pushing `main` to resolve a collision.** Never. Rebase and re-push.
-- **Sub-agent appends to `CHANGELOG.md` "to be safe."** Now the orchestrator's batch collides with itself. Surface in the exec report instead.
+- **Sub-agent appends to `CHANGELOG.md` "to be safe."** Now the orchestrator's batch collides with itself. Surface in the exec report instead. (Exception: explicit single-bullet append per [`changelog-append`](changelog-append.md) when the brief authorizes it.)
 - **Editing `_template.md` to fix a one-off issue in your exec report.** Fix your report; if the spec is wrong, fix [`exec-report-format`](exec-report-format.md).
+- **`git add -A` "to make sure I caught everything."** You caught the things you were not supposed to catch. See above.
+- **Fixing concurrent sub-agents' compile errors.** Not your code, not your fix. Document, do not edit.
 
 ## Escalation
 

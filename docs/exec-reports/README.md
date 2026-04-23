@@ -9,10 +9,18 @@ because the [cast itself is](../../AGENTS.md).
 
 ## Seasons
 
-| Season | Theme                          | Era                         |
-|--------|--------------------------------|-----------------------------|
-| **S01** | The Pilot Years                | Initial commit through v1   |
-| **S02** | Production & Polish (v2 era)   | Post-v2, current            |
+| Season  | Theme                                    | Status                          | Blueprint |
+|---------|------------------------------------------|---------------------------------|-----------|
+| **S01** | The Pilot Years                          | Aired (back-fill pending)        | --        |
+| **S02** | Production & Polish (v2 era)             | In production (24-arc + specials) | --        |
+| **S03** | Local & Multi-Provider                   | Pre-production                  | [s03-blueprint.md](s03-blueprint.md) |
+| **S04** | Model Intelligence                       | Pre-production                  | [s04-blueprint.md](s04-blueprint.md) |
+| **S05** | Protocols & Plugins (incl. MCP)          | Pre-production                  | [s05-blueprint.md](s05-blueprint.md) |
+| **S06** | Dogfooding (`az-ai` is the main tool)    | Pre-production (showrunner override) | [s06-blueprint.md](s06-blueprint.md) |
+| **S07+** | Roadmap pad (Enterprise, Multimodal, ...) | Slate                            | [seasons-roadmap.md](seasons-roadmap.md) |
+
+S06 baseline (the "before" picture before dogfooding starts):
+[`dogfooding-baseline-2026-04.md`](../dogfooding-baseline-2026-04.md).
 
 New seasons get declared when a major version ships, a theme shifts, or
 the cast would tell you it's time for a retool.
@@ -21,24 +29,39 @@ the cast would tell you it's time for a retool.
 
 ### Season 2 -- Production & Polish
 
-| #        | Title              | Episode file                                        | Commit    | What happened                                           |
-|----------|--------------------|-----------------------------------------------------|-----------|---------------------------------------------------------|
-| S02E01   | *The Wizard*       | [s02e01-the-wizard.md](s02e01-the-wizard.md)        | `f57032f` | Interactive first-run wizard + per-OS LOLBin storage     |
-| S02E02   | *The Cleanup*      | [s02e02-the-cleanup.md](s02e02-the-cleanup.md)      | `f65adbd` | docs-lint green + whitespace-key guard across all stores |
+| #        | Title              | Episode file                                            | Commit    | What happened                                                |
+|----------|--------------------|---------------------------------------------------------|-----------|--------------------------------------------------------------|
+| S02E01   | *The Wizard*       | [s02e01-the-wizard.md](s02e01-the-wizard.md)            | `f57032f` | Interactive first-run wizard + per-OS LOLBin storage          |
+| S02E02   | *The Cleanup*      | [s02e02-the-cleanup.md](s02e02-the-cleanup.md)          | `f65adbd` | docs-lint green + whitespace-key guard across all stores      |
 | S02E03   | *The Warn-Only Lie* | [s02e03-the-warn-only-lie.md](s02e03-the-warn-only-lie.md) | `b36ec19` | docs-lint Summary step honesty -- label matches behaviour |
-| S02E04   | *The Locksmith*    | [s02e04-the-locksmith.md](s02e04-the-locksmith.md)  | `ef8756c` | Opportunistic libsecret credential store on Linux        |
-| S02E05   | *The Marathon*     | [s02e05-the-marathon.md](s02e05-the-marathon.md)    | `42b14bb` | `make bench-quick` + CI bench-canary (directional only)  |
-| S02E06   | *The Screen Reader* | [s02e06-the-screen-reader.md](s02e06-the-screen-reader.md) | `6b22a7a` | NO_COLOR / FORCE_COLOR gates + wizard a11y hardening     |
-| S02E07   | *The Observability* | [s02e07-the-observability.md](s02e07-the-observability.md) | `87d190d` | Telemetry posture doc + incident runbooks (no code yet)  |
-| S02E08   | *The Translation*  | [s02e08-the-translation.md](s02e08-the-translation.md) | `0c3a6ae` | i18n readiness audit + project glossary                  |
-| S02E11   | *The Spec*         | [s02e11-the-spec.md](s02e11-the-spec.md)            | `8854588` | User-stories doc translating S02 features for non-engineers |
-| S02E13   | *The Inspector*    | [s02e13-the-inspector.md](s02e13-the-inspector.md)  | `9bee782` | v2 surface security audit (5 PASS / 1 follow-up named)   |
-| S02E17   | *The Newsletter*   | [s02e17-the-newsletter.md](s02e17-the-newsletter.md) | `63c37db` | CONTRIBUTING refresh + named contributor wall            |
-| S02E19   | *The Competition*  | [s02e19-the-competition.md](s02e19-the-competition.md) | `fc58fb4` | Competitive landscape brief + draft positioning copy     |
+| S02E04   | *The Locksmith*    | [s02e04-the-locksmith.md](s02e04-the-locksmith.md)      | `ef8756c` | Opportunistic libsecret credential store on Linux             |
+| S02E05   | *The Marathon*     | [s02e05-the-marathon.md](s02e05-the-marathon.md)        | `42b14bb` | `make bench-quick` + CI bench-canary (directional only)       |
+| S02E06   | *The Screen Reader* | [s02e06-the-screen-reader.md](s02e06-the-screen-reader.md) | `6b22a7a` | NO_COLOR / FORCE_COLOR gates + wizard a11y hardening      |
+| S02E07   | *The Observability* | [s02e07-the-observability.md](s02e07-the-observability.md) | `87d190d` | Telemetry posture doc + incident runbooks (no code yet)   |
+| S02E08   | *The Translation*  | [s02e08-the-translation.md](s02e08-the-translation.md)  | `0c3a6ae` | i18n readiness audit + project glossary                       |
+| S02E11   | *The Spec*         | [s02e11-the-spec.md](s02e11-the-spec.md)                | `8854588` | User-stories doc translating S02 features for non-engineers   |
+| S02E12   | *The Apprentice*   | [s02e12-the-apprentice.md](s02e12-the-apprentice.md)    | `b6be974` | Lloyd Braun debut: friction log, glossary appends, starter PRs |
+| S02E13   | *The Inspector*    | [s02e13-the-inspector.md](s02e13-the-inspector.md)      | `9bee782` | v2 surface security audit (5 PASS / 1 follow-up named)        |
+| S02E14   | *The Container*    | [s02e14-the-container.md](s02e14-the-container.md)      | `09fa6d2` | Dockerfile hardening: numeric UID/GID, layer trim, CIS 4.1    |
+| S02E15   | *The Lawyer*       | [s02e15-the-lawyer.md](s02e15-the-lawyer.md)            | `8d3e17f` | License audit -- 100% MIT, no GPL contagion, NOTICE bundling  |
+| S02E16   | *The Catalog*      | [s02e16-the-catalog.md](s02e16-the-catalog.md)          | `ba96f6d` | Homebrew + Scoop + Nix packaging drafts (Bob's S02 debut)     |
+| S02E17   | *The Newsletter*   | [s02e17-the-newsletter.md](s02e17-the-newsletter.md)    | `63c37db` | CONTRIBUTING refresh + named contributor wall                 |
+| S02E18   | *The Maestro*      | [s02e18-the-maestro.md](s02e18-the-maestro.md)          | `5b502bd` | Prompt library inventory + ralph-mode temperature finding     |
+| S02E19   | *The Competition*  | [s02e19-the-competition.md](s02e19-the-competition.md)  | `fc58fb4` | Competitive landscape brief + draft positioning copy          |
+| S02E20   | *The Conference*   | [s02e20-the-conference.md](s02e20-the-conference.md)    | `3c5a319` | LOLBin credentials talk: 20 slides, 27 min, demo script       |
+| S02E21   | *The Conscience*   | [s02e21-the-conscience.md](s02e21-the-conscience.md)    | `c047ea5` | Responsible-use ethics matrix (8 rows, 5 ENFORCED)            |
+| S02E22   | *The Process*      | [s02e22-the-process.md](s02e22-the-process.md)          | `480e877` | Change-mgmt + ADR + CAB-lite + retrospective cadence docs     |
+| S02E23   | *The Adversary*    | [s02e23-the-adversary.md](s02e23-the-adversary.md)      | `3f845fc` | Chaos drill: 21 findings, 9 CVE-shaped (FDR S02 debut)        |
+| S02E27   | *The Bible*        | [s02e27-the-bible.md](s02e27-the-bible.md)              | `f3046e1` | 4 process skills (episode-brief / exec-report-format / ...)   |
+| S02E28   | *The Style Guide*  | [s02e28-the-style-guide.md](s02e28-the-style-guide.md)  | `f3046e1` | 3 hygiene skills (ascii-validation / docs-only-commit / ...)  |
+| S02E29   | *The Casting Call* | [s02e29-the-casting-call.md](s02e29-the-casting-call.md) | `4a4b894` | 2 cohesion skills (writers-room-cast-balance / findings-backlog) |
+| S02E30   | *The Cast*         | [s02e30-the-cast.md](s02e30-the-cast.md)                | `93dfac7` | 12 cast personas baked as runtime defaults -- the show lives on |
+| S02E31   | *The Audition*     | [s02e31-the-audition.md](s02e31-the-audition.md)        | `dae6145` | Adversarial audit of 5 generic personas (9 findings, 1 bug)   |
 
 **Rest of the season:** see [`s02-writers-room.md`](s02-writers-room.md)
-for the planned arc (remaining E09/E10/E12/E14/E15/E16/E18/E20/E21/E22/E23/E24
-plus E25 *Story Editor* off-roster special), cast rotation, and dispatch order.
+for the remaining arc -- E09 *Receipt* (Morty), E10 *Press Kit* (Lippman),
+E24 *Finale* (Pitt + ensemble), plus the queued security hotfix wave
+(E25 *Story Editor*, E26 *Locked Drawer*, E32 *The Bypass*).
 
 ### Season 3 -- *(unaired)*
 
