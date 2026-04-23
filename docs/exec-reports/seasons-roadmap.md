@@ -3,6 +3,17 @@
 > *Mr. Pitt's planning pad. Eats Snickers with a fork. Treat this
 > document the same way.*
 
+## Showrunner override (2026-04-22)
+
+The showrunner-of-showrunners has reslotted **S06 = *Dogfooding***
+(see [`s06-blueprint.md`](s06-blueprint.md)), displacing Mr. Pitt's
+prior S06 recommendation of *Enterprise & Compliance* (which now
+moves to S07 with no other change). The candidate slate below has
+been cascaded down by one slot for every theme that previously sat at
+S06+. Killed pitches are not renumbered. Mr. Pitt's recommended-next
+ordering has been updated to put Dogfooding at #1 (formality -- it is
+already locked) and otherwise preserves his original priority order.
+
 ## Showrunner pad
 
 Larry David has greenlit the next three seasons as standalone
@@ -39,7 +50,45 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
 
 ## Candidate slate
 
-### S06 candidate -- *Enterprise & Compliance*
+### S06 -- *Dogfooding* (locked by showrunner override)
+
+- **Pitch.** `az-ai` becomes the tool we ship AND the tool we use
+  daily to ship it. Commit-message generation, PR-description
+  drafting, CI triage, release-note synthesis, code-review pre-pass,
+  exec-report drafting, persona-spawned subagents for our own
+  backlog, AHK/Espanso flows we actually use, and a self-hosted MCP
+  server pointed at this repo. Win condition at finale: one
+  non-trivial daily workflow runs through `az-ai` end-to-end with no
+  other LLM CLI in the loop. Full 24-episode treatment in
+  [`s06-blueprint.md`](s06-blueprint.md). Jerry leads (DevOps spine);
+  Kramer guests as the engineer-using-it honesty check.
+- **Why now.** 2026 dogfooding is product evidence, not marketing
+  copy: Anthropic publishes 59% internal-use stats, Cursor runs
+  every internal PR through their own AI review, GitHub Copilot's
+  team uses Copilot to ship Copilot. We are visibly absent from this
+  pattern. Commit-message and CI-triage tooling matured to 85-95%
+  accuracy in 2026 (`aicommits`, `opencommit`, Phind CI Bot, Copilot
+  CI), so the workflows are real and the bar is reachable.
+- **Tentative lead arc.** *The Subject Line* (commit). *The
+  Description* (PR). *The Triage* (CI). *The Release Note*
+  (CHANGELOG synthesis). *The Pre-Pass* (review). *The Treatment*
+  (exec-report drafting). *The Self-Server* (MCP pointed at this
+  repo). *The Week* (finale -- one full az-ai-only workweek).
+- **Casting weight.** **Anchors:** Jerry, Kramer. **Support:**
+  Costanza (PM workflows), Newman (write-access trust + review
+  pre-pass), Elaine (doc workflows), Frank Costanza (telemetry of
+  dogfooding itself), The Maestro (prompt library used in real
+  workflows), Lloyd Braun (junior-lens "first day using az-ai for
+  everything"), Mr. Pitt (finale ensemble).
+- **Dependencies.** **Hard.** Requires S03 (Local & Multi-Provider),
+  S04 (Model Intelligence), and S05 (Protocols & Plugins) to have
+  shipped. S06 cannot pre-empt them; if reordered, S06 either ships
+  thin (~12 episodes) or waits. Mapping table in `s06-blueprint.md`.
+- **Risk if killed.** Cannot be killed -- locked by showrunner
+  override. If it slips, we keep paying the trust tax of building
+  a dev tool we visibly don't depend on ourselves.
+
+### S07 candidate -- *Enterprise & Compliance*
 
 - **Pitch.** Take `az-ai` from "trustworthy single-user CLI" to
   "deployable inside a regulated org without a security review
@@ -74,7 +123,7 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   power-user CLI. Acceptable if that's the chosen identity --
   catastrophic if Costanza picks an enterprise GTM later.
 
-### S07 candidate -- *Multimodal*
+### S08 candidate -- *Multimodal*
 
 - **Pitch.** Break the text-only assumption. Image input for
   screenshot-driven workflows ("what's wrong with this dashboard"),
@@ -104,7 +153,7 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   multimodal-default market. Real risk of irrelevance for AHK /
   desktop-automation users who want screenshot-to-fix loops.
 
-### S08 candidate -- *Pipelines & Workflows*
+### S09 candidate -- *Pipelines & Workflows*
 
 - **Pitch.** Promote `az-ai` from "one-shot completion or one
   Ralph loop" to a workflow runtime. Multi-step prompt chains
@@ -135,7 +184,7 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   + cron + jq, badly. We cede the orchestrator surface to Python
   frameworks. Probably survivable.
 
-### S09 candidate -- *Distribution & Packaging*
+### S10 candidate -- *Distribution & Packaging*
 
 - **Pitch.** Bob Sacamano's full-court press. Ship through every
   channel a developer might already trust: Homebrew tap, Scoop
@@ -165,7 +214,7 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   installers bounce. Real but not existential -- container path
   remains fine for the core audience.
 
-### S10 candidate -- *Editor & IDE Integrations*
+### S11 candidate -- *Editor & IDE Integrations*
 
 - **Pitch.** Meet developers where they live. VS Code extension
   that wraps the CLI (not a re-implementation), JetBrains plugin
@@ -194,7 +243,7 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   hybrid-workflow user. Tolerable -- the CLI-first identity is a
   feature, not a bug -- but it caps reach.
 
-### S11 candidate -- *Observability & Telemetry (formal)*
+### S12 candidate -- *Observability & Telemetry (formal)*
 
 - **Pitch.** Take what S02E07 *The Observability* started and
   ship it as a season. Opt-in OpenTelemetry pipeline aligned to
@@ -219,12 +268,12 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
 - **Casting weight.** **Anchors:** Frank Costanza, Morty
   Seinfeld. **Support:** Kramer, Newman (PII scrubbing in
   exporter), Maestro (eval-loop telemetry).
-- **Dependencies.** Independent. Greatly improved if S06
+- **Dependencies.** Independent. Greatly improved if S07
   enterprise lands first so audit log and OTel share a schema.
 - **Risk if killed.** E07's audit becomes the high-water mark
   forever. We don't compete in any "ops at scale" RFP.
 
-### S12 candidate -- *Microsoft Agent Framework, Deep*
+### S13 candidate -- *Microsoft Agent Framework, Deep*
 
 - **Pitch.** Move beyond Ralph mode and the bespoke tool loop.
   Adopt Microsoft Agent Framework (MAF) 1.0 as a first-class
@@ -256,7 +305,7 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   agent ecosystem and any Azure-shop user who has standardized
   on MAF will route around us.
 
-### S13 candidate -- *Performance Season*
+### S14 candidate -- *Performance Season*
 
 - **Pitch.** A season dedicated entirely to AOT trim sharpening,
   cold-start floor, P99 latency, and memory ceiling. No new
@@ -286,7 +335,7 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   "single-binary, instant-start" identity that differentiates us
   from Python-based competitors. Medium risk.
 
-### S14 candidate -- *Data & Privacy*
+### S15 candidate -- *Data & Privacy*
 
 - **Pitch.** Make `az-ai` the obvious choice for users who can't
   let prompts leave the box. Ship a strict local-only mode that
@@ -312,12 +361,12 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   Jackie Chiles. **Support:** Frank (telemetry boundary),
   Babu (locale-aware PII patterns).
 - **Dependencies.** Soft-depends on S03 (local provider) so
-  local-only mode has somewhere to route. Hard-pairs with S06
+  local-only mode has somewhere to route. Hard-pairs with S07
   enterprise compliance.
 - **Risk if killed.** We are non-viable for regulated buyers.
   Acceptable only if we explicitly disclaim that market.
 
-### S15 candidate -- *Doc & DX Season*
+### S16 candidate -- *Doc & DX Season*
 
 - **Pitch.** Treat documentation and developer experience as
   product, not byproduct. Ship a tutorial track (zero-to-Ralph
@@ -352,41 +401,48 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
 
 ## Dependency graph
 
-- **Independent (can ship any time):** S06 Enterprise, S08
-  Pipelines, S09 Distribution, S13 Performance, S15 Doc/DX.
-- **Soft-depends on S03 (Local & Multi-Provider):** S07
-  Multimodal (provider-routing surface), S14 Data & Privacy
+- **Locked (showrunner override):** S06 Dogfooding -- hard-depends on
+  S03, S04, and S05 (see [`s06-blueprint.md`](s06-blueprint.md)).
+- **Independent (can ship any time):** S07 Enterprise, S09
+  Pipelines, S10 Distribution, S14 Performance, S16 Doc/DX.
+- **Soft-depends on S03 (Local & Multi-Provider):** S08
+  Multimodal (provider-routing surface), S15 Data & Privacy
   (local provider for airlock mode).
-- **Soft-depends on S05 (Protocols & Plugins):** S08 Pipelines
-  (MCP tools as workflow nodes), S10 Editors (shared protocol
-  with the CLI), S12 MAF (compounding interop with A2A/MCP).
-- **Hard pairing:** S06 Enterprise + S14 Data & Privacy share
+- **Soft-depends on S05 (Protocols & Plugins):** S09 Pipelines
+  (MCP tools as workflow nodes), S11 Editors (shared protocol
+  with the CLI), S13 MAF (compounding interop with A2A/MCP).
+- **Hard pairing:** S07 Enterprise + S15 Data & Privacy share
   enough surface (audit, residency, policy) that running them
   back-to-back is much cheaper than splitting them across the
   calendar.
-- **Cross-pollination:** S11 Observability benefits from S06
-  (shared schema with audit log) and feeds S13 Performance
-  (telemetry catches regressions before the gate does).
+- **Cross-pollination:** S12 Observability benefits from S07
+  (shared schema with audit log) and feeds S14 Performance
+  (telemetry catches regressions before the gate does). S06
+  Dogfooding is itself a forcing function on S12 -- the telemetry
+  episode (S06E15) uses the same plumbing.
 
 ## Recommended ordering (showrunner will override)
 
-1. **S06 Enterprise & Compliance** -- highest commercial unlock,
+1. **S06 Dogfooding** -- locked by showrunner override; recommendation
+   here is formality plus a dependency reminder (S03/S04/S05 must
+   ship first; if reordered, S06 ships thin or waits).
+2. **S07 Enterprise & Compliance** -- highest commercial unlock,
    buyers asking now, anchors (Newman/Frank/Jackie) are ready.
-2. **S07 Multimodal** -- visible competitive gap, cheap to start
+3. **S08 Multimodal** -- visible competitive gap, cheap to start
    once S03 lands, broad user appeal beyond enterprise.
-3. **S11 Observability (formal)** -- compounds with S06 and is a
+4. **S12 Observability (formal)** -- compounds with S07 and is a
    prerequisite for any "at scale" story; SemConv window is open.
-4. **S13 Performance Season** -- captures the .NET 10 AOT
+5. **S14 Performance Season** -- captures the .NET 10 AOT
    headroom while it's still a fresh story; protects identity.
-5. **S09 Distribution & Packaging** -- Bob's quarter, low
+6. **S10 Distribution & Packaging** -- Bob's quarter, low
    architectural risk, large reach-per-line-of-code ratio.
-6. **S08 Pipelines & Workflows** -- highest power-user payoff,
+7. **S09 Pipelines & Workflows** -- highest power-user payoff,
    but waits until S05 MCP work makes the workflow nodes
    first-class.
 
-S10 (Editors), S12 (MAF), S14 (Data & Privacy), and S15 (Doc/DX)
-remain on the bench. S14 jumps to top-three the moment a regulated
-buyer materializes; S12 jumps the moment Costanza decides we're
+S11 (Editors), S13 (MAF), S15 (Data & Privacy), and S16 (Doc/DX)
+remain on the bench. S15 jumps to top-three the moment a regulated
+buyer materializes; S13 jumps the moment Costanza decides we're
 betting on the Microsoft agent ecosystem rather than running our
 own loop forever.
 
@@ -408,10 +464,10 @@ These do not justify a season but should not be forgotten:
   inventory Windows-vs-Linux-vs-macOS feature gaps, not a
   season. Output feeds whichever season needs the gap closed.
 - **Pattern library / cost estimator (FR-015)** -- absorb into
-  S11 Observability as the "cost-as-metric" episode rather
+  S12 Observability as the "cost-as-metric" episode rather
   than its own season.
 - **Espanso / AHK reference packs** -- ship as a one-off
-  community drop alongside S15 Doc/DX, not as standalone work.
+  community drop alongside S16 Doc/DX, not as standalone work.
 
 ## Killed pitches (with reason)
 
@@ -435,6 +491,25 @@ These do not justify a season but should not be forgotten:
 - **"Fine-tune our own model."** Wrong layer. We are a client,
   not a model shop. Maestro can run evals against third-party
   fine-tunes inside S04, which is enough.
+
+> *Note: killed-pitch entries retain their original season-number
+> references (S06-S15 as labelled at kill time). They are not
+> renumbered when the slate cascades.*
+
+## Roadmap retrospective
+
+One process finding from the showrunner override: dogfooding was
+missing from the original 10-candidate slate. Mr. Pitt's pad
+covered enterprise, multimodal, pipelines, distribution, editors,
+observability, MAF, performance, data/privacy, and doc/DX -- and
+none of them captured the meta-loop of using `az-ai` to ship
+`az-ai`. Not blame; the methodology section explicitly sourced
+candidates from FRs, market signals, competitor moves, and S02
+debt patterns -- internal-use cadence wasn't one of the four
+inputs. Process improvement for the next roadmap pass: add
+"internal-use friction" as a fifth candidate-generation input,
+and run a single "what do we use someone else's tool for that we
+should use ours for?" prompt across the room before slate-lock.
 
 ---
 
