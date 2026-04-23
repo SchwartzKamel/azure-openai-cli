@@ -165,7 +165,7 @@ honour on the next session.
 
 ### `.squad.json` schema
 
-Verified against `azureopenai-cli-v2/Squad/SquadConfig.cs`:
+Verified against `azureopenai-cli/Squad/SquadConfig.cs`:
 
 ```json
 {
@@ -203,7 +203,7 @@ Verified against `azureopenai-cli-v2/Squad/SquadConfig.cs`:
 | `writer`    | Technical Writer     | file, shell                      | `document, readme, docs, guide, tutorial, changelog`                   |
 | `security`  | Security Auditor     | file, shell, web                 | `security, vulnerability, cve, owasp, harden, credential, secret`      |
 
-Verified against `azureopenai-cli-v2/Squad/SquadInitializer.cs`.
+Verified against `azureopenai-cli/Squad/SquadInitializer.cs`.
 
 ### Precedence rules
 

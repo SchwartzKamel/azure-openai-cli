@@ -1,41 +1,29 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AzureOpenAI_CLI.Cache;
 using AzureOpenAI_CLI.Squad;
 
 namespace AzureOpenAI_CLI;
 
-// ── CLI JSON response records (AOT-safe replacements for anonymous types) ───
-
-/// <summary>JSON response for standard (non-agent) chat mode.</summary>
-internal record ChatJsonResponse(
-    [property: JsonPropertyName("model")] string Model,
-    [property: JsonPropertyName("response")] string Response,
-    [property: JsonPropertyName("duration_ms")] long DurationMs,
-    [property: JsonPropertyName("input_tokens")] int? InputTokens = null,
-    [property: JsonPropertyName("output_tokens")] int? OutputTokens = null
-);
-
-/// <summary>JSON response for agent mode.</summary>
-internal record AgentJsonResponse(
-    [property: JsonPropertyName("model")] string Model,
-    [property: JsonPropertyName("response")] string Response,
-    [property: JsonPropertyName("duration_ms")] long DurationMs,
-    [property: JsonPropertyName("agent")] AgentInfo Agent,
-    [property: JsonPropertyName("input_tokens")] int? InputTokens = null,
-    [property: JsonPropertyName("output_tokens")] int? OutputTokens = null
-);
-
-/// <summary>Agent metadata nested inside <see cref="AgentJsonResponse"/>.</summary>
-internal record AgentInfo(
-    [property: JsonPropertyName("rounds")] int Rounds,
-    [property: JsonPropertyName("tools_called")] int ToolsCalled
-);
-
-/// <summary>JSON error response emitted to stdout in --json mode.</summary>
+/// <summary>
+/// JSON error envelope emitted on <b>stderr</b> in <c>--json</c> mode (per
+/// Puddy 2026 audit — happy-path results stay on stdout, errors go to stderr).
+/// </summary>
 internal record ErrorJsonResponse(
     [property: JsonPropertyName("error")] bool Error,
     [property: JsonPropertyName("message")] string Message,
     [property: JsonPropertyName("exit_code")] int ExitCode
+);
+
+/// <summary>Structured envelope for the unknown-flag parse error (Scope 3).</summary>
+internal record UnknownFlagJsonError(
+    [property: JsonPropertyName("error")] UnknownFlagDetail Error
+);
+
+/// <summary>Inner object for <see cref="UnknownFlagJsonError"/>.</summary>
+internal record UnknownFlagDetail(
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("flag")] string Flag
 );
 
 /// <summary>
@@ -43,8 +31,8 @@ internal record ErrorJsonResponse(
 /// Covers all types that are serialized/deserialized across the CLI.
 ///
 /// Usage:
-///   JsonSerializer.Serialize(obj, AppJsonContext.Default.UserConfig);
-///   JsonSerializer.Deserialize(json, AppJsonContext.Default.UserConfig);
+///   JsonSerializer.Serialize(obj, AppJsonContext.Default.ErrorJsonResponse);
+///   JsonSerializer.Deserialize(json, AppJsonContext.Default.ErrorJsonResponse);
 ///
 /// Adding new serialized types? Add a [JsonSerializable(typeof(YourType))] attribute here.
 /// </summary>
@@ -56,22 +44,33 @@ internal record ErrorJsonResponse(
     AllowTrailingCommas = true,
     PropertyNameCaseInsensitive = true
 )]
-// ── User configuration ──────────────────────────────────────────
+// ── CLI JSON response types ─────────────────────────────────────
+[JsonSerializable(typeof(ErrorJsonResponse))]
+[JsonSerializable(typeof(UnknownFlagJsonError))]
+[JsonSerializable(typeof(UnknownFlagDetail))]
+[JsonSerializable(typeof(AzureOpenAI_CLI.Observability.EstimateResult))]
+// ── FR-008 prompt/response cache ────────────────────────────────
+[JsonSerializable(typeof(CachedResponse))]
+// ── Primitives used directly by PromptCache.ComputeKey canonicaliser ──
+[JsonSerializable(typeof(string))]
+// ── Observability (Phase 5) ─────────────────────────────────────
+[JsonSerializable(typeof(AzureOpenAI_CLI.Observability.CostEvent))]
+// ── User configuration (FR-003 / FR-009 / FR-010) ───────────────
 [JsonSerializable(typeof(UserConfig))]
+[JsonSerializable(typeof(UserDefaults))]
 // ── Squad types ─────────────────────────────────────────────────
 [JsonSerializable(typeof(SquadConfig))]
 [JsonSerializable(typeof(TeamConfig))]
 [JsonSerializable(typeof(PersonaConfig))]
 [JsonSerializable(typeof(RoutingRule))]
-// ── CLI JSON response types ─────────────────────────────────────
-[JsonSerializable(typeof(ChatJsonResponse))]
-[JsonSerializable(typeof(AgentJsonResponse))]
-[JsonSerializable(typeof(AgentInfo))]
-[JsonSerializable(typeof(ErrorJsonResponse))]
+// ── Observability price table (M3: folded from PriceTableJsonContext) ───
+[JsonSerializable(typeof(AzureOpenAI_CLI.Observability.PriceTableEntry))]
+[JsonSerializable(typeof(Dictionary<string, AzureOpenAI_CLI.Observability.PriceTableEntry>))]
 // ── Collection types used by the above ──────────────────────────
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(List<PersonaConfig>))]
 [JsonSerializable(typeof(List<RoutingRule>))]
+[JsonSerializable(typeof(Dictionary<string, string>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

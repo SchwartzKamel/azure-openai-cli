@@ -51,14 +51,9 @@ Architecturally significant decisions are recorded as ADRs in
 is the shape it is -- packaging, AOT, persona routing, MAF migration,
 telemetry, and so on. Owned by **Elaine** (docs) and **Wilhelm** (process).
 
-## Near-term horizon -- v2.x
+## Near-term horizon
 
-The dual-tree window (v1 `azureopenai-cli/` + v2 `azureopenai-cli-v2/`
-side-by-side) remains open through the v2.0.x line. v1.9.1 continues
-to receive security patches only. The v2 tree is the default for every
-feature, fix, doc change, and test addition.
-
-Concrete near-term v2 themes -- each one is an FR, an ADR, or both:
+Concrete near-term themes -- each one is an FR, an ADR, or both:
 
 - Persona routing and `.squad/` maturity (`--persona`, `SquadCoordinator`).
 - `--estimate` cost prediction across providers.

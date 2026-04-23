@@ -186,14 +186,14 @@ Full threat model and hardening checklist: [SECURITY.md](SECURITY.md). Report vu
 
 ### Pre-built binaries
 
-Download for your platform from [Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases). Filenames follow the `az-ai-v2-<version>-<rid>` scheme (v2.0.5 shown):
+Download for your platform from [Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases). Filenames follow the `az-ai-<version>-<rid>` scheme (v2.0.5 shown):
 
 | Platform | Artifact |
 |----------|----------|
-| Linux x64 (glibc) | `az-ai-v2-2.0.5-linux-x64.tar.gz` |
-| Linux x64 (musl / Alpine) | `az-ai-v2-2.0.5-linux-musl-x64.tar.gz` |
-| macOS (Apple Silicon) | `az-ai-v2-2.0.5-osx-arm64.tar.gz` |
-| Windows x64 | `az-ai-v2-2.0.5-win-x64.zip` |
+| Linux x64 (glibc) | `az-ai-2.0.5-linux-x64.tar.gz` |
+| Linux x64 (musl / Alpine) | `az-ai-2.0.5-linux-musl-x64.tar.gz` |
+| macOS (Apple Silicon) | `az-ai-2.0.5-osx-arm64.tar.gz` |
+| Windows x64 | `az-ai-2.0.5-win-x64.zip` |
 
 > **Note:** `osx-x64` (Intel macOS) was dropped from the release matrix in **v2.0.4** after sustained runner instability. Intel-Mac users should run the Docker image or build from source until the leg is reinstated — see [docs/runbooks/macos-runner-triage.md](docs/runbooks/macos-runner-triage.md) for the triage plan and current status. `linux-arm64` and `win-arm64` are also not built in v2; track the ADR in [docs/adr/](docs/adr/) for plans to reintroduce them.
 

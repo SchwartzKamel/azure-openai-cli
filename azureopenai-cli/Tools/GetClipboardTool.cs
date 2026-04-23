@@ -1,27 +1,19 @@
+using System.ComponentModel;
 using System.Diagnostics;
-using System.Text.Json;
 
 namespace AzureOpenAI_CLI.Tools;
 
 /// <summary>
 /// Read the current system clipboard text content.
 /// Cross-platform: xclip/xsel (Linux), pbpaste (macOS), PowerShell (Windows).
+/// MAF version: uses [Description] attributes for AIFunctionFactory.Create.
 /// </summary>
-internal sealed class GetClipboardTool : IBuiltInTool
+internal static class GetClipboardTool
 {
     private const int MaxClipboardBytes = 32_768; // 32 KB
 
-    public string Name => "get_clipboard";
-    public string Description => "Read the current text content from the system clipboard. Useful when the user refers to 'what I copied' or 'my clipboard'.";
-    public BinaryData ParametersSchema => BinaryData.FromString("""
-        {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-        """);
-
-    public async Task<string> ExecuteAsync(JsonElement arguments, CancellationToken ct)
+    [Description("Read the current text content from the system clipboard. Useful when the user refers to 'what I copied' or 'my clipboard'.")]
+    public static async Task<string> GetAsync(CancellationToken ct = default)
     {
         string command;
         string args;

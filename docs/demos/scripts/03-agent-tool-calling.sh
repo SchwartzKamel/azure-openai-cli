@@ -42,7 +42,7 @@ sleep 0.5
 
 # --- Preflight: verify the v2 binary is on PATH ----------------------------
 # [narrator] "Confirm the binary before we hand the model a shell."
-type_prompt 'az-ai-v2 --version --short'
+type_prompt 'az-ai --version --short'
 sleep 0.6
 
 # --- Stage the sandbox -----------------------------------------------------
@@ -71,7 +71,7 @@ sleep 1.0
 # it to reach for shell_exec. The phrasing is kept tight on purpose — agent
 # prompts reward specificity.
 # [narrator] "One prompt. The model picks the tool. Watch for shell_exec."
-type_prompt 'az-ai-v2 --agent "Count the number of regular files under the current directory, grouped by top-level folder. Use shell_exec. Report the totals as a short table."'
+type_prompt 'az-ai --agent "Count the number of regular files under the current directory, grouped by top-level folder. Use shell_exec. Report the totals as a short table."'
 sleep 1.5
 
 # --- Tag -------------------------------------------------------------------

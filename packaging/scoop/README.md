@@ -1,4 +1,4 @@
-# Scoop bucket -- `az-ai-v2`
+# Scoop bucket -- `az-ai`
 
 > "Scoop bucket? I got a guy. It's handled." -- Bob Sacamano
 
@@ -18,10 +18,10 @@ packaging/scoop/
 ├── README.md                      # this file
 ├── az-ai.json                     # tracks latest (currently v2.0.4; v2.0.5 bump queued)
 └── versions/
-    ├── az-ai-v2@2.0.0.json        # frozen pin
-    ├── az-ai-v2@2.0.1.json
-    ├── az-ai-v2@2.0.2.json
-    └── az-ai-v2@2.0.4.json
+    ├── az-ai@2.0.0.json        # frozen pin
+    ├── az-ai@2.0.1.json
+    ├── az-ai@2.0.2.json
+    └── az-ai@2.0.4.json
 ```
 
 `versions/` follows the
@@ -31,7 +31,7 @@ bucket layout.
 
 v2.0.3 has no manifest -- the tag was cancelled at cutover. v2.0.5
 fix-forward is queued; when it lands, copy `az-ai.json` to
-`versions/az-ai-v2@2.0.4.json` (already present) and bump the
+`versions/az-ai@2.0.4.json` (already present) and bump the
 tracking manifest.
 
 ## Install (end-user)
@@ -40,8 +40,8 @@ Once the bucket is live:
 
 ```powershell
 scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-az-ai
-scoop install schwartzkamel/az-ai-v2            # latest
-scoop install schwartzkamel/az-ai-v2@2.0.4      # pinned
+scoop install schwartzkamel/az-ai            # latest
+scoop install schwartzkamel/az-ai@2.0.4      # pinned
 ```
 
 Before the bucket is live, install straight from the manifest:
@@ -60,14 +60,14 @@ Short version:
 2. Copy `packaging/scoop/az-ai.json` to the bucket's `bucket/az-ai.json`
    (Scoop resolves `bucket/<name>.json` by default).
 3. Mirror `packaging/scoop/versions/*.json` to `bucket/versions/*.json`.
-4. `scoop install schwartzkamel/az-ai-v2` on a fresh Windows box
+4. `scoop install schwartzkamel/az-ai` on a fresh Windows box
    before announcing (Puddy gate).
 
 ## Verify locally (pre-publish)
 
 ```powershell
 scoop install ./packaging/scoop/az-ai.json
-az-ai-v2 --version --short
+az-ai --version --short
 ```
 
 The v2.0.4 binary reports `2.0.2` due to the filename-drift captured
@@ -80,7 +80,7 @@ the version strings back into lock-step.
 the bucket exists, run inside the bucket checkout:
 
 ```powershell
-scoop checkver az-ai-v2 -u
+scoop checkver az-ai -u
 ```
 
 That re-computes `version`, `url`, and `hash` from the GitHub Releases
@@ -101,6 +101,6 @@ manifest**.
 
 Scoop has no concept of a `doc/` directory, so the release zip must
 place `NOTICE`, `THIRD_PARTY_NOTICES.md`, and `LICENSE` at the zip
-root alongside `az-ai-v2.exe`. `post_install` in the manifest surfaces
+root alongside `az-ai.exe`. `post_install` in the manifest surfaces
 the paths to the user so Mr. Lippman's "all distributed artifacts
 include NOTICE" claim holds on Windows.

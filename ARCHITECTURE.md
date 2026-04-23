@@ -1,15 +1,12 @@
 # Architecture
 
-> **Status: stub.** The v1 architecture document has been archived to
-> [`docs/archive/ARCHITECTURE-v1.md`](docs/archive/ARCHITECTURE-v1.md). That
-> document describes the v1 source tree (`azureopenai-cli/`), single-`Program.cs`
-> layout, Alpine `runtime-deps:9.0-preview` base, and `Azure.AI.OpenAI 2.1.0`
-> dependency -- **none of which match v2**. It is kept for historical reference
-> only; do not treat it as authoritative for the current release.
+> The v1 architecture document has been archived to
+> [`docs/archive/ARCHITECTURE-v1.md`](docs/archive/ARCHITECTURE-v1.md).
+> It is kept for historical reference only.
 
-## Where the v2 architecture lives
+## Where the architecture lives
 
-The v2 system (`azureopenai-cli-v2/`, shipped in v2.0.0) is documented across
+The system (`azureopenai-cli/`, shipped in v2.0.0) is documented across
 several focused files rather than a single monolith. Start here:
 
 | Topic | Canonical doc |
@@ -24,15 +21,14 @@ several focused files rather than a single monolith. Start here:
 | Architecture Decision Records | [`docs/adr/`](docs/adr/) |
 | Release runbook (cut, publish, hash-sync) | [`docs/runbooks/release-runbook.md`](docs/runbooks/release-runbook.md) |
 
-## Quick orientation (v2)
+## Quick orientation
 
-- **Source tree:** `azureopenai-cli-v2/` -- `Program.cs`, `Ralph/`, `Squad/`,
+- **Source tree:** `azureopenai-cli/` -- `Program.cs`, `Ralph/`, `Squad/`,
   `Tools/`, `Observability/`, `Cache/`, `Theme.cs`, `UserConfig.cs`,
-  `JsonGenerationContext.cs`. The v1 tree (`azureopenai-cli/`) is
-  maintenance-only per [`CONTRIBUTING.md`](CONTRIBUTING.md).
+  `JsonGenerationContext.cs`.
 - **Distribution:** self-contained AOT binaries (`linux-x64`,
   `linux-musl-x64`, `osx-arm64`, `win-x64`) via GitHub Releases; Docker
-  image at `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`. macOS Intel
+  image at `ghcr.io/schwartzkamel/azure-openai-cli/az-ai`. macOS Intel
   (`osx-x64`) is no longer in the release matrix as of v2.0.4 -- see
   [`CHANGELOG.md`](CHANGELOG.md).
 - **Credentials:** `.env` is **never baked into images**. It is injected at

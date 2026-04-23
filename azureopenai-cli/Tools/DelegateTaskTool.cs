@@ -1,142 +1,144 @@
-using System.Diagnostics;
-using System.Text.Json;
+using System.ComponentModel;
+using System.Text;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
 
 namespace AzureOpenAI_CLI.Tools;
 
 /// <summary>
-/// Delegate a subtask to a child agent instance of this CLI.
-/// Enables hierarchical task decomposition — the parent agent can spawn
-/// focused sub-agents for specific tasks (e.g., "read and summarize this file",
-/// "research this topic on the web", "run tests and report results").
+/// Delegate a subtask to an in-process child MAF agent built from the parent's
+/// <see cref="IChatClient"/>. Replaces the v1-style <c>Process.Start</c> re-launch
+/// (Kramer audit H2): no exe-locate dance, no shell-argument quoting, no
+/// <c>RALPH_DEPTH</c> env-var marshalling, no credential re-plumbing.
+///
+/// Registration: <see cref="DelegateAsync"/> is a static function wired into
+/// <c>ToolRegistry.CreateMafTools</c> via <c>AIFunctionFactory.Create</c>.
+/// Program.cs calls <see cref="Configure"/> exactly once after building the
+/// parent <c>IChatClient</c> so the tool can spawn child agents on demand.
+///
+/// Depth guard: tracked via <see cref="AsyncLocal{T}"/> so nested delegations
+/// stay isolated per logical flow; cap is <see cref="MaxDepth"/> (3).
 /// </summary>
-internal sealed class DelegateTaskTool : IBuiltInTool
+internal static class DelegateTaskTool
 {
-    private const int DefaultTimeoutMs = 60_000; // 60s for subtasks
-    private const int MaxOutputBytes = 65_536; // 64 KB
-    private const int MaxDepth = 3;
+    internal const int MaxDepth = 3;
 
-    public string Name => "delegate_task";
-    public string Description => "Delegate a subtask to a child agent. Use this to break complex tasks into smaller, focused sub-tasks. The child agent has access to all tools (shell, file, web, etc.) and will return its response.";
-    public BinaryData ParametersSchema => BinaryData.FromString("""
-        {
-            "type": "object",
-            "properties": {
-                "task": { "type": "string", "description": "A clear, specific description of the subtask to delegate" },
-                "tools": { "type": "string", "description": "Comma-separated list of tools to enable for the child agent (default: all). Options: shell, file, web, datetime, clipboard" }
-            },
-            "required": ["task"]
-        }
-        """);
+    // Parent-supplied chat client + baseline instructions. Set by Program.Configure
+    // at startup so DelegateAsync (a static tool function) can spawn children
+    // without the registry needing an instance dependency.
+    private static IChatClient? s_chatClient;
+    private static string s_baseInstructions = string.Empty;
+    private static string? s_model;
 
-    public async Task<string> ExecuteAsync(JsonElement arguments, CancellationToken ct)
+    // AsyncLocal so nested delegations in the same logical flow see monotonic
+    // depth, while parallel roots stay isolated. Replaces RALPH_DEPTH env var.
+    private static readonly AsyncLocal<int> s_depth = new();
+
+    /// <summary>
+    /// Wire the parent agent's chat client and system instructions into the tool.
+    /// Call once from Program.cs after <c>chatClient</c> is built. Safe to call
+    /// multiple times (last write wins; used by tests).
+    /// </summary>
+    public static void Configure(IChatClient chatClient, string baseInstructions, string? model = null)
     {
-        if (arguments.ValueKind != JsonValueKind.Object ||
-            !arguments.TryGetProperty("task", out var taskProp))
-            return "Error: missing required parameter 'task'.";
+        s_chatClient = chatClient;
+        s_baseInstructions = baseInstructions ?? string.Empty;
+        s_model = model;
+    }
 
-        var task = taskProp.GetString();
+    /// <summary>Test hook: reset static config + depth counter.</summary>
+    internal static void ResetForTests()
+    {
+        s_chatClient = null;
+        s_baseInstructions = string.Empty;
+        s_model = null;
+        s_depth.Value = 0;
+    }
+
+    /// <summary>Test hook: read current depth (AsyncLocal).</summary>
+    internal static int CurrentDepth => s_depth.Value;
+
+    [Description("Delegate a subtask to a child agent. Use this to break complex tasks into smaller, focused sub-tasks. The child agent runs in-process and shares the parent's chat client; it receives only the tools you list.")]
+    public static async Task<string> DelegateAsync(
+        [Description("A clear, specific description of the subtask to delegate")] string task,
+        [Description("Comma-separated list of tools to enable for the child agent (default: shell_exec,read_file,web_fetch,get_datetime). Options: shell_exec, read_file, web_fetch, get_datetime, get_clipboard")] string? tools = null,
+        CancellationToken ct = default)
+    {
         if (string.IsNullOrEmpty(task))
             return "Error: parameter 'task' must not be empty.";
 
-        // Check recursion depth
-        var depthStr = Environment.GetEnvironmentVariable("RALPH_DEPTH") ?? "0";
-        if (!int.TryParse(depthStr, out int currentDepth))
-            currentDepth = 0;
+        if (s_chatClient is null)
+            return "Error: delegate_task is not configured (no parent IChatClient available).";
 
+        // Depth guard via AsyncLocal — replaces env-var marshalling.
+        var currentDepth = s_depth.Value;
         if (currentDepth >= MaxDepth)
             return $"Error: maximum delegation depth ({MaxDepth}) reached. Complete this task directly instead of delegating.";
 
-        // Build tools argument
-        string toolsArg = "shell,file,web,datetime";
-        if (arguments.TryGetProperty("tools", out var toolsEl) && toolsEl.GetString() is string tools && !string.IsNullOrWhiteSpace(tools))
-            toolsArg = tools;
+        // Allowlist contract: child gets *only* the tools named here, never the
+        // parent's full registry. M5: default mirrors ToolRegistry.DefaultChildAgentTools
+        // (excludes clipboard + nested delegate).
+        IEnumerable<string> filtered = string.IsNullOrWhiteSpace(tools)
+            ? ToolRegistry.DefaultChildAgentTools
+            : tools.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        // Find the CLI binary — use dotnet run or the compiled binary
-        string cliPath;
-        string cliArgs;
+        var childTools = ToolRegistry.CreateMafTools(filtered);
+        var childAgent = s_chatClient.AsAIAgent(
+            instructions: s_baseInstructions,
+            tools: childTools);
 
-        // Locate the CLI binary in an AOT / single-file-safe way.
-        // Assembly.Location returns "" for single-file/AOT apps, so prefer
-        // Environment.ProcessPath (the actual running executable) and fall
-        // back to AppContext.BaseDirectory for the sibling .dll (dotnet run).
-        var exePath = Environment.ProcessPath;
-        var baseDir = AppContext.BaseDirectory;
-        var dllPath = Path.Combine(baseDir, "AzureOpenAI_CLI.dll");
-
-        if (exePath != null && File.Exists(exePath) &&
-            !string.Equals(Path.GetFileNameWithoutExtension(exePath), "dotnet", StringComparison.OrdinalIgnoreCase))
-        {
-            // Single-file / AOT / published binary — re-invoke ourselves.
-            cliPath = exePath;
-            cliArgs = $"--agent --tools {toolsArg} \"{task.Replace("\"", "\\\"")}\"";
-        }
-        else if (File.Exists(dllPath))
-        {
-            // Running via `dotnet AzureOpenAI_CLI.dll` or `dotnet run` — relaunch with dotnet.
-            cliPath = "dotnet";
-            cliArgs = $"\"{dllPath}\" --agent --tools {toolsArg} \"{task.Replace("\"", "\\\"")}\"";
-        }
-        else
-        {
-            return "Error: could not locate CLI binary for delegation.";
-        }
-
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(DefaultTimeoutMs);
-
-        var psi = new ProcessStartInfo
-        {
-            FileName = cliPath,
-            Arguments = cliArgs,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            RedirectStandardInput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        // Pass through Azure credentials and increment depth
-        foreach (var envVar in new[] { "AZUREOPENAIENDPOINT", "AZUREOPENAIAPI", "AZUREOPENAIMODEL", "AZURE_DEEPSEEK_KEY" })
-        {
-            var val = Environment.GetEnvironmentVariable(envVar);
-            if (val != null)
-                psi.Environment[envVar] = val;
-        }
-        psi.Environment["RALPH_DEPTH"] = (currentDepth + 1).ToString();
-
+        s_depth.Value = currentDepth + 1;
+        var output = new StringBuilder();
+        int? inTok = null;
+        int? outTok = null;
         try
         {
-            using var process = Process.Start(psi)
-                ?? throw new InvalidOperationException("Failed to start child agent");
-
-            process.StandardInput.Close();
-
-            var buffer = new char[MaxOutputBytes];
-            int read = await process.StandardOutput.ReadBlockAsync(buffer.AsMemory(0, MaxOutputBytes), cts.Token);
-
-            try { await process.WaitForExitAsync(cts.Token); }
-            catch (OperationCanceledException)
+            await foreach (var update in childAgent.RunStreamingAsync(task, cancellationToken: ct))
             {
-                if (!process.HasExited) process.Kill(entireProcessTree: true);
-                return $"Error: child agent timed out after {DefaultTimeoutMs / 1000}s";
+                if (!string.IsNullOrEmpty(update.Text))
+                    output.Append(update.Text);
+
+                if (update.Contents is not null)
+                {
+                    foreach (var c in update.Contents)
+                    {
+                        if (c is UsageContent uc && uc.Details is not null)
+                        {
+                            if (uc.Details.InputTokenCount is long i) inTok = (inTok ?? 0) + (int)i;
+                            if (uc.Details.OutputTokenCount is long o) outTok = (outTok ?? 0) + (int)o;
+                        }
+                    }
+                }
             }
-
-            var output = new string(buffer, 0, read);
-            if (read == MaxOutputBytes)
-                output += "\n... (child agent output truncated)";
-
-            if (process.ExitCode != 0)
-            {
-                var stderr = await process.StandardError.ReadToEndAsync(cts.Token);
-                if (!string.IsNullOrEmpty(stderr))
-                    output += $"\n[child agent exit code {process.ExitCode}]\n[stderr] {stderr.Trim()}";
-            }
-
-            return string.IsNullOrEmpty(output) ? "(child agent produced no output)" : output;
         }
-        catch (System.ComponentModel.Win32Exception)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            return "Error: could not start child agent process.";
+            return output.Length == 0
+                ? "Error: child agent cancelled."
+                : output.ToString() + "\n[child agent cancelled]";
         }
+        catch (Exception ex)
+        {
+            return output.Length == 0
+                ? $"Error: child agent failed: {ex.Message}"
+                : output.ToString() + $"\n[child agent error: {ex.Message}]";
+        }
+        finally
+        {
+            s_depth.Value = currentDepth;
+
+            // Frank's telemetry surface: log the delegation. RecordRequest is a
+            // no-op when telemetry is disabled, so zero overhead in the common path.
+            if (Observability.Telemetry.IsEnabled)
+            {
+                Observability.Telemetry.RecordRequest(
+                    s_model ?? "unknown",
+                    inTok.GetValueOrDefault(),
+                    outTok.GetValueOrDefault(),
+                    "delegate");
+            }
+        }
+
+        return output.Length == 0 ? "(child agent produced no output)" : output.ToString();
     }
 }

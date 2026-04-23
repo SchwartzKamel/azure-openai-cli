@@ -9,7 +9,7 @@
 # It was Reykjavík, February, the sun barely bothering to rise. Our hero is
 # editing a customer email in a cramped TextEdit window, fingers cold,
 # patience thin. She types ":aifix". Somewhere — invisibly — Espanso fires a
-# shell command. Somewhere — invisibly — `az-ai-v2 --raw` swallows the clipboard
+# shell command. Somewhere — invisibly — `az-ai --raw` swallows the clipboard
 # and returns *only* the corrected prose. No spinner. No banner. No trailing
 # newline to upset the cursor. The word arrives in her document as if she had
 # typed it herself, only better.
@@ -40,7 +40,7 @@ sleep 0.5
 # --- Preflight: verify the v2 binary is on PATH ----------------------------
 # [narrator] "Before we pipe anything, confirm the binary. Bare semver, one
 # line — if this prints, the rest of the demo is honest."
-type_prompt 'az-ai-v2 --version --short'
+type_prompt 'az-ai --version --short'
 sleep 0.6
 
 # --- Act I: the ugly draft in the "clipboard" ------------------------------
@@ -52,16 +52,16 @@ sleep 0.8
 # The hex dump after is the point: --raw emits only the answer bytes,
 # with no trailing newline. That is what makes it safe for Espanso replace:.
 #
-# STUB: if you want to record this offline, replace the `az-ai-v2` line with:
+# STUB: if you want to record this offline, replace the `az-ai` line with:
 #   printf 'They are going to the store later, he and I.'
 # [narrator] "One pipe in. One pipe out. No spinner, no banner."
-type_prompt 'cat /tmp/az-ai-demo-clip.txt | az-ai-v2 --raw --system "Fix grammar. Output ONLY corrected text, no quotes, no preamble."'
+type_prompt 'cat /tmp/az-ai-demo-clip.txt | az-ai --raw --system "Fix grammar. Output ONLY corrected text, no quotes, no preamble."'
 sleep 1.0
 
 # --- Act III: proof that there is no rogue newline -------------------------
 # [narrator] "The hex dump is the receipt. No 0x0a at the tail. Espanso-safe."
 echo
-type_prompt 'cat /tmp/az-ai-demo-clip.txt | az-ai-v2 --raw --system "Fix grammar. Output ONLY corrected text." | xxd | tail -3'
+type_prompt 'cat /tmp/az-ai-demo-clip.txt | az-ai --raw --system "Fix grammar. Output ONLY corrected text." | xxd | tail -3'
 sleep 1.2
 
 # --- Curtain ---------------------------------------------------------------

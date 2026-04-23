@@ -53,9 +53,9 @@ Create them (one-time, from the maintainer's workstation):
 
 ```sh
 gh repo create SchwartzKamel/homebrew-az-ai --public \
-    --description "Homebrew tap for az-ai-v2 (Azure OpenAI CLI)"
+    --description "Homebrew tap for az-ai (Azure OpenAI CLI)"
 gh repo create SchwartzKamel/scoop-az-ai --public \
-    --description "Scoop bucket for az-ai-v2 (Azure OpenAI CLI)"
+    --description "Scoop bucket for az-ai (Azure OpenAI CLI)"
 ```
 
 ### Access
@@ -92,7 +92,7 @@ See §1. Initialize with an empty `Formula/` directory:
 gh repo clone SchwartzKamel/homebrew-az-ai /tmp/homebrew-az-ai
 cd /tmp/homebrew-az-ai
 mkdir -p Formula
-printf "# homebrew-az-ai\n\nHomebrew tap for [az-ai-v2](https://github.com/SchwartzKamel/azure-openai-cli).\n\n\`\`\`sh\nbrew tap schwartzkamel/az-ai\nbrew install schwartzkamel/az-ai/az-ai-v2\n\`\`\`\n" > README.md
+printf "# homebrew-az-ai\n\nHomebrew tap for [az-ai](https://github.com/SchwartzKamel/azure-openai-cli).\n\n\`\`\`sh\nbrew tap schwartzkamel/az-ai\nbrew install schwartzkamel/az-ai/az-ai\n\`\`\`\n" > README.md
 git add . && git -c commit.gpgsign=false commit -m "chore: initialize tap"
 git push origin main
 ```
@@ -109,7 +109,7 @@ rsync -av --delete packaging/homebrew/Formula/ /tmp/homebrew-az-ai/Formula/
 
 cd /tmp/homebrew-az-ai
 git add Formula/
-git -c commit.gpgsign=false commit -m "formula: mirror az-ai-v2 @ v2.0.4 from azure-openai-cli"
+git -c commit.gpgsign=false commit -m "formula: mirror az-ai @ v2.0.4 from azure-openai-cli"
 git push origin main
 ```
 
@@ -126,15 +126,15 @@ On a fresh Mac (or Linux box, or clean CI runner):
 ```sh
 brew untap schwartzkamel/az-ai 2>/dev/null || true
 brew tap schwartzkamel/az-ai
-brew audit --strict --online schwartzkamel/az-ai/az-ai-v2
-brew install schwartzkamel/az-ai/az-ai-v2
-az-ai-v2 --version --short   # expect 2.0.2 at v2.0.4 (filename drift), 2.0.5 at v2.0.5
+brew audit --strict --online schwartzkamel/az-ai/az-ai
+brew install schwartzkamel/az-ai/az-ai
+az-ai --version --short   # expect 2.0.2 at v2.0.4 (filename drift), 2.0.5 at v2.0.5
 ```
 
 Also verify the pinned alias installs:
 
 ```sh
-brew install schwartzkamel/az-ai/az-ai-v2@2.0.4
+brew install schwartzkamel/az-ai/az-ai@2.0.4
 ```
 
 ### 2.4 Intel Mac (Rosetta 2) fallback
@@ -144,7 +144,7 @@ v2.0.4 dropped osx-x64. Document for Intel-Mac users:
 ```sh
 softwareupdate --install-rosetta --agree-to-license
 arch -arm64e brew tap schwartzkamel/az-ai
-arch -arm64e brew install schwartzkamel/az-ai/az-ai-v2
+arch -arm64e brew install schwartzkamel/az-ai/az-ai
 ```
 
 The `osx-arm64` bottle runs under Rosetta 2 on Intel. This is a
@@ -161,7 +161,7 @@ issues, route to `docs/runbooks/macos-runner-triage.md` §5.
 gh repo clone SchwartzKamel/scoop-az-ai /tmp/scoop-az-ai
 cd /tmp/scoop-az-ai
 mkdir -p bucket bucket/versions
-printf "# scoop-az-ai\n\nScoop bucket for [az-ai-v2](https://github.com/SchwartzKamel/azure-openai-cli).\n\n\`\`\`powershell\nscoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-az-ai\nscoop install schwartzkamel/az-ai-v2\n\`\`\`\n" > README.md
+printf "# scoop-az-ai\n\nScoop bucket for [az-ai](https://github.com/SchwartzKamel/azure-openai-cli).\n\n\`\`\`powershell\nscoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-az-ai\nscoop install schwartzkamel/az-ai\n\`\`\`\n" > README.md
 git add . && git -c commit.gpgsign=false commit -m "chore: initialize bucket"
 git push origin main
 ```
@@ -176,26 +176,26 @@ Scoop's default resolution rules.
 cd /path/to/azure-openai-cli
 git checkout v2.0.4
 
-cp packaging/scoop/az-ai.json           /tmp/scoop-az-ai/bucket/az-ai-v2.json
+cp packaging/scoop/az-ai.json           /tmp/scoop-az-ai/bucket/az-ai.json
 rsync -av --delete packaging/scoop/versions/ /tmp/scoop-az-ai/bucket/versions/
 
 cd /tmp/scoop-az-ai
 git add bucket/
-git -c commit.gpgsign=false commit -m "manifest: mirror az-ai-v2 @ v2.0.4 from azure-openai-cli"
+git -c commit.gpgsign=false commit -m "manifest: mirror az-ai @ v2.0.4 from azure-openai-cli"
 git push origin main
 ```
 
 **Rename note.** The in-repo file is `packaging/scoop/az-ai.json`
 (historical name), but Scoop resolves the **filename** as the package
-name -- so it lands as `bucket/az-ai-v2.json` in the bucket. The
-`versions/az-ai-v2@<version>.json` files already match their resolved
+name -- so it lands as `bucket/az-ai.json` in the bucket. The
+`versions/az-ai@<version>.json` files already match their resolved
 names and are copied as-is.
 
 ### 3.3 Versions directory convention
 
 The `bucket/versions/` layout matches the upstream
 [`scoopinstaller/versions`](https://github.com/ScoopInstaller/Versions)
-bucket so `scoop install schwartzkamel/az-ai-v2@2.0.4` resolves
+bucket so `scoop install schwartzkamel/az-ai@2.0.4` resolves
 natively. Never mutate a pinned manifest -- if a digest is wrong,
 publish a follow-up pin (`@2.0.4-1.json`) rather than editing in
 place.
@@ -207,11 +207,11 @@ On a Windows host (or sandbox VM):
 ```powershell
 scoop bucket rm schwartzkamel -ErrorAction SilentlyContinue
 scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-az-ai
-scoop install schwartzkamel/az-ai-v2
-az-ai-v2 --version --short   # expect 2.0.2 at v2.0.4 (filename drift)
+scoop install schwartzkamel/az-ai
+az-ai --version --short   # expect 2.0.2 at v2.0.4 (filename drift)
 
-scoop uninstall az-ai-v2
-scoop install schwartzkamel/az-ai-v2@2.0.4
+scoop uninstall az-ai
+scoop install schwartzkamel/az-ai@2.0.4
 ```
 
 ---
@@ -222,7 +222,7 @@ The formula/manifest digests in `packaging/` **must** match the
 GitHub Release's `digests.txt` artifact, produced by the
 `Compute digests` step in
 [`.github/workflows/release.yml`](../../.github/workflows/release.yml)
-(search for `sha256sum az-ai-v2-*.tar.gz az-ai-v2-*.zip`).
+(search for `sha256sum az-ai-*.tar.gz az-ai-*.zip`).
 
 ### 4.1 Fetch the release digests
 
@@ -232,9 +232,9 @@ BASE="https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${VER
 
 # Compute digests live from the published artifacts:
 for asset in \
-    az-ai-v2-2.0.2-linux-x64.tar.gz \
-    az-ai-v2-2.0.2-osx-arm64.tar.gz \
-    az-ai-v2-2.0.2-win-x64.zip \
+    az-ai-2.0.2-linux-x64.tar.gz \
+    az-ai-2.0.2-osx-arm64.tar.gz \
+    az-ai-2.0.2-win-x64.zip \
     ; do
     printf "%s  " "$asset"
     curl -sL "${BASE}/${asset}" | sha256sum | awk '{print $1}'
@@ -250,7 +250,7 @@ done
 
 ```sh
 grep -E '^\s*sha256 ' packaging/homebrew/Formula/az-ai.rb
-grep -E '^\s*sha256 ' packaging/homebrew/Formula/az-ai-v2@${VERSION}.rb
+grep -E '^\s*sha256 ' packaging/homebrew/Formula/az-ai@${VERSION}.rb
 ```
 
 Every `sha256 "…"` line must appear in the output of §4.1. If any
@@ -261,7 +261,7 @@ the publish, file a fix-forward tag, and re-run §2.
 
 ```sh
 jq -r '.architecture."64bit".hash' packaging/scoop/az-ai.json
-jq -r '.architecture."64bit".hash' packaging/scoop/versions/az-ai-v2@${VERSION}.json
+jq -r '.architecture."64bit".hash' packaging/scoop/versions/az-ai@${VERSION}.json
 ```
 
 Same rule as §4.2. `autoupdate.hash.url` pointing at `$url.sbom.json`
@@ -272,7 +272,7 @@ the next bump -- but the currently-pinned `hash` must still match
 ### 4.4 Cross-check with SLSA provenance (optional but recommended)
 
 ```sh
-gh attestation verify az-ai-v2-${VERSION}-linux-x64.tar.gz \
+gh attestation verify az-ai-${VERSION}-linux-x64.tar.gz \
     --owner SchwartzKamel
 ```
 
@@ -317,7 +317,7 @@ name. Sacamano will chase that separately.
 | `brew install` reports `SHA256 mismatch`             | Formula digest disagrees with release artifact                    | §4.2 -- if mismatch is real, fix-forward a new tag |
 | `scoop install` reports `Hash check failed`          | Manifest `hash` disagrees with release zip                        | §4.3 |
 | `brew audit` warns about `keg_only`                  | Expected for pinned `@<version>` formulae                         | Ignore -- that's the whole point |
-| `scoop checkver -u` mutates a pinned `versions/*`    | Ran `checkver` inside `versions/`                                 | Revert; only run against `bucket/az-ai-v2.json` |
+| `scoop checkver -u` mutates a pinned `versions/*`    | Ran `checkver` inside `versions/`                                 | Revert; only run against `bucket/az-ai.json` |
 | Intel-Mac user reports "bad CPU type in executable"  | Rosetta 2 not installed                                           | §2.4 |
 | Tap tracking formula reports stale version           | `packaging/homebrew/Formula/az-ai.rb` not bumped at tag time      | Run the tag-time ritual in `packaging/README.md` |
 

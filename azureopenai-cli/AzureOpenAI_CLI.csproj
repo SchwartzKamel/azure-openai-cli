@@ -1,49 +1,49 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <!--
-    Native AOT Publishing (opt-in, recommended):
-    AOT is the recommended publish mode for this CLI. `make publish-aot` produces
-    a ~9 MB single-file, self-contained binary with ~5.4 ms cold start on Linux
-    x64 — ~10× faster than ReadyToRun and ~75× faster than the Docker path.
-
-    All reflection-based System.Text.Json usage has been migrated to source
-    generators in JsonGenerationContext.cs (AppJsonContext). App-level IL2026 /
-    IL3050 warnings are clean; remaining publish warnings come only from
-    third-party assemblies (Azure.AI.OpenAI, OpenAI) and do not affect runtime.
-
-    To publish AOT (recommended):    make publish-aot   (alias: make publish)
-    To publish ReadyToRun (stable):  make publish-fast  (alias: make publish-r2r)
-    To publish every supported RID:  make publish-all
-
-    Do NOT add <PublishAot>true</PublishAot> here — it remains opt-in via the
-    Makefile targets or `dotnet publish -p:PublishAot=true` so that `dotnet
-    build` / `dotnet test` stay fast for local development.
-
-    Reference: https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/source-generation
-  -->
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>1.9.1</Version>
+    <Version>2.0.6</Version>
+    <AssemblyName>az-ai</AssemblyName>
+    <RootNamespace>AzureOpenAI_CLI</RootNamespace>
+    
+    <!-- AOT configuration (matches spike verification) -->
+    <IsTrimmable>true</IsTrimmable>
+    <TrimMode>full</TrimMode>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!--
+      AOT size trim levers (Kenny Bania investigation; see docs/aot-trim-investigation.md).
+      Combined savings: 14.41 MB -> 12.91 MB  (1.625x -> 1.456x vs v1 baseline), clearing the 1.50x gate.
+
+      OptimizationPreference=Size : ILC favors size over speed; ~0.47 MB win, no behavior change.
+      StackTraceSupport=false     : Drops System.Private.StackTraceMetadata init + rich stack frames; ~1.05 MB win.
+                                    Safe because v2 only surfaces ex.Message to users (no ex.StackTrace prints).
+                                    Tradeoff: crash dumps / Trace.WriteLine have minimal stack frames.
+
+      Levers investigated and rejected:
+        * DebuggerSupport=false           — no delta (Debugger.IsSupported=false already set upstream in net10.0 AOT defaults).
+        * IlcGenerateStackTraceData=false — no delta (superseded by StackTraceSupport=false in net10.0).
+        * HttpActivityPropagationSupport=false — 40 KB; rejected, would break OTLP trace propagation.
+        * OTel exporter runtime opt-in        — not viable: trimming is compile-time, no runtime trim possible.
+    -->
+    <OptimizationPreference>Size</OptimizationPreference>
+    <StackTraceSupport>false</StackTraceSupport>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include=".env" />
-    <None Include="generate_config.sh" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Azure OpenAI SDK — 2.9.0-beta.1 needed for:
-         - max_completion_tokens serialization (FR-017) for gpt-5.x / o1 models
-         - Improved AOT/source-gen support (FR-016)
-         - Tool-calling streaming fragments (used in agent mode) -->
-    <PackageReference Include="Azure.AI.OpenAI" Version="2.9.0-beta.1" />
-    <PackageReference Include="Azure.Core" Version="1.51.1" />
+    <!-- Microsoft Agent Framework packages (versions from spike) -->
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.1.0" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="dotenv.net" Version="3.1.2" />
+    
+    <!-- OpenTelemetry packages for observability (Phase 5) - using 1.15.2 (latest stable, no vulnerabilities) -->
+    <PackageReference Include="OpenTelemetry" Version="1.15.2" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.15.2" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.2" />
   </ItemGroup>
 
 </Project>

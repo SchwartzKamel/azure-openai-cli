@@ -28,13 +28,13 @@ follow-ups.
 
 The repo already contains a v2-line flake at
 [`packaging/nix/flake.nix`](../../packaging/nix/flake.nix) for the
-`az-ai-v2` binary. Two flakes cannot share the same path. Splitting
+`az-ai` binary. Two flakes cannot share the same path. Splitting
 into per-package subdirectories keeps both consumable and signposts
 the dual-binary transition cleanly:
 
 ```text
 packaging/nix/
-  flake.nix                       # v2 line, az-ai-v2 (existing)
+  flake.nix                       # v2 line, az-ai (existing)
   azure-openai-cli/
     flake.nix                     # v1 line, azure-openai-cli (NEW)
 ```

@@ -1,57 +1,18 @@
-using System.Text.Json;
-using OpenAI.Chat;
+using Microsoft.Extensions.AI;
 
 namespace AzureOpenAI_CLI.Tools;
 
 /// <summary>
-/// Registry of built-in tools available for agentic mode.
-/// Maps tool names to implementations and generates ChatTool definitions.
+/// Registry of built-in tools available for agent mode in v2.
+/// Uses Microsoft.Extensions.AI's AIFunctionFactory to generate AITool instances.
 /// </summary>
-internal sealed class ToolRegistry
+internal static class ToolRegistry
 {
-    private readonly Dictionary<string, IBuiltInTool> _tools = new(StringComparer.OrdinalIgnoreCase);
-
-    public void Register(IBuiltInTool tool) => _tools[tool.Name] = tool;
-
-    public IReadOnlyCollection<IBuiltInTool> All => _tools.Values;
-
-    public IBuiltInTool? Get(string name) =>
-        _tools.TryGetValue(name, out var tool) ? tool : null;
-
     /// <summary>
-    /// Generate ChatTool definitions for the Azure OpenAI API.
+    /// Short alias → canonical full tool name. Kramer audit M4: resolved once at
+    /// the <see cref="CreateMafTools"/> entry so downstream code works on
+    /// canonical names only.
     /// </summary>
-    public List<ChatTool> ToChatTools() =>
-        _tools.Values.Select(t => ChatTool.CreateFunctionTool(
-            t.Name, t.Description, t.ParametersSchema)).ToList();
-
-    /// <summary>
-    /// Execute a tool call from the model response.
-    /// </summary>
-    public async Task<string> ExecuteAsync(string toolName, string argumentsJson, CancellationToken ct)
-    {
-        var tool = Get(toolName);
-        if (tool is null)
-            return $"Error: unknown tool '{toolName}'";
-
-        try
-        {
-            var args = string.IsNullOrEmpty(argumentsJson)
-                ? new JsonElement()
-                : JsonDocument.Parse(argumentsJson).RootElement;
-            return await tool.ExecuteAsync(args, ct);
-        }
-        catch (OperationCanceledException)
-        {
-            return $"Error: tool '{toolName}' timed out";
-        }
-        catch (Exception ex)
-        {
-            return $"Error executing '{toolName}': {ex.Message}";
-        }
-    }
-
-    // Short alias → full tool name mapping for --tools CLI flag
     private static readonly Dictionary<string, string> ShortAliases = new(StringComparer.OrdinalIgnoreCase)
     {
         ["shell"] = "shell_exec",
@@ -63,32 +24,78 @@ internal sealed class ToolRegistry
     };
 
     /// <summary>
-    /// Create a registry with the specified tool names enabled.
-    /// Pass null to enable all tools. Accepts full tool names or short aliases.
+    /// Kramer audit M5: canonical default tool set used by agent mode when the
+    /// user does not pass <c>--tools</c>. Referenced by <c>Program.RunAsync</c>
+    /// (Ralph mode default) and <see cref="DelegateTaskTool"/> (child-agent default)
+    /// so the list has exactly one source of truth. Order doesn't matter for
+    /// behavior; sorted for readability.
     /// </summary>
-    public static ToolRegistry Create(IEnumerable<string>? enabledTools = null)
+    internal static readonly IReadOnlyList<string> DefaultAgentTools = new[]
     {
-        var registry = new ToolRegistry();
-        var allTools = new IBuiltInTool[]
+        "shell_exec",
+        "read_file",
+        "web_fetch",
+        "get_datetime",
+        "delegate_task",
+    };
+
+    /// <summary>
+    /// Default tool set for a <em>child</em> agent spawned via <c>delegate_task</c>.
+    /// Intentionally omits <c>delegate_task</c> to discourage runaway recursion
+    /// even though <see cref="DelegateTaskTool.MaxDepth"/> already caps it.
+    /// Clipboard is also excluded — child agents don't get to touch the GUI surface.
+    /// </summary>
+    internal static readonly IReadOnlyList<string> DefaultChildAgentTools = new[]
+    {
+        "shell_exec",
+        "read_file",
+        "web_fetch",
+        "get_datetime",
+    };
+
+    /// <summary>
+    /// Canonicalize a user-supplied tool name (short alias or full name) to its
+    /// canonical full name. Returns the input unchanged when it's already a full
+    /// name or an unknown token (unknown tokens are silently ignored downstream).
+    /// </summary>
+    internal static string Canonicalize(string name)
+        => ShortAliases.TryGetValue(name, out var full) ? full : name;
+
+    /// <summary>
+    /// Create a list of AITool instances for MAF consumption.
+    /// Pass null to enable all tools. Accepts full tool names or short aliases —
+    /// both are canonicalized once at entry, then matched by full name only.
+    /// </summary>
+    public static IList<AITool> CreateMafTools(IEnumerable<string>? enabledTools = null)
+    {
+        var allToolFactories = new Dictionary<string, Func<AITool>>(StringComparer.OrdinalIgnoreCase)
         {
-            new ShellExecTool(),
-            new ReadFileTool(),
-            new WebFetchTool(),
-            new GetClipboardTool(),
-            new GetDateTimeTool(),
-            new DelegateTaskTool(),
+            ["shell_exec"] = () => AIFunctionFactory.Create(ShellExecTool.ExecuteAsync, name: "shell_exec"),
+            ["read_file"] = () => AIFunctionFactory.Create(ReadFileTool.ReadAsync, name: "read_file"),
+            ["web_fetch"] = () => AIFunctionFactory.Create(WebFetchTool.FetchAsync, name: "web_fetch"),
+            ["get_clipboard"] = () => AIFunctionFactory.Create(GetClipboardTool.GetAsync, name: "get_clipboard"),
+            ["get_datetime"] = () => AIFunctionFactory.Create(GetDateTimeTool.GetAsync, name: "get_datetime"),
+            ["delegate_task"] = () => AIFunctionFactory.Create(DelegateTaskTool.DelegateAsync, name: "delegate_task"),
         };
 
-        var enabled = enabledTools?.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var tool in allTools)
+        // M4: canonicalize once. Downstream match is full-name only.
+        HashSet<string>? enabled = null;
+        if (enabledTools is not null)
         {
-            if (enabled is null
-                || enabled.Contains(tool.Name)
-                || enabled.Any(e => ShortAliases.TryGetValue(e, out var fullName)
-                                    && fullName.Equals(tool.Name, StringComparison.OrdinalIgnoreCase)))
-                registry.Register(tool);
+            enabled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var t in enabledTools)
+            {
+                if (!string.IsNullOrWhiteSpace(t))
+                    enabled.Add(Canonicalize(t.Trim()));
+            }
         }
 
-        return registry;
+        var tools = new List<AITool>();
+        foreach (var (name, factory) in allToolFactories)
+        {
+            if (enabled is null || enabled.Contains(name))
+                tools.Add(factory());
+        }
+        return tools;
     }
 }

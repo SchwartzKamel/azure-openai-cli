@@ -23,12 +23,9 @@ Fixes #
 - [ ] ✅ Test
 - [ ] 🔧 Chore / tooling / CI
 
-## Tree touched
+## Area touched
 
-<!-- Check all that apply. PRs that touch both trees are unusual -- if you must, note why. -->
-
-- [ ] `azureopenai-cli-v2/` -- v2, default for new work
-- [ ] `azureopenai-cli/` -- v1 maintenance only (security / P0 / cutover)
+- [ ] `azureopenai-cli/` -- CLI source
 - [ ] `tests/` only
 - [ ] Docs / CI / tooling only (no compiled code)
 
@@ -36,12 +33,12 @@ Fixes #
 
 <!--
   What did you run to verify this works? Paste commands and the outcome.
-  Example (v2):
+  Example:
     $ make preflight
     ... format clean / build OK
     $ dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --nologo
-    ... Passed!  - Failed:     0, Passed:   538
-    $ az-ai-v2 chat "hi" --verbose
+    ... Passed!  - Failed:     0, Passed:   501
+    $ az-ai "hi" --verbose
     ... expected output
 -->
 

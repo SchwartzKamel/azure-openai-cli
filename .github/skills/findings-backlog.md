@@ -44,7 +44,7 @@ Each finding is one bullet. Required fields:
 
 The following entries are already in the writers' room (do not edit them here -- they live in `docs/exec-reports/s02-writers-room.md`). Cited verbatim as a worked example of the format in practice:
 
-- `e07-dual-telemetry-reality` [smell] -- v2 has opt-in OTel pipeline at `azureopenai-cli-v2/Observability/Telemetry.cs`; need to reconcile the two telemetry stories before users hit the seam.
+- `e07-dual-telemetry-reality` [smell] -- v2 has opt-in OTel pipeline at `azureopenai-cli/Observability/Telemetry.cs`; need to reconcile the two telemetry stories before users hit the seam.
 - `e08-f0-current-culture-bug` [bug, one-line-fix] -- `:F0` formatted against current culture in `Program.cs:1445`; latent de-DE bug.
 - `e08-iteration-plural-shortcut` [smell] -- Plural shortcut `iteration(s)` in Ralph mode output.
 - `e08-padding-spec-cjk` [bug] -- `,-N` padding-spec column alignment broken in 3 sites; CJK-blocker.
@@ -53,7 +53,7 @@ The following entries are already in the writers' room (do not edit them here --
 - `e11-binary-split-confusion` [smell] -- Two-binary product surface confuses users about which CLI to invoke.
 - `e11-config-show-precedence` [smell] -- `--config show` does not make precedence (env > file > default) visible.
 - `e12-azureopenaiapi-noun-reading` [smell] -- Env var name `AZUREOPENAIAPI` reads as a noun, not a key; onboarding trips on it.
-- `e12-two-source-trees-discoverability` [gap] -- Two source trees (`azureopenai-cli/`, `azureopenai-cli-v2/`) with no top-level discovery surface.
+- `e12-two-source-trees-discoverability` [gap] -- Two source trees (`azureopenai-cli/`, `azureopenai-cli/`) with no top-level discovery surface.
 - `e13-readfile-blocklist-home-dir-gap` [gap, queued-as-episode: S02E26 *The Locked Drawer*] -- Sensitive home-dir paths not in the blocklist.
 - `e18-ralph-mode-temperature-inheritance` [bug] -- Real bug in Ralph mode temperature inheritance; candidate for a code-fix episode.
 - `e19-mcp-table-stakes` [gap] -- MCP support is table-stakes among premium CLIs; already tracked as FR-013.

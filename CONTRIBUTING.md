@@ -11,12 +11,8 @@ file; open an issue and we'll fix it.
 
 ## The 30-second orientation
 
-- **Two source trees live in this repo.** v1 is in [`azureopenai-cli/`](azureopenai-cli/),
-  v2 is in [`azureopenai-cli-v2/`](azureopenai-cli-v2/). **All new work goes in v2.**
-  v1 is maintenance-only: security fixes, P0 regressions, and the handful of
-  v2.0.0 cutover blockers tracked in [`docs/proposals/README.md`](docs/proposals/README.md).
-  If you're not sure which tree to touch, assume v2.
-- **v2 is the new default.** Background, scope, and behavior contracts are in
+- **Source tree:** [`azureopenai-cli/`](azureopenai-cli/) contains all CLI source.
+- **Background:** scope and behavior contracts are in
   [`docs/release-notes-v2.0.0.md`](docs/release-notes-v2.0.0.md). Migrating from
   v1? See [`docs/migration-v1-to-v2.md`](docs/migration-v1-to-v2.md).
 - **Preflight is non-negotiable** on any change that touches `.cs`, `.csproj`,
@@ -42,7 +38,7 @@ dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj
 # 4. Before you commit code: the preflight gate (see below)
 #    This is what CI runs. If it's green locally, CI will be green.
 dotnet format azure-openai-cli.sln --verify-no-changes
-dotnet build azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj -c Release --nologo
+dotnet build azureopenai-cli/AzureOpenAI_CLI.csproj -c Release --nologo
 dotnet test  tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --nologo
 ```
 
@@ -73,9 +69,9 @@ earlier episode left as a B-plot.
   See the "Not shipped" section of `docs/exec-reports/s02e13-*.md` once
   it lands; pre-S02E13, the standing ask is a one-page "what data leaves
   your machine" summary that cross-links [`docs/telemetry.md`](docs/telemetry.md).
-- **Improve a `--help` example.** Run `az-ai-v2 <subcommand> --help`,
+- **Improve a `--help` example.** Run `az-ai <subcommand> --help`,
   find a flag whose example is thin or missing, and add one. The strings
-  live in `azureopenai-cli-v2/`; the test pattern lives in
+  live in `azureopenai-cli/`; the test pattern lives in
   `tests/AzureOpenAI_CLI.Tests/`.
 - **Fix a typo or broken link.** Boring, valued, always merged. Run
   `grep -rn "TODO\|FIXME" docs/` for hints.
@@ -269,8 +265,6 @@ A small, boring set. If you're browsing issues:
 | `question` | Usage or design question; often migrates to Discussions. |
 | `docs` | Documentation-only change. |
 | `security` | Security-sensitive. Prefer Security Advisories for vulnerabilities. |
-| `v1-maintenance` | Touches `azureopenai-cli/` only; bounded scope. |
-| `v2` | Touches `azureopenai-cli-v2/` -- the default for new work. |
 
 Maintainers curate these. If a label looks wrong, say so on the issue.
 

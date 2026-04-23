@@ -48,7 +48,7 @@ ships `AzureOpenAI_CLI.exe` (the .NET assembly name).
 The `checkver.regex` of `v(1\.\d+\.\d+)` deliberately constrains the
 auto-bump to the v1 line. This is **load-bearing**:
 
-- v2 ships as a separate package (`az-ai-v2`) with its own manifest;
+- v2 ships as a separate package (`az-ai`) with its own manifest;
   Scoop must not auto-bump v1 users onto a v2 release.
 - Per [`docs/release/semver-policy.md`](../release/semver-policy.md), a
   v2.0.0 tag is a MAJOR break -- it's never a silent update.

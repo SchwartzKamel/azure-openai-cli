@@ -55,7 +55,7 @@ Export target: `OTEL_EXPORTER_OTLP_ENDPOINT` (default `http://localhost:4317`).
 ### Stderr cost events (`--metrics` or `--telemetry`)
 
 One JSON line per completed LLM request, written to stderr. Stable schema -- log shippers
-and Morty's spreadsheet depend on this. See [`CostEvent.cs`](../azureopenai-cli-v2/Observability/CostEvent.cs).
+and Morty's spreadsheet depend on this. See [`CostEvent.cs`](../azureopenai-cli/Observability/CostEvent.cs).
 
 ```json
 {"ts":"2026-04-20T12:34:56.789Z","kind":"cost","model":"gpt-4o-mini","input_tokens":1200,"output_tokens":340,"usd":0.000384,"mode":"standard"}
@@ -71,7 +71,7 @@ and Morty's spreadsheet depend on this. See [`CostEvent.cs`](../azureopenai-cli-
 | `usd` | number \| null | `null` if the model is not in the price table -- never faked |
 | `mode` | string | `standard`, `agent`, or `ralph` |
 
-Price table lives in [`CostHook.cs`](../azureopenai-cli-v2/Observability/CostHook.cs).
+Price table lives in [`CostHook.cs`](../azureopenai-cli/Observability/CostHook.cs).
 Override with `AZAI_PRICE_TABLE=/path/to/prices.json` -- JSON must match
 `{"model-name":{"InputPer1K":0.00015,"OutputPer1K":0.00060}}`.
 
@@ -81,7 +81,7 @@ Override with `AZAI_PRICE_TABLE=/path/to/prices.json` -- JSON must match
 
 - **Default state is off.** Omit all flags and leave `AZ_TELEMETRY` unset -- the ActivitySource
   and Meter have no listeners, so `StartActivity` / counter calls are no-op.
-- **Audit what would be sent:** run `az-ai-v2 --telemetry --metrics "hi"` and inspect the
+- **Audit what would be sent:** run `az-ai --telemetry --metrics "hi"` and inspect the
   single cost-event line on stderr before enabling an OTLP collector.
 - **Purge:** nothing is persisted by the CLI itself. Telemetry is delivered to the OTLP
   collector (your responsibility to retain or purge) and to stderr (your terminal buffer).
@@ -115,4 +115,4 @@ If telemetry emission throws, the request path continues; the exception is swall
 - [v2-migration.md §Phase 5](v2-migration.md)
 - [v2-cutover-checklist.md §1](v2-cutover-checklist.md)
 - [cost-optimization.md §3](cost-optimization.md) -- Morty's rate card
-- [`azureopenai-cli-v2/Observability/`](../azureopenai-cli-v2/Observability/) -- source
+- [`azureopenai-cli/Observability/`](../azureopenai-cli/Observability/) -- source

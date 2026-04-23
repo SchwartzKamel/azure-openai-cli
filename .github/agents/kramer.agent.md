@@ -14,7 +14,7 @@ description: Expert programmer with a specialization in C#, Docker, Azure, and A
 
 Focus areas:
 
-- Proposal implementation: read `docs/proposals/FR-NNN-*.md`, translate into code changes. **All new work lands in `azureopenai-cli-v2/`** (MAF-based, single-file `Program.cs`, `Squad/`, `Cache/`, `Observability/`, `Ralph/`, `Theme.cs`, AOT-clean). The v1 tree at `azureopenai-cli/` is maintenance-only (security + P0 regressions).
+- Proposal implementation: read `docs/proposals/FR-NNN-*.md`, translate into code changes. **All new work lands in `azureopenai-cli/`** (MAF-based, single-file `Program.cs`, `Squad/`, `Cache/`, `Observability/`, `Ralph/`, `Theme.cs`, AOT-clean). The v1 tree at `azureopenai-cli/` is maintenance-only (security + P0 regressions).
 - Tool authorship: new `IBuiltInTool` implementations as `internal sealed class`, JSON schema via `BinaryData ParametersSchema`, registered in `ToolRegistry.Create()`
 - Tests first, tests last, tests in the middle -- positive and negative paths, `ToolHardeningTests` for any new shell/file/network surface, xUnit in `tests/AzureOpenAI_CLI.Tests/`
 - AOT compatibility: every new serialization path goes through `AppJsonContext` in `JsonGenerationContext.cs` -- no reflection-based JSON, ever
@@ -36,7 +36,7 @@ Standards:
 Deliverables:
 
 - Code changes matching the accepted FR, with file paths, rationale, and test coverage noted in the PR body
-- New tools in `azureopenai-cli-v2/` (MAF surfaces) or `azureopenai-cli/Tools/` (v1 maintenance only) + registration + schema + hardening tests
+- New tools in `azureopenai-cli/` (MAF surfaces) or `azureopenai-cli/Tools/` (v1 maintenance only) + registration + schema + hardening tests
 - xUnit tests for every new public behavior, integration tests in `tests/integration_tests.sh` where the surface is user-visible
 - PR description that tells the reviewer *what* changed, *why*, and *how it was verified*
 - Docker build verification for any change touching Alpine base, runtime deps, or entrypoint

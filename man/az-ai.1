@@ -1,0 +1,208 @@
+.\" Man page for az-ai — Azure OpenAI CLI (v2)
+.\" Install preview: man -l man/az-ai.1
+.\" This is a stub; the canonical reference is `az-ai --help`.
+.TH AZ-AI 1 "2026-04-22" "az-ai 2.0.x" "User Commands"
+.SH NAME
+az-ai \- Azure OpenAI command-line client (Microsoft Agent Framework)
+.SH SYNOPSIS
+.B az-ai
+.RI [ OPTIONS ]
+.RI [ prompt ]
+.br
+.B echo
+.RI \(dq prompt \(dq
+|
+.B az-ai
+.RI [ OPTIONS ]
+.SH DESCRIPTION
+.B az-ai
+is a silent-by-design, scripting-friendly client for Azure OpenAI
+deployments. It is designed to compose with pipes, Espanso, AutoHotkey,
+and CI pipelines: when standard output is not a TTY (or when
+.B \-\-raw
+is set), it emits only model content \(em no spinner, no color, no
+progress chrome.
+.PP
+The full flag reference lives in
+.B az-ai \-\-help
+and in the repository at
+.IR docs/accessibility.md .
+This man page documents the most frequently used options and the
+stable scripting contract (environment, exit codes).
+.SH OPTIONS
+.TP
+.BR \-\-model ", " \-m " " \fIALIAS\fR|\fINAME\fR
+Model deployment or alias. Env:
+.BR AZUREOPENAIMODEL .
+.TP
+.BR \-\-temperature ", " \-t " " \fIFLOAT\fR
+Sampling temperature in 0.0\(en2.0. Default 0.55.
+.TP
+.BI \-\-max\-tokens " INT"
+Maximum completion tokens. Default 10000.
+.TP
+.BI \-\-timeout " SECONDS"
+Request timeout in seconds. Default 120.
+.TP
+.BR \-\-system ", " \-s " " \fITEXT\fR
+System prompt. Env:
+.BR SYSTEMPROMPT .
+.TP
+.B \-\-raw
+Suppress all non-content output. No ANSI, no spinner, no stderr chrome.
+Recommended for Espanso, AutoHotkey, shell pipelines, screen readers,
+and high-latency SSH. Byte-stable across minor releases.
+.TP
+.B \-\-json
+Emit machine-readable JSON (errors and estimator output).
+.TP
+.BI \-\-persona " NAME"
+Route the prompt through a named persona (or
+.B auto
+for keyword routing).
+.TP
+.B \-\-agent
+Enable agent mode with tool calling. See
+.BR \-\-tools ", " \-\-max\-rounds .
+.TP
+.B \-\-ralph
+Enable Ralph mode (autonomous loop). See
+.BR \-\-validate ", " \-\-task\-file ", " \-\-max\-iterations .
+.TP
+.B \-\-estimate
+Print estimated USD cost for the prompt and exit (no API call).
+.TP
+.BR \-\-help ", " \-h
+Print the full help text and exit.
+.TP
+.BR \-\-version ", " \-v
+Print version. Add
+.B \-\-short
+for a bare semver line.
+.SH ENVIRONMENT
+.TP
+.B AZUREOPENAIENDPOINT
+Azure OpenAI endpoint URL. Required.
+.TP
+.B AZUREOPENAIAPI
+API key. Required.
+.TP
+.B AZUREOPENAIMODEL
+Default model/alias. Optional.
+.TP
+.B NO_COLOR
+Any non-empty value disables ANSI color output, unconditionally. See
+.UR https://no-color.org/
+.UE .
+.TP
+.B TERM
+When set to
+.BR dumb ,
+color is disabled (Emacs shell, legacy consoles).
+.TP
+.BR CLICOLOR ", " CLICOLOR_FORCE
+BSD color conventions.
+.B CLICOLOR=0
+disables color and beats
+.BR FORCE_COLOR .
+.TP
+.B FORCE_COLOR
+Force color even when stdout is not a TTY. Loses to
+.B NO_COLOR
+and
+.BR CLICOLOR=0 .
+.TP
+.B AZ_TELEMETRY
+.RB "Equivalent to " \-\-telemetry .
+Opt-in OpenTelemetry + FinOps events on stderr.
+.TP
+.BR AZ_CACHE ", " AZ_CACHE_TTL_HOURS
+Opt-in prompt cache (see
+.BR \-\-cache ).
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Generic error (unexpected exception, validation failure).
+.TP
+.B 2
+Usage error (unknown flag, missing argument).
+.TP
+.B 130
+Interrupted by SIGINT (Ctrl-C). POSIX-standard.
+.PP
+See
+.I docs/accessibility.md
+\(sc3 for the full exit-code table, including Ralph-mode sentinel codes
+(42\(en45) and cache-path codes.
+.SH FILES
+.TP
+.I ./.azureopenai\-cli.json
+Project-local configuration.
+.TP
+.I ~/.azureopenai\-cli.json
+User configuration. Precedence: env > CLI flag > project file > user file.
+.TP
+.I ~/.azureopenai\-cli/cache/
+Prompt-cache directory (when
+.B \-\-cache
+is active).
+.SH EXAMPLES
+.PP
+Ask a question:
+.PP
+.RS
+.B az-ai \(dqWhat is the capital of France?\(dq
+.RE
+.PP
+Pipe input; emit only model content (screen-reader / SSH safe):
+.PP
+.RS
+.B echo \(dqsummarize this\(dq | az-ai \-\-raw
+.RE
+.PP
+Persona routing with explicit model:
+.PP
+.RS
+.B az-ai \-\-persona coder \-\-model fast \(dqreview this function\(dq
+.RE
+.PP
+CI cost-gate (no network call):
+.PP
+.RS
+.B az-ai \-\-estimate \-\-json \(dq$prompt\(dq
+.RE
+.SH ACCESSIBILITY
+.B az-ai
+is designed to be usable with screen readers, braille displays, and
+low-bandwidth terminals. See
+.I docs/accessibility.md
+for the color, TTY, and
+.B \-\-raw
+contracts; see
+.I docs/accessibility/keyboard\-workflows.md
+for keyboard-only usage patterns.
+.SH BUGS
+Accessibility bugs are triaged at the same severity as crashes. Report
+via the channels in
+.IR SECURITY.md .
+.SH SEE ALSO
+.BR env (1),
+.BR man (1),
+.BR pipe (7),
+.BR espanso (1).
+.PP
+.I docs/accessibility.md ,
+.I docs/accessibility/keyboard\-workflows.md ,
+.I docs/accessibility/tty\-detection.md ,
+.I docs/espanso\-ahk\-integration.md ,
+.UR https://no-color.org/
+.UE ,
+.UR https://www.w3.org/TR/WCAG21/
+.UE .
+.SH AUTHORS
+The Azure OpenAI CLI contributors. Accessibility steward: Mickey Abbott.
+.PP
+.I Us little guys gotta stick together.

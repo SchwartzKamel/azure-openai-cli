@@ -1,7 +1,7 @@
 # Color & terminal output contract
 
 > *Us little guys gotta stick together.* This file is the **source of truth**
-> for how `az-ai-v2` must treat color, ANSI escapes, and terminal decoration.
+> for how `az-ai` must treat color, ANSI escapes, and terminal decoration.
 > `CONTRIBUTING.md` links here. Any PR that adds color output **must** conform
 > to every rule below; reviewers will block on this file.
 >
@@ -214,14 +214,14 @@ Canonical artifacts implementing this contract (keep in sync -- any
 divergence between spec and code is a bug against this document):
 
 - **`scripts/check-color-contract.sh`** -- automated lint gate. Greps
-  `azureopenai-cli-v2/**/*.cs` for `ConsoleColor.`,
+  `azureopenai-cli/**/*.cs` for `ConsoleColor.`,
   `Console.ForegroundColor` / `Console.BackgroundColor`, and raw ANSI
   escape literals (`\u001b[`, `\x1b[`, `\e[`, `\033[`). Wired into
   `make lint` and `make preflight`. Exit 1 on any violation, with a
   pointer to `Theme.cs`. Lines deliberately carrying raw ANSI (e.g. an
   intentional stderr spinner) must carry the trailing marker comment
   `// color-contract: approved-spinner` and be recorded below.
-- **`azureopenai-cli-v2/Theme.cs`** -- the canonical helper. New call
+- **`azureopenai-cli/Theme.cs`** -- the canonical helper. New call
   sites **must** route through `Theme.WriteColored(...)` /
   `Theme.WriteLineColored(...)`; these consult `Theme.UseColor()`
   (Rules 1-5) and honor `Theme.RawMode` (Rule 6 defensive layer). The
@@ -243,11 +243,11 @@ a specific line is granted an exception and tagged with the
 
 Existing `azureopenai-cli/` (v1) `ConsoleColor` call sites are
 deliberately **out of scope** for the lint gate -- it targets only
-`azureopenai-cli-v2/`. v1 is frozen on its current color story; the
+`azureopenai-cli/`. v1 is frozen on its current color story; the
 v2.1 migration wave will port the remaining legitimate colorized paths
 (error highlighting, banner chrome) onto `Theme.WriteColored(...)` so
 the single chokepoint owns every decision. Any new ANSI added to
-`azureopenai-cli-v2/` between now and v2.1 must land through
+`azureopenai-cli/` between now and v2.1 must land through
 `Theme.cs` on day one -- the lint will block otherwise.
 
 ---

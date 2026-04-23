@@ -1,22 +1,18 @@
 using System.Reflection;
-using AzureOpenAI_CLI;
 
 namespace AzureOpenAI_CLI.Tests;
 
 /// <summary>
-/// Tests for Ralph mode (--ralph) CLI flag parsing, argument validation,
-/// and help text integration.
-///
-/// All tests run via reflection against Program.Main to exercise the real
-/// entry point. No live Azure credentials required — these paths resolve
-/// before any API call.
+/// Tests for Ralph mode (--ralph) CLI flag parsing, argument validation, and help text integration.
+/// All tests run via reflection against Program.Main to exercise the real entry point.
+/// No live Azure credentials required — these paths resolve before any API call.
 /// </summary>
 [Collection("ConsoleCapture")]
 public class RalphModeTests
 {
     private static readonly MethodInfo MainMethod =
-        typeof(UserConfig).Assembly.EntryPoint
-        ?? throw new InvalidOperationException("Could not locate the assembly entry point");
+        typeof(Program).GetMethod("Main", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
+        ?? throw new InvalidOperationException("Could not locate Program.Main method");
 
     /// <summary>
     /// Invokes Program.Main through reflection and returns the exit code.
@@ -24,9 +20,9 @@ public class RalphModeTests
     private static int InvokeMain(string[] args)
     {
         var result = MainMethod.Invoke(null, new object[] { args });
-        return result is int exitCode
-            ? exitCode
-            : throw new InvalidOperationException($"Main returned {result?.GetType().Name ?? "null"} instead of int");
+        return result is Task<int> taskResult
+            ? taskResult.GetAwaiter().GetResult()
+            : throw new InvalidOperationException($"Main returned {result?.GetType().Name ?? "null"} instead of Task<int>");
     }
 
     /// <summary>
@@ -43,9 +39,9 @@ public class RalphModeTests
             Console.SetOut(outWriter);
             Console.SetError(errWriter);
             var result = MainMethod.Invoke(null, new object[] { args });
-            int exitCode = result is int ec
-                ? ec
-                : throw new InvalidOperationException($"Main returned {result?.GetType().Name ?? "null"} instead of int");
+            int exitCode = result is Task<int> taskResult
+                ? taskResult.GetAwaiter().GetResult()
+                : throw new InvalidOperationException($"Main returned {result?.GetType().Name ?? "null"} instead of Task<int>");
             return (exitCode, outWriter.ToString(), errWriter.ToString());
         }
         finally
@@ -137,7 +133,7 @@ public class RalphModeTests
 
         // Assert — help text has the Ralph Mode section header
         Assert.Equal(0, exitCode);
-        Assert.Contains("Ralph Mode:", stdout);
+        Assert.Contains("Ralph Mode", stdout);
     }
 
     // ── --validate flag validation ───────────────────────────────
@@ -315,9 +311,7 @@ public class RalphModeTests
         // Act
         int exitCode = InvokeMain(args);
 
-        // Assert — non-zero due to missing credentials, but the specific
-        // exit code 1 from parse error for "--max-iterations" should NOT apply.
-        // The error path should be credential-related, not parse-related.
+        // Assert — non-zero due to missing credentials, but NOT exit code 1 from parse error
         Assert.NotEqual(0, exitCode);
     }
 
@@ -334,13 +328,13 @@ public class RalphModeTests
         Assert.NotEqual(0, exitCode);
     }
 
-    // ── --ralph + --json mode ────────────────────────────────────
+    // ── --ralph + validation ────────────────────────────────────
 
     [Fact]
-    public void Main_RalphJsonNoPrompt_ReturnsNonZero()
+    public void Main_RalphValidateNoPrompt_ReturnsNonZero()
     {
-        // Arrange — --json --ralph with no prompt should error
-        var args = new[] { "--json", "--ralph" };
+        // Arrange — --ralph --validate with no prompt should error
+        var args = new[] { "--ralph", "--validate", "true" };
 
         // Act
         int exitCode = InvokeMain(args);
@@ -349,46 +343,7 @@ public class RalphModeTests
         Assert.NotEqual(0, exitCode);
     }
 
-    [Fact]
-    public void Main_RalphJsonNoPrompt_OutputsJsonError()
-    {
-        // Arrange & Act
-        var (exitCode, stdout, _) = InvokeMainWithOutput(new[] { "--json", "--ralph" });
-
-        // Assert — JSON error output should contain error field
-        Assert.NotEqual(0, exitCode);
-        Assert.Contains("\"error\"", stdout);
-    }
-
-    // ── --task-file with --json mode ─────────────────────────────
-
-    [Fact]
-    public void Main_TaskFileMissingJsonMode_ReturnsNonZero()
-    {
-        // Arrange — --json with nonexistent task file
-        var args = new[] { "--json", "--ralph", "--task-file", "/nonexistent/file.md", "fallback" };
-
-        // Act
-        int exitCode = InvokeMain(args);
-
-        // Assert — file not found error
-        Assert.NotEqual(0, exitCode);
-    }
-
-    [Fact]
-    public void Main_TaskFileMissingJsonMode_OutputsJsonError()
-    {
-        // Arrange & Act
-        var (exitCode, stdout, _) = InvokeMainWithOutput(
-            new[] { "--json", "--ralph", "--task-file", "/nonexistent/file.md", "fallback" });
-
-        // Assert — JSON error output
-        Assert.NotEqual(0, exitCode);
-        Assert.Contains("\"error\"", stdout);
-        Assert.Contains("not found", stdout, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // ── --ralph coexists with other flags ────────────────────────
+    // ── --version and other flags still work ─────────────────────
 
     [Fact]
     public void Main_VersionFlagStillWorksAfterRalphChanges()
@@ -404,28 +359,145 @@ public class RalphModeTests
     }
 
     [Fact]
-    public void Main_ModelsListStillWorksAfterRalphChanges()
+    public void Main_SquadInitStillWorksAfterRalphChanges()
     {
-        // Arrange — --models should still work
-        var args = new[] { "--models" };
+        // Arrange — --squad-init should still work
+        var args = new[] { "--squad-init" };
 
         // Act
         int exitCode = InvokeMain(args);
 
-        // Assert — models listing exits successfully
+        // Assert — squad init exits successfully
         Assert.Equal(0, exitCode);
     }
 
+    // ── Checkpoint manager (unit tests) ──────────────────────────
+
     [Fact]
-    public void Main_ConfigShowStillWorksAfterRalphChanges()
+    public void CheckpointManager_InitializeLog_CreatesFile()
     {
-        // Arrange — --config show should still work
-        var args = new[] { "--config", "show" };
+        // Arrange — clean slate
+        var testDir = Path.Combine(Path.GetTempPath(), "ralph-test-" + Guid.NewGuid());
+        Directory.CreateDirectory(testDir);
+        var origDir = Directory.GetCurrentDirectory();
+        Directory.SetCurrentDirectory(testDir);
 
-        // Act
-        int exitCode = InvokeMain(args);
+        try
+        {
+            // Act
+            AzureOpenAI_CLI.Ralph.CheckpointManager.InitializeLog();
 
-        // Assert — config display exits successfully
-        Assert.Equal(0, exitCode);
+            // Assert — .ralph-log exists
+            Assert.True(File.Exists(".ralph-log"));
+            var content = File.ReadAllText(".ralph-log");
+            Assert.Contains("# Ralph Loop Log", content);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(origDir);
+            try { Directory.Delete(testDir, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void CheckpointManager_WriteCheckpoint_AppendsEntry()
+    {
+        // Arrange
+        var testDir = Path.Combine(Path.GetTempPath(), "ralph-test-" + Guid.NewGuid());
+        Directory.CreateDirectory(testDir);
+        var origDir = Directory.GetCurrentDirectory();
+        Directory.SetCurrentDirectory(testDir);
+
+        try
+        {
+            AzureOpenAI_CLI.Ralph.CheckpointManager.InitializeLog();
+
+            // Act
+            AzureOpenAI_CLI.Ralph.CheckpointManager.WriteCheckpoint(
+                iteration: 1,
+                prompt: "test prompt",
+                agentExitCode: 0,
+                agentResponse: "test response",
+                validationCommand: "echo test",
+                validationExitCode: 0,
+                validationOutput: "test output"
+            );
+
+            // Assert — entry appended
+            var content = File.ReadAllText(".ralph-log");
+            Assert.Contains("## Iteration 1", content);
+            Assert.Contains("**Prompt:**", content);
+            Assert.Contains("**Agent exit:** 0", content);
+            Assert.Contains("**Validation:** PASSED", content);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(origDir);
+            try { Directory.Delete(testDir, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void CheckpointManager_WriteCheckpoint_FailedValidation()
+    {
+        // Arrange
+        var testDir = Path.Combine(Path.GetTempPath(), "ralph-test-" + Guid.NewGuid());
+        Directory.CreateDirectory(testDir);
+        var origDir = Directory.GetCurrentDirectory();
+        Directory.SetCurrentDirectory(testDir);
+
+        try
+        {
+            AzureOpenAI_CLI.Ralph.CheckpointManager.InitializeLog();
+
+            // Act
+            AzureOpenAI_CLI.Ralph.CheckpointManager.WriteCheckpoint(
+                iteration: 2,
+                prompt: "test prompt",
+                agentExitCode: 0,
+                agentResponse: "test response",
+                validationCommand: "exit 1",
+                validationExitCode: 1,
+                validationOutput: "error output"
+            );
+
+            // Assert — failure recorded
+            var content = File.ReadAllText(".ralph-log");
+            Assert.Contains("## Iteration 2", content);
+            Assert.Contains("**Validation:** FAILED (exit 1)", content);
+            Assert.Contains("error output", content);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(origDir);
+            try { Directory.Delete(testDir, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void CheckpointManager_WriteFinalEntry_AppendsMessage()
+    {
+        // Arrange
+        var testDir = Path.Combine(Path.GetTempPath(), "ralph-test-" + Guid.NewGuid());
+        Directory.CreateDirectory(testDir);
+        var origDir = Directory.GetCurrentDirectory();
+        Directory.SetCurrentDirectory(testDir);
+
+        try
+        {
+            AzureOpenAI_CLI.Ralph.CheckpointManager.InitializeLog();
+
+            // Act
+            AzureOpenAI_CLI.Ralph.CheckpointManager.WriteFinalEntry("Exhausted iterations");
+
+            // Assert
+            var content = File.ReadAllText(".ralph-log");
+            Assert.Contains("**Final status:** Exhausted iterations", content);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(origDir);
+            try { Directory.Delete(testDir, recursive: true); } catch { }
+        }
     }
 }

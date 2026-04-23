@@ -17,10 +17,10 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # build-and-test: format-check, build, and both xUnit projects (v1 + v2) on
-  # ubuntu + macos. Matrix runs in parallel (fail-fast: false — we want to see
-  # all OS failures, not just the first one). Windows intentionally excluded
-  # (see comment below); win-x64 build+smoke is covered in release.yml.
+  # build-and-test: format-check, build, and xUnit project on ubuntu + macos.
+  # Matrix runs in parallel (fail-fast: false — we want to see all OS failures,
+  # not just the first one). Windows intentionally excluded (see comment below);
+  # win-x64 build+smoke is covered in release.yml.
   build-and-test:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
@@ -62,15 +62,8 @@ jobs:
         # --no-restore reuses the cached NuGet restore from the previous step.
         run: dotnet build --no-restore --configuration Release
 
-      - name: Test v1
-        # Both v1 and v2 test projects are run as separate steps (not via the
-        # solution file) so failures attribute cleanly to one tree. Local
-        # `make test` uses the solution file — equivalent coverage, different
-        # failure-attribution trade-off. See Puddy's make-test-both-trees note.
+      - name: Test
         run: dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --no-build --configuration Release --verbosity normal
-
-      - name: Test v2
-        run: dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj --no-build --configuration Release --verbosity normal
 
       - name: Check for vulnerable packages
         # Advisory-only: continue-on-error so a newly-disclosed CVE doesn't

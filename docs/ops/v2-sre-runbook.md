@@ -1,4 +1,4 @@
-# v2 SRE Runbook -- `az-ai-v2` 2.0.0
+# v2 SRE Runbook -- `az-ai` 2.0.0
 
 **Owner:** Frank Costanza (SRE)
 **Baseline:** commit `a0ca066` on `main` (v2.0.0 release window).
@@ -24,7 +24,7 @@
 
 ## 1. Service summary
 
-`az-ai-v2` is a single-binary command-line client for Azure OpenAI Chat Completions. It is invoked per-process by end users, Espanso, AutoHotkey, and CI pipelines. There is no long-running server; "up" is defined by **exit-code semantics**, not HTTP availability:
+`az-ai` is a single-binary command-line client for Azure OpenAI Chat Completions. It is invoked per-process by end users, Espanso, AutoHotkey, and CI pipelines. There is no long-running server; "up" is defined by **exit-code semantics**, not HTTP availability:
 
 - `0` success · `1` generic error · `2` config/validation · `3` network/auth · `99` internal · `130` SIGINT (ref [`docs/migration-v1-to-v2.md`](../migration-v1-to-v2.md) §2).
 - The AOT binary runs offline for `--help`, `--version`, `--estimate` (no credential or endpoint resolution). Real-call paths require `AZUREOPENAIENDPOINT` + `AZUREOPENAIAPI`.
@@ -95,7 +95,7 @@ Authoritative source: [`docs/observability.md`](../observability.md). This secti
 | `--metrics` | -- | ✅ Yes | ✅ Yes | off |
 | `--raw` (any combo) | suppressed on stdout | suppressed on stdout | **still on stderr** | -- |
 
-`AZ_TELEMETRY` parsing is case-insensitive; any other value keeps telemetry off. See [`azureopenai-cli-v2/Observability/Telemetry.cs:80`](../../azureopenai-cli-v2/Observability/Telemetry.cs) for the `IsEnabled` contract.
+`AZ_TELEMETRY` parsing is case-insensitive; any other value keeps telemetry off. See [`azureopenai-cli/Observability/Telemetry.cs:80`](../../azureopenai-cli/Observability/Telemetry.cs) for the `IsEnabled` contract.
 
 ### 3.2 Span catalogue
 
@@ -120,7 +120,7 @@ OTLP target: `OTEL_EXPORTER_OTLP_ENDPOINT`, default `http://localhost:4317`.
 
 ### 3.4 Cost-event schema (stderr, one JSON line per completed LLM request)
 
-Source of truth: [`azureopenai-cli-v2/Observability/CostEvent.cs`](../../azureopenai-cli-v2/Observability/CostEvent.cs), priced by [`azureopenai-cli-v2/Observability/CostHook.cs`](../../azureopenai-cli-v2/Observability/CostHook.cs).
+Source of truth: [`azureopenai-cli/Observability/CostEvent.cs`](../../azureopenai-cli/Observability/CostEvent.cs), priced by [`azureopenai-cli/Observability/CostHook.cs`](../../azureopenai-cli/Observability/CostHook.cs).
 
 ```json
 {"ts":"2026-04-20T12:34:56.789Z","kind":"cost","model":"gpt-4o-mini","input_tokens":1200,"output_tokens":340,"usd":0.000384,"mode":"standard"}
@@ -133,10 +133,10 @@ Source of truth: [`azureopenai-cli-v2/Observability/CostEvent.cs`](../../azureop
 | `model` | string | deployment name; matches `AZUREOPENAIMODEL` / `--model` |
 | `input_tokens` | int | prompt tokens |
 | `output_tokens` | int | completion tokens |
-| `usd` | number \| **null** | `null` ⇒ model not in price table. **Never faked.** See `CostHook.CalculateCost` ([`CostHook.cs:39`](../../azureopenai-cli-v2/Observability/CostHook.cs)). |
+| `usd` | number \| **null** | `null` ⇒ model not in price table. **Never faked.** See `CostHook.CalculateCost` ([`CostHook.cs:39`](../../azureopenai-cli/Observability/CostHook.cs)). |
 | `mode` | `"standard"` \| `"agent"` \| `"ralph"` | mode selector |
 
-**Known-priced models** (default table, [`CostHook.cs:20-30`](../../azureopenai-cli-v2/Observability/CostHook.cs)): `gpt-4o-mini`, `gpt-5.4-nano`, `gpt-4o`, `gpt-4.1`, `Phi-4-mini-instruct`, `Phi-4-mini-reasoning`, `DeepSeek-V3.2`, `o1-mini`. Override via `AZAI_PRICE_TABLE=/path/to/prices.json`.
+**Known-priced models** (default table, [`CostHook.cs:20-30`](../../azureopenai-cli/Observability/CostHook.cs)): `gpt-4o-mini`, `gpt-5.4-nano`, `gpt-4o`, `gpt-4.1`, `Phi-4-mini-instruct`, `Phi-4-mini-reasoning`, `DeepSeek-V3.2`, `o1-mini`. Override via `AZAI_PRICE_TABLE=/path/to/prices.json`.
 
 ### 3.5 Data handling / PII posture
 
@@ -145,7 +145,7 @@ Source of truth: [`azureopenai-cli-v2/Observability/CostEvent.cs`](../../azureop
 - API keys (`AZUREOPENAIAPI`) -- never logged, never in spans, never in cost events.
 - Endpoint URLs -- `AZUREOPENAIENDPOINT` may contain tenant identifiers in the host; **keep out of telemetry**. If future spans add endpoint tags, redact host per ADR.
 - User prompt text or completion text -- not emitted on any path. Token **counts** only.
-- File paths from `--persona` / `~/.squad/history/*` -- surface errors by `safeName`, not raw path (see [`PersonaMemory.cs:99,105,111,141`](../../azureopenai-cli-v2/Squad/PersonaMemory.cs)).
+- File paths from `--persona` / `~/.squad/history/*` -- surface errors by `safeName`, not raw path (see [`PersonaMemory.cs:99,105,111,141`](../../azureopenai-cli/Squad/PersonaMemory.cs)).
 - `.squad.json` content, `~/.azureopenai-cli.json` content, stdin content.
 
 **What is emitted** (opt-in only): span names + tags listed §3.2, meter values §3.3, cost-event fields §3.4. Everything fits on one stderr line per request.
@@ -155,20 +155,20 @@ Source of truth: [`azureopenai-cli-v2/Observability/CostEvent.cs`](../../azureop
 **Local audit** (proves wire-up, writes one cost line to stderr, no OTLP collector required):
 
 ```bash
-AZ_TELEMETRY=1 az-ai-v2 --metrics --raw "hi" 2> >(grep '"kind":"cost"')
+AZ_TELEMETRY=1 az-ai --metrics --raw "hi" 2> >(grep '"kind":"cost"')
 ```
 
 **Local tail** (continuous stderr filter):
 
 ```bash
-AZ_TELEMETRY=1 az-ai-v2 --metrics "$@" 2>&1 >/dev/null | tee -a /var/log/az-ai-cost.jsonl
+AZ_TELEMETRY=1 az-ai --metrics "$@" 2>&1 >/dev/null | tee -a /var/log/az-ai-cost.jsonl
 ```
 
 **Via OTLP** (spans + meters, collector on localhost):
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-AZ_TELEMETRY=1 az-ai-v2 --agent "plan a migration"
+AZ_TELEMETRY=1 az-ai --agent "plan a migration"
 # spans land in the collector; cost events still on stderr
 ```
 
@@ -202,9 +202,9 @@ Every playbook: **Detect → Diagnose → Mitigate → Follow-up.** Keep it shor
 
 ### 4.3 Tool-call storm (agent loop runaway)
 
-- **Detect:** `azai.ralph.iterations` p95 climbing, or user reports "it's been running for 20 minutes." Iteration cap is 50 (see [`Program.cs:785`](../../azureopenai-cli-v2/Program.cs)), tool-round cap 20 (`DEFAULT_MAX_AGENT_ROUNDS`, [`Program.cs:625`](../../azureopenai-cli-v2/Program.cs)).
+- **Detect:** `azai.ralph.iterations` p95 climbing, or user reports "it's been running for 20 minutes." Iteration cap is 50 (see [`Program.cs:785`](../../azureopenai-cli/Program.cs)), tool-round cap 20 (`DEFAULT_MAX_AGENT_ROUNDS`, [`Program.cs:625`](../../azureopenai-cli/Program.cs)).
 - **Diagnose:**
-  1. Bad system prompt / persona that instructs "keep retrying"? Dump the persona: `az-ai-v2 --persona <name> --estimate ""` will resolve it without network.
+  1. Bad system prompt / persona that instructs "keep retrying"? Dump the persona: `az-ai --persona <name> --estimate ""` will resolve it without network.
   2. Broken tool? Check `azai.tool.invocations` -- which tool is looping.
   3. Model regression producing malformed tool calls?
 - **Mitigate:** tell user to `Ctrl-C` (honored, exit 130); reduce `--max-rounds` (e.g. `--max-rounds 3`); downgrade the model; disable the offending persona in `.squad.json`.
@@ -216,7 +216,7 @@ Every playbook: **Detect → Diagnose → Mitigate → Follow-up.** Keep it shor
 - **Diagnose:**
   1. Collect repro: exact `argv`, stdin size (`wc -c`), relevant env (`AZUREOPENAIMODEL`, `AZ_TELEMETRY`, `AZAI_PRICE_TABLE`). **Do not collect `AZUREOPENAIAPI`.**
   2. Check if already in FDR's F-series ([`docs/chaos-drill-v2.md`](../chaos-drill-v2.md)). F1/F2/F3 are fixed as of `a0ca066`; F4-F8 are 🟡.
-  3. AOT-only? Reproduce against framework-dependent `dotnet az-ai-v2.dll` to isolate trim/ILC regressions.
+  3. AOT-only? Reproduce against framework-dependent `dotnet az-ai.dll` to isolate trim/ILC regressions.
 - **Mitigate:** if the user can, fall back to v1 per §5; if the crash is persona-triggered, run with `--persona off` or delete `.squad/history/<name>.md`.
 - **Follow-up:** file issue using the chaos-drill template; add a repro to `tests/chaos/` if new; check SLO-6 burn.
 
@@ -240,10 +240,10 @@ User sees one of these on stderr (all are **non-fatal**, the CLI continues witho
 
 | Message (substring) | Cause | Source |
 |---|---|---|
-| `is not readable (...) -- skipping` | permission / IO error | [`PersonaMemory.cs:99,147,152`](../../azureopenai-cli-v2/Squad/PersonaMemory.cs) |
-| `is not a regular file -- skipping` | directory, device, or non-seekable file | [`PersonaMemory.cs:105,122,130`](../../azureopenai-cli-v2/Squad/PersonaMemory.cs) |
-| `resolves outside history dir (...) -- skipping` | symlink escape -- F2/F3 defense | [`PersonaMemory.cs:111`](../../azureopenai-cli-v2/Squad/PersonaMemory.cs) |
-| `read timed out after Ns -- skipping` | device or blocking file (e.g. `/dev/urandom`) | [`PersonaMemory.cs:141`](../../azureopenai-cli-v2/Squad/PersonaMemory.cs) |
+| `is not readable (...) -- skipping` | permission / IO error | [`PersonaMemory.cs:99,147,152`](../../azureopenai-cli/Squad/PersonaMemory.cs) |
+| `is not a regular file -- skipping` | directory, device, or non-seekable file | [`PersonaMemory.cs:105,122,130`](../../azureopenai-cli/Squad/PersonaMemory.cs) |
+| `resolves outside history dir (...) -- skipping` | symlink escape -- F2/F3 defense | [`PersonaMemory.cs:111`](../../azureopenai-cli/Squad/PersonaMemory.cs) |
+| `read timed out after Ns -- skipping` | device or blocking file (e.g. `/dev/urandom`) | [`PersonaMemory.cs:141`](../../azureopenai-cli/Squad/PersonaMemory.cs) |
 
 - **Diagnose:**
   1. `ls -la .squad/history/<name>.md` -- regular file? Size? Owner? Readable?
@@ -256,7 +256,7 @@ User sees one of these on stderr (all are **non-fatal**, the CLI continues witho
 
 ## 5. Rollback procedure
 
-**Rule of thumb:** `az-ai-v2` ships alongside v1 during the dual-tree window. After cutover, v2 is installed as `az-ai`; v1 remains pinnable. No data migration -- env vars, config files, `.squad/` are byte-compatible ([`docs/migration-v1-to-v2.md`](../migration-v1-to-v2.md) §2).
+**Rule of thumb:** `az-ai` ships alongside v1 during the dual-tree window. After cutover, v2 is installed as `az-ai`; v1 remains pinnable. No data migration -- env vars, config files, `.squad/` are byte-compatible ([`docs/migration-v1-to-v2.md`](../migration-v1-to-v2.md) §2).
 
 ### 5.1 Decision tree -- "should I roll back now?"
 
@@ -316,7 +316,7 @@ docker pull ghcr.io/schwartzkamel/azure-openai-cli:1.9.1
 ```bash
 az-ai --version --short     # → 1.9.1 (must NOT print 2.x.x)
 az-ai --estimate "hi"       # → v1 has no --estimate; expect exit 2 "unknown flag". This PROVES v1 is live.
-# For v2: az-ai-v2 --version --short → 2.0.0 (dual-tree confirmation)
+# For v2: az-ai --version --short → 2.0.0 (dual-tree confirmation)
 ```
 
 If `az-ai --version --short` prints `2.x.x`, the rollback did not take -- check `which az-ai`, shell hash (`hash -r`), package-manager symlinks.
@@ -362,16 +362,16 @@ Copy/paste. Everything here is safe on a box with zero env config.
 
 ```bash
 # --- smoke tests (no network, no credentials) ---
-az-ai-v2 --version --short                 # → 2.0.0
-az-ai-v2 --help | head -5                  # proves binary is intact
-az-ai-v2 --estimate "test"                 # proves binary + offline path + price table
+az-ai --version --short                 # → 2.0.0
+az-ai --help | head -5                  # proves binary is intact
+az-ai --estimate "test"                 # proves binary + offline path + price table
 
 # --- telemetry wire-up (writes one JSON line to stderr) ---
-AZ_TELEMETRY=1 az-ai-v2 --metrics --raw "hi" 2> >(grep '"kind":"cost"' >&2)
+AZ_TELEMETRY=1 az-ai --metrics --raw "hi" 2> >(grep '"kind":"cost"' >&2)
 
 # --- real call (requires env) ---
 AZUREOPENAIENDPOINT=... AZUREOPENAIAPI=... AZUREOPENAIMODEL=gpt-4o-mini \
-  az-ai-v2 --raw "ping"
+  az-ai --raw "ping"
 
 # --- log tail & event grep ---
 tail -F /var/log/az-ai-cost.jsonl | jq -c 'select(.kind=="cost")'
@@ -379,7 +379,7 @@ grep -E '"mode":"ralph".*"output_tokens":[0-9]{5,}' /var/log/az-ai-cost.jsonl  #
 grep -E '\[persona\] history file .* skipping' ~/.cache/az-ai/stderr.log       # persona refusals
 
 # --- which binary is live? ---
-which az-ai az-ai-v2 ; az-ai --version --short ; az-ai-v2 --version --short
+which az-ai az-ai ; az-ai --version --short ; az-ai --version --short
 
 # --- rollback one-liners (see §5.2 for pins/holds) ---
 brew uninstall azure-openai-cli && brew install schwartzkamel/tap/azure-openai-cli@1.9.1
@@ -388,7 +388,7 @@ docker pull ghcr.io/schwartzkamel/azure-openai-cli:1.9.1
 curl -LO https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v1.9.1/az-ai-linux-x64.tar.gz
 
 # --- kill a stuck ralph loop ---
-pgrep -fa 'az-ai-v2.*--ralph' ; kill -INT <pid>     # 130 exit; Ctrl-C-equivalent
+pgrep -fa 'az-ai.*--ralph' ; kill -INT <pid>     # 130 exit; Ctrl-C-equivalent
 # if unresponsive (F2-class symptom), escalate to SIGTERM:
 kill -TERM <pid>
 

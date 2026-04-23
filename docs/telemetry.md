@@ -18,7 +18,7 @@ no first-run survey, no crash uploader, no error reporter. The process
 talks to exactly one network endpoint: the Azure OpenAI deployment URL
 the user configured.
 
-The v2 binary (`azureopenai-cli-v2`) ships an **opt-in OpenTelemetry
+The v2 binary (`azureopenai-cli`) ships an **opt-in OpenTelemetry
 pipeline** for users who *want* observability on their own
 infrastructure. It is gated behind explicit CLI flags and an environment
 variable. None of those flags are set by default. The schema, fields,
@@ -113,30 +113,30 @@ Don't take this doc's word for it. Audit the tree:
 ```bash
 # 1. No analytics SDKs anywhere in production code.
 grep -rniE 'posthog|mixpanel|segment\.io|appinsights|app-insights|sentry|amplitude|datadog|newrelic|appcenter' \
-  azureopenai-cli/ azureopenai-cli-v2/ --include='*.cs' --include='*.csproj'
+  azureopenai-cli/ azureopenai-cli/ --include='*.cs' --include='*.csproj'
 ```
 
 ```bash
 # 2. The only telemetry surface is the opt-in OpenTelemetry pipeline in v2.
-grep -rniE 'telemetry|opentelemetry' azureopenai-cli-v2/ --include='*.cs'
+grep -rniE 'telemetry|opentelemetry' azureopenai-cli/ --include='*.cs'
 ```
 
 ```bash
 # 3. Telemetry is off unless explicitly initialized. The default code
 #    path never calls Telemetry.Initialize() with a truthy argument.
-grep -rn 'Telemetry.Initialize' azureopenai-cli-v2/ --include='*.cs'
+grep -rn 'Telemetry.Initialize' azureopenai-cli/ --include='*.cs'
 ```
 
 ```bash
 # 4. Confirm zero default network egress beyond AZUREOPENAIENDPOINT.
 #    Look for hardcoded URLs in production code.
-grep -rnE 'https?://' azureopenai-cli/ azureopenai-cli-v2/ \
+grep -rnE 'https?://' azureopenai-cli/ azureopenai-cli/ \
   --include='*.cs' | grep -vE '(example\.|localhost|127\.0\.0\.1|schemas\.|w3\.org|opentelemetry\.io|docs|//\s)'
 ```
 
 ```bash
 # 5. Confirm no PII leaks in the cost-event schema.
-cat azureopenai-cli-v2/Observability/CostEvent.cs
+cat azureopenai-cli/Observability/CostEvent.cs
 ```
 
 If any of those greps surface a third-party analytics endpoint or a

@@ -134,10 +134,10 @@ Added in v2.0.4 (commit [`4842b6a`](https://github.com/SchwartzKamel/azure-opena
 resolving FDR High-severity finding `fdr-v2-err-unwrap` from
 [`docs/audits/fdr-v2-dogfood-2026-04-22.md`](docs/audits/fdr-v2-dogfood-2026-04-22.md)).
 
-The v2 binary (`az-ai-v2`) redacts the `AZUREOPENAIAPI` key value and the
+The v2 binary (`az-ai`) redacts the `AZUREOPENAIAPI` key value and the
 `AZUREOPENAIENDPOINT` hostname from every user-visible error surface before
 anything is written to `stdout` or `stderr`. The helper is
-`UnsafeReplaceSecrets` in `azureopenai-cli-v2/Program.cs` (line 1348) --
+`UnsafeReplaceSecrets` in `azureopenai-cli/Program.cs` (line 1348) --
 the `Unsafe` prefix is a caller-side warning that the *input* contains
 secrets; the *output* is the safe form to emit.
 
@@ -210,14 +210,12 @@ The process cannot:
 
 ### Self-Contained Binary
 
-- **v2** (`az-ai-v2`) is published as a **NativeAOT** single-file ELF
+- `az-ai` is published as a **NativeAOT** single-file ELF
   (`linux-x64`, `linux-musl-x64`, `osx-arm64`, `win-x64`). Build flags:
   `--self-contained -p:PublishAot=true`
-  (see [`Dockerfile.v2:65`](Dockerfile.v2) and the v2 csproj).
-- **v1** (`az-ai`, 1.8.x / 1.9.x) is published as a **trimmed single-file**
-  managed binary (`/p:PublishSingleFile=true /p:PublishTrimmed=true`).
+  (see [`Dockerfile:65`](Dockerfile) and the csproj).
 
-Both produce a binary that does not need the .NET runtime installed on the
+The binary does not need the .NET runtime installed on the
 host; only native OS dependencies (`icu-libs`) are required in the
 container. The AOT output has no managed-fallback path -- a reflection
 access that the trimmer dropped will surface as
@@ -389,7 +387,7 @@ contract, hardened in v2.0.4 (`UserConfig.Load(quiet:)`), is:
 
 This matters for security-adjacent pipelines -- Espanso / AHK hotkeys that
 tee output, CI jobs that treat any stderr byte as a warning signal. The
-contract ensures `az-ai-v2 --raw` never leaks home-dir config paths into
+contract ensures `az-ai --raw` never leaks home-dir config paths into
 a shared log surface when the hot path is working correctly.
 
 ---
@@ -711,7 +709,7 @@ Blocked path prefixes:
 
 #### ShellExecTool
 
-Ground truth: [`azureopenai-cli-v2/Tools/ShellExecTool.cs`](azureopenai-cli-v2/Tools/ShellExecTool.cs).
+Ground truth: [`azureopenai-cli/Tools/ShellExecTool.cs`](azureopenai-cli/Tools/ShellExecTool.cs).
 Proof-of-coverage: `tests/AzureOpenAI_CLI.V2.Tests/ToolHardeningTests.cs`.
 
 | Protection | Detail |
@@ -789,7 +787,7 @@ The `delegate_task` tool spawns a child agent to handle a sub-task. In v2
 the child runs **in-process**, sharing the parent's `IChatClient`, so
 hardening is enforced by language-level invariants (static config,
 `AsyncLocal<int>` depth counter) rather than by OS process boundaries.
-Ground truth: [`azureopenai-cli-v2/Tools/DelegateTaskTool.cs`](azureopenai-cli-v2/Tools/DelegateTaskTool.cs).
+Ground truth: [`azureopenai-cli/Tools/DelegateTaskTool.cs`](azureopenai-cli/Tools/DelegateTaskTool.cs).
 
 ### Architecture (v2)
 

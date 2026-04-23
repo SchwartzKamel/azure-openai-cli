@@ -43,12 +43,12 @@ Resulting tags for a `v1.8.1` release:
 | `<sha>` | No -- immutable | Commit digest reference (git-SHA short form). |
 | `latest` | Yes -- v1 line only | The most recently pushed `v1.*` tag. **Does NOT include v2.** |
 
-### 1.2 v2 image: `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`
+### 1.2 v2 image: `ghcr.io/schwartzkamel/azure-openai-cli/az-ai`
 
 Same metadata-action shape, different image name:
 
 ```yaml
-images: ghcr.io/${{ github.repository }}/az-ai-v2
+images: ghcr.io/${{ github.repository }}/az-ai
 tags: |
   type=semver,pattern={{version}}
   type=semver,pattern={{major}}.{{minor}}
@@ -77,8 +77,8 @@ the v2 binary, which has a different artifact shape and CLI surface.
 Keeping the images **separate** until v1 formally EOLs means:
 
 - v1 users pulling `:latest` always get a v1 image.
-- v2 users pull the `/az-ai-v2` suffix explicitly.
-- Post-v1-EOL, we can retag or alias `/az-ai-v2` back to the canonical
+- v2 users pull the `/az-ai` suffix explicitly.
+- Post-v1-EOL, we can retag or alias `/az-ai` back to the canonical
   name without a flag day.
 
 This is spelled out in `release.yml:315-319`.
@@ -95,7 +95,7 @@ Rules in practice:
 
 1. **Every successful `v1.*` tag push** → `ghcr.io/…/azure-openai-cli:latest`
    points at that image.
-2. **Every successful `v2.*` tag push** → `ghcr.io/…/az-ai-v2:latest`
+2. **Every successful `v2.*` tag push** → `ghcr.io/…/az-ai:latest`
    points at that image.
 3. **Pre-release tags** (anything with a `-alpha`, `-beta`, `-rc`
    suffix -- none shipped today) would NOT move `:latest`. If you
@@ -148,7 +148,7 @@ gh attestation verify oci://ghcr.io/schwartzkamel/azure-openai-cli:1.8.1 \
   --repo SchwartzKamel/azure-openai-cli
 
 # v2
-gh attestation verify oci://ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:2.0.5 \
+gh attestation verify oci://ghcr.io/schwartzkamel/azure-openai-cli/az-ai:2.0.5 \
   --repo SchwartzKamel/azure-openai-cli
 ```
 
@@ -166,7 +166,7 @@ verification flow (SBOM + attestation + SLSA provenance).
 docker pull ghcr.io/schwartzkamel/azure-openai-cli:1.8.1
 
 # v2
-docker pull ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:2.0.5
+docker pull ghcr.io/schwartzkamel/azure-openai-cli/az-ai:2.0.5
 ```
 
 ### 5.2 Digest pin (maximally reproducible)
@@ -174,11 +174,11 @@ docker pull ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:2.0.5
 ```bash
 # Look up the digest for a tag:
 docker buildx imagetools inspect \
-  ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:2.0.5 \
+  ghcr.io/schwartzkamel/azure-openai-cli/az-ai:2.0.5 \
   | grep Digest
 
 # Then pin by digest:
-docker pull ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2@sha256:<digest>
+docker pull ghcr.io/schwartzkamel/azure-openai-cli/az-ai@sha256:<digest>
 ```
 
 Digest pins survive upstream retag or policy mistakes; semver tags survive
@@ -188,7 +188,7 @@ only if nobody touches them. For anything that matters, use a digest.
 
 ```bash
 # Track the 2.0.z line -- automatically picks up patch releases
-docker pull ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:2.0
+docker pull ghcr.io/schwartzkamel/azure-openai-cli/az-ai:2.0
 ```
 
 This is fine for `docs/`-grade examples and local development. **Not fine
@@ -210,11 +210,11 @@ for production.**
 The image labels carry provenance. To interrogate a pulled image:
 
 ```bash
-docker inspect ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:latest \
+docker inspect ghcr.io/schwartzkamel/azure-openai-cli/az-ai:latest \
   --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
 # → git SHA
 
-docker inspect ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:latest \
+docker inspect ghcr.io/schwartzkamel/azure-openai-cli/az-ai:latest \
   --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
 # → semver
 ```
@@ -232,7 +232,7 @@ newer tag.
       cadence -- track in `docs/audits/` when that sweep lands.
 - [ ] Once v1 formally EOLs, publish an ADR for consolidating the image
       name back to `ghcr.io/schwartzkamel/azure-openai-cli` and aliasing
-      the `/az-ai-v2` path for one major cycle.
+      the `/az-ai` path for one major cycle.
 
 ---
 

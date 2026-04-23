@@ -1,21 +1,16 @@
-name: 🐛 Bug report (v1)
-description: Something in az-ai **v1** (`azureopenai-cli/`, v1.9.x) isn't working the way the docs say it should.
-title: "[v1 bug]: "
-labels: ["bug", "needs-triage", "v1-maintenance"]
+name: 🐛 Bug report
+description: Something in az-ai isn't working the way the docs say it should.
+title: "[bug]: "
+labels: ["bug", "needs-triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to file a bug report. Clear reproduction steps
+        Thanks for filing a bug report. Clear reproduction steps
         make the difference between a fix this week and a fix next quarter.
 
-        **This template is for v1 (`az-ai`, v1.9.x) only.** v1 is in
-        **maintenance mode** — security fixes, P0 regressions, and v2 cutover
-        blockers only. If your bug is in v2 (`az-ai-v2`, v2.0.x), please use
-        the [🧪 v2 bug report](./v2_bug_report.yml) template instead.
-
-        Before filing, please search [existing issues](https://github.com/SchwartzKamel/azure-openai-cli/issues?q=is%3Aissue)
-        to avoid duplicates.
+        Please search [existing issues](https://github.com/SchwartzKamel/azure-openai-cli/issues?q=is%3Aissue)
+        before filing.
 
   - type: textarea
     id: what-happened
@@ -40,10 +35,9 @@ body:
       label: Steps to reproduce
       description: Minimal, self-contained steps. Include commands, config snippets (redact secrets!), and input.
       placeholder: |
-        1. Run `az-ai config init`
-        2. Set `AZURE_OPENAI_ENDPOINT=...`
-        3. Run `az-ai chat "hello"`
-        4. Observe error
+        1. Set `AZUREOPENAIENDPOINT=...`
+        2. Run `az-ai "hello"`
+        3. Observe error
       render: shell
     validations:
       required: true
@@ -53,7 +47,7 @@ body:
     attributes:
       label: az-ai version
       description: Output of `az-ai --version --short`.
-      placeholder: "1.9.1"
+      placeholder: "2.0.6"
     validations:
       required: true
 
@@ -77,12 +71,30 @@ body:
       label: How did you install az-ai?
       options:
         - make install
-        - homebrew
+        - homebrew (schwartzkamel/tap/az-ai)
         - scoop
         - nix
         - docker
-        - built from source
+        - built from source (AOT)
+        - built from source (JIT / framework-dependent)
         - other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area is this about?
+      description: Best-guess is fine; Leo will re-label if needed.
+      options:
+        - Chat / tool calling / streaming
+        - Persona routing (`--persona`, `.squad/`)
+        - `--estimate` (offline cost prediction)
+        - `--telemetry` / OpenTelemetry
+        - `--prewarm` / startup
+        - AOT / single-file binary
+        - Packaging (brew / scoop / nix / docker)
+        - Other / not sure
     validations:
       required: true
 
@@ -91,7 +103,8 @@ body:
     attributes:
       label: Logs / stack trace
       description: |
-        Paste relevant output. Re-run with `--verbose` if possible.
+        Paste relevant output. Re-run with `--verbose` if possible. If `--telemetry` is on, include the
+        stderr span output — it's extremely helpful for debugging.
         **Redact secrets, endpoints, and tokens before pasting.**
       render: shell
     validations:
@@ -105,6 +118,4 @@ body:
         - label: I have searched existing issues and this is not a duplicate.
           required: true
         - label: I have redacted any API keys, endpoints, or other secrets from my report.
-          required: true
-        - label: I confirmed this reproduces on v1 (`az-ai`, v1.9.x). If it's a v2 bug, I will use the v2 bug report template instead.
           required: true

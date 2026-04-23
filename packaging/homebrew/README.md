@@ -1,4 +1,4 @@
-# Homebrew tap -- `az-ai-v2`
+# Homebrew tap -- `az-ai`
 
 > "Homebrew? I know a guy. Done. Next problem." -- Bob Sacamano
 
@@ -18,16 +18,16 @@ packaging/homebrew/
 ├── README.md                      # this file
 └── Formula/
     ├── az-ai.rb                   # tracks latest (currently pinned to v2.0.4; v2.0.5 bump queued)
-    ├── az-ai-v2@2.0.0.rb          # frozen pin -- keg_only
-    ├── az-ai-v2@2.0.1.rb
-    ├── az-ai-v2@2.0.2.rb
-    └── az-ai-v2@2.0.4.rb
+    ├── az-ai@2.0.0.rb          # frozen pin -- keg_only
+    ├── az-ai@2.0.1.rb
+    ├── az-ai@2.0.2.rb
+    └── az-ai@2.0.4.rb
 ```
 
 v2.0.3 has no formula -- the tag was cancelled at cutover; see
 `docs/launch/v2.0.2-publish-handoff.md`. v2.0.5 is the queued
 fix-forward that rolls the `stage.sh` VERSION drift called out in
-`Formula/az-ai-v2@2.0.4.rb`'s filename-drift comment.
+`Formula/az-ai@2.0.4.rb`'s filename-drift comment.
 
 ## Install (end-user)
 
@@ -35,8 +35,8 @@ Once the tap repo is live:
 
 ```sh
 brew tap schwartzkamel/az-ai      # maps to SchwartzKamel/homebrew-az-ai
-brew install schwartzkamel/az-ai/az-ai-v2          # latest tracking formula
-brew install schwartzkamel/az-ai/az-ai-v2@2.0.4    # pinned
+brew install schwartzkamel/az-ai/az-ai          # latest tracking formula
+brew install schwartzkamel/az-ai/az-ai@2.0.4    # pinned
 ```
 
 Before the tap is live, install straight from the file:
@@ -54,7 +54,7 @@ Apple Silicon bottle under Rosetta 2:
 ```sh
 softwareupdate --install-rosetta --agree-to-license
 arch -x86_64 /usr/sbin/softwareupdate --install-rosetta  # no-op if already installed
-arch -arm64e brew install schwartzkamel/az-ai/az-ai-v2   # uses osx-arm64 tarball
+arch -arm64e brew install schwartzkamel/az-ai/az-ai   # uses osx-arm64 tarball
 ```
 
 This path is a stop-gap. If and when osx-x64 tarballs return to the
@@ -71,9 +71,9 @@ Short version:
    create` if not).
 2. Copy `packaging/homebrew/Formula/*.rb` into the tap repo's
    `Formula/` directory.
-3. `brew audit --new --strict --online schwartzkamel/az-ai/az-ai-v2`
+3. `brew audit --new --strict --online schwartzkamel/az-ai/az-ai`
    before announcing.
-4. `brew install --build-from-source schwartzkamel/az-ai/az-ai-v2`
+4. `brew install --build-from-source schwartzkamel/az-ai/az-ai`
    on a fresh machine (Puddy gate).
 
 ## Verify locally (pre-publish)
@@ -81,7 +81,7 @@ Short version:
 ```sh
 brew audit --strict ./packaging/homebrew/Formula/az-ai.rb
 brew install --build-from-source --formula ./packaging/homebrew/Formula/az-ai.rb
-az-ai-v2 --version --short
+az-ai --version --short
 ```
 
 Expected `--version --short` output is whatever the filename-drift

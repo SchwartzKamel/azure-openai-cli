@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# check-color-contract.sh — lint gate for the v2 color contract.
+# check-color-contract.sh — lint gate for the color contract.
 #
 # Enforces `.github/contracts/color-contract.md`: no raw ANSI escapes,
 # no Console.ForegroundColor / ConsoleColor.* call sites outside the
-# single chokepoint (`azureopenai-cli-v2/Theme.cs`). All color decisions
+# single chokepoint (`azureopenai-cli/Theme.cs`). All color decisions
 # must flow through `Theme.UseColor()`.
 #
 # Owner: Mickey Abbott (accessibility / CLI ergonomics).
 # Refs:
 #   - .github/contracts/color-contract.md  (the spec)
-#   - azureopenai-cli-v2/Theme.cs          (the chokepoint)
+#   - azureopenai-cli/Theme.cs          (the chokepoint)
 #
 # Exit codes:
 #   0 — clean (no violations)
@@ -48,12 +48,12 @@ info() {
 # ---------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-V2_DIR="${REPO_ROOT}/azureopenai-cli-v2"
+SRC_DIR="${REPO_ROOT}/azureopenai-cli"
 CONTRACT_PATH=".github/contracts/color-contract.md"
-THEME_PATH="azureopenai-cli-v2/Theme.cs"
+THEME_PATH="azureopenai-cli/Theme.cs"
 
-if [ ! -d "${V2_DIR}" ]; then
-    err "azureopenai-cli-v2/ not found at ${V2_DIR}"
+if [ ! -d "${SRC_DIR}" ]; then
+    err "azureopenai-cli/ not found at ${SRC_DIR}"
     exit 2
 fi
 
@@ -78,7 +78,7 @@ FORBIDDEN_REGEX='ConsoleColor\.|Console\.(Foreground|Background)Color|\[Console\
 APPROVED_MARKER='// color-contract: approved-spinner'
 
 # ---------------------------------------------------------------------------
-# Collect candidate files: azureopenai-cli-v2/**/*.cs, minus allowlist.
+# Collect candidate files: azureopenai-cli/**/*.cs, minus allowlist.
 #
 # Allowlist:
 #   - Theme.cs itself (the chokepoint — it is allowed to contain ANSI)
@@ -87,7 +87,7 @@ APPROVED_MARKER='// color-contract: approved-spinner'
 #     (we're not scanning tests/ here, but belt-and-braces)
 # ---------------------------------------------------------------------------
 mapfile -t candidate_files < <(
-    find "${V2_DIR}" -type f -name '*.cs' \
+    find "${SRC_DIR}" -type f -name '*.cs' \
         -not -path "*/obj/*" \
         -not -path "*/bin/*" \
         -not -name 'Theme.cs' \
@@ -156,5 +156,5 @@ if [ "${violations}" -gt 0 ]; then
     exit 1
 fi
 
-info "[color-contract] clean — 0 violations across ${#candidate_files[@]} file(s) under azureopenai-cli-v2/"
+info "[color-contract] clean — 0 violations across ${#candidate_files[@]} file(s) under azureopenai-cli/"
 exit 0

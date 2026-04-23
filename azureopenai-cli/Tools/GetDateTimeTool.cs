@@ -1,47 +1,32 @@
-using System.Text.Json;
+using System.ComponentModel;
 
 namespace AzureOpenAI_CLI.Tools;
 
 /// <summary>
 /// Get the current date, time, and timezone information.
+/// MAF version: uses [Description] attributes for AIFunctionFactory.Create.
 /// </summary>
-internal sealed class GetDateTimeTool : IBuiltInTool
+internal static class GetDateTimeTool
 {
-    public string Name => "get_datetime";
-    public string Description => "Get the current date, time, and timezone. Useful for time-aware responses.";
-    public BinaryData ParametersSchema => BinaryData.FromString("""
-        {
-            "type": "object",
-            "properties": {
-                "timezone": { "type": "string", "description": "Optional IANA timezone (e.g. 'America/New_York'). Defaults to local." }
-            },
-            "required": []
-        }
-        """);
-
-    public Task<string> ExecuteAsync(JsonElement arguments, CancellationToken ct)
+    [Description("Get the current date, time, and timezone. Useful for time-aware responses.")]
+    public static Task<string> GetAsync(
+        [Description("Optional IANA timezone (e.g. 'America/New_York'). Defaults to local.")] string? timezone = null,
+        CancellationToken ct = default)
     {
-        string? tz = null;
-        if (arguments.ValueKind == JsonValueKind.Object &&
-            arguments.TryGetProperty("timezone", out var tzProp))
-        {
-            tz = tzProp.GetString();
-        }
-
         DateTimeOffset now;
         string tzName;
 
-        if (!string.IsNullOrEmpty(tz))
+        if (!string.IsNullOrEmpty(timezone))
         {
             try
             {
-                var tzi = TimeZoneInfo.FindSystemTimeZoneById(tz);
+                var tzi = TimeZoneInfo.FindSystemTimeZoneById(timezone);
                 now = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tzi);
                 tzName = tzi.DisplayName;
             }
             catch (TimeZoneNotFoundException)
             {
-                return Task.FromResult($"Error: unknown timezone '{tz}'");
+                return Task.FromResult($"Error: unknown timezone '{timezone}'");
             }
         }
         else

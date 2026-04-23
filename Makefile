@@ -46,7 +46,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build dotnet-build run clean alias scan test test-v1 test-v2 integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight publish publish-fast publish-aot publish-r2r setup setup-secrets \
+.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight publish publish-fast publish-aot publish-r2r setup setup-secrets \
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
@@ -64,9 +64,7 @@ help:
 	@echo "  make clean       - Remove build artifacts and dangling images"
 	@echo "  make alias       - Install 'az-ai' shell alias"
 	@echo "  make scan        - Run local vulnerability scan with Grype (dev convenience; Trivy in CI is canonical — see docs/security/scanners.md)"
-	@echo "  make test        - Run unit tests (xUnit) — both v1 and v2 projects"
-	@echo "  make test-v1     - Run only v1 xUnit project (faster iteration)"
-	@echo "  make test-v2     - Run only v2 xUnit project (faster iteration)"
+	@echo "  make test        - Run unit tests (xUnit)"
 	@echo "  make integration-test - Run end-to-end integration tests"
 	@echo "  make docker-test - Validate Dockerfile best practices"
 	@echo "  make lint        - Check code formatting (for CI)"
@@ -189,24 +187,9 @@ setup-secrets:
 			exit 1 ;; \
 	esac
 
-## Run unit tests — BOTH v1 and v2 projects (matches CI).
-## Running one project alone will false-green: CI runs both trees via the
-## solution file, so local `make test` MUST do the same. See
-## docs/testing/README.md for the testing playbook.
-test: ## Run unit tests (both v1 and v2 xUnit projects via the solution)
+## Run unit tests.
+test: ## Run unit tests (xUnit via the solution)
 	$(DOTNET) test azure-openai-cli.sln --verbosity minimal
-
-## Run only the v1 xUnit project (tests/AzureOpenAI_CLI.Tests/).
-## Faster than `make test` during focused v1 work — but do not ship without
-## running `make test` to cover the v2 surface.
-test-v1: ## Run v1 tests only (faster iteration loop)
-	$(DOTNET) test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity minimal
-
-## Run only the v2 xUnit project (tests/AzureOpenAI_CLI.V2.Tests/).
-## Faster than `make test` during focused v2 work — but do not ship without
-## running `make test` to cover the v1 surface.
-test-v2: ## Run v2 tests only (faster iteration loop)
-	$(DOTNET) test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj --verbosity minimal
 
 ## Run integration tests (end-to-end, uses dotnet run + Docker)
 integration-test: ## Run integration tests
@@ -219,7 +202,7 @@ docker-test: ## Validate Dockerfile best practices
 smoke-test: clean build
 	make run ARGS="Tell me some unusual facts about cats"
 
-## Color-contract-lint: greps azureopenai-cli-v2/**/*.cs for ConsoleColor /
+## Color-contract-lint: greps azureopenai-cli/**/*.cs for ConsoleColor /
 ## raw ANSI bypasses of Theme.UseColor(). Source of truth:
 ## .github/contracts/color-contract.md. See scripts/check-color-contract.sh.
 color-contract-lint:
@@ -457,7 +440,7 @@ demo-hero-gif: ## Record img/its_alive_too.gif via asciinema + agg (see docs/dem
 	@command -v agg >/dev/null 2>&1 || { echo "Error: agg not on PATH. Install: cargo install --git https://github.com/asciinema/agg"; exit 1; }
 	@mkdir -p docs/demos/recordings
 	asciinema rec docs/demos/recordings/hero.cast --overwrite --cols 88 --rows 18 \
-	  --title "az-ai-v2 — it's alive (v2.0.6)" \
+	  --title "az-ai — it's alive" \
 	  --command "bash docs/demos/scripts/01-standard-prompt.sh"
 	agg docs/demos/recordings/hero.cast img/its_alive_too.gif \
 	  --font-family "JetBrains Mono" --font-size 18 --theme monokai --speed 1.25

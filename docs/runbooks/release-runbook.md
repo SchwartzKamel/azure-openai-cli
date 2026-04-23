@@ -10,8 +10,8 @@ PR to sync this doc.
 
 **Post-v2.0.4 reality check:**
 
-- Active ship path is **v2** (`azureopenai-cli-v2/`, binary `az-ai-v2`,
-  GHCR image `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`).
+- Active ship path is **v2** (`azureopenai-cli/`, binary `az-ai`,
+  GHCR image `ghcr.io/schwartzkamel/azure-openai-cli/az-ai`).
 - Release matrix is **4 legs**: `linux-x64`, `linux-musl-x64`,
   `osx-arm64`, `win-x64`. `osx-x64` was cut in v2.0.4; see
   [`docs/runbooks/macos-runner-triage.md`](macos-runner-triage.md) §5.
@@ -24,7 +24,7 @@ PR to sync this doc.
 
 | Variable  | Example      | Where it lives                                             |
 |-----------|--------------|------------------------------------------------------------|
-| `VERSION` | `2.0.5`      | `azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj` `<Version>` |
+| `VERSION` | `2.0.5`      | `azureopenai-cli/AzureOpenAI_CLI.csproj` `<Version>` |
 | `TAG`     | `v2.0.5`     | Git tag, annotated                                         |
 | `DATE`    | `2026-04-30` | `CHANGELOG.md` `[X.Y.Z] -- DATE` header                     |
 
@@ -55,7 +55,7 @@ dotnet test tests/AzureOpenAI_CLI.V2.Tests/AzureOpenAI_CLI.V2.Tests.csproj --ver
 
 # 1e. Binary smoke -- build + confirm `--version --short` matches csproj.
 make publish-linux-x64
-./artifacts/publish/linux-x64/az-ai-v2 --version --short
+./artifacts/publish/linux-x64/az-ai --version --short
 #  ^ must print exactly `<csproj Version>\n` (≤ 10 bytes, trailing LF).
 ```
 
@@ -70,10 +70,10 @@ make publish-linux-x64
 - [ ] `dotnet format … --verify-no-changes` passes.
 - [ ] v1 test suite green (~1025).
 - [ ] v2 test suite green (485+).
-- [ ] `az-ai-v2 --version --short` == csproj `<Version>`.
+- [ ] `az-ai --version --short` == csproj `<Version>`.
 - [ ] `CHANGELOG.md` has a populated `[X.Y.Z]` section and
       `[Unreleased]` is reset to a bare header.
-- [ ] `azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj` `<Version>`
+- [ ] `azureopenai-cli/AzureOpenAI_CLI.csproj` `<Version>`
       matches the tag you're about to push (without the `v` prefix).
 - [ ] `NOTICE` reflects the current direct dependency set.
 - [ ] `.config/dotnet-tools.json` is committed (release workflow uses
@@ -92,10 +92,10 @@ DATE=$(date -u +%Y-%m-%d)
 
 # 2a. Bump <Version> in the v2 csproj.
 sed -i "s|<Version>.*</Version>|<Version>${VERSION}</Version>|" \
-  azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj
+  azureopenai-cli/AzureOpenAI_CLI.csproj
 
 # 2b. Confirm.
-grep '<Version>' azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj
+grep '<Version>' azureopenai-cli/AzureOpenAI_CLI.csproj
 ```
 
 Then edit `CHANGELOG.md` by hand:
@@ -113,7 +113,7 @@ Then edit `CHANGELOG.md` by hand:
 ## 3. Commit + tag ritual
 
 ```bash
-git add azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj CHANGELOG.md
+git add azureopenai-cli/AzureOpenAI_CLI.csproj CHANGELOG.md
 
 git -c commit.gpgsign=false commit -m "release: v${VERSION} -- <one-line summary>
 
@@ -164,7 +164,7 @@ The `v2.*` tag path exercises three jobs in `release.yml`:
    - `osx-arm64` (macos-14)
    - `win-x64` (windows-latest, PowerShell `Compress-Archive`)
 2. **`docker-publish-v2`** -- builds `Dockerfile.v2`, pushes to
-   `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:<version>` (plus
+   `ghcr.io/schwartzkamel/azure-openai-cli/az-ai:<version>` (plus
    `latest` on non-pre-releases), attests image provenance to Sigstore
    (logged to Rekor).
 3. **`release-v2`** -- gated on both above; downloads all artifacts,
@@ -270,24 +270,24 @@ gh release view "$TAG"
 gh release view "$TAG" --json assets --jq '.assets[].name' | sort
 
 # Expected (post-v2.0.4):
-#   az-ai-v2-${VERSION}-linux-x64.tar.gz        + .cdx.json
-#   az-ai-v2-${VERSION}-linux-musl-x64.tar.gz   + .cdx.json
-#   az-ai-v2-${VERSION}-osx-arm64.tar.gz        + .cdx.json
-#   az-ai-v2-${VERSION}-win-x64.zip             + .cdx.json
+#   az-ai-${VERSION}-linux-x64.tar.gz        + .cdx.json
+#   az-ai-${VERSION}-linux-musl-x64.tar.gz   + .cdx.json
+#   az-ai-${VERSION}-osx-arm64.tar.gz        + .cdx.json
+#   az-ai-${VERSION}-win-x64.zip             + .cdx.json
 
 # 7b. Binary attestations -- SLSA provenance verified against the repo.
 gh attestation verify \
   --repo SchwartzKamel/azure-openai-cli \
-  "az-ai-v2-${VERSION}-linux-x64.tar.gz"
+  "az-ai-${VERSION}-linux-x64.tar.gz"
 
 # 7c. Container image + attestation.
-docker pull "ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:${VERSION}"
+docker pull "ghcr.io/schwartzkamel/azure-openai-cli/az-ai:${VERSION}"
 gh attestation verify \
   --repo SchwartzKamel/azure-openai-cli \
-  "oci://ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:${VERSION}"
+  "oci://ghcr.io/schwartzkamel/azure-openai-cli/az-ai:${VERSION}"
 
 # 7d. Runtime smoke on the primary RID.
-./az-ai-v2 --version --short   # must print exactly "${VERSION}\n"
+./az-ai --version --short   # must print exactly "${VERSION}\n"
 ```
 
 ---
@@ -303,7 +303,7 @@ assets and update:
 
 - `packaging/homebrew/Formula/az-ai.rb` (rolling formula, always
   points at latest)
-- `packaging/homebrew/Formula/az-ai-v2@${VERSION}.rb` (new sibling
+- `packaging/homebrew/Formula/az-ai@${VERSION}.rb` (new sibling
   formula, pinned to this release -- copy from the previous `@X.Y.Z`
   formula and update `url`, `sha256`, and `version`)
 - `packaging/nix/flake.nix` (SRI-format SHA-256, `sha256-<base64>`)
@@ -314,18 +314,18 @@ VERSION=2.0.5
 
 # Fetch digests directly from the Release (no re-hashing local tarballs).
 for rid in linux-x64 linux-musl-x64 osx-arm64; do
-  asset="az-ai-v2-${VERSION}-${rid}.tar.gz"
+  asset="az-ai-${VERSION}-${rid}.tar.gz"
   gh release download "v${VERSION}" --pattern "${asset}" --clobber
   echo "${rid}: $(sha256sum "${asset}" | awk '{print $1}')"
 done
 
 # Windows zip (Scoop).
-asset="az-ai-v2-${VERSION}-win-x64.zip"
+asset="az-ai-${VERSION}-win-x64.zip"
 gh release download "v${VERSION}" --pattern "${asset}" --clobber
 echo "win-x64: $(sha256sum "${asset}" | awk '{print $1}')"
 
 # Nix SRI: sha256-<base64(raw-sha256)>.
-for f in az-ai-v2-${VERSION}-*.tar.gz; do
+for f in az-ai-${VERSION}-*.tar.gz; do
   echo "$f: sha256-$(sha256sum "$f" | awk '{print $1}' | xxd -r -p | base64)"
 done
 ```
@@ -387,8 +387,8 @@ PREV=2.0.4
 
 # Retag `latest` to point at the previous known-good image.
 docker buildx imagetools create \
-  --tag ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:latest \
-  ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2:${PREV}
+  --tag ghcr.io/schwartzkamel/azure-openai-cli/az-ai:latest \
+  ghcr.io/schwartzkamel/azure-openai-cli/az-ai:${PREV}
 
 # The ${VERSION} tag stays where it is (digest-pinned, attested);
 # we do not delete GHCR tags that have attestations -- that would

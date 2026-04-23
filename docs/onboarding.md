@@ -48,7 +48,7 @@ ls
 ```
 
 Two source trees live side-by-side and that confused me for ten
-minutes. `azureopenai-cli/` is **v1** (maintenance only). `azureopenai-cli-v2/`
+minutes. `azureopenai-cli/` is **v1** (maintenance only). `azureopenai-cli/`
 is **v2** and is where all new work goes. The README's quickstart and
 the v2 release notes are both written for v2; if you are reading a
 guide and a path feels wrong, check whether it is v1-shaped.
@@ -214,7 +214,7 @@ out the env-var spelling).
 The friction log. Each item is a question I actually had, the answer
 I eventually found, and where I should have looked first.
 
-### Q1. Which directory do I build -- `azureopenai-cli/` or `azureopenai-cli-v2/`?
+### Q1. Which directory do I build -- `azureopenai-cli/` or `azureopenai-cli/`?
 
 **Answer:** v2. v1 is maintenance-only. The README's quickstart is
 v2-shaped already, but the two sibling directories are not labeled in
@@ -338,7 +338,7 @@ azure-openai-cli/
 │   ├── Squad/                 -- persona system
 │   └── .env.example           -- credential template (works for v1 + v2)
 │
-├── azureopenai-cli-v2/        -- v2 source (default for new work)
+├── azureopenai-cli/        -- v2 source (default for new work)
 │
 ├── tests/
 │   └── AzureOpenAI_CLI.Tests/ -- xUnit suite (v1 + v2)
@@ -402,7 +402,7 @@ production code, and each is reviewable in a single sitting.
 
 4. **(S) Improve a `--help` example.** Run `az-ai --help`, find a
    flag whose example is thin or missing, add one. *Files:* the
-   strings live in `azureopenai-cli-v2/`; the assertion patterns live
+   strings live in `azureopenai-cli/`; the assertion patterns live
    in `tests/AzureOpenAI_CLI.Tests/`.
 
 5. **(S) Fix a typo or broken link.** Boring, valued, always merged.

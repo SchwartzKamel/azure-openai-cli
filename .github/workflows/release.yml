@@ -1,15 +1,6 @@
 name: Release
 
-# Triggered by any `v*` tag push. Job-level `if:` gates split the pipeline
-# by major line:
-#   - `v1.*` tags exercise the v1 path (azureopenai-cli/, self-contained
-#     single-file, artifact name `azure-openai-cli-<rid>`, Dockerfile).
-#   - `v2.*` tags exercise the v2 path (azureopenai-cli-v2/, NativeAOT via
-#     stage.sh, artifact name `az-ai-v2-<version>-<rid>`, Dockerfile.v2).
-#
-# Rationale: preserves v1 shipping capability through the v2.x transition
-# with no shared-mutation risk. When v1 formally EOLs, delete the v1 jobs
-# wholesale — the v2 path is self-contained.
+# Triggered by any `v*` tag push.
 on:
   push:
     tags: ['v*']
@@ -17,10 +8,7 @@ on:
   # (via `gh workflow run release.yml --ref <tag>`) when a prior run is
   # blocked on transient infra (GHCR outage, runner-pool backlog, GitHub
   # Actions brown-out, etc.). Re-dispatching does NOT re-tag; the tag is
-  # immutable. The `--ref <tag>` flag makes github.ref resolve to
-  # refs/tags/<tag>, which preserves all v1.*/v2.* job-level if: gates.
-  # See docs/launch/release-v2-playbook.md §Troubleshooting for the current
-  # re-dispatch recipe and known caveats.
+  # immutable.
   workflow_dispatch: {}
 
 # Default to least privilege; individual jobs escalate only what they need.
@@ -29,7 +17,7 @@ permissions:
 
 jobs:
   # --------------------------------------------------------------------
-  # Shared: CI must pass on the tagged commit for EITHER line.
+  # Shared: CI must pass on the tagged commit.
   # --------------------------------------------------------------------
   ci:
     uses: ./.github/workflows/ci.yml
@@ -37,27 +25,38 @@ jobs:
       contents: read
 
   # ====================================================================
-  # v1 pipeline (gated on v1.* tags)
+  # Build pipeline
+  # ====================================================================
+  # Artifact producer is packaging/tarball/stage.sh — the same script
+  # exercised by the tag-time rehearsal.
+  # Filenames are `az-ai-<version>-<rid>.(tar.gz|zip)` which match:
+  #   - packaging/homebrew/Formula/az-ai.rb
+  #   - packaging/scoop/az-ai.json
+  #   - packaging/nix/flake.nix (sourcesFor helper)
   # ====================================================================
   build-binaries:
     needs: ci
-    if: startsWith(github.ref, 'refs/tags/v1.')
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: read
       id-token: write
       attestations: write
     strategy:
+      fail-fast: false
       matrix:
         include:
           - rid: linux-x64
-            name: azure-openai-cli-linux-x64
+            os: ubuntu-latest
+            ext: tar.gz
           - rid: linux-musl-x64
-            name: azure-openai-cli-linux-musl-x64
-          - rid: win-x64
-            name: azure-openai-cli-win-x64
+            os: ubuntu-latest
+            ext: tar.gz
           - rid: osx-arm64
-            name: azure-openai-cli-osx-arm64
+            os: macos-14
+            ext: tar.gz
+          - rid: win-x64
+            os: windows-latest
+            ext: zip
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -74,50 +73,54 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      - name: Publish ${{ matrix.rid }}
+      # NativeAOT on linux-musl-x64 from a glibc host needs the musl
+      # cross-linker + zlib. ILC shells out to clang for the final link.
+      - name: Install musl AOT toolchain (linux-musl-x64 only)
+        if: matrix.rid == 'linux-musl-x64'
         run: |
-          dotnet publish azureopenai-cli/AzureOpenAI_CLI.csproj \
-            -c Release \
-            -r ${{ matrix.rid }} \
-            --self-contained true \
-            /p:PublishSingleFile=true \
-            /p:PublishTrimmed=true \
-            /p:IncludeAllContentForSelfExtract=true \
-            -o publish/${{ matrix.name }}
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang zlib1g-dev
 
-      - name: Package artifact
+      - name: Stage artifact (${{ matrix.rid }})
+        shell: bash
+        run: bash packaging/tarball/stage.sh ${{ matrix.rid }}
+
+      - name: Resolve artifact path
+        id: artifact
+        shell: bash
         run: |
-          cd publish/${{ matrix.name }}
-          if [[ "${{ matrix.rid }}" == win-* ]]; then
-            zip -r ../../${{ matrix.name }}.zip .
-          else
-            tar czf ../../${{ matrix.name }}.tar.gz .
-          fi
+          # stage.sh hardcodes VERSION; we glob-match the produced filename
+          # rather than re-parsing the tag, so the workflow stays correct
+          # as long as exactly one artifact for this RID is produced.
+          FILE="$(ls dist/az-ai-*-${{ matrix.rid }}.${{ matrix.ext }})"
+          BASENAME="$(basename "$FILE" .${{ matrix.ext }})"
+          echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          echo "basename=$BASENAME" >> "$GITHUB_OUTPUT"
 
       - name: Generate SBOM (CycloneDX)
+        shell: bash
         run: |
           dotnet tool restore
           dotnet dotnet-CycloneDX azureopenai-cli/AzureOpenAI_CLI.csproj \
-            --output . \
-            --filename ${{ matrix.name }}.sbom.json \
+            --output dist \
+            --filename ${{ steps.artifact.outputs.basename }}.sbom.json \
             --output-format Json
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
-          subject-path: ${{ matrix.rid == 'win-x64' && format('{0}.zip', matrix.name) || format('{0}.tar.gz', matrix.name) }}
+          subject-path: ${{ steps.artifact.outputs.file }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ${{ matrix.name }}
+          name: ${{ steps.artifact.outputs.basename }}
           path: |
-            ${{ matrix.rid == 'win-x64' && format('{0}.zip', matrix.name) || format('{0}.tar.gz', matrix.name) }}
-            ${{ matrix.name }}.sbom.json
+            ${{ steps.artifact.outputs.file }}
+            dist/${{ steps.artifact.outputs.basename }}.sbom.json
 
   docker-publish:
     needs: ci
-    if: startsWith(github.ref, 'refs/tags/v1.')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -163,7 +166,6 @@ jobs:
 
   release:
     needs: [build-binaries, docker-publish]
-    if: startsWith(github.ref, 'refs/tags/v1.')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -174,8 +176,13 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: artifacts
-          pattern: azure-openai-cli-*
+          pattern: az-ai-*
           merge-multiple: true
+
+      - name: Compute digests
+        run: |
+          cd artifacts
+          sha256sum az-ai-*.tar.gz az-ai-*.zip 2>/dev/null | sort | tee ../digests.txt
 
       - name: Create release
         uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
@@ -192,212 +199,18 @@ jobs:
             docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ```
 
-            ## Binaries
+            ## Binaries (`az-ai`)
 
-            | Platform | File |
-            |----------|------|
-            | Linux (glibc) | `azure-openai-cli-linux-x64.tar.gz` |
-            | Linux (musl/Alpine) | `azure-openai-cli-linux-musl-x64.tar.gz` |
-            | Windows | `azure-openai-cli-win-x64.zip` |
-            | macOS (Apple Silicon) | `azure-openai-cli-osx-arm64.tar.gz` |
-
-  # ====================================================================
-  # v2 pipeline (gated on v2.* tags)
-  # ====================================================================
-  # Artifact producer is packaging/tarball/stage.sh — the same script
-  # exercised by the tag-time rehearsal (docs/launch/v2-tag-rehearsal-report.md).
-  # Filenames are `az-ai-v2-<version>-<rid>.(tar.gz|zip)` which match:
-  #   - packaging/homebrew/Formula/az-ai.rb
-  #   - packaging/homebrew/Formula/az-ai-v2@2.0.0.rb
-  #   - packaging/scoop/az-ai.json + packaging/scoop/versions/az-ai-v2@2.0.0.json
-  #   - packaging/nix/flake.nix (sourcesFor helper)
-  # ====================================================================
-  build-binaries-v2:
-    needs: ci
-    if: startsWith(github.ref, 'refs/tags/v2.')
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - rid: linux-x64
-            os: ubuntu-latest
-            ext: tar.gz
-          - rid: linux-musl-x64
-            os: ubuntu-latest
-            ext: tar.gz
-          - rid: osx-arm64
-            os: macos-14
-            ext: tar.gz
-          - rid: win-x64
-            os: windows-latest
-            ext: zip
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Cache NuGet packages
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-v2-${{ hashFiles('**/*.csproj', '**/*.sln') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-v2-
-
-      # NativeAOT on linux-musl-x64 from a glibc host needs the musl
-      # cross-linker + zlib. ILC shells out to clang for the final link.
-      - name: Install musl AOT toolchain (linux-musl-x64 only)
-        if: matrix.rid == 'linux-musl-x64'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang zlib1g-dev
-
-      - name: Stage artifact (${{ matrix.rid }})
-        shell: bash
-        run: bash packaging/tarball/stage.sh ${{ matrix.rid }}
-
-      - name: Resolve artifact path
-        id: artifact
-        shell: bash
-        run: |
-          # stage.sh hardcodes VERSION; we glob-match the produced filename
-          # rather than re-parsing the tag, so the workflow stays correct
-          # as long as exactly one artifact for this RID is produced.
-          FILE="$(ls dist/az-ai-v2-*-${{ matrix.rid }}.${{ matrix.ext }})"
-          BASENAME="$(basename "$FILE" .${{ matrix.ext }})"
-          echo "file=$FILE" >> "$GITHUB_OUTPUT"
-          echo "basename=$BASENAME" >> "$GITHUB_OUTPUT"
-
-      - name: Generate SBOM (CycloneDX)
-        shell: bash
-        run: |
-          dotnet tool restore
-          dotnet dotnet-CycloneDX azureopenai-cli-v2/AzureOpenAI_CLI_V2.csproj \
-            --output dist \
-            --filename ${{ steps.artifact.outputs.basename }}.sbom.json \
-            --output-format Json
-
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
-        with:
-          subject-path: ${{ steps.artifact.outputs.file }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: ${{ steps.artifact.outputs.basename }}
-          path: |
-            ${{ steps.artifact.outputs.file }}
-            dist/${{ steps.artifact.outputs.basename }}.sbom.json
-
-  docker-publish-v2:
-    needs: ci
-    if: startsWith(github.ref, 'refs/tags/v2.')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
-        with:
-          # v2 image publishes under a dedicated name suffix so the v1
-          # `ghcr.io/<repo>` image isn't displaced. Post-EOL of v1 we can
-          # alias this back to the canonical name; for now, keep them
-          # separate to protect v1 consumers (incl. Bob Sacamano's brew
-          # formulae that reference the v1 tag line).
-          images: ghcr.io/${{ github.repository }}/az-ai-v2
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix=
-
-      - name: Login to GHCR
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push
-        id: docker_build
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
-        with:
-          context: .
-          file: Dockerfile.v2
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-      - name: Attest image provenance
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
-        with:
-          subject-name: ghcr.io/${{ github.repository }}/az-ai-v2
-          subject-digest: ${{ steps.docker_build.outputs.digest }}
-          push-to-registry: true
-
-  release-v2:
-    needs: [build-binaries-v2, docker-publish-v2]
-    if: startsWith(github.ref, 'refs/tags/v2.')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          path: artifacts
-          pattern: az-ai-v2-*
-          merge-multiple: true
-
-      - name: Compute digests
-        run: |
-          cd artifacts
-          sha256sum az-ai-v2-*.tar.gz az-ai-v2-*.zip 2>/dev/null | sort | tee ../digests.txt
-
-      - name: Create release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
-        with:
-          generate_release_notes: true
-          files: |
-            artifacts/*.tar.gz
-            artifacts/*.zip
-            artifacts/*.sbom.json
-          body: |
-            ## Docker
-
-            ```bash
-            docker pull ghcr.io/${{ github.repository }}/az-ai-v2:${{ github.ref_name }}
-            ```
-
-            ## Binaries (`az-ai-v2`)
-
-            All archives extract to `az-ai-v2-<version>-<rid>/` containing the
-            NativeAOT `az-ai-v2` binary plus `LICENSE`, `NOTICE`,
+            All archives extract to `az-ai-<version>-<rid>/` containing the
+            NativeAOT `az-ai` binary plus `LICENSE`, `NOTICE`,
             `THIRD_PARTY_NOTICES.md`, and `README.md`.
 
             | Platform | File |
             |----------|------|
-            | Linux (glibc) | `az-ai-v2-${{ github.ref_name }}-linux-x64.tar.gz` |
-            | Linux (musl/Alpine) | `az-ai-v2-${{ github.ref_name }}-linux-musl-x64.tar.gz` |
-            | Windows | `az-ai-v2-${{ github.ref_name }}-win-x64.zip` |
-            | macOS (Apple Silicon) | `az-ai-v2-${{ github.ref_name }}-osx-arm64.tar.gz` |
+            | Linux (glibc) | `az-ai-${{ github.ref_name }}-linux-x64.tar.gz` |
+            | Linux (musl/Alpine) | `az-ai-${{ github.ref_name }}-linux-musl-x64.tar.gz` |
+            | Windows | `az-ai-${{ github.ref_name }}-win-x64.zip` |
+            | macOS (Apple Silicon) | `az-ai-${{ github.ref_name }}-osx-arm64.tar.gz` |
 
             ## Provenance
 
@@ -405,7 +218,7 @@ jobs:
             (`actions/attest-build-provenance`). Verify with:
 
             ```bash
-            gh attestation verify az-ai-v2-${{ github.ref_name }}-linux-x64.tar.gz \
+            gh attestation verify az-ai-${{ github.ref_name }}-linux-x64.tar.gz \
                 --owner ${{ github.repository_owner }}
             ```
 
@@ -413,9 +226,9 @@ jobs:
 
             ## Package manager install
 
-            - Homebrew (latest): `brew install schwartzkamel/tap/az-ai-v2`
-            - Homebrew (pinned): `brew install schwartzkamel/tap/az-ai-v2@${{ github.ref_name }}`
-            - Scoop:   `scoop install schwartzkamel/az-ai-v2`
+            - Homebrew (latest): `brew install schwartzkamel/tap/az-ai`
+            - Homebrew (pinned): `brew install schwartzkamel/tap/az-ai@${{ github.ref_name }}`
+            - Scoop:   `scoop install schwartzkamel/az-ai`
             - Nix:     `nix run github:SchwartzKamel/azure-openai-cli?dir=packaging/nix`
 
             Manifest hashes are filled by Lippman post-publish per

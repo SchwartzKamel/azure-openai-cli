@@ -1,26 +1,31 @@
-# Packaging -- distribution channels for `az-ai-v2`
+# Packaging -- distribution channels for `az-ai`
 
 > "You need it on Homebrew? I know a guy. Scoop bucket? Done. Nix flake? Already wired."
 > -- Bob Sacamano
 
 This directory holds the third-party packaging manifests that pin a specific
-release of the Azure OpenAI CLI (published as `az-ai-v2`) to each ecosystem's
+release of the Azure OpenAI CLI (published as `az-ai`) to each ecosystem's
 conventions. Manifests are versioned in-repo; the release pipeline is
 expected to update SHA256 digests and version strings as part of each tag.
 Hand-edited drift will be caught at release review.
 
-Current pinned release: **v2.0.1** (GitHub Releases artifacts).
+Current pinned release: **v2.0.6** (GitHub Releases artifacts).
 Versioned-pin scaffolding (`@2.0.0` syntax for Homebrew / Scoop / Nix) lands
 at the v2.0.1 boundary per [`docs/v2-cutover-decision.md` §G6](../docs/v2-cutover-decision.md).
 
-The upstream binary name inside each archive is `AzureOpenAI_CLI`
-(`AzureOpenAI_CLI.exe` on Windows). Every manifest here renames it to
-`az-ai-v2` on install so users get a single, consistent command across
-platforms.
+The upstream binary name inside each archive is `az-ai`
+(`az-ai.exe` on Windows). Every manifest installs as `az-ai` so users get
+a single, consistent command across platforms.
 
----
-
-## Channels at a glance
+> **Historical note:** releases ≤2.0.6 shipped as `az-ai` during the
+> dual-binary transition. Versioned-pin manifests for those releases
+> remap the old binary name to `az-ai` at install time. New releases
+> ship as plain `az-ai`.
+>
+> **NOTICE bundling:** every manifest stages `LICENSE`, `NOTICE`, and
+> `THIRD_PARTY_NOTICES.md` alongside the binary so Mr. Lippman's
+> release-notes claim -- *"all distributed artifacts include NOTICE"* --
+> holds across Homebrew, Scoop, Nix, and the raw tarballs.
 
 | Channel   | File                                         | Platforms                               | Status                  |
 |-----------|----------------------------------------------|-----------------------------------------|-------------------------|
@@ -32,16 +37,6 @@ platforms.
 Linux arm64 artifacts are not yet published by the release pipeline; when
 they are, add them to the Homebrew formula (`on_linux do on_arm do ...`)
 and to `sources` in `nix/flake.nix`.
-
-> **Dual-binary transition (v2.0.0):** the v2 binary ships as `az-ai-v2`
-> (`az-ai-v2.exe` on Windows) alongside the v1 `az-ai` binary. All three
-> manifests install as `az-ai-v2` during this transition. Post-cutover, a
-> follow-up manifest update will rename back to plain `az-ai`.
->
-> **NOTICE bundling:** every manifest now stages `LICENSE`, `NOTICE`, and
-> `THIRD_PARTY_NOTICES.md` alongside the binary so Mr. Lippman's
-> release-notes claim -- *"all distributed artifacts include NOTICE"* --
-> holds across Homebrew, Scoop, Nix, and the raw tarballs.
 
 ---
 
@@ -59,7 +54,7 @@ brew install --formula ./packaging/homebrew/Formula/az-ai.rb
 
 ```sh
 brew tap SchwartzKamel/tap
-brew install az-ai-v2
+brew install az-ai
 ```
 
 ### Publish (owner action -- Lippman TBD)
@@ -77,7 +72,7 @@ brew install az-ai-v2
 ```sh
 brew audit --strict ./packaging/homebrew/Formula/az-ai.rb
 brew install --build-from-source --formula ./packaging/homebrew/Formula/az-ai.rb
-az-ai-v2 --version --short   # expect: 2.0.0
+az-ai --version --short   # expect: 2.0.0
 ```
 
 ---
@@ -94,7 +89,7 @@ scoop install ./packaging/scoop/az-ai.json
 
 ```powershell
 scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-bucket
-scoop install az-ai-v2
+scoop install az-ai
 ```
 
 ### Publish (owner action -- Lippman TBD)
@@ -111,7 +106,7 @@ scoop install az-ai-v2
 
 ```powershell
 scoop install ./packaging/scoop/az-ai.json
-az-ai-v2 --version --short   # expect: 2.0.0
+az-ai --version --short   # expect: 2.0.0
 ```
 
 ---
@@ -144,7 +139,7 @@ nix run github:SchwartzKamel/azure-openai-cli?dir=packaging/nix -- --version --s
 cd packaging/nix
 nix flake check
 nix build .#default
-./result/bin/az-ai-v2 --version --short   # expect: 2.0.0
+./result/bin/az-ai --version --short   # expect: 2.0.0
 ```
 
 ---
@@ -163,20 +158,20 @@ Every tagged release gets a frozen sibling formula alongside the tracking
 ```text
 packaging/homebrew/Formula/
 ├── az-ai.rb                  # tracks latest (currently v2.0.1)
-└── az-ai-v2@2.0.0.rb         # frozen pin -- keg_only, class AzAiV2AT200
+└── az-ai@2.0.0.rb         # frozen pin -- keg_only, class AzAiAT200
 ```
 
 Install:
 
 ```sh
-brew install az-ai-v2          # latest
-brew install az-ai-v2@2.0.0    # pinned
+brew install az-ai          # latest
+brew install az-ai@2.0.0    # pinned
 ```
 
-The versioned class name follows Homebrew's convention: `AzAiV2AT` + the
+The versioned class name follows Homebrew's convention: `AzAiAT` + the
 version with dots stripped (`2.0.0` → `AT200`). `keg_only :versioned_formula`
-prevents the pinned binary from shadowing `az-ai-v2` on `PATH` -- use
-`brew link --force` or call `$(brew --prefix az-ai-v2@2.0.0)/bin/az-ai-v2`
+prevents the pinned binary from shadowing `az-ai` on `PATH` -- use
+`brew link --force` or call `$(brew --prefix az-ai@2.0.0)/bin/az-ai`
 directly.
 
 ### Scoop -- `versions/` subdirectory
@@ -190,19 +185,19 @@ bucket convention:
 packaging/scoop/
 ├── az-ai.json                       # tracks latest
 └── versions/
-    └── az-ai-v2@2.0.0.json          # frozen pin
+    └── az-ai@2.0.0.json          # frozen pin
 ```
 
 Install:
 
 ```powershell
-scoop install schwartzkamel/az-ai-v2          # latest
-scoop install schwartzkamel/az-ai-v2@2.0.0    # pinned
+scoop install schwartzkamel/az-ai          # latest
+scoop install schwartzkamel/az-ai@2.0.0    # pinned
 ```
 
 ### Nix -- frozen derivation attributes
 
-The flake exposes a `packages.az-ai-v2_<version-underscored>` attribute per
+The flake exposes a `packages.az-ai_<version-underscored>` attribute per
 frozen release, in addition to `packages.default` which tracks the latest:
 
 ```nix
@@ -214,7 +209,7 @@ frozen release, in addition to `packages.default` which tracks the latest:
 
   # Pinned to v2.0.0:
   environment.systemPackages = [
-    inputs.az-ai.packages.${pkgs.system}."az-ai-v2_2_0_0"
+    inputs.az-ai.packages.${pkgs.system}."az-ai_2_0_0"
   ];
 }
 ```
@@ -241,11 +236,11 @@ VERSION=2.0.1
 BASE="https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${VERSION}"
 
 for rid in linux-x64 osx-x64 osx-arm64; do
-    curl -sL "${BASE}/az-ai-v2-${VERSION}-${rid}.tar.gz" \
+    curl -sL "${BASE}/az-ai-${VERSION}-${rid}.tar.gz" \
         | sha256sum | awk -v rid="$rid" '{printf "%s  %s\n", rid, $1}'
 done
 
-curl -sL "${BASE}/az-ai-v2-${VERSION}-win-x64.zip" \
+curl -sL "${BASE}/az-ai-${VERSION}-win-x64.zip" \
     | sha256sum | awk '{printf "win-x64   %s\n", $1}'
 ```
 
@@ -269,9 +264,9 @@ Or (once the tap exists, preferred):
 
 ```sh
 brew bump-formula-pr --tap=SchwartzKamel/tap \
-    --url="${BASE}/az-ai-v2-${VERSION}-linux-x64.tar.gz" \
+    --url="${BASE}/az-ai-${VERSION}-linux-x64.tar.gz" \
     --sha256="${LINUX_X64_SHA}" \
-    az-ai-v2
+    az-ai
 ```
 
 ### Step 2b -- Scoop
@@ -294,7 +289,7 @@ for hex in $LINUX_X64_SHA $OSX_X64_SHA $OSX_ARM64_SHA; do
 done
 
 # Or prefetch directly (emits SRI):
-nix-prefetch-url --type sha256 "${BASE}/az-ai-v2-${VERSION}-linux-x64.tar.gz"
+nix-prefetch-url --type sha256 "${BASE}/az-ai-${VERSION}-linux-x64.tar.gz"
 
 ${EDITOR:-vi} packaging/nix/flake.nix     # paste into latestHashes
 (cd packaging/nix && nix build .#default --no-link) || echo "hash mismatch -- recheck"
@@ -306,10 +301,10 @@ ${EDITOR:-vi} packaging/nix/flake.nix     # paste into latestHashes
 Before the *next* release ships, copy the just-filled hashes into the
 pinnable sibling so the version remains installable forever:
 
-- Homebrew: `cp az-ai.rb az-ai-v2@${VERSION}.rb`, rename the class
-  (`AzAiV2` → `AzAiV2AT${VERSION//./}`), strip `checkver`-style drift,
+- Homebrew: `cp az-ai.rb az-ai@${VERSION}.rb`, rename the class
+  (`AzAi` → `AzAiAT${VERSION//./}`), strip `checkver`-style drift,
   and add `keg_only :versioned_formula`.
-- Scoop: `cp scoop/az-ai.json scoop/versions/az-ai-v2@${VERSION}.json`,
+- Scoop: `cp scoop/az-ai.json scoop/versions/az-ai@${VERSION}.json`,
   strip `checkver` / `autoupdate`.
 - Nix: add a `"${VERSION}" = { linux-x64 = "sha256-..."; ... };` entry to
   `pinnedHashes` in `flake.nix`.

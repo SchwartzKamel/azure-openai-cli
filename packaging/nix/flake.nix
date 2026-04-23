@@ -1,5 +1,5 @@
 {
-  description = "Azure OpenAI CLI v2 — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator";
+  description = "Azure OpenAI CLI — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-utils.url = "github:numtide/flake-utils";
@@ -8,6 +8,12 @@
     let
       version = "2.0.6";
       baseUrlFor = v: "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${v}";
+
+      # Tarball prefix: releases ≤2.0.6 shipped as "az-ai-v2-<ver>-<rid>",
+      # future releases ship as "az-ai-<ver>-<rid>" after the v1/v2
+      # consolidation. The binary inside the tarball follows the same
+      # convention (az-ai-v2 vs az-ai).
+      tarballPrefixFor = v: if builtins.elem v [ "2.0.0" "2.0.1" "2.0.2" "2.0.4" "2.0.6" ] then "az-ai-v2" else "az-ai";
 
       # Build the per-system sources attrset for a given release version.
       # All frozen versioned-pin derivations go through this helper so the
@@ -19,13 +25,15 @@
       # the v2.0.3/v2.0.4 commits. The `tarballVersion` arg below lets
       # pinned entries override the filename-version independently of
       # the tag-version. Default = v (clean case). v2.0.4 passes "2.0.2".
-      sourcesFor = v: tarballVersion: hashes: {
+      sourcesFor = v: tarballVersion: hashes:
+        let prefix = tarballPrefixFor v;
+        in {
         "x86_64-linux" = {
-          url = "${baseUrlFor v}/az-ai-v2-${tarballVersion}-linux-x64.tar.gz";
+          url = "${baseUrlFor v}/${prefix}-${tarballVersion}-linux-x64.tar.gz";
           sha256 = hashes.linux-x64;
         };
         "aarch64-darwin" = {
-          url = "${baseUrlFor v}/az-ai-v2-${tarballVersion}-osx-arm64.tar.gz";
+          url = "${baseUrlFor v}/${prefix}-${tarballVersion}-osx-arm64.tar.gz";
           sha256 = hashes.osx-arm64;
         };
         # NOTE: "x86_64-darwin" (osx-x64) dropped as of v2.0.4 — GHA
@@ -117,8 +125,9 @@
       supportedSystems = builtins.attrNames sources;
 
       mkAzAi = { pkgs, system, v, srcMeta }:
-        pkgs.stdenv.mkDerivation {
-          pname = "az-ai-v2";
+        let binInTarball = tarballPrefixFor v;
+        in pkgs.stdenv.mkDerivation {
+          pname = "az-ai";
           version = v;
 
           src = pkgs.fetchurl {
@@ -141,9 +150,11 @@
           dontBuild = true;
           dontConfigure = true;
 
+          # Old releases (≤2.0.6) have binary named "az-ai-v2"; new releases
+          # have "az-ai". Always install as "az-ai" on PATH.
           installPhase = ''
             runHook preInstall
-            install -Dm755 az-ai-v2 "$out/bin/az-ai-v2"
+            install -Dm755 ${binInTarball} "$out/bin/az-ai"
             runHook postInstall
           '';
 
@@ -152,17 +163,17 @@
           # Lippman's release-notes claim that all distributed artifacts
           # ship NOTICE.
           postInstall = ''
-            install -Dm644 LICENSE              $out/share/licenses/az-ai-v2/LICENSE
-            install -Dm644 NOTICE               $out/share/licenses/az-ai-v2/NOTICE
-            install -Dm644 THIRD_PARTY_NOTICES.md $out/share/licenses/az-ai-v2/THIRD_PARTY_NOTICES.md
+            install -Dm644 LICENSE              $out/share/licenses/az-ai/LICENSE
+            install -Dm644 NOTICE               $out/share/licenses/az-ai/NOTICE
+            install -Dm644 THIRD_PARTY_NOTICES.md $out/share/licenses/az-ai/THIRD_PARTY_NOTICES.md
           '';
 
           meta = with pkgs.lib; {
-            description = "Azure OpenAI CLI v2 — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator";
+            description = "Azure OpenAI CLI — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator";
             homepage = "https://github.com/SchwartzKamel/azure-openai-cli";
             license = licenses.mit;
             platforms = supportedSystems;
-            mainProgram = "az-ai-v2";
+            mainProgram = "az-ai";
           };
         };
     in
@@ -178,10 +189,10 @@
 
         # Versioned-pin derivations. Consumers pin via:
         #   inputs.az-ai.url = "github:SchwartzKamel/azure-openai-cli?dir=packaging/nix";
-        #   environment.systemPackages = [ inputs.az-ai.packages.${pkgs.system}."az-ai-v2_2_0_0" ];
+        #   environment.systemPackages = [ inputs.az-ai.packages.${pkgs.system}."az-ai_2_0_0" ];
         pinnedPackages = nixpkgs.lib.mapAttrs' (v: hashes:
           nixpkgs.lib.nameValuePair
-            "az-ai-v2_${builtins.replaceStrings ["."] ["_"] v}"
+            "az-ai_${builtins.replaceStrings ["."] ["_"] v}"
             (mkAzAi {
               inherit pkgs system;
               v = v;
@@ -197,7 +208,7 @@
 
         apps.default = {
           type = "app";
-          program = "${az-ai}/bin/az-ai-v2";
+          program = "${az-ai}/bin/az-ai";
         };
       });
 }

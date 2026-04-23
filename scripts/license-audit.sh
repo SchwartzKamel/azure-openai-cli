@@ -30,7 +30,7 @@
 set -euo pipefail
 
 # ---------- defaults ---------------------------------------------------------
-PROJECT="azureopenai-cli-v2"
+PROJECT="azureopenai-cli"
 FORMAT="text"
 OFFLINE=0
 VERBOSE=0
@@ -62,7 +62,7 @@ Usage: $(basename "$0") [options] [project-path]
 Audit NuGet dependency licenses against the project allowlist.
 
 Options:
-  --project PATH      Project path (default: azureopenai-cli-v2)
+  --project PATH      Project path (default: azureopenai-cli)
   --format=FMT        Output format: text|json (default: text)
   --offline           Do not query api.nuget.org; fail on missing nuspec.
   -v, --verbose       Print per-package resolution steps to stderr.

@@ -450,7 +450,7 @@ matches:
 
 ### WSL Variants (the `:shaka:` build) 🤙
 
-If you're on Windows but do your real work in WSL, you've got two clean paths. Both use the **Linux-native AOT binary** (v2 ships as `az-ai-v2`, ~13 MiB, ~10.7 ms p50 cold start -- see [`docs/perf/v2.0.5-baseline.md`](perf/v2.0.5-baseline.md)) -- skip Docker entirely, skip the `.exe`, just run the native ELF. This is the *fastest* setup on any platform: no Docker daemon, no interop translation, pure syscalls.
+If you're on Windows but do your real work in WSL, you've got two clean paths. Both use the **Linux-native AOT binary** (v2 ships as `az-ai`, ~13 MiB, ~10.7 ms p50 cold start -- see [`docs/perf/v2.0.5-baseline.md`](perf/v2.0.5-baseline.md)) -- skip Docker entirely, skip the `.exe`, just run the native ELF. This is the *fastest* setup on any platform: no Docker daemon, no interop translation, pure syscalls.
 
 **Path A -- Espanso running *inside* WSL** (recommended if you do most text work in a Linux GUI app, terminal, VS Code Remote-WSL, etc.)
 
@@ -881,7 +881,7 @@ docker run --rm --env-file .env azure-openai-cli --raw "Hello"
 **Build and install the Native AOT binary (Linux, macOS, WSL):**
 
 ```bash
-make publish-aot      # builds dist/aot/az-ai-v2 (~13 MiB, ~10.7 ms p50 startup -- see docs/perf/v2.0.5-baseline.md)
+make publish-aot      # builds dist/aot/az-ai (~13 MiB, ~10.7 ms p50 startup -- see docs/perf/v2.0.5-baseline.md)
 make install          # copies to ~/.local/bin/az-ai
 make bench            # measures cold-start (10 runs)
 ```

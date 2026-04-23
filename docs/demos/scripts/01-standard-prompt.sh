@@ -40,14 +40,14 @@ sleep 0.5
 # --- The setup -------------------------------------------------------------
 # [narrator] "First, we confirm the binary. Bare semver, one line, no banner —
 # that's the scripting contract the ecosystem leans on."
-type_prompt 'az-ai-v2 --version --short'
+type_prompt 'az-ai --version --short'
 sleep 0.8
 
 # --- The question ----------------------------------------------------------
 # One prompt. No system message. No tools. The bare metal of the tool.
 # [narrator] "No flags. No system message. Default mode. Watch the spinner
 # resolve into streaming tokens."
-type_prompt 'az-ai-v2 "In one sentence, explain why a 5ms cold start matters for a text expander."'
+type_prompt 'az-ai "In one sentence, explain why a 5ms cold start matters for a text expander."'
 sleep 1.0
 
 # --- The tag ---------------------------------------------------------------

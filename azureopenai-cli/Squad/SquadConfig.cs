@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using AzureOpenAI_CLI;
 
 namespace AzureOpenAI_CLI.Squad;
 
@@ -11,6 +10,21 @@ namespace AzureOpenAI_CLI.Squad;
 internal sealed class SquadConfig
 {
     private const string ConfigFileName = ".squad.json";
+
+    /// <summary>
+    /// K-6 (2.0.1): hard cap on the size of .squad.json we'll attempt to
+    /// deserialise. 1 MB is ~10× a reasonable squad config and small enough
+    /// that a pathological file can't OOM the process on load.
+    /// </summary>
+    private const long MaxConfigBytes = 1L * 1024 * 1024;
+
+    /// <summary>
+    /// F-4 (2.0.1): explicit MaxDepth on JSON deserialisation. System.Text.Json's
+    /// default is 64; we tighten to 32 because our schema is shallow (team /
+    /// personas / routing — ≤4 levels) and a deeply-nested attacker payload
+    /// is a stack-pressure vector with zero legitimate use case.
+    /// </summary>
+    private const int MaxJsonDepth = 32;
 
     [JsonPropertyName("team")]
     public TeamConfig Team { get; set; } = new();
@@ -32,8 +46,21 @@ internal sealed class SquadConfig
         if (!File.Exists(path))
             return null;
 
+        // K-6: refuse pathologically large configs before we read them.
+        var size = new FileInfo(path).Length;
+        if (size > MaxConfigBytes)
+            throw new InvalidOperationException("squad config exceeds 1 MB limit");
+
         var json = File.ReadAllText(path);
-        return JsonSerializer.Deserialize(json, AppJsonContext.Default.SquadConfig);
+
+        // F-4: tighten MaxDepth to 32 on a per-load options clone so we don't
+        // mutate the source-gen defaults used elsewhere.
+        var options = new JsonSerializerOptions(AppJsonContext.Default.Options)
+        {
+            MaxDepth = MaxJsonDepth,
+        };
+        var ctx = new AppJsonContext(options);
+        return JsonSerializer.Deserialize(json, ctx.SquadConfig);
     }
 
     /// <summary>

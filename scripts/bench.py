@@ -13,10 +13,10 @@ Defaults are tuned to the reference rig documented in
 Typical use:
 
     # quick smoke (N=100, 5 warm-up)
-    python3 scripts/bench.py dist/aot/az-ai-v2
+    python3 scripts/bench.py dist/aot/az-ai
 
     # full pre-merge gate run (N=500, flag matrix, JSON out)
-    python3 scripts/bench.py dist/aot/az-ai-v2 --n 500 --warmup 5 \\
+    python3 scripts/bench.py dist/aot/az-ai --n 500 --warmup 5 \\
         --flag-matrix --json > docs/perf/runs/$(date +%Y%m%d-%H%M).json
 
 Stdout is human-readable by default; add `--json` for a machine-readable

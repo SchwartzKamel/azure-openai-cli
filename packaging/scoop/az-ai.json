@@ -1,39 +1,38 @@
 {
     "_comment_hash": "SHA256 digest below is from the v2.0.6 GitHub Release (published 2026-04-22). Do not invent digests.",
-    "_comment_bin": "Binary is az-ai-v2.exe during the dual-binary transition. Post-cutover the rename to az-ai.exe lands in a follow-up manifest update.",
-    "_comment_notice": "Scoop has no doc directory concept, so the release tarball must place NOTICE + THIRD_PARTY_NOTICES.md + LICENSE at the extraction root next to az-ai-v2.exe. post_install surfaces their paths to the user so Lippman's 'all distributed artifacts include NOTICE' claim holds for Windows installs.",
-    "_comment_pin": "Versioned-pin support: sibling versions/ directory holds az-ai-v2@<version>.json manifests so users can `scoop install schwartzkamel/az-ai-v2@2.0.6`. Follows scoopinstaller/versions bucket conventions.",
-    "_comment_filename_clean": "v2.0.6 rolls all version strings in lock-step with the tag (verify-version-strings.sh gate 4 green) — the v2.0.4 tarball-filename drift (audit finding C-1) is resolved. URL uses the clean az-ai-v2-$version-win-x64.zip pattern again; autoupdate can therefore rely on $version substitution mechanically.",
+    "_comment_bin": "Binary is az-ai.exe. Prior releases (≤2.0.6) shipped as az-ai-v2.exe; the v1/v2 dual-binary transition is complete.",
+    "_comment_notice": "Scoop has no doc directory concept, so the release tarball must place NOTICE + THIRD_PARTY_NOTICES.md + LICENSE at the extraction root next to az-ai.exe. post_install surfaces their paths to the user so Lippman's 'all distributed artifacts include NOTICE' claim holds for Windows installs.",
+    "_comment_pin": "Versioned-pin support: sibling versions/ directory holds az-ai@<version>.json manifests so users can `scoop install schwartzkamel/az-ai@2.0.6`. Follows scoopinstaller/versions bucket conventions.",
     "version": "2.0.6",
-    "description": "Azure OpenAI CLI v2 — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator",
+    "description": "Azure OpenAI CLI — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator",
     "homepage": "https://github.com/SchwartzKamel/azure-openai-cli",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.0.6/az-ai-v2-2.0.6-win-x64.zip",
+            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.0.6/az-ai-2.0.6-win-x64.zip",
             "hash": "adf391813bd1206d544ff81b1315d59e5d6c85e758fd5b25819f440e631f66df"
         }
     },
     "bin": [
         [
-            "az-ai-v2.exe",
-            "az-ai-v2"
+            "az-ai.exe",
+            "az-ai"
         ]
     ],
     "post_install": [
-        "Write-Host 'az-ai-v2 installed. Third-party notices bundled next to the binary:'",
+        "Write-Host 'az-ai installed. Third-party notices bundled next to the binary:'",
         "Write-Host \"  $dir\\NOTICE\"",
         "Write-Host \"  $dir\\THIRD_PARTY_NOTICES.md\"",
         "Write-Host \"  $dir\\LICENSE\""
     ],
     "checkver": {
         "github": "https://github.com/SchwartzKamel/azure-openai-cli",
-        "regex": "releases/tag/v(2\\.\\d+\\.\\d+)"
+        "regex": "releases/tag/v(\\d+\\.\\d+\\.\\d+)"
     },
     "autoupdate": {
         "architecture": {
             "64bit": {
-                "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v$version/az-ai-v2-$version-win-x64.zip"
+                "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v$version/az-ai-$version-win-x64.zip"
             }
         },
         "hash": {

@@ -1,46 +1,32 @@
+using System.ComponentModel;
 using System.Net;
 using System.Reflection;
-using System.Text.Json;
 
 namespace AzureOpenAI_CLI.Tools;
 
 /// <summary>
 /// Fetch the text content of a URL via HTTP GET. HTTPS only.
+/// MAF version: uses [Description] attributes for AIFunctionFactory.Create.
 /// </summary>
-internal sealed class WebFetchTool : IBuiltInTool
+internal static class WebFetchTool
 {
     private const int MaxResponseBytes = 131_072; // 128 KB
     private const int TimeoutSeconds = 10;
     private const int MaxRedirects = 3;
 
-    private readonly HttpMessageHandler? _handlerOverride;
-
-    public WebFetchTool() { }
+    [Description("Fetch the text content of a web URL via HTTP GET. HTTPS only. Returns the response body as text.")]
+    public static async Task<string> FetchAsync(
+        [Description("The HTTPS URL to fetch")] string url,
+        CancellationToken ct = default)
+    {
+        return await FetchInternalAsync(url, handlerOverride: null, ct);
+    }
 
     /// <summary>
-    /// Test-only constructor for injecting a custom HTTP message handler.
+    /// Internal implementation that supports injecting a custom HTTP message handler for testing.
     /// </summary>
-    internal WebFetchTool(HttpMessageHandler handler) { _handlerOverride = handler; }
-
-    public string Name => "web_fetch";
-    public string Description => "Fetch the text content of a web URL via HTTP GET. HTTPS only. Returns the response body as text.";
-    public BinaryData ParametersSchema => BinaryData.FromString("""
-        {
-            "type": "object",
-            "properties": {
-                "url": { "type": "string", "description": "The HTTPS URL to fetch" }
-            },
-            "required": ["url"]
-        }
-        """);
-
-    public async Task<string> ExecuteAsync(JsonElement arguments, CancellationToken ct)
+    internal static async Task<string> FetchInternalAsync(string url, HttpMessageHandler? handlerOverride, CancellationToken ct)
     {
-        if (arguments.ValueKind != JsonValueKind.Object ||
-            !arguments.TryGetProperty("url", out var urlProp))
-            return "Error: missing required parameter 'url'.";
-
-        var url = urlProp.GetString();
         if (string.IsNullOrEmpty(url))
             return "Error: parameter 'url' must not be empty.";
 
@@ -70,18 +56,18 @@ internal sealed class WebFetchTool : IBuiltInTool
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(TimeoutSeconds));
 
-        var handler = _handlerOverride ?? new HttpClientHandler
+        var handler = handlerOverride ?? new HttpClientHandler
         {
             MaxAutomaticRedirections = MaxRedirects,
         };
-        using var http = new HttpClient(handler, disposeHandler: _handlerOverride == null)
+        using var http = new HttpClient(handler, disposeHandler: handlerOverride == null)
         {
             Timeout = TimeSpan.FromSeconds(TimeoutSeconds)
         };
 
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         var versionString = version is not null ? $"{version.Major}.{version.Minor}" : "0.0";
-        http.DefaultRequestHeaders.UserAgent.ParseAdd($"AzureOpenAI-CLI/{versionString}");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd($"AzureOpenAI-CLI-V2/{versionString}");
 
         var response = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cts.Token);
         response.EnsureSuccessStatusCode();

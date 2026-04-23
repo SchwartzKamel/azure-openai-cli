@@ -3,12 +3,9 @@ contact_links:
   - name: 💬 Discussions (preferred for questions)
     url: https://github.com/SchwartzKamel/azure-openai-cli/discussions
     about: Open-ended questions, ideas, show-and-tell
-  - name: 🚀 v1 → v2 migration guide
-    url: https://github.com/SchwartzKamel/azure-openai-cli/blob/main/docs/migration-v1-to-v2.md
-    about: Migrating from v1 to v2 (side-by-side install, env vars, `.squad/`) — read first before filing a v2 bug
   - name: 🗺️ Roadmap & accepted proposals
     url: https://github.com/SchwartzKamel/azure-openai-cli/blob/main/ROADMAP.md
-    about: Where v2.x work is tracked — CHANGELOG, docs/proposals/, open milestones
+    about: Where work is tracked — CHANGELOG, docs/proposals/, open milestones
   - name: 🔒 Security vulnerability
     url: https://github.com/SchwartzKamel/azure-openai-cli/security/advisories/new
     about: Report security issues privately via Security Advisories

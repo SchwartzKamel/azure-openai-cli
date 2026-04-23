@@ -147,7 +147,7 @@ bench_one() {
     local dll="$1"
     [[ -f "$dll" ]] || { echo "missing: $dll" >&2; exit 1; }
     local is_v2=0
-    [[ "$dll" == *"az-ai-v2"* || "$dll" == *"V2"* || "$dll" == *"v2"* ]] && is_v2=1
+    [[ "$dll" == *"az-ai"* || "$dll" == *"V2"* || "$dll" == *"v2"* ]] && is_v2=1
 
     run_scenario "help"                       "$dll" "-" --help
     run_scenario "version-short"              "$dll" "-" --version --short

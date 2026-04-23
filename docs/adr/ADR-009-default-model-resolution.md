@@ -12,7 +12,7 @@
 
 Look, I'll tell you what happened. I opened the audits and the *left hand doesn't know what the right hand is doing*.
 
-- `azureopenai-cli-v2/Program.cs:257,1222` has the literal `"gpt-4o-mini"` wired in as the hardcoded fallback.
+- `azureopenai-cli/Program.cs:257,1222` has the literal `"gpt-4o-mini"` wired in as the hardcoded fallback.
 - **Eight-ish documentation locations** (CHANGELOG, README passthroughs, FR-017, ADR-005 commentary, spike reports, Morty's own audit, Maestro's M5, the Bania benchmark preamble, assorted ops runbooks) cite `gpt-5.4-nano` as "the default."
 - `docs/cost-optimization.md §3.5` explicitly decided against `gpt-5.4-nano` as the default on cost grounds (4.3× more expensive on input for reasoning most Espanso-style calls don't need).
 - The **user/operator** has -- per Morty's audit and recent operational guidance -- *flipped their own deployment's default to `gpt-5.4-nano`* via environment variable.

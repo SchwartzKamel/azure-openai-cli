@@ -1,11 +1,12 @@
-using System.Text.Json;
+using System.ComponentModel;
 
 namespace AzureOpenAI_CLI.Tools;
 
 /// <summary>
 /// Read the contents of a file from the local filesystem.
+/// MAF version: uses [Description] attributes for AIFunctionFactory.Create.
 /// </summary>
-internal sealed class ReadFileTool : IBuiltInTool
+internal static class ReadFileTool
 {
     private const int MaxFileSizeBytes = 262_144; // 256 KB
 
@@ -29,25 +30,11 @@ internal sealed class ReadFileTool : IBuiltInTool
         "~/.azureopenai-cli.json", // this CLI's own config file
     };
 
-    public string Name => "read_file";
-    public string Description => "Read the contents of a file. Useful for reviewing code, config files, logs, or documents.";
-    public BinaryData ParametersSchema => BinaryData.FromString("""
-        {
-            "type": "object",
-            "properties": {
-                "path": { "type": "string", "description": "Absolute or relative file path to read" }
-            },
-            "required": ["path"]
-        }
-        """);
-
-    public Task<string> ExecuteAsync(JsonElement arguments, CancellationToken ct)
+    [Description("Read the contents of a file. Useful for reviewing code, config files, logs, or documents.")]
+    public static Task<string> ReadAsync(
+        [Description("Absolute or relative file path to read")] string path,
+        CancellationToken ct = default)
     {
-        if (arguments.ValueKind != JsonValueKind.Object ||
-            !arguments.TryGetProperty("path", out var pathProp))
-            return Task.FromResult("Error: missing required parameter 'path'.");
-
-        var path = pathProp.GetString();
         if (string.IsNullOrEmpty(path))
             return Task.FromResult("Error: parameter 'path' must not be empty.");
 
