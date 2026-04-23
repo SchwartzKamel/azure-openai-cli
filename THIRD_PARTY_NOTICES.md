@@ -5,8 +5,12 @@ third-party open source projects. Each component retains its own copyright
 and is distributed under the license noted below. The full text of each
 unique license appears once at the bottom of this file.
 
-This file covers the **v2.x** dependency graph. For the authoritative audit
-and reaffirmation cadence, see [`docs/licensing-audit.md`](docs/licensing-audit.md).
+This file covers both production binaries. The **v2.x** manifest below is the
+historical audit captured in `docs/licensing-audit.md`. The **v1.x** manifest
+covers the current production CLI (`azureopenai-cli/AzureOpenAI_CLI.csproj`)
+and was refreshed in S02E15 "The Lawyer" -- see
+[`docs/legal/license-audit.md`](docs/legal/license-audit.md) for the full v1
+audit, methodology, and refresh cadence.
 
 > **Version-vs-holder note.** The versions shown below are the resolved
 > versions observed at the most recent manifest refresh. Transitive versions
@@ -22,7 +26,7 @@ and reaffirmation cadence, see [`docs/licensing-audit.md`](docs/licensing-audit.
 
 ---
 
-## Manifest
+## Manifest -- v2.x dependency graph
 
 ### MIT-licensed components
 
@@ -91,6 +95,45 @@ Distributed under the [BSD 3-Clause License](#bsd-3-clause-license).
 | Package | Version | Copyright |
 |---|---|---|
 | Google.Protobuf | 3.30.2 | © 2008 Google Inc. |
+
+---
+
+## Manifest -- v1.x dependency graph
+
+The production CLI (`azureopenai-cli/AzureOpenAI_CLI.csproj`, v1.9.1) resolves
+to 15 NuGet packages: 3 direct and 12 transitive. Every package in this
+closure is MIT-licensed -- no Apache-2.0, no BSD, no GPL family, no UNKNOWNs.
+Refreshed during S02E15 "The Lawyer" against the resolved restore graph; see
+[`docs/legal/license-audit.md`](docs/legal/license-audit.md) for methodology.
+
+Distributed under the [MIT License](#mit-license).
+
+| Package | Version | Direct? | Copyright |
+|---|---|---|---|
+| Azure.AI.OpenAI | 2.9.0-beta.1 | direct | (c) Microsoft Corporation |
+| Azure.Core | 1.51.1 | direct | (c) Microsoft Corporation |
+| dotenv.net | 3.1.2 | direct | (c) 2017 Bolorunduro Winner-Timothy B |
+| Microsoft.Bcl.AsyncInterfaces | 10.0.2 | transitive | (c) .NET Foundation and Contributors |
+| Microsoft.Extensions.Configuration.Abstractions | 10.0.2 | transitive | (c) .NET Foundation and Contributors |
+| Microsoft.Extensions.DependencyInjection.Abstractions | 10.0.2 | transitive | (c) .NET Foundation and Contributors |
+| Microsoft.Extensions.Diagnostics.Abstractions | 10.0.2 | transitive | (c) .NET Foundation and Contributors |
+| Microsoft.Extensions.FileProviders.Abstractions | 10.0.2 | transitive | (c) .NET Foundation and Contributors |
+| Microsoft.Extensions.Hosting.Abstractions | 10.0.2 | transitive | (c) .NET Foundation and Contributors |
+| Microsoft.Extensions.Logging.Abstractions | 10.0.2 | transitive | (c) .NET Foundation and Contributors |
+| Microsoft.Extensions.Options | 10.0.2 | transitive | (c) .NET Foundation and Contributors |
+| Microsoft.Extensions.Primitives | 10.0.2 | transitive | (c) .NET Foundation and Contributors |
+| OpenAI | 2.9.1 | transitive | (c) OpenAI |
+| System.ClientModel | 1.9.0 | transitive | (c) .NET Foundation and Contributors |
+| System.Memory.Data | 10.0.1 | transitive | (c) .NET Foundation and Contributors |
+
+Upstream license file URLs:
+
+- Azure SDK packages (`Azure.AI.OpenAI`, `Azure.Core`, `System.ClientModel`):
+  <https://github.com/Azure/azure-sdk-for-net/blob/main/LICENSE.txt>
+- `dotenv.net`: <https://github.com/bolorundurowb/dotenv.net/blob/master/LICENSE>
+- `OpenAI` (.NET SDK): <https://github.com/openai/openai-dotnet/blob/main/LICENSE>
+- All `Microsoft.Bcl.*`, `Microsoft.Extensions.*`, `System.Memory.Data`:
+  <https://github.com/dotnet/runtime/blob/main/LICENSE.TXT>
 
 ---
 

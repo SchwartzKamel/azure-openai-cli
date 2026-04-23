@@ -96,6 +96,36 @@ TPM or RPM you hit first. See `docs/cost/` for the per-model rates.
 
 ---
 
+## Added in S02E15 "The Lawyer"
+
+### MIT vs Apache 2.0
+
+Both are permissive, attribution-only OSS licenses, and from a user's
+perspective they let you do basically the same things: use the code,
+ship it, modify it, sell it, all without paying anyone or releasing
+your own source. Apache 2.0 adds two things MIT does not have: an
+explicit patent grant (which terminates if you sue contributors over
+patents in their contribution), and a `NOTICE` file convention --
+downstream redistributors must preserve any upstream `NOTICE` text
+alongside the license. MIT has neither, which is why MIT fits in one
+paragraph and Apache 2.0 fits on four pages. Both are compatible with
+this project; both require attribution in `THIRD_PARTY_NOTICES.md`.
+
+### GPL contagion
+
+Shorthand for the way GPL-family licenses (GPL, AGPL, LGPL with
+caveats) require derivative works to be released under the same
+license. Statically linking or otherwise baking GPL code into your
+binary forces the binary as a whole to be offered under the GPL too,
+which means publishing your source under terms that let downstream
+users do the same. AGPL extends this trigger to network use, not just
+distribution. For a permissive CLI like `azure-openai-cli`, allowing a
+GPL-family package into the runtime closure would force a relicense or
+a removal -- which is why `docs/legal/license-audit.md` tracks GPL
+findings as release-blocking rather than as paperwork.
+
+---
+
 ## Conventions for new entries
 
 - One H3 per term, alphabetical order within each addition.
