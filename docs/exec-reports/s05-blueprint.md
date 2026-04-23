@@ -59,8 +59,8 @@ table-stakes inside one calendar year:
 - **2025-11-25 spec** is the current stable revision -- tools,
   resources, prompts, elicitation, sampling, experimental tasks.
 - **Streamable HTTP** replaced HTTP+SSE in March 2025; SSE-only
-  servers are deprecated and being phased out by mid-2026. OAuth 2.1
-  + PKCE is mandatory for public/remote servers as of June 2025.
+  servers are deprecated and being phased out by mid-2026. OAuth 2.1 +
+  PKCE is mandatory for public/remote servers as of June 2025.
 - **Competitor adoption:** Claude Code, OpenAI Codex CLI, Gemini CLI,
   gh copilot CLI, aichat, crush, ollama-via-bridge, fabric -- all ship
   MCP client. Most ship server. We ship neither.
@@ -326,8 +326,8 @@ E24.
 
 ## Open questions for showrunner greenlight
 
-1. **24 episodes is a full season; FR-013 estimates ~6 weeks Phase 1
-   + Phase 2 alone.** Is the season-length expectation calendar-aligned
+1. **24 episodes is a full season; FR-013 estimates ~6 weeks Phase 1 +
+   Phase 2 alone.** Is the season-length expectation calendar-aligned
    (every other Tuesday) or shipping-cadence-aligned (one episode per
    merged PR cluster)? If calendar, we cut to ~16 episodes and combine
    Arcs 5-6.

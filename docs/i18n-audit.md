@@ -79,7 +79,7 @@ Any of the following anti-patterns:
 | 1025, 1029 | `semver`, `$"Azure OpenAI CLI v{semver}"` | (a)/(b) | Bare semver is locale-agnostic. The branded line is translation-ready. |
 | 1170-1186 | `"Available models:"`, `$"{prefix}{model}{marker}"`, `$"Config file: {path}"` | (b) | Header + list + trailer. Safe. |
 | 1196-1228 | `"No active model set."` etc. | (b) | All full sentences. Translation-ready. |
-| 1239-1314 | `--help` output | (c) | Heavy column alignment via padding spaces (`  --json                Output ...`). Width assumes single-cell glyphs. Also embeds inline shell examples that should NOT be translated even when surrounding labels are. Mixed translatable / locale-agnostic content per line means a future refactor needs to split each row into label + description. |
+| 1239-1314 | `--help` output | (c) | Heavy column alignment via padding spaces (e.g. `--json` followed by many spaces then the description). Width assumes single-cell glyphs. Also embeds inline shell examples that should NOT be translated even when surrounding labels are. Mixed translatable / locale-agnostic content per line means a future refactor needs to split each row into label + description. |
 | 1263 | `"CTRL+C                graceful cancellation -- flushes state, exits 130"` | (c) | Same column-alignment issue. |
 | 1377-1389 | Config display block (`"  Endpoint:      {endpoint} ({source})"`) | (c) | Right-padded labels + trailing source-of-config parenthetical. Word order does not survive German, where the verb-final pattern shifts the parenthetical. |
 | 1378 | `"==============================="` | (a) | Decorative ASCII rule. Locale-agnostic; safe. |

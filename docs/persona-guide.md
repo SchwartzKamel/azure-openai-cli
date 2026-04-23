@@ -295,8 +295,6 @@ development; they just are not seeded into your local `.squad.json`).
 
 ---
 
-
-
 ```bash
 # One-shot coding task.
 az-ai --persona coder "Implement a Redis-backed rate limiter in src/ratelimit/"

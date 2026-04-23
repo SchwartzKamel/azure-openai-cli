@@ -115,8 +115,8 @@ deltas since the last review:
 
 ### Net effect on positioning
 
-The category-default 2026 axes are now **single-binary distribution
-+ multi-provider coverage + MCP client**. Of those three, `az-ai`
+The category-default 2026 axes are now **single-binary distribution +
+multi-provider coverage + MCP client**. Of those three, `az-ai`
 ships #1, has #2 on the S03 blueprint, and has #3 on the S05
 blueprint. We do not race the field on raw axis count -- our seam
 (text-injection / Espanso / agentic delegation) is orthogonal -- but

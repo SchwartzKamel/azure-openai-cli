@@ -18,7 +18,7 @@ What is on screen:
 
 - One terminal window, full-screen, dark background, white text,
   font size 22pt minimum. No tmux split. No IDE. No browser.
-- Shell prompt is a single character: `$ `. No path, no git branch,
+- Shell prompt is a single character (a literal dollar sign). No path, no git branch,
   no emoji, no two-line prompt. Audience cannot read those.
 - Working directory is `~/demo` and is empty. Verify with `ls`.
 - The CLI binary `azureopenai-cli` is on `$PATH`. Verify with

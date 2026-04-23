@@ -47,7 +47,7 @@ catalogued one bypass family per surface:
    string. Every place the sh tokenizer disagrees with the
    blocklist tokenizer is a bypass: `${IFS}`, tab,
    newline, `\`-escaped names, quoted names, `$VAR` indirection,
-   `&& eval` (only `; eval ` is matched). Eight live bypasses
+   `&& eval` (only `; eval` is matched). Eight live bypasses
    confirmed.
 
 2. **`ReadFileTool`** -- the blocklist covers `/etc/*`, `/root/.ssh`,
@@ -145,7 +145,7 @@ orchestrator harvests the staging file in the next batch.
    all or use a true allowlist of (command, arg-shape) pairs.
 2. **Substring matches don't mean what you think.**
    `command.Contains("; eval ")` looks like it covers eval, but
-   it only covers eval after `; ` -- not `&&`, `||`, newline, or
+   it only covers eval after `;` -- not `&&`, `||`, newline, or
    pipe. The blocklist should be a regex on word boundaries
    across all separators, not literal substrings.
 3. **The `~/.aws`-vs-`~/.ssh` asymmetry is an authoring artifact.**

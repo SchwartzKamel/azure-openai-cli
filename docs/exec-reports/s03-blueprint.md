@@ -347,8 +347,8 @@ consult work everywhere. Both are deliberate.
    position. Costanza is undecided.
 5. **CI cost ceiling.** Adding a local-runtime test job (Ollama
    in a container, model pull cached) roughly doubles CI minutes.
-   Are we okay with that, or do we tier it to nightly-only? Frank
-   + Morty co-own the answer.
+   Are we okay with that, or do we tier it to nightly-only? Frank +
+   Morty co-own the answer.
 
 ---
 

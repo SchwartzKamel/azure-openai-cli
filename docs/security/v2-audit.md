@@ -325,7 +325,7 @@ for this episode.
   final `RequestMessage.RequestUri` is re-resolved through DNS
   and re-checked against `IsPrivateAddress`, AND the scheme is
   re-checked for HTTPS. This is the bit that closes the "302 to
-  http://169.254.169.254/" attack.
+  <http://169.254.169.254/>" attack.
 
 The post-redirect path has dedicated test coverage in
 `tests/AzureOpenAI_CLI.Tests/ToolHardeningTests.cs:212-263`:

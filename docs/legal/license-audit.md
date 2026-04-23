@@ -150,7 +150,7 @@ project LICENSE file we have read and confirmed.
 > a `NOTICE`, downstream redistributors must preserve it alongside the
 > license text. MIT has neither, which is why it fits in one paragraph and
 > Apache 2.0 fits on four pages.
-
+>
 > **Lloyd asks:** What does GPL contagion mean?
 >
 > The GPL family of licenses (GPL, AGPL, LGPL with caveats) requires that

@@ -9,6 +9,8 @@ append; this file is the single source of truth.
 
 ---
 
+## Terms
+
 ### AOT
 
 Ahead-of-Time compilation. .NET 10 native AOT compiles the C# down to a

@@ -328,10 +328,11 @@ an unaired special:
 
 - **S02E25 *The Story Editor*** (Elaine lead, Lloyd + Mickey guests).
   Doc-tree consolidation pass: thin overlap between `competitive-
-  analysis.md` + `competitive-landscape.md`, `i18n-audit.md` + `i18n.md`
-  + `i18n/`, `licensing-audit.md` + `legal/license-audit.md`,
-  `security-review-v2.md` + `security/v2-audit.md` + `security/reaudit-
-  v2-phase5.md`. Add cross-links. Archive duplicates to `docs/archive/`
+  analysis.md` + `competitive-landscape.md`, `i18n-audit.md` +
+  `i18n.md` + `i18n/`, `licensing-audit.md` + `legal/license-audit.md`,
+  `security-review-v2.md` + `security/v2-audit.md` +
+  `security/reaudit-v2-phase5.md`. Add cross-links. Archive duplicates
+  to `docs/archive/`
   with a redirect note. Triggered by 2026-04-22 audit -- 170+ doc files
   with no top-level discovery surface for non-episode docs.
 - **S02E26 *The Locked Drawer*** (Newman lead, Kramer guest). Surfaced

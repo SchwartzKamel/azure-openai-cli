@@ -138,8 +138,8 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   Realtime API has stabilized to streaming-token latency. The
   competition (Claude Code, Cursor) already accepts image input.
   We are visibly behind on this axis.
-- **Tentative lead arc.** *The Screenshot* (image input plumbing
-  + token accounting). *The Microphone* (STT trigger + push-to-talk
+- **Tentative lead arc.** *The Screenshot* (image input plumbing +
+  token accounting). *The Microphone* (STT trigger + push-to-talk
   ergonomics). *The Voice* (TTS output, Mickey-approved). *The
   Realtime* (websocket loop + barge-in). *The Mode* (a "code-aware"
   mode that pairs vision with shell context).
@@ -180,8 +180,8 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   observability).
 - **Dependencies.** Independent. Better after S05 lands so MCP
   tools are first-class workflow nodes.
-- **Risk if killed.** Power users build this themselves with bash
-  + cron + jq, badly. We cede the orchestrator surface to Python
+- **Risk if killed.** Power users build this themselves with bash +
+  cron + jq, badly. We cede the orchestrator surface to Python
   frameworks. Probably survivable.
 
 ### S10 candidate -- *Distribution & Packaging*
@@ -311,8 +311,8 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   cold-start floor, P99 latency, and memory ceiling. No new
   features -- just numbers going down. Establish a Bania-owned
   perf gate in CI that fails PRs on regression. Publish a public
-  benchmark dashboard. End state: documented P50/P95/P99 startup
-  + first-token + steady-state numbers, an enforced budget, and a
+  benchmark dashboard. End state: documented P50/P95/P99 startup +
+  first-token + steady-state numbers, an enforced budget, and a
   tightened binary size.
 - **Why now.** .NET 10 Native AOT in 2026 is delivering
   documented 70-90% cold-start reductions and 50-60% memory
@@ -321,8 +321,8 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   capture it, a competitor will publish faster numbers and the
   story writes itself.
 - **Tentative lead arc.** *The Baseline* (Bania establishes
-  reproducible benchmark harness). *The Trim* (aggressive trim
-  + reflection audit). *The Prewarm* (FR-007 connection
+  reproducible benchmark harness). *The Trim* (aggressive trim +
+  reflection audit). *The Prewarm* (FR-007 connection
   prewarming, finally). *The Cache* (FR-008 prompt-response
   cache). *The Gate* (CI perf-budget enforcement). *The Board*
   (public benchmark dashboard).
@@ -353,8 +353,8 @@ that failed (a) went to **Off-roster**. Items that failed (b) or
   regulatory deadline does the marketing for us.
 - **Tentative lead arc.** *The Airlock* (strict local-only mode,
   network-call assertion in tests). *The Redactor* (rule-based
-  PII detection + replacement, pluggable). *The Posture* (GDPR
-  + HIPAA documentation, with Jackie + Rabbi). *The Telemetry*
+  PII detection + replacement, pluggable). *The Posture* (GDPR +
+  HIPAA documentation, with Jackie + Rabbi). *The Telemetry*
   (formal opt-in story, with Frank + Morty). *The Audit*
   (export "what would have been sent" diff for review).
 - **Casting weight.** **Anchors:** Newman, Rabbi Kirschbaum,

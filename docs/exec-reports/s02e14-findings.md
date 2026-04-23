@@ -19,8 +19,8 @@
   is the de-facto permanent state.
   File: `.github/workflows/ci.yml:138-146`.
   Suggested disposition: queue as a future audit episode (S02E22
-  candidate, paired with the v2 CVE-baseline cleanup) where Newman
-  + Jerry confirm the baseline is green and flip the gate in the
+  candidate, paired with the v2 CVE-baseline cleanup) where Newman +
+  Jerry confirm the baseline is green and flip the gate in the
   same PR. Do **not** flip unilaterally outside an episode -- a
   single newly-disclosed CVE could redden `main` indefinitely if
   no one is on-call to fix-forward.

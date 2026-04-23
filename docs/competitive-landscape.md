@@ -173,7 +173,7 @@ provider on the planet is not our user; they should reach for `llm`
 or `crush`. The user who lives inside an Azure tenant and occasionally
 wants a local fallback is.
 
-### 2. We do not ship an interactive TUI mode.
+### 2. We do not ship an interactive TUI mode
 
 `aichat` has a REPL. `crush` has a polished TUI. `llm` has `llm chat`.
 We have single-shot, an `--agent` tool-calling loop, and the autonomous
@@ -199,7 +199,7 @@ sequencing it carefully under the S05 blueprint rather than racing
 the field. Until S05 lands, this is the column where we are visibly
 behind, and we say so on the tin.
 
-### 4. No multi-model routing and no curated prompt library shipped in the box.
+### 4. No multi-model routing and no curated prompt library shipped in the box
 
 Competitors increasingly ship a "use the cheap model for this, the
 smart model for that" router and a curated prompt library to back it.

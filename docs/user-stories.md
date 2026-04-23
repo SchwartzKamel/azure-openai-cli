@@ -101,8 +101,8 @@ noticed the label was lying. The episode rewrote the summary so the
 label matches the behavior. Honest CI labels are a load-bearing piece
 of contributor trust.
 
-**Where it lives.** `.github/workflows/docs-lint.yml` (header comment
-+ Summary step); see `docs/exec-reports/s02e03-the-warn-only-lie.md`.
+**Where it lives.** `.github/workflows/docs-lint.yml` (header comment +
+Summary step); see `docs/exec-reports/s02e03-the-warn-only-lie.md`.
 
 ---
 

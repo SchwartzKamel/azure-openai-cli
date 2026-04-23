@@ -283,7 +283,7 @@ supply-chain provenance against the build attestations. See the
 glossary and `docs/verifying-releases.md`.
 **Pointer:** [`docs/verifying-releases.md`](verifying-releases.md).
 
-### Q9. Where is `make help`? It seems sparse.
+### Q9. Where is `make help`? It seems sparse
 
 **Answer:** `make help` echoes a curated subset, not every target.
 The full target list is in the [`Makefile`](../Makefile) itself.
@@ -417,8 +417,8 @@ production code, and each is reviewable in a single sitting.
 7. **(M) Document an undocumented `make` target.** `make help`
    surfaces a curated list; the full target list in `Makefile` has
    useful entries (`bench-quick`, `scan`, `audit`) that are
-   under-explained. Add a docstring comment per the `## ` convention
-   already present in the file. *File:* `Makefile`.
+   under-explained. Add a docstring comment per the `##` (double-hash)
+   convention already present in the file. *File:* `Makefile`.
 
 8. **(L) Pair with someone on a `FR-NNN-*.md` proposal under
    [`docs/proposals/`](proposals/).** If you have a substantial idea
