@@ -199,6 +199,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Fixed
 ### Security
+- **security(tools):** Harden `shell_exec` blocklist against IFS,
+  Unicode, and shell-tokenization bypass. Substring-on-raw-input is
+  replaced with a defense-in-depth pipeline: reject shell-substitution
+  metacharacters (`${`, `$()`, backticks, `<()`, `>()`), tab/newline,
+  and `<`/`>` redirection up front; NFKC-normalize the input; then
+  per-statement-segment tokenize, strip surrounding quotes/backslashes,
+  basename, and exact-match against the command blocklist. Closes
+  finding `e23-shell-ifs-tokenization`; activates 8 previously-Skipped
+  bypass tests in `tests/AzureOpenAI_CLI.Tests/Adversary/ShellExecBypassTests.cs`.
+  ([s02e32-the-bypass])
 - **security(docker):** Hardened the Alpine multi-stage Docker image
   -- explicit numeric `USER 10001:10001` (Kubernetes `runAsNonRoot` /
   PSA `restricted` compatible), `COPY --chown --chmod` for binary

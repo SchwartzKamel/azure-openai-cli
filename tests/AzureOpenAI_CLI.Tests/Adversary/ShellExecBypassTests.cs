@@ -126,7 +126,7 @@ public class ShellExecBypassTests
     // LIVE BYPASSES surfaced by FDR -- Skipped, with finding name
     // ===================================================================
 
-    [Fact(Skip = "Live bypass: e23-shell-eval-after-andand")]
+    [Fact]
     public async Task Bypass_EvalAfter_AndAnd_ShouldBeRejected()
     {
         // The substitution/eval check looks for the literal substring
@@ -139,7 +139,7 @@ public class ShellExecBypassTests
         Assert.Contains("eval", result);
     }
 
-    [Fact(Skip = "Live bypass: e23-shell-ifs-tokenization")]
+    [Fact]
     public async Task Bypass_IfsExpansionTokenization_ShouldBeRejected()
     {
         // ${IFS} expands to whitespace at shell time but reads as a
@@ -154,7 +154,7 @@ public class ShellExecBypassTests
         Assert.Contains("blocked", result);
     }
 
-    [Fact(Skip = "Live bypass: e23-shell-tab-separator")]
+    [Fact]
     public async Task Bypass_TabAsCommandSeparator_ShouldBeRejected()
     {
         // The tokenizer splits on a single ASCII space (' ') only.
@@ -166,7 +166,7 @@ public class ShellExecBypassTests
         Assert.Contains("blocked", result);
     }
 
-    [Fact(Skip = "Live bypass: e23-shell-newline-segment")]
+    [Fact]
     public async Task Bypass_NewlineCommandSeparator_ShouldBeRejected()
     {
         // The pipe-segment split uses '|', ';', '&' but NOT '\n'.
@@ -179,7 +179,7 @@ public class ShellExecBypassTests
         Assert.Contains("blocked", result);
     }
 
-    [Fact(Skip = "Live bypass: e23-shell-quoted-command-name")]
+    [Fact]
     public async Task Bypass_QuotedCommandName_ShouldBeRejected()
     {
         // Tokenizer takes the literal first token, including quote
@@ -192,7 +192,7 @@ public class ShellExecBypassTests
         Assert.Contains("blocked", result);
     }
 
-    [Fact(Skip = "Live bypass: e23-shell-backslash-command-name")]
+    [Fact]
     public async Task Bypass_BackslashEscapedCommandName_ShouldBeRejected()
     {
         // /bin/sh allows a leading backslash as a no-op character
@@ -204,7 +204,7 @@ public class ShellExecBypassTests
         Assert.Contains("blocked", result);
     }
 
-    [Fact(Skip = "Live bypass: e23-shell-env-var-indirection")]
+    [Fact]
     public async Task Bypass_EnvVarCommandIndirection_ShouldBeRejected()
     {
         // ${RM:-rm} or $RM expands to "rm" at shell time but the
@@ -217,7 +217,7 @@ public class ShellExecBypassTests
         Assert.Contains("blocked", result);
     }
 
-    [Fact(Skip = "Live bypass: e23-shell-fullwidth-unicode-lookalike")]
+    [Fact]
     public async Task Bypass_FullwidthUnicodeLookalike_ShouldBeRejected()
     {
         // Cosmetic-only attack: the fullwidth letters resolve to a

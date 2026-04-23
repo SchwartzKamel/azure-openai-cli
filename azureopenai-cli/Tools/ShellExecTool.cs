@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 
 namespace AzureOpenAI_CLI.Tools;
@@ -62,35 +63,15 @@ internal sealed class ShellExecTool : IBuiltInTool
         if (string.IsNullOrEmpty(command))
             return "Error: parameter 'command' must not be empty.";
 
-        // Block shell substitution patterns that could bypass command filtering
-        if (command.Contains("$(") || command.Contains("`"))
-            return "Error: shell substitution ($() and backticks) is blocked for safety.";
-
-        // Block process substitution and eval-like constructs
-        if (command.Contains("<(") || command.Contains(">(") ||
-            command.TrimStart().StartsWith("eval ") || command.Contains("; eval ") ||
-            command.TrimStart().StartsWith("exec ") || command.Contains("; exec "))
-            return "Error: process substitution and eval/exec are blocked for safety.";
-
-        // Block dangerous commands
-        var firstToken = command.TrimStart().Split(' ', 2)[0].Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
-        if (BlockedCommands.Contains(firstToken))
-            return $"Error: command '{firstToken}' is blocked for safety.";
-
-        // Block pipe chains to dangerous commands
-        foreach (var segment in command.Split('|', ';', '&'))
-        {
-            var token = segment.Trim().Split(' ', 2)[0].Split('/').LastOrDefault() ?? "";
-            if (BlockedCommands.Contains(token))
-                return $"Error: command '{token}' is blocked for safety.";
-        }
-
-        // Block curl/wget body + upload forms (write-side HTTP). Read-only GETs
-        // stay allowed so the model can fetch public metadata, but any flag that
-        // would send data or upload a file is rejected — those belong in
-        // web_fetch (GET only) or a proper HTTP client, not a shell tool.
-        if (ContainsHttpWriteForms(command, out var offending))
-            return $"Error: curl with body/upload options is not permitted in shell_exec — use web_fetch (GET only) or a proper HTTP client (offending token: {offending}).";
+        // Defense-in-depth blocklist (S02E32 *The Bypass*). Substring-on-raw-input
+        // was bypassable via shell tokenization tricks (${IFS}, tab/newline,
+        // quoted/escaped names, env-indirected commands, fullwidth Unicode
+        // lookalikes, && chains). The pipeline below rejects shell metacharacters
+        // up front, then NFKC-normalizes and tokenizes per shell-statement segment
+        // before exact-matching each command head against the blocklist.
+        var validation = Validate(command);
+        if (validation != null)
+            return validation;
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(DefaultTimeoutMs);
@@ -135,6 +116,122 @@ internal sealed class ShellExecTool : IBuiltInTool
 
         return string.IsNullOrEmpty(result) ? "(no output)" : result;
     }
+
+    /// <summary>
+    /// Static validation pipeline for an LLM-supplied shell command. Returns
+    /// an error string ("Error: ...") if the command is rejected, or null if
+    /// it should be allowed to execute. Stages:
+    ///   1. Reject shell-substitution metacharacters (<c>$()</c>, backticks,
+    ///      <c>&lt;()</c>, <c>&gt;()</c>, <c>${...}</c>) -- these defeat any
+    ///      static blocklist by deferring command resolution to <c>/bin/sh</c>.
+    ///   2. Reject newline / tab metacharacters used to break the tokenizer
+    ///      (a newline is a statement terminator; tab is an IFS character).
+    ///   3. Reject I/O redirection (<c>&lt;</c> / <c>&gt;</c>) which can leak
+    ///      stdout to arbitrary files or smuggle a here-string.
+    ///   4. NFKC-normalize the command so fullwidth Unicode lookalikes
+    ///      (e.g. <c>\uFF52\uFF4D</c> for "rm") collapse to ASCII before
+    ///      tokenization.
+    ///   5. Split on shell-statement separators (<c>;</c>, <c>|</c>, <c>&amp;</c>)
+    ///      so chained commands (<c>true &amp;&amp; rm ...</c>) are inspected
+    ///      per segment.
+    ///   6. Extract each segment's command head, strip surrounding quotes /
+    ///      backslashes (<c>"rm"</c>, <c>\rm</c>), take the basename
+    ///      (<c>/usr/bin/rm</c> -&gt; <c>rm</c>), lowercase, and exact-match
+    ///      against the blocklist + the eval/exec sentinels.
+    ///   7. Apply the curl/wget HTTP-write-form check.
+    /// </summary>
+    internal static string? Validate(string command)
+    {
+        // 1. Shell substitution / parameter expansion.
+        if (command.Contains("$(") || command.Contains("`"))
+            return "Error: shell substitution ($() and backticks) is blocked for safety.";
+        if (command.Contains("<(") || command.Contains(">("))
+            return "Error: process substitution is blocked for safety.";
+        if (command.Contains("${"))
+            return "Error: shell parameter expansion (${...}) is blocked for safety.";
+
+        // 2. Whitespace metacharacters used to break tokenization.
+        if (command.Contains('\n') || command.Contains('\r'))
+            return "Error: newline characters are blocked for safety.";
+        if (command.Contains('\t'))
+            return "Error: tab characters are blocked for safety.";
+
+        // 3. I/O redirection (after the <(/>( process-substitution check).
+        if (command.Contains('<') || command.Contains('>'))
+            return "Error: I/O redirection (< and >) is blocked for safety.";
+
+        // 4. NFKC-normalize so fullwidth Unicode lookalikes collapse to ASCII
+        //    BEFORE we tokenize and blocklist-match.
+        var normalized = command.Normalize(NormalizationForm.FormKC);
+
+        // 5/6. Per-segment command-head extraction + exact-match blocklist.
+        foreach (var segment in normalized.Split(
+                     new[] { ';', '|', '&' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var head = ExtractCommandHead(segment);
+            if (head is null)
+                continue;
+
+            if (head == "eval" || head == "exec")
+                return $"Error: command '{head}' (eval/exec) is blocked for safety.";
+
+            if (BlockedCommands.Contains(head))
+                return $"Error: command '{head}' is blocked for safety.";
+        }
+
+        // 7. Curl/wget write-side HTTP forms. Read-only GETs stay allowed so
+        //    the model can fetch public metadata, but any flag that would
+        //    send data or upload a file is rejected -- those belong in
+        //    web_fetch (GET only) or a proper HTTP client, not a shell tool.
+        if (ContainsHttpWriteForms(normalized, out var offending))
+            return $"Error: curl with body/upload options is not permitted in shell_exec -- use web_fetch (GET only) or a proper HTTP client (offending token: {offending}).";
+
+        return null;
+    }
+
+    /// <summary>
+    /// Extract the command head from a single shell-statement segment.
+    /// Strips leading whitespace, takes the first whitespace-delimited word,
+    /// removes surrounding quotes and leading backslashes (which <c>/bin/sh</c>
+    /// strips before resolving the command name), takes the basename of any
+    /// path-qualified form (<c>/usr/bin/rm</c> -&gt; <c>rm</c>), and
+    /// lowercases. Returns null for empty segments.
+    /// </summary>
+    internal static string? ExtractCommandHead(string segment)
+    {
+        var trimmed = segment.TrimStart();
+        if (trimmed.Length == 0)
+            return null;
+
+        // First whitespace-delimited word (space or tab; tab is rejected upstream
+        // but kept here for defense in depth if Validate is bypassed in tests).
+        var firstWord = trimmed.Split(new[] { ' ', '\t' }, 2, StringSplitOptions.RemoveEmptyEntries)
+                               .FirstOrDefault();
+        if (string.IsNullOrEmpty(firstWord))
+            return null;
+
+        // Strip every quote and backslash. /bin/sh treats `"rm"`, `'rm'`, and
+        // `\rm` as resolving to `rm`; the blocklist must do the same.
+        var sb = new StringBuilder(firstWord.Length);
+        foreach (var c in firstWord)
+        {
+            if (c == '"' || c == '\'' || c == '\\')
+                continue;
+            sb.Append(c);
+        }
+        var stripped = sb.ToString();
+        if (stripped.Length == 0)
+            return null;
+
+        // Path-qualified form: take the basename. Empty after the last '/' means
+        // the input was a bare slash/path-only token; treat as no-command.
+        var basename = stripped.Split('/').LastOrDefault();
+        if (string.IsNullOrEmpty(basename))
+            return null;
+
+        return basename.ToLowerInvariant();
+    }
+
 
     /// <summary>
     /// Detect curl/wget invocations carrying request-body or file-upload flags.
