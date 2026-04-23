@@ -25,6 +25,21 @@ see [`.github/copilot-instructions.md`](../.github/copilot-instructions.md).
 5. [`prerequisites.md`](prerequisites.md) -- env vars (single source of truth).
 6. [`glossary.md`](glossary.md) -- Ralph mode, Squad, persona, Wiggum loop, etc.
 
+Also worth a read early on, even before you write code:
+
+- [`why-az-ai.md`](why-az-ai.md) -- one-page pitch for why this CLI exists and who it beats on what axis. Good context before you open `ARCHITECTURE.md`.
+- [`user-stories.md`](user-stories.md) -- one paragraph per shipped feature in plain English. If you are looking at a flag and wondering "who asked for this?", this is the file.
+
+## Recent additions (latest user-visible features)
+
+If you are returning to the project after a break, these are the user-visible
+landings you most likely missed. Each bullet names the feature, the episode
+that shipped it, and where to read more.
+
+- **`--show-cost` opt-in cost summary** (S02E09 *The Receipt*). Prints a per-invocation breakdown of tokens and dollars after each run. See the `[Unreleased]` / v2 entries in [`../CHANGELOG.md`](../CHANGELOG.md) and the source under [`../azureopenai-cli/Observability/`](../azureopenai-cli/Observability/) (`CostEstimator.cs`, `CostEvent.cs`, `CostHook.cs`).
+- **`make migrate-check` and `make migrate-clean`** (S02E33 *The Uninstaller*). Contributor-facing targets that help you move a workstation from v1 to v2 and tidy up the v1 leftovers. Full procedure in [`migration-v1-to-v2.md`](migration-v1-to-v2.md); the targets are defined in [`../Makefile`](../Makefile).
+- **Structural shell-blocklist hardening** (S02E32 *The Bypass*). The run-shell tool now rejects a wider family of command-chaining and redirection bypass attempts before they reach a subprocess. The rationale and threat model live in [`../SECURITY.md`](../SECURITY.md).
+
 ## Architecture and decisions
 
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md) -- system design, tool registry, Squad internals.
@@ -45,6 +60,7 @@ see [`.github/copilot-instructions.md`](../.github/copilot-instructions.md).
 - [`cost-optimization.md`](cost-optimization.md) -- model selection and budgeting.
 - [`accessibility.md`](accessibility.md) -- `NO_COLOR`, `--raw`, keyboard workflows. Deeper notes in [`accessibility/`](accessibility/).
 - [`i18n.md`](i18n.md) -- invariant globalization contract; deeper notes in [`i18n/`](i18n/).
+- [`nim-setup.md`](nim-setup.md) -- getting `az-ai` talking to a local NVIDIA NIM (Gemma-4-2B-NVFP4) on WSL2 + Blackwell in under 10 minutes. Read this if you want to run the `:aifix` flow without calling Azure.
 
 ## Process and governance
 
@@ -54,6 +70,7 @@ The four-doc stack lives in [`process/`](process/) (start at [`process/README.md
 - [`process/adr-stewardship.md`](process/adr-stewardship.md) -- when a decision earns an ADR.
 - [`process/cab-lite.md`](process/cab-lite.md) -- lightweight cross-cast review.
 - [`process/retrospective-cadence.md`](process/retrospective-cadence.md) -- season-finale and post-incident retros.
+- [`CHANGELOG-style-guide.md`](CHANGELOG-style-guide.md) -- Mr. Lippman's rulebook for writing `CHANGELOG.md` entries. Read before you append a bullet to the release log.
 
 Skills (the verbs) live in [`../.github/skills/`](../.github/skills/) and agents (the cast)
 live in [`../.github/agents/`](../.github/agents/). Process governs both.
@@ -82,7 +99,17 @@ edit FR status outside the matrix.
 - [`security/hardening-checklist.md`](security/hardening-checklist.md) -- pre-release hardening gate.
 - [`security/cve-log.md`](security/cve-log.md), [`security/sbom.md`](security/sbom.md), [`security/scanners.md`](security/scanners.md), [`security/supply-chain.md`](security/supply-chain.md) -- supply-chain posture.
 - [`runbooks/threat-model-v2.md`](runbooks/threat-model-v2.md) -- v2 threat model.
+- [`security-review-v2.md`](security-review-v2.md) -- Newman's cutover security review of the v2 tree, surface by surface, with evidence by line number.
 - [`verifying-releases.md`](verifying-releases.md) -- cosign / attestation verification.
+
+## Observability and telemetry
+
+Opt-in, off by default. Read these before you enable telemetry locally or
+before you argue about what signals the CLI should emit.
+
+- [`observability.md`](observability.md) -- Phase 5 observability posture: OTel spans, cost events, what is on/off by default.
+- [`telemetry.md`](telemetry.md) -- the short policy version: zero default egress, opt-in flags, what a user can and cannot turn on.
+- [`incident-runbooks.md`](incident-runbooks.md) -- Frank Costanza's triage guide for end users hitting a failure mid-pipeline. The three runbooks (key, quota, network) cover most "the CLI is broken" tickets.
 
 ## Performance and benchmarks
 
@@ -90,6 +117,7 @@ edit FR status outside the matrix.
 - [`perf/bench-workflow.md`](perf/bench-workflow.md) -- which `make bench*` to run when.
 - [`perf/v2.0.5-baseline.md`](perf/v2.0.5-baseline.md) -- current cold-start / size baseline.
 - [`perf/reference-hardware.md`](perf/reference-hardware.md) -- the reference rig.
+- [`perf-baseline-v2.md`](perf-baseline-v2.md) -- Kenny Bania's v1-vs-v2 perf baseline and the AOT-size gate verdict for the v2.0.0 cutover.
 - [`benchmarks/`](benchmarks/) -- dated benchmark transcripts. Raw artifacts under [`benchmarks/raw/`](benchmarks/raw/).
 
 ## Release, ops, and migration
@@ -99,7 +127,17 @@ edit FR status outside the matrix.
 - [`ops/slos-v2.md`](ops/slos-v2.md), [`ops/v2-sre-runbook.md`](ops/v2-sre-runbook.md), [`ops/telemetry-schema-v2.0.0.md`](ops/telemetry-schema-v2.0.0.md), [`ops/ghcr-tag-policy.md`](ops/ghcr-tag-policy.md).
 - [`migration-v1-to-v2.md`](migration-v1-to-v2.md) -- user-facing v1 -> v2 upgrade.
 - [`v2-migration.md`](v2-migration.md) -- internal MAF-adoption phase plan (different audience).
-- [`launch/`](launch/) -- per-release launch playbooks; [`announce/`](announce/) -- announcement archive.
+- [`launch/README.md`](launch/README.md) -- per-release launch playbooks, announcements, social drafts, CFPs, and post-tag diagnostics. Start here when you inherit a launch. The raw directory is at [`launch/`](launch/).
+- [`announce/`](announce/) -- announcement archive.
+
+The v2.0.0 cutover generated its own stack of decision and checklist docs.
+They are frozen as shipped; read them to understand how the v2 ship decision
+was made, not to re-open it.
+
+- [`v2-cutover-decision.md`](v2-cutover-decision.md) -- Costanza's go/no-go ruling for v2.0.0.
+- [`v2-cutover-checklist.md`](v2-cutover-checklist.md) -- the Phase 6 cutover gate, one checkbox per precondition.
+- [`v2-dogfood-plan.md`](v2-dogfood-plan.md) -- the Phase 7 dogfood + chaos plan that fed into the decision.
+- [`release-notes-v2.0.0.md`](release-notes-v2.0.0.md) -- v2.0.0 release notes (tag immutable; published line is v2.0.6 -- see [`launch/v2.0.6-release-notes.md`](launch/v2.0.6-release-notes.md) for what actually shipped).
 
 ## Specialist trees (browse, do not read top-to-bottom)
 
@@ -112,6 +150,16 @@ edit FR status outside the matrix.
 - [`legal/`](legal/), [`licensing-audit.md`](licensing-audit.md) -- license posture and trademark policy.
 - [`audits/`](audits/) -- dated audit transcripts (immutable; one file per auditor per audit).
 - [`spikes/`](spikes/), [`diary/`](diary/), [`opportunity-analysis.md`](opportunity-analysis.md), [`competitive-analysis.md`](competitive-analysis.md), [`competitive-landscape.md`](competitive-landscape.md) -- exploratory and comparative work.
+
+## Quality audits and reviews
+
+Dated, signed, read-only review reports. When something breaks a regression,
+these are the receipts.
+
+- [`accessibility-review-v2.md`](accessibility-review-v2.md) -- Mickey Abbott's a11y + CLI-ergonomics review of the v2 cutover build.
+- [`chaos-drill-v2.md`](chaos-drill-v2.md) -- FDR's red-team chaos drill against the AOT v2 binary (10 attack categories + a live persona-memory exercise).
+- [`i18n-audit.md`](i18n-audit.md) -- Babu Bhatt's i18n-readiness audit of every user-facing string in the v1 CLI binary.
+- [`dogfooding-baseline-2026-04.md`](dogfooding-baseline-2026-04.md) -- snapshot of where we actually use `az-ai` today vs where we still reach for other tools. Feeds the S06 Dogfooding arc.
 
 ## Conventions
 
