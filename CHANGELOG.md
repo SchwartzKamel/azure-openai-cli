@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **docs(security):** `docs/security/v2-audit.md` -- end-to-end
+  audit of the v2 surface (credential stores, shell_exec,
+  read_file, web_fetch SSRF, dependency vulns, subagent depth
+  cap). Each protection paired with the attack it stops; verdict
+  5 PASS / 1 NEEDS-FOLLOW-UP / 0 GAP. ([s02e13-the-inspector])
+- **docs(legal):** `THIRD_PARTY_NOTICES.md` extended with a v1.x dependency manifest covering all 15 packages (3 direct, 12 transitive) in the production CLI closure, all MIT-licensed. ([s02e15-the-lawyer])
+- **docs(legal):** `docs/legal/license-audit.md` is the v1 OSS license audit -- per-package classification, license-obligation posture, Lloyd callouts on MIT vs Apache 2.0 and GPL contagion, and the exact `dotnet` commands to refresh attribution before each release. ([s02e15-the-lawyer])
 - **docs(market):** `docs/competitive-landscape.md` -- Sue Ellen
   Mischke's tight landscape brief against five credible CLI / TUI
   alternatives, naming three differentiators we lean into (per-OS
