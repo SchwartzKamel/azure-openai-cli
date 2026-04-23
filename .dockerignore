@@ -61,6 +61,27 @@ tests/
 docs/
 img/
 
+# Auxiliary repository directories that bloat context but are never copied
+# into the image. Each entry mirrors a real top-level directory; remove if
+# the directory is removed from the repo.
+archive/
+audits/
+benchmarks/
+demos/
+launch/
+announce/
+talks/
+perf/
+dist/
+coverage/
+
+# Repo-root tooling that does not belong in the build context
+Makefile
+Dockerfile
+Dockerfile.*
+.editorconfig
+.dockerignore
+
 # Exceptions: license + attribution files must be in build context so the
 # runtime stage can COPY them into /licenses/ for redistribution compliance.
 !LICENSE
