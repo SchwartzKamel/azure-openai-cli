@@ -2,7 +2,7 @@
 
 > *Bob Sacamano stands up Homebrew, Scoop, and Nix drafts so the v1 binary stops shipping only as Docker + curl.*
 
-**Commit:** `<filled at push>`
+**Commit:** `ba96f6d`
 **Branch:** `main` (direct push)
 **Runtime:** ~25 min
 **Director:** Larry David (showrunner)
