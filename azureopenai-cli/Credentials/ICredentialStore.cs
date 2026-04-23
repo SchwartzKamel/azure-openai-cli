@@ -29,7 +29,7 @@ internal interface ICredentialStore
     /// <summary>
     /// Persists <paramref name="apiKey"/> to the backing store, overwriting any existing value.
     /// </summary>
-    /// <param name="apiKey">The plaintext API key. Must not be null or empty.</param>
+    /// <param name="apiKey">The plaintext API key. Must not be null, empty, or whitespace.</param>
     /// <exception cref="CredentialStoreException">Thrown on IO, permission, or platform errors.</exception>
     void Store(string apiKey);
 

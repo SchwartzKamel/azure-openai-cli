@@ -39,9 +39,9 @@ internal sealed class MacSecurityCredentialStore : ICredentialStore
 
     public void Store(string apiKey)
     {
-        if (string.IsNullOrEmpty(apiKey))
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
-            throw new ArgumentException("API key must not be null or empty.", nameof(apiKey));
+            throw new ArgumentException("API key must not be null, empty, or whitespace.", nameof(apiKey));
         }
 
         var (exitCode, _, stderr) = RunSecurity(

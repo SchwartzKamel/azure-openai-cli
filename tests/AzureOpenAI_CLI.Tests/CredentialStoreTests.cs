@@ -184,25 +184,15 @@ public sealed class PlaintextCredentialStoreTests : CredentialStoreTestBase
     [Fact]
     public void Store_Whitespace_Throws()
     {
-        // Whitespace is not IsNullOrEmpty, so the store currently accepts it. The
-        // public contract (interface XML docs) says "not null or empty" — whitespace
-        // is arguably a caller bug but not guarded. Test the de-facto behaviour: if
-        // whitespace-only is ever tightened to ArgumentException, update this.
-        // FDR view: whitespace keys should fail, but that's a separate proposal.
+        // Whitespace keys are always caller bugs (copy-paste artifact, empty env
+        // expansion, accidental space). The Store() guard now rejects them
+        // across all three providers via IsNullOrWhiteSpace.
         var config = new UserConfig();
         var store = new PlaintextCredentialStore(config);
 
-        // Document current behaviour: whitespace is accepted. If upstream adds
-        // IsNullOrWhiteSpace guard, flip this to Assert.Throws<ArgumentException>.
-        var ex = Record.Exception(() => store.Store("   "));
-        if (ex is ArgumentException)
-        {
-            // Guard added — good. Assertion still green.
-            return;
-        }
-
-        Assert.Null(ex);
-        Assert.Equal("   ", config.ApiKey);
+        var ex = Assert.Throws<ArgumentException>(() => store.Store("   "));
+        Assert.Contains("whitespace", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(config.ApiKey);
     }
 
     [Fact]
