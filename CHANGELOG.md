@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **docs(market):** `docs/competitive-landscape.md` -- Sue Ellen
+  Mischke's tight landscape brief against five credible CLI / TUI
+  alternatives, naming three differentiators we lean into (per-OS
+  keystore, AOT single binary, Azure-specific first-run wizard) and
+  three gaps we accept (Azure-only, no TUI, no multi-model routing /
+  prompt library). Includes three Peterman draft positioning
+  paragraphs marked "not yet adopted." ([s02e19-the-competition])
 - **docs(i18n):** `docs/i18n-audit.md` inventories every user-facing
   string in the v1 CLI binary and classifies each as locale-agnostic,
   translation-ready, or needing refactor before l10n can begin. No
@@ -127,6 +134,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   construction is preserved so first-span export latency stays predictable.
   See `docs/perf/v2.0.5-baseline.md` §4.3 for the full before/after table.
   ([bania-v2-01])
+- **docs(community):** Contributor onboarding refreshed (CONTRIBUTING.md,
+  issue/PR templates). ([s02e17-the-newsletter])
 ### Deprecated
 ### Removed
 ### Fixed

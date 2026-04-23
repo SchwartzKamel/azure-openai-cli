@@ -55,6 +55,36 @@ against a live endpoint. Unit tests don't need it.
 
 ---
 
+## Your first PR
+
+If you want a small, real change to start with, pick one of these. Each
+one is bounded, reviewable in a single sitting, and references work an
+earlier episode left as a B-plot.
+
+- **Add a missing acronym to [`docs/glossary.md`](docs/glossary.md).**
+  S02E08 stood the glossary up but only seeded the first eleven entries.
+  If you tripped over a term in the README and had to look it up, that's
+  a glossary gap. Add it; one paragraph, one PR.
+- **Address a `Lloyd flags:` callout in [`docs/user-stories.md`](docs/user-stories.md).**
+  S02E11 left explicit "Lloyd flags:" markers where the prose still reads
+  like a spec. Pick one, rewrite the surrounding paragraph in plain
+  English, and remove the marker.
+- **Fill a docs gap referenced in S02E13's security audit follow-ups.**
+  See the "Not shipped" section of `docs/exec-reports/s02e13-*.md` once
+  it lands; pre-S02E13, the standing ask is a one-page "what data leaves
+  your machine" summary that cross-links [`docs/telemetry.md`](docs/telemetry.md).
+- **Improve a `--help` example.** Run `az-ai-v2 <subcommand> --help`,
+  find a flag whose example is thin or missing, and add one. The strings
+  live in `azureopenai-cli-v2/`; the test pattern lives in
+  `tests/AzureOpenAI_CLI.Tests/`.
+- **Fix a typo or broken link.** Boring, valued, always merged. Run
+  `grep -rn "TODO\|FIXME" docs/` for hints.
+
+If none of those fit, open a [Question issue](.github/ISSUE_TEMPLATE/question.yml)
+describing what you'd like to work on. We will point you at something.
+
+---
+
 ## The preflight gate
 
 **Non-negotiable.** Read [`.github/skills/preflight.md`](.github/skills/preflight.md)
@@ -243,6 +273,20 @@ A small, boring set. If you're browsing issues:
 | `v2` | Touches `azureopenai-cli-v2/` -- the default for new work. |
 
 Maintainers curate these. If a label looks wrong, say so on the issue.
+
+---
+
+## Uncle Leo's contributor wall
+
+Hello! Contributor! Hello! This project would not exist without the
+people and personas who showed up. The human cast on the commit log so
+far: **SchwartzKamel**. The agent fleet -- 25 named archetypes,
+defined in [`.github/agents/`](.github/agents/) -- has shown up under
+the names **Babu Bhatt**, **Bob Sacamano**, **Costanza**, **Elaine**,
+**Jackie Chiles**, **Jerry**, **Kenny Bania**, **Kramer**, **Mr. Lippman**,
+**Morty Seinfeld**, **Mr. Pitt**, **Newman**, **J. Peterman**,
+**Puddy**, **Soup Nazi**, and the **Copilot SWE agent** itself. Your
+name belongs on this wall too. Open the PR. We will hold the door.
 
 ---
 
