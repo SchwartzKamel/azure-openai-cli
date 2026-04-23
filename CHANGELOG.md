@@ -8,6 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(a11y):** `NO_COLOR` and `FORCE_COLOR` env-var gates land in v1
+  via the new `AzureOpenAI_CLI.ConsoleIO.AnsiPolicy` helper — the
+  forward-looking chokepoint for any future color in the v1 binary.
+  Precedence is `NO_COLOR` (off, any non-empty) > `FORCE_COLOR` (on,
+  any non-empty other than `"0"`, even when stdout is redirected) >
+  TTY auto-detect. Kept in lockstep with v2's `Theme.UseColor()` so
+  users get one set of rules across both binaries. The first-run
+  wizard now prints a one-line announcement
+  (`Your key will be masked as you type. Press Enter when done.`)
+  before the masked key prompt — Mickey's gift to screen-reader
+  users, since a stream of bullet glyphs with no warning is hostile.
+  The announcement is suppressed on the redirected-stdin path where
+  no masking actually happens. The `docs/accessibility.md` contract
+  picks up a v1 section documenting all of the above plus the clean
+  abort path. ([s02e06-the-screen-reader])
+- **feat(bench):** `make bench-quick` target — a 5–10 s directional
+  cold-start smoke (N=50, no warm-up, stdout only) for the pre-commit /
+  dev loop. Sits below `make bench` (mid-PR, N=100) and `make bench-full`
+  (pre-merge, N=500, `--flag-matrix`). See
+  [`docs/perf/bench-workflow.md`](docs/perf/bench-workflow.md).
+- **ci(bench-canary):** New `bench-canary` job in `.github/workflows/ci.yml`
+  runs `make bench-quick` on every push / PR (`needs: build-and-test`) and
+  posts the table to the GitHub Actions step summary under
+  `## bench-canary (directional only)`. Explicitly **not** a regression
+  gate — shared-runner jitter (±30 %) makes it useless for precise
+  comparisons; pinned-rig numbers (`make bench-full` per
+  `docs/perf/reference-hardware.md`) remain authoritative. The bench step
+  uses `continue-on-error: true` so noisy numbers cannot redden CI.
 - **feat(credentials):** Opportunistic libsecret credential store on
   Linux. When `/usr/bin/secret-tool` is present and a DBus session
   bus is available, `az-ai` now stores credentials via libsecret

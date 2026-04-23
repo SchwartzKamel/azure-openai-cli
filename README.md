@@ -119,6 +119,8 @@ Cold-start and binary-size figures for v2.0.5 are being re-measured on the curre
 
 Relative ordering is unchanged: **Native AOT** (`make install`, no .NET runtime) is the fastest and smallest; **ReadyToRun** (`make publish-r2r`) is JIT-assisted and requires the runtime; **Docker (Alpine)** pays container + runtime cold-start overhead on every invocation. The AOT binary remains the only option fast enough to feel synchronous inside text expanders like Espanso and AutoHotkey.
 
+Contributors: see [docs/perf/bench-workflow.md](docs/perf/bench-workflow.md) for which `make bench*` target to run when (`bench-quick` for the pre-commit loop, `bench` mid-PR, `bench-full` pre-merge / release).
+
 ## Espanso / AutoHotkey
 
 Drop an AI layer into any text field on your OS:

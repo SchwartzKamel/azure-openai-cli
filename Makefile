@@ -50,7 +50,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
-	publish-all bench bench-full install uninstall \
+	publish-all bench bench-quick bench-full install uninstall \
 	install-nim-gemma-2b uninstall-nim-gemma-2b nim-status nim-warmup \
 	demo-hero-gif
 
@@ -96,7 +96,8 @@ help:
 	@echo "Native-install & benchmark (drop Docker for speed — ideal for Espanso/AHK):"
 	@echo "  make install      - Install host-AOT binary to ~/.local/bin/az-ai (Linux/macOS/WSL)"
 	@echo "  make uninstall    - Remove ~/.local/bin/az-ai"
-	@echo "  make bench        - Measure cold-start time of dist/aot/$(BIN_NAME) (N=100, warm-up=5)"
+	@echo "  make bench-quick  - 5-10s directional smoke (N=50, no warm-up, stdout only) — pre-commit sanity"
+	@echo "  make bench        - Measure cold-start time of dist/aot/$(BIN_NAME) (N=100, warm-up=5) — mid-PR check"
 	@echo "  make bench-full   - Canonical pre-merge sweep (N=500, --flag-matrix, JSON to docs/perf/runs/)"
 	@echo ""
 	@echo "  make check       - Verify the project builds successfully"
@@ -391,15 +392,27 @@ uninstall:
 	@rm -f $(INSTALL_BIN)
 	@echo ">> Removed $(INSTALL_BIN)"
 
-## Measure cold-start of the host-AOT binary (N=100, 5 warm-ups, --help).
+## Quick directional smoke: N=50, no warm-up, no flag matrix, stdout only
+## (~5–10s on the reference rig). Intended for the pre-commit / dev loop to
+## answer "did I make cold-start visibly worse?" — NOT bench-grade. For
+## mid-PR confirmation use `bench`; for pre-merge / release use `bench-full`.
+## See docs/perf/bench-workflow.md for the full matrix.
+bench-quick: dist/aot/$(BIN_NAME)
+	@command -v python3 >/dev/null 2>&1 || { echo "Error: python3 required for bench"; exit 1; }
+	@python3 scripts/bench.py dist/aot/$(BIN_NAME) --n 50 --warmup 0
+
+## Mid-PR cold-start check (N=100, 5 warm-ups, --help). Not authoritative on
+## its own — confirm a suspected regression with `bench-full` on the pinned
+## rig (docs/perf/reference-hardware.md) before filing or gating.
 ## Requires python3 on PATH (which it is on Linux, macOS, WSL, and Git Bash).
 bench: dist/aot/$(BIN_NAME)
 	@command -v python3 >/dev/null 2>&1 || { echo "Error: python3 required for bench"; exit 1; }
 	@python3 scripts/bench.py dist/aot/$(BIN_NAME)
 
-## Canonical pre-merge bench sweep: N=500, 5 warm-ups, --flag-matrix.
+## Canonical pre-merge / release bench sweep: N=500, 5 warm-ups, --flag-matrix.
 ## Writes both human-readable and JSON bundles under docs/perf/runs/<date>.
-## See docs/perf/reference-hardware.md for the rig protocol.
+## Run on the pinned reference rig — see docs/perf/reference-hardware.md for
+## the protocol (governor=performance, AC power, ±5 % noise band).
 bench-full: dist/aot/$(BIN_NAME)
 	@command -v python3 >/dev/null 2>&1 || { echo "Error: python3 required for bench"; exit 1; }
 	@mkdir -p docs/perf/runs
