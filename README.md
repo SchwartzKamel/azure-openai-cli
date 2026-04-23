@@ -17,6 +17,60 @@
 - 🖥️ **Cross-platform** — Pre-built AOT binaries for Linux (glibc/musl/arm64), macOS (x64/arm64), and Windows (x64/arm64).
 - 🧪 **1,510+ passing tests** (1,025 v1 + 485 v2 xUnit, plus ~174 bash integration assertions), .NET 10, `Azure.AI.OpenAI 2.1.0` stable.
 
+## First run
+
+Run `az-ai` with no credentials configured and it drops you into a short interactive wizard:
+
+```text
+$ az-ai
+Welcome to az-ai! Let's get you set up. (takes ~30 seconds)
+
+Azure OpenAI endpoint URL
+  e.g. https://my-resource.openai.azure.com/
+> https://contoso.openai.azure.com/
+
+API key (input hidden)
+> ••••••••••••••••
+
+Model deployment name (comma-separated for multiple)
+  e.g. gpt-4o,gpt-4o-mini
+> gpt-4o
+
+Testing connection... ✓ authenticated (gpt-4o responded in 412ms)
+Saved to /home/user/.azureopenai-cli.json (mode 0600)
+
+Run 'az-ai --config show' anytime to inspect settings.
+```
+
+- The wizard **auto-runs** when creds are missing *and* you're on an interactive terminal. Scripts, pipes, `--raw`, `--json`, and containers bypass it — they fail loud like before, so nothing in your CI/Espanso/AHK setup breaks.
+- Re-run it anytime with `az-ai --init` (aliases: `--configure`, `--login`).
+- **Environment variables still win.** `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` / `AZUREOPENAIMODEL` override stored config every time — the wizard is for humans, env vars are for machines.
+
+### Where is my key stored?
+
+| OS | Location | Backing |
+|---|---|---|
+| Windows | `%USERPROFILE%\.azureopenai-cli.json` | Encrypted with DPAPI (user-scoped) |
+| macOS | `~/.azureopenai-cli.json` + login Keychain | Apple Keychain (service `az-ai`) |
+| Linux | `~/.azureopenai-cli.json` | Plaintext, file mode `0600` |
+| Docker / CI | env vars only | No on-disk storage |
+
+On Linux the key is plaintext at `0600` — same posture as AWS CLI, GitHub CLI, and Azure CLI. Honest trade-off over security theater; the compensating control is rotation.
+
+### Key rotation
+
+The Azure OpenAI key ring gives you two active keys per resource, which means you can rotate with **zero downtime**:
+
+1. In the Azure portal, open your resource → **Keys and Endpoint** → **Regenerate Key 2**.
+2. Swap your local config to Key 2 (`az-ai --init`, paste the new key).
+3. Regenerate Key 1 to finish the cycle.
+
+Recommendations:
+
+- Rotate every **~90 days** as a baseline.
+- Revoke immediately if a device is lost or you suspect compromise.
+- For higher assurance, skip on-disk storage entirely and use env vars / Docker secrets / a secret manager — env always takes precedence.
+
 ## Quickstart
 
 ```bash
@@ -87,9 +141,23 @@ Type `:aifix` → clipboard text goes in → corrected prose comes out in-place.
 
 ## Configuration
 
-Set via environment, `.env` file, or `~/.azureopenai-cli.json`. Precedence: **CLI flag > environment variable > user config > built-in default** (`gpt-4o-mini` for model). An explicit `--config <path>` takes priority over `./.azureopenai-cli.json`, which takes priority over `~/.azureopenai-cli.json`. Inspect the effective config with `az-ai --config show`.
+Most humans should just run `az-ai` and let the [first-run wizard](#first-run) handle it. This section is for everything downstream of that: precedence rules, the full env-var surface, and the scripted-setup path.
+
+Precedence (highest → lowest): **CLI flag > environment variable > user config > built-in default** (`gpt-4o-mini` for model). An explicit `--config <path>` takes priority over `./.azureopenai-cli.json`, which takes priority over `~/.azureopenai-cli.json`. Inspect the effective config with `az-ai --config show`.
 
 Full env-var reference (single source of truth): [docs/prerequisites.md](docs/prerequisites.md).
+
+### Power user / scripted setup
+
+If you're deploying in a container, wiring this into CI, or just prefer env vars, skip the wizard by exporting the three required variables — env vars always win over stored config:
+
+```bash
+export AZUREOPENAIENDPOINT="https://my-resource.openai.azure.com/"
+export AZUREOPENAIAPI="<key>"
+export AZUREOPENAIMODEL="gpt-4o,gpt-4o-mini"
+```
+
+Or drop them in a `.env` file (`cp azureopenai-cli/.env.example .env`) and source it — the same template still works for both v1 and v2.
 
 | Variable | Required | Default | Description |
 |----------|:--------:|--------:|-------------|

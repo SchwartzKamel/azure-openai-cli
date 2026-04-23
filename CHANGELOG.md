@@ -25,6 +25,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   binary size) on every run. `make bench-full` wires the canonical
   `N=500 --flag-matrix` sweep and writes dated JSON + text bundles to
   `docs/perf/runs/`. ([bania-v2-03])
+- **feat(setup):** First-run setup wizard — when credentials are
+  unresolvable on an interactive terminal, `az-ai` now prompts for
+  endpoint, API key (masked input), and model, then validates via a
+  test ping before persisting. Re-runnable any time via `--init`
+  (aliases `--configure`, `--login`).
+- **feat(setup):** Per-OS native credential storage ("living off the
+  land" — zero new NuGet dependencies, AOT-safe):
+  - **Windows:** DPAPI via `crypt32.dll` P/Invoke, user-scoped.
+  - **macOS:** Apple Keychain via `/usr/bin/security` (service
+    `az-ai`).
+  - **Linux / containers:** plaintext at `~/.azureopenai-cli.json`
+    with mode `0600` (matches AWS CLI / GitHub CLI / Azure CLI
+    baseline; rotate keys per documented guidance).
+- **feat(config):** `ApiKeyFingerprint` (`sha256(key)[0..12]`) shown
+  in `--config show` for safe display and tamper detection; the
+  actual key is never printed.
+- **docs(proposals):** `docs/proposals/FR-NNN-first-run-wizard.md`
+  (number assigned by the docs-fr task) captures motivation, per-OS
+  LOLBin design, rejected alternatives, and the Newman + Rabbi
+  signoff for the Linux plaintext trade-off.
+- **Backward compatibility:** environment variables retain full
+  precedence. CI, Docker, Espanso, AHK, and any scripted workflow
+  exporting `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` /
+  `AZUREOPENAIMODEL` is unaffected. The wizard runs only when
+  credentials are unresolvable **and** the terminal is interactive
+  **and** neither `--raw` nor `--json` is set **and** we are not
+  in a container.
 ### Changed
 - **feat(ralph):** Ralph `--validate <cmd>` validation loop now defaults to a
   low sampling temperature (0.15) when the operator has not explicitly pinned

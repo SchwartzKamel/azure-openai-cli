@@ -25,6 +25,49 @@ public class UserConfig
     public int? TimeoutSeconds { get; set; }
     public string? SystemPrompt { get; set; }
 
+    // ── Credential-store fields ─────────────────────────────────────
+    // Canonical definitions owned by the userconfig-fields work item.
+    // Cross-platform layering: Windows uses ApiKeyCiphertext (DPAPI),
+    // macOS uses the Keychain (ApiKey stays null), Linux/containers
+    // fall back to plaintext ApiKey. ApiKeyProvider records which
+    // mechanism wrote the value; ApiKeyFingerprint lets --config show
+    // prove identity/tamper-state without exposing the secret itself.
+
+    /// <summary>Azure OpenAI resource endpoint URL (e.g. https://foo.openai.azure.com/).</summary>
+    public string? Endpoint { get; set; }
+
+    /// <summary>Plaintext API key — Linux/container only. Null on Windows (see ApiKeyCiphertext) and macOS (Keychain).</summary>
+    public string? ApiKey { get; set; }
+
+    /// <summary>Base64-encoded DPAPI ciphertext — Windows only. Protected by CurrentUser scope.</summary>
+    public string? ApiKeyCiphertext { get; set; }
+
+    /// <summary>Which provider stored the key: "dpapi" | "macos-keychain" | "plaintext".</summary>
+    public string? ApiKeyProvider { get; set; }
+
+    /// <summary>First 12 hex chars of sha256(key) — safe to display in --config show; used for tamper detection. Never the key itself.</summary>
+    public string? ApiKeyFingerprint { get; set; }
+
+    /// <summary>
+    /// Computes a safe, non-reversible fingerprint of an API key for display and tamper detection.
+    /// </summary>
+    public static string ComputeFingerprint(string apiKey)
+    {
+        if (string.IsNullOrEmpty(apiKey)) throw new ArgumentException("key is required", nameof(apiKey));
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(apiKey));
+        return Convert.ToHexString(bytes, 0, 6).ToLowerInvariant(); // first 6 bytes = 12 hex chars
+    }
+
+    /// <summary>
+    /// Returns a redacted, debug-safe view of the config. Never includes ApiKey or ApiKeyCiphertext.
+    /// </summary>
+    public override string ToString()
+    {
+        return $"UserConfig {{ Endpoint = {Endpoint ?? "<null>"}, ActiveModel = {ActiveModel ?? "<null>"}, " +
+               $"ApiKeyProvider = {ApiKeyProvider ?? "<null>"}, ApiKeyFingerprint = {ApiKeyFingerprint ?? "<null>"} }}";
+    }
+
     /// <summary>
     /// Loads the user configuration from the config file, or creates a new one if it doesn't exist.
     /// </summary>

@@ -467,6 +467,128 @@ fi
 [ -n "$_adv_restore_ep" ] && export AZUREOPENAIENDPOINT="$_adv_restore_ep"
 [ -n "$_adv_restore_mdl" ] && export AZUREOPENAIMODEL="$_adv_restore_mdl"
 
+# ── First-run wizard skip conditions (Puddy) ──
+# Wizard must NOT fire in scripted/piped contexts. Integration tests run
+# non-interactively, so every case below should take the "skip" branch.
+echo ""
+echo "### First-run wizard skip conditions ###"
+
+# Hermetic env: hide .env, snapshot ambient creds + user config, strip env.
+_wiz_env_moved=false
+if [ -f .env ]; then
+    mv .env .env.wiz_bak
+    _wiz_env_moved=true
+fi
+_wiz_cfg_moved=false
+if [ -f "$HOME/.azureopenai-cli.json" ]; then
+    cp "$HOME/.azureopenai-cli.json" "$HOME/.azureopenai-cli.json.wiz_bak"
+    _wiz_cfg_moved=true
+fi
+_wiz_restore_api="${AZUREOPENAIAPI:-}"
+_wiz_restore_ep="${AZUREOPENAIENDPOINT:-}"
+_wiz_restore_mdl="${AZUREOPENAIMODEL:-}"
+unset AZUREOPENAIAPI AZUREOPENAIENDPOINT AZUREOPENAIMODEL 2>/dev/null || true
+
+# 1) Wizard skipped when env vars are set (piped input, --config show)
+set +e
+_wiz_out=$(echo "test" | AZUREOPENAIENDPOINT=https://fake.openai.azure.com/ AZUREOPENAIAPI=fake AZUREOPENAIMODEL=gpt-4o $CLI --config show 2>&1)
+set -e
+if echo "$_wiz_out" | grep -qF "Welcome to az-ai"; then
+    red "  ✗ wizard fired despite env creds set (found 'Welcome to az-ai')"; FAIL=$((FAIL + 1))
+else
+    green "  ✓ wizard skipped when env creds are set"; PASS=$((PASS + 1))
+fi
+if echo "$_wiz_out" | grep -qF "Azure OpenAI endpoint URL"; then
+    red "  ✗ wizard prompt text leaked with env creds set"; FAIL=$((FAIL + 1))
+else
+    green "  ✓ no wizard prompt text with env creds set"; PASS=$((PASS + 1))
+fi
+
+# 2) Wizard skipped when --raw is passed (missing creds, piped stdin)
+set +e
+_wiz_out=$(echo "hi" | $CLI --raw "hello" 2>&1 || true)
+set -e
+if echo "$_wiz_out" | grep -qF "Welcome to az-ai"; then
+    red "  ✗ wizard fired with --raw"; FAIL=$((FAIL + 1))
+else
+    green "  ✓ wizard skipped when --raw is passed"; PASS=$((PASS + 1))
+fi
+
+# 3) Wizard skipped when --json is passed
+set +e
+_wiz_out=$(echo "hi" | $CLI --json "hello" 2>&1 || true)
+set -e
+if echo "$_wiz_out" | grep -qF "Welcome to az-ai"; then
+    red "  ✗ wizard fired with --json"; FAIL=$((FAIL + 1))
+else
+    green "  ✓ wizard skipped when --json is passed"; PASS=$((PASS + 1))
+fi
+
+# 4) Wizard skipped when stdin is piped (non-TTY) — must surface creds error instead
+set +e
+_wiz_out=$(echo "hi" | $CLI "hello" 2>&1 || true)
+set -e
+if echo "$_wiz_out" | grep -qF "Welcome to az-ai"; then
+    red "  ✗ wizard fired with piped stdin"; FAIL=$((FAIL + 1))
+else
+    green "  ✓ wizard skipped when stdin is piped (non-TTY)"; PASS=$((PASS + 1))
+fi
+if echo "$_wiz_out" | grep -qiE 'API key|AZUREOPENAIAPI'; then
+    green "  ✓ piped non-TTY surfaces missing-credential error"; PASS=$((PASS + 1))
+else
+    red "  ✗ piped non-TTY did not surface credential error (got: $(echo "$_wiz_out" | head -c 200))"; FAIL=$((FAIL + 1))
+fi
+
+# 5) --init flag is documented in --help
+set +e
+_wiz_out=$($CLI --help 2>&1)
+set -e
+if echo "$_wiz_out" | grep -qF -- "--init"; then
+    green "  ✓ --help documents --init flag"; PASS=$((PASS + 1))
+else
+    red "  ✗ --help missing --init flag documentation"; FAIL=$((FAIL + 1))
+fi
+
+# 6) --config show emits an API-key fingerprint line
+set +e
+_wiz_out=$(AZUREOPENAIENDPOINT=https://fake.openai.azure.com/ AZUREOPENAIAPI=fake AZUREOPENAIMODEL=gpt-4o $CLI --config show 2>&1)
+set -e
+if echo "$_wiz_out" | grep -qF "API Key:"; then
+    green "  ✓ --config show includes 'API Key:' line"; PASS=$((PASS + 1))
+else
+    red "  ✗ --config show missing 'API Key:' line"; FAIL=$((FAIL + 1))
+fi
+
+# 7) Container detection: $container=docker forces wizard skip
+set +e
+_wiz_out=$(echo "hi" | container=docker $CLI "hello" 2>&1 || true)
+set -e
+if echo "$_wiz_out" | grep -qF "Welcome to az-ai"; then
+    red "  ✗ wizard fired despite container=docker"; FAIL=$((FAIL + 1))
+else
+    green "  ✓ wizard skipped when container=docker is set"; PASS=$((PASS + 1))
+fi
+
+# 8) Skipped: verifying 0600 perms on plaintext config after a wizard save would
+#    require scripting interactive wizard input, which is out of scope for the
+#    integration harness. Unit coverage for this path lives in FirstRunWizardTests.
+yellow "  ⊘ SKIP: plaintext config 0600 perms after wizard save — requires scripting interactive wizard input; covered by unit tests"
+SKIP=$((SKIP + 1))
+
+# Restore env / config / .env
+if [ "$_wiz_env_moved" = true ] && [ -f .env.wiz_bak ]; then
+    mv .env.wiz_bak .env
+fi
+if [ "$_wiz_cfg_moved" = true ] && [ -f "$HOME/.azureopenai-cli.json.wiz_bak" ]; then
+    mv "$HOME/.azureopenai-cli.json.wiz_bak" "$HOME/.azureopenai-cli.json"
+else
+    # No pre-existing user config — remove anything the tests may have written.
+    rm -f "$HOME/.azureopenai-cli.json" 2>/dev/null || true
+fi
+[ -n "$_wiz_restore_api" ] && export AZUREOPENAIAPI="$_wiz_restore_api"
+[ -n "$_wiz_restore_ep" ] && export AZUREOPENAIENDPOINT="$_wiz_restore_ep"
+[ -n "$_wiz_restore_mdl" ] && export AZUREOPENAIMODEL="$_wiz_restore_mdl"
+
 return 0
 } # end run_v1_tests — DELETE THIS FUNCTION AT CUTOVER
 

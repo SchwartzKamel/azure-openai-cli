@@ -10,6 +10,7 @@ namespace AzureOpenAI_CLI.Tests;
 /// File I/O tests operate on the real config path (~/.azureopenai-cli.json).
 /// The fixture backs up any existing config before each test and restores it after.
 /// </summary>
+[Collection("UserConfigFile")]
 public class UserConfigTests : IDisposable
 {
     private readonly string _configPath;
@@ -213,5 +214,144 @@ public class UserConfigTests : IDisposable
 
         // Assert — active model stays the same because it's still valid
         Assert.Equal("gpt-35-turbo", config.ActiveModel);
+    }
+
+    // ── ComputeFingerprint ─────────────────────────────────────────
+
+    [Fact]
+    public void ComputeFingerprint_KnownVector_ReturnsExpected()
+    {
+        // Ground truth: `echo -n test-api-key-12345678 | sha256sum` → b5aa8fe6584e...
+        const string input = "test-api-key-12345678";
+        const string expected = "b5aa8fe6584e";
+
+        string actual = UserConfig.ComputeFingerprint(input);
+
+        Assert.Equal(expected, actual);
+        Assert.Equal(12, actual.Length);
+        Assert.Matches("^[0-9a-f]{12}$", actual);
+    }
+
+    [Fact]
+    public void ComputeFingerprint_EmptyString_Throws()
+    {
+        Assert.Throws<ArgumentException>(() => UserConfig.ComputeFingerprint(""));
+    }
+
+    [Fact]
+    public void ComputeFingerprint_Null_Throws()
+    {
+        // Impl uses `string.IsNullOrEmpty` + `throw new ArgumentException`, so null also surfaces as ArgumentException.
+        Assert.Throws<ArgumentException>(() => UserConfig.ComputeFingerprint(null!));
+    }
+
+    [Fact]
+    public void ComputeFingerprint_IsDeterministic()
+    {
+        const string input = "deterministic-key-value";
+        string first = UserConfig.ComputeFingerprint(input);
+
+        for (int i = 0; i < 100; i++)
+        {
+            Assert.Equal(first, UserConfig.ComputeFingerprint(input));
+        }
+    }
+
+    [Fact]
+    public void ComputeFingerprint_IsCaseSensitive()
+    {
+        // sha256 operates on bytes, so "Foo" vs "foo" MUST produce distinct fingerprints.
+        string upper = UserConfig.ComputeFingerprint("Foo");
+        string lower = UserConfig.ComputeFingerprint("foo");
+
+        Assert.NotEqual(upper, lower);
+    }
+
+    [Theory]
+    [InlineData("key-a", "key-b")]
+    [InlineData("sk-0000000000000000", "sk-0000000000000001")]
+    [InlineData("short", "short ")] // trailing space differs
+    public void ComputeFingerprint_DifferentKeys_DifferentFingerprints(string a, string b)
+    {
+        Assert.NotEqual(UserConfig.ComputeFingerprint(a), UserConfig.ComputeFingerprint(b));
+    }
+
+    // ── Credential-field round-trip ────────────────────────────────
+
+    [Fact]
+    public void Save_Load_RoundTrip_NewCredentialFields()
+    {
+        // Arrange — populate every new credential field.
+        var original = new UserConfig
+        {
+            ActiveModel = "gpt-4o",
+            AvailableModels = new List<string> { "gpt-4o" },
+            Endpoint = "https://example.openai.azure.com/",
+            ApiKey = "plaintext-key-linux-only",
+            ApiKeyCiphertext = "ZmFrZS1kcGFwaS1ibG9i", // base64-ish noise
+            ApiKeyProvider = "plaintext",
+            ApiKeyFingerprint = UserConfig.ComputeFingerprint("plaintext-key-linux-only")
+        };
+
+        // Act
+        original.Save();
+        var loaded = UserConfig.Load();
+
+        // Assert — every new field survives.
+        Assert.Equal(original.Endpoint, loaded.Endpoint);
+        Assert.Equal(original.ApiKey, loaded.ApiKey);
+        Assert.Equal(original.ApiKeyCiphertext, loaded.ApiKeyCiphertext);
+        Assert.Equal(original.ApiKeyProvider, loaded.ApiKeyProvider);
+        Assert.Equal(original.ApiKeyFingerprint, loaded.ApiKeyFingerprint);
+        Assert.Equal(original.ActiveModel, loaded.ActiveModel);
+    }
+
+    [Fact]
+    public void Save_Load_RoundTrip_HandlesAllNullCredentialFields()
+    {
+        // Arrange — completely empty config.
+        var original = new UserConfig();
+
+        // Act — must not throw on save or load.
+        original.Save();
+        var loaded = UserConfig.Load();
+
+        // Assert — null-preservation for every new field.
+        Assert.Null(loaded.Endpoint);
+        Assert.Null(loaded.ApiKey);
+        Assert.Null(loaded.ApiKeyCiphertext);
+        Assert.Null(loaded.ApiKeyProvider);
+        Assert.Null(loaded.ApiKeyFingerprint);
+    }
+
+    // ── ToString redaction ─────────────────────────────────────────
+
+    [Fact]
+    public void ToString_DoesNotLeakApiKey()
+    {
+        const string secret = "super-secret-12345";
+        const string ciphertext = "ciphertext-bytes";
+
+        var config = new UserConfig
+        {
+            Endpoint = "https://example.openai.azure.com/",
+            ActiveModel = "gpt-4o",
+            ApiKey = secret,
+            ApiKeyCiphertext = ciphertext,
+            ApiKeyProvider = "plaintext",
+            ApiKeyFingerprint = UserConfig.ComputeFingerprint(secret)
+        };
+
+        string rendered = config.ToString();
+
+        // Secrets must never appear.
+        Assert.DoesNotContain(secret, rendered);
+        Assert.DoesNotContain(ciphertext, rendered);
+
+        // Non-sensitive debug fields SHOULD be visible.
+        Assert.Contains("plaintext", rendered);
+        Assert.Contains(config.ApiKeyFingerprint!, rendered);
+        Assert.Contains("https://example.openai.azure.com/", rendered);
+        Assert.Contains("gpt-4o", rendered);
     }
 }

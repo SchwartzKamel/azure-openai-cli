@@ -99,6 +99,7 @@ class Program
         bool SquadInit,
         bool ListPersonas,
         bool Raw,
+        bool Init,
         string[] RemainingArgs);
 
     /// <summary>
@@ -129,6 +130,7 @@ class Program
         bool squadInit = false;
         bool listPersonas = false;
         bool raw = false;
+        bool init = false;
         var cleanedArgs = new List<string>();
 
         for (int i = 0; i < args.Length; i++)
@@ -308,6 +310,10 @@ class Program
             {
                 raw = true;
             }
+            else if (arg == "--init" || arg == "--configure" || arg == "--login")
+            {
+                init = true;
+            }
             else
             {
                 cleanedArgs.Add(args[i]);
@@ -316,7 +322,7 @@ class Program
 
         return (new CliOptions(cliTemperature, cliMaxTokens, cliSystemPrompt, showConfig,
             agentMode, maxAgentRounds, enabledTools, jsonSchema, ralphMode, validateCommand,
-            taskFile, maxIterations, personaName, squadInit, listPersonas, raw, cleanedArgs.ToArray()), null);
+            taskFile, maxIterations, personaName, squadInit, listPersonas, raw, init, cleanedArgs.ToArray()), null);
     }
 
     // === ADR-005: Azure AI Foundry routing ===============================
@@ -505,6 +511,7 @@ class Program
 
             // Load user configuration
             var config = UserConfig.Load();
+            var credentialStore = AzureOpenAI_CLI.Credentials.CredentialStoreFactory.Create(config);
 
             // === SQUAD INIT ===
             if (opts.SquadInit)
@@ -553,6 +560,36 @@ class Program
 
             // Initialize available models from environment (supports comma-separated list)
             config.InitializeFromEnvironment(azureOpenAiModel);
+
+            // First-run setup wizard: triggered by --init OR when creds are missing in an
+            // interactive non-container, non-raw, non-json shell. Env vars always win over
+            // persisted config, so CI/Docker/Espanso flows are unaffected.
+            bool credsMissing = !AzureOpenAI_CLI.Setup.SetupDetection.HasCredentials(
+                azureOpenAiEndpoint, azureOpenAiApiKey, config, credentialStore);
+            bool wantsWizard = opts.Init || (credsMissing
+                && AzureOpenAI_CLI.Setup.SetupDetection.IsInteractive()
+                && !AzureOpenAI_CLI.Setup.SetupDetection.IsContainer()
+                && !opts.Raw
+                && !jsonMode);
+
+            if (wantsWizard)
+            {
+                var wizard = new AzureOpenAI_CLI.Setup.FirstRunWizard(config, credentialStore);
+                bool wizardOk = await wizard.RunAsync();
+                if (opts.Init)
+                {
+                    // Explicit setup invocation — exit after the wizard regardless of a prompt.
+                    return wizardOk ? 0 : 1;
+                }
+                // Implicit wizard: re-read model list in case the wizard wrote a fresh config,
+                // then fall through. If the wizard was cancelled and creds are still missing,
+                // ValidateConfiguration will surface the existing error path.
+                config.InitializeFromEnvironment(azureOpenAiModel);
+            }
+
+            // Overlay persisted config on top of env vars (env wins when both are set).
+            azureOpenAiEndpoint ??= config.Endpoint;
+            azureOpenAiApiKey ??= credentialStore.Retrieve();
 
             // Handle --config show (does not require Azure credentials)
             if (opts.ShowConfig)
@@ -1219,6 +1256,8 @@ complete -c azureopenai-cli -w az-ai
         Console.WriteLine("  --schema <json>       enforce structured output with json schema (strict mode)");
         Console.WriteLine("  --raw                 raw text only, no spinner/formatting (for Espanso, AHK, pipes)");
         Console.WriteLine("  --config show         display effective configuration and exit");
+        Console.WriteLine("  --init, --configure, --login");
+        Console.WriteLine("                        run the interactive setup wizard");
         Console.WriteLine();
         Console.WriteLine("Interrupt:");
         Console.WriteLine("  CTRL+C                graceful cancellation — flushes state, exits 130");
@@ -1343,6 +1382,10 @@ complete -c azureopenai-cli -w az-ai
         Console.WriteLine($"  Max Tokens:    {effectiveMaxTokens} ({maxSource})");
         Console.WriteLine($"  Timeout:       {effectiveTimeout}s ({timeoutSource})");
         Console.WriteLine($"  System Prompt: {displayPrompt} ({sysSource})");
+        string apiKeyLine = !string.IsNullOrEmpty(config.ApiKeyFingerprint)
+            ? $"sha256:{config.ApiKeyFingerprint} (stored via {config.ApiKeyProvider ?? "unknown"})"
+            : "(not set — run 'az-ai --init')";
+        Console.WriteLine($"  API Key:       {apiKeyLine}");
         Console.WriteLine($"  Config File:   {UserConfig.GetConfigPath()}");
 
         return 0;
