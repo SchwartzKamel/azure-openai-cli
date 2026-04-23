@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **docs(onboarding):** `docs/onboarding.md` -- Lloyd Braun's
+  first-hour walkthrough for new contributors: literal step-by-step
+  from `git clone` to first PR, friction log of every assumption the
+  existing docs skip, file-system map, and a rated list of starter
+  PRs. Glossary expanded with Conventional Commits, LOLBin, Preflight,
+  SBOM, SDK / runtime, and Trivy. ([s02e12-the-apprentice])
 - **docs(prompts):** Prompt library, temperature cookbook, and
   eval-framework design sketch under `docs/prompts/` -- inventory
   of every system prompt, instruction string, and tool description

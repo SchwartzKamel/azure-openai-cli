@@ -16,6 +16,16 @@ single self-contained native binary, no runtime install required. We use
 it for fast cold start (~30 ms vs. ~250 ms for a JIT'd .NET app), which
 matters because the CLI is invoked once per Espanso/AHK expansion.
 
+### Conventional Commits
+
+The commit-message format this project uses. Subjects are
+`type(scope): subject` -- lowercase type, imperative mood, 72-char
+ceiling. Accepted types: `feat`, `fix`, `docs`, `style`, `refactor`,
+`perf`, `test`, `build`, `ci`, `chore`, `bench`, `security`. Bodies
+explain the *why*; trailers carry provenance (notably the
+`Co-authored-by: Copilot` line for AI-assisted work). Full rule sheet
+in `.github/skills/commit.md`. Spec: <https://www.conventionalcommits.org>.
+
 ### CJK
 
 Chinese / Japanese / Korean. The shorthand for "wide" characters that
@@ -56,12 +66,34 @@ KWallet). We talk to it via the `secret-tool` CLI when present;
 otherwise we fall back to a plaintext file with mode `0600`. See
 `SecretToolCredentialStore.cs`.
 
+### LOLBin
+
+Living Off the Land Binary. A trusted, pre-installed OS tool repurposed
+for a security-relevant job instead of shipping our own. We use this
+pattern for credential storage: `secret-tool` (Linux libsecret),
+`security` (macOS Keychain), and the DPAPI Win32 surface (Windows) are
+all LOLBins -- already on the box, already signed, already audited by
+the OS vendor. The trade-off is graceful fallback when the LOLBin is
+absent (headless Linux, minimal containers).
+
 ### MCP
 
 Model Context Protocol. Anthropic's specification for how language
 models talk to external tools and context providers (filesystem, HTTP,
 databases, etc.) over a uniform JSON-RPC channel. Not yet implemented
 here; tracked as a future direction.
+
+### Preflight
+
+The local validation gate that must pass before any code commit. Four
+checks: `dotnet format --verify-no-changes`, `dotnet build -c Release`,
+`dotnet test`, and `bash tests/integration_tests.sh`. Wrapped as
+`make preflight`. Non-negotiable on any change to `*.cs`, `*.csproj`,
+`*.sln`, `*.editorconfig`, `.github/workflows/*.yml`, `Dockerfile`, or
+the integration test scripts. The skill file
+(`.github/skills/preflight.md`) exists because we already paid the
+lesson once -- commit `180d64f` skipped it and left `main` red for
+five consecutive CI runs.
 
 ### RPM
 
@@ -79,6 +111,24 @@ assumes columns flow left-to-right. The Unicode Bidi Algorithm handles
 inline mixed-direction text in compliant terminals; layout assumptions
 in *our* code are still our problem.
 
+### SBOM
+
+Software Bill of Materials. A machine-readable inventory of every
+dependency and version that went into a built artifact. Each release
+binary in this project ships with a CycloneDX 1.7 JSON SBOM so
+downstream consumers can feed it to their own scanners (Grype, Trivy,
+OSV) and verify supply-chain provenance against the build
+attestations. See `docs/verifying-releases.md`.
+
+### SDK / runtime (.NET)
+
+Two different .NET installs. The **runtime** can execute pre-built
+`.dll` / `.exe` files but cannot compile them. The **SDK** ships the
+runtime plus the build tooling (`dotnet build`, `dotnet test`,
+`dotnet format`, the AOT compiler). This project requires the .NET 10
+**SDK** -- the runtime alone is not enough. End-users of an AOT-built
+binary need neither: the AOT artifact is self-contained.
+
 ### SSRF
 
 Server-Side Request Forgery. The class of attack where a user-supplied
@@ -87,6 +137,14 @@ shouldn't be able to reach (cloud metadata endpoints, internal
 services, `localhost`). The `web_fetch` tool defends against this by
 refusing private IP ranges and re-validating the final URL after
 following redirects. Newman's territory.
+
+### Trivy
+
+A container and filesystem vulnerability scanner from Aqua Security.
+The CI docker job builds the image and runs Trivy against it; CVEs
+above a configured severity threshold fail the build. Also one of the
+recommended scanners for consuming our release SBOMs (alongside Grype
+and OSV). Project page: <https://github.com/aquasecurity/trivy>.
 
 ### TPM
 
