@@ -57,11 +57,15 @@ the cast would tell you it's time for a retool.
 | S02E29   | *The Casting Call* | [s02e29-the-casting-call.md](s02e29-the-casting-call.md) | `4a4b894` | 2 cohesion skills (writers-room-cast-balance / findings-backlog) |
 | S02E30   | *The Cast*         | [s02e30-the-cast.md](s02e30-the-cast.md)                | `93dfac7` | 12 cast personas baked as runtime defaults -- the show lives on |
 | S02E31   | *The Audition*     | [s02e31-the-audition.md](s02e31-the-audition.md)        | `dae6145` | Adversarial audit of 5 generic personas (9 findings, 1 bug)   |
+| S02E25   | *The Story Editor* | [s02e25-the-story-editor.md](s02e25-the-story-editor.md) | `7d57a01` | Doc-tree consolidation: new `docs/README.md` map + 8 cross-link footers |
+| S02E09   | *The Receipt*      | [s02e09-the-receipt.md](s02e09-the-receipt.md)          | `8897880` | Opt-in `--show-cost` receipts (Morty's S02 debut, 11 priced models) |
+| S02E32   | *The Bypass*       | [s02e32-the-bypass.md](s02e32-the-bypass.md)            | `a4fd184` | Structural shell-blocklist rewrite -- 8 reactivated bypass tests pass |
 
 **Rest of the season:** see [`s02-writers-room.md`](s02-writers-room.md)
-for the remaining arc -- E09 *Receipt* (Morty), E10 *Press Kit* (Lippman),
-E24 *Finale* (Pitt + ensemble), plus the queued security hotfix wave
-(E25 *Story Editor*, E26 *Locked Drawer*, E32 *The Bypass*).
+for the remaining arc -- E10 *Press Kit* (Lippman -- after all
+bullet-emitting episodes), E26 *Locked Drawer* (Newman + Kramer --
+ReadFileTool blocklist extension), E24 *Finale* (Pitt + ensemble --
+absolute last).
 
 ### Season 3 -- *(unaired)*
 

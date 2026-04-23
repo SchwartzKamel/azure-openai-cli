@@ -21,7 +21,7 @@ that?"* is the most valuable question in the room.
 
 See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.agent.md).
 
-## Aired so far (26 episodes; 4 main-arc remaining + 1 hotfix queued)
+## Aired so far (29 episodes; 2 main-arc remaining + 1 off-roster queued)
 
 | # | Title | Featured cast | Status |
 |---|-------|---------------|--------|
@@ -33,6 +33,7 @@ See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.age
 | S02E06 | *The Screen Reader* | Mickey Abbott (lead), Russell (guest) | aired |
 | S02E07 | *The Observability* | Frank Costanza (lead), Newman (guest) | aired |
 | S02E08 | *The Translation* | Babu Bhatt (lead), Mickey + Lloyd (guests) | aired |
+| S02E09 | *The Receipt* | Morty Seinfeld (lead), Costanza (guest) | aired |
 | S02E11 | *The Spec* | George Costanza (lead), Lloyd + Elaine (guests) | aired |
 | S02E12 | *The Apprentice* | Lloyd Braun (lead), Elaine + Jerry + Kramer (guests) | aired |
 | S02E13 | *The Inspector* | Newman (lead), FDR + Jackie (guests) | aired |
@@ -46,27 +47,35 @@ See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.age
 | S02E21 | *The Conscience* | Rabbi Kirschbaum (lead), Newman (guest) | aired |
 | S02E22 | *The Process* | Mr. Wilhelm (lead), Soup Nazi + Jerry (guests) | aired |
 | S02E23 | *The Adversary* | FDR (lead), Newman + Puddy (guests) | aired |
+| S02E25 | *The Story Editor* | Elaine (lead), Lloyd + Mickey (guests) | aired (off-roster) |
 | S02E27 | *The Bible* | Mr. Wilhelm (lead), Elaine (guest) | aired (off-roster) |
 | S02E28 | *The Style Guide* | Soup Nazi (lead), Newman (guest) | aired (off-roster) |
 | S02E29 | *The Casting Call* | Mr. Pitt (lead), Sue Ellen (guest) | aired (off-roster) |
 | S02E30 | *The Cast* | Elaine (lead), Kramer (guest) | aired (off-roster) |
 | S02E31 | *The Audition* | David Puddy (lead), Maestro (guest) | aired (off-roster) |
+| S02E32 | *The Bypass* | Newman (lead), Kramer (guest) | aired (off-roster, security hotfix) |
 
-**Remaining S02 main arc:** E09 *Receipt* (Morty), E10 *Press Kit* (Lippman -- after all bullet-emitting episodes), E24 *Finale* (Pitt + ensemble -- absolute last).
+**Remaining S02 main arc:** E10 *Press Kit* (Lippman + Peterman + Elaine -- after all bullet-emitting episodes), E24 *Finale* (Pitt + ensemble -- absolute last).
 
-**Off-roster pending:** E25 *Story Editor* (Elaine + Lloyd + Mickey -- doc-tree consolidation), E26 *Locked Drawer* (Newman + Kramer -- ReadFileTool blocklist extension; expanded from original E13 finding to cover the 7 home-dir paths E23 confirmed), **S02E32 *The Bypass*** (Newman + Kramer -- structural fix for the `${IFS}` shell-bypass surfaced by E23, see findings backlog).
+**Off-roster pending:** E26 *Locked Drawer* (Newman + Kramer -- ReadFileTool blocklist extension; expanded from original E13 finding to cover the 7 home-dir paths E23 confirmed). Sequenced AFTER E32 *Bypass* (now landed) so the hardening wave finishes before E10 *Press Kit* curates the CHANGELOG.
 
 ## Casting drift -- multi-lead floor failure (per writers-room-cast-balance audit)
 
-S02E29 *The Casting Call* introduced the cast-balance audit and immediately surfaced a failure: in the planned 24-arc, **Costanza, Elaine, Jerry, and Newman each had only ONE lead**. After this wave the actual aired counts are:
+S02E29 *The Casting Call* introduced the cast-balance audit and immediately surfaced a failure: in the planned 24-arc, **Costanza, Elaine, Jerry, and Newman each had only ONE lead**. After Wave 5 the actual aired counts are:
 
 - **Kramer:** 3 leads (E01, E02, E04) -- floor met.
-- **Elaine:** 2 leads (E03, E30) -- floor met after E30 corrective.
-- **Jerry:** 1 lead (E14) plus S06 blueprint off-roster -- still one short.
-- **Newman:** 1 lead (E13) -- still one short.
-- **Costanza (George):** 1 lead (E11) -- still one short.
+- **Elaine:** 3 leads (E03, E30, E25) -- floor met.
+- **Newman:** 2 leads (E13, E32) -- floor met after E32 corrective.
+- **Morty:** 1 lead (E09) -- supporting-floor met (was at 0).
+- **Jerry:** 1 lead (E14) plus S06 blueprint off-roster -- still one short of main-cast floor.
+- **Costanza (George):** 1 lead (E11), substantial guest in E09 -- still one short of main-cast floor.
 
-**Corrective:** S02E32 *The Bypass* will be Newman-led (raises him to 2). Costanza and Jerry need one more S02 lead each before the finale; candidates are E09 *Receipt* (Morty currently slated -- consider Costanza or Jerry guest-lead instead) and an additional off-roster TBD. Logged for the closing-wave dispatch decision.
+**Corrective for the closing wave:** Costanza and Jerry both still owe one S02 lead each. Candidates:
+
+- **E10 *Press Kit*** (currently Lippman-led). Promote Costanza to co-lead -- "is this release a good investment, what's the customer story." Lippman owns the SemVer + CHANGELOG mechanics; Costanza owns the customer narrative. Closes Costanza's gap.
+- **Jerry's gap:** E10's CI release plumbing is his lane as guest, but that's a guest spot, not a lead. Either accept that Jerry's 1 main-arc lead (E14) plus the S06 blueprint authorship counts as "above floor with off-roster credit" -- or slot a corrective off-roster between E10 and E24 for Jerry to lead. Recommend: accept the off-roster credit, document the gap explicitly in the finale retrospective.
+
+Logged for the closing-wave dispatch decision.
 
 ## Casting corrective
 
@@ -449,11 +458,53 @@ an unaired special:
     tool-availability contradiction, ralph composition untested,
     agent tool-override untested).
 
+  **From S02E25 *The Story Editor* (full detail in `s02e25-the-story-editor.md`):**
+  - `e25-tv-guide-row-lag` (process, b-plot): TV guide rows for newly-aired
+    episodes lag behind landings. Closed by this orchestrator batch
+    adding rows for E09/E25/E32.
+  - `e25-adr-fr-backlinks-gap` (gap, b-plot): ADRs and FRs do not
+    cross-link to their parent proposals/decisions.
+  - `e25-accessibility-doc-redundancy` (smell, b-plot): a11y guidance
+    spread across multiple files without a canonical home.
+  - `e25-cost-doc-split` (gap, b-plot): cost concerns split between
+    Morty docs and FinOps notes; consolidate.
+  - `e25-competitive-doc-duplication` (smell, b-plot): overlap between
+    `competitive-analysis.md` and `competitive-landscape.md`.
+  - `e25-launch-dir-no-index` (gap, b-plot): `docs/launch/` has no
+    index file.
+  - `e25-orphan-docs` (smell, b-plot): several `docs/*.md` files have
+    no inbound link from `docs/README.md` map.
+  - `e25-readme-documentation-section-flat` (smell, b-plot): top-level
+    README's Documentation section is a flat list, not categorized.
+
+  **From S02E09 *The Receipt* (full detail in `s02e09-the-receipt.md`):**
+  - `e09-cost-receipt-json-mode-gap` (gap, b-plot): `--json` output
+    mode does not embed the cost block. Either add a `cost` key to
+    JSON output or document the gap. Future Maestro / Russell episode.
+  - `e09-price-table-staleness-gap` (gap, b-plot): `PriceTableAsOf`
+    is a comment, not an enforced check. No reminder when prices
+    drift past N months. Candidate for a Morty + Jerry refresh
+    process episode.
+
+  **From S02E32 *The Bypass* (full detail in `s02e32-the-bypass.md`):**
+  - **CLOSED:** `e23-shell-ifs-tokenization` -- structural fix shipped
+    in `a4fd184`; all 8 reactivated bypass tests pass; no new findings
+    surfaced during the rewrite.
+  - The remaining 7 readfile blocklist gaps (`e23-readfile-*`) and the
+    DNS rebinding TOCTOU finding remain open and route to S02E26
+    *Locked Drawer* (in flight after this batch) and a future S03
+    hardening episode respectively.
+
   **Process / orchestration findings (orchestrator-owned):**
-  - **Four cross-sub-agent file sweeps via `git add -A`**
-    (`f3046e1`, `4a4b894`, `3bd0acb`, `93dfac7`). Pattern documented;
-    `shared-file-protocol.md` extended in this batch with explicit
-    "shared working tree" staging discipline rules.
+  - **Five cross-sub-agent file sweeps via `git add -A`** (now five,
+    not four): `f3046e1`, `4a4b894`, `3bd0acb`, `93dfac7`, plus the
+    Wave 5 stash-isolate-restore turbulence on `Program.cs` (Morty
+    + Newman). The Wave 5 case did NOT result in a sweep -- the
+    `shared-file-protocol` "Shared working tree" rule (added in
+    `207d042`) caught it: Morty performed 7 stash-isolate-restore
+    cycles, Newman performed 5+, all WIP recovered, no collateral.
+    **The new rule earned its keep on its first wave.** Skill is
+    working as intended; mark as success, not new finding.
   - **Concurrent-dispatch collision on S02E27** (two parallel sub-agents
     wrote the same skill files). `fleet-dispatch.md` "wave on collision
     risk" rule applies; orchestrator process improvement: check
