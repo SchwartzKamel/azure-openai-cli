@@ -52,10 +52,10 @@ Run 'az-ai --config show' anytime to inspect settings.
 |---|---|---|
 | Windows | `%USERPROFILE%\.azureopenai-cli.json` | Encrypted with DPAPI (user-scoped) |
 | macOS | `~/.azureopenai-cli.json` + login Keychain | Apple Keychain (service `az-ai`) |
-| Linux | `~/.azureopenai-cli.json` | Plaintext, file mode `0600` |
+| Linux | `~/.azureopenai-cli.json` | libsecret (GNOME Keyring / KDE Wallet) when `/usr/bin/secret-tool` and a DBus session are present; otherwise plaintext, file mode `0600` |
 | Docker / CI | env vars only | No on-disk storage |
 
-On Linux the key is plaintext at `0600` — same posture as AWS CLI, GitHub CLI, and Azure CLI. Honest trade-off over security theater; the compensating control is rotation.
+On Linux, `az-ai` prefers libsecret when it's available on your desktop session (GNOME Keyring, KDE Wallet via the libsecret bridge) — no key on disk, just a non-secret fingerprint. On headless boxes, minimal installs, or containers — anywhere `/usr/bin/secret-tool` or `DBUS_SESSION_BUS_ADDRESS` is missing — it falls back to plaintext at `0600`, same posture as AWS CLI, GitHub CLI, and Azure CLI. Honest trade-off over security theater; the compensating control is rotation.
 
 ### Key rotation
 

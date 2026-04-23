@@ -439,3 +439,128 @@ public sealed class MacSecurityCredentialStoreTests
     [Fact(Skip = SkipReason)] public void Store_Null_Throws() { }
     [Fact(Skip = SkipReason)] public void ExceptionMessage_DoesNotContainKey() { }
 }
+
+// ── SecretToolCredentialStore — Linux only ─────────────────────────
+//
+// The store/retrieve/roundtrip tests require a real libsecret daemon and
+// a DBus session bus, neither of which exist on ubuntu-latest CI. Those
+// are marked [Fact(Skip = ...)] following the Mac pattern. The guard
+// tests (ProviderName, argument validation, factory detection) don't
+// need the daemon and run unconditionally on Linux.
+
+public sealed class LinuxOnlyFactAttribute : FactAttribute
+{
+    public LinuxOnlyFactAttribute()
+    {
+        if (!OperatingSystem.IsLinux())
+        {
+            Skip = "Linux-only test (libsecret / secret-tool)";
+        }
+    }
+}
+
+public sealed class SecretToolCredentialStoreTests
+{
+    private const string DaemonSkipReason =
+        "Requires a running libsecret daemon and a DBus session bus, which " +
+        "are not available in CI (ubuntu-latest). Runnable locally on a " +
+        "GNOME / KDE desktop session.";
+
+    [LinuxOnlyFact]
+    [SupportedOSPlatform("linux")]
+    public void ProviderName_Is_Libsecret()
+    {
+        var store = new SecretToolCredentialStore(new UserConfig());
+        Assert.Equal("libsecret", store.ProviderName);
+    }
+
+    [LinuxOnlyFact]
+    [SupportedOSPlatform("linux")]
+    public void Store_Null_Throws()
+    {
+        var store = new SecretToolCredentialStore(new UserConfig());
+        Assert.Throws<ArgumentException>(() => store.Store(null!));
+    }
+
+    [LinuxOnlyFact]
+    [SupportedOSPlatform("linux")]
+    public void Store_Empty_Throws()
+    {
+        var store = new SecretToolCredentialStore(new UserConfig());
+        Assert.Throws<ArgumentException>(() => store.Store(string.Empty));
+    }
+
+    [LinuxOnlyFact]
+    [SupportedOSPlatform("linux")]
+    public void Store_Whitespace_Throws()
+    {
+        var config = new UserConfig();
+        var store = new SecretToolCredentialStore(config);
+
+        var ex = Assert.Throws<ArgumentException>(() => store.Store("   "));
+        Assert.Contains("whitespace", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(config.ApiKey);
+    }
+
+    // Daemon-required tests — kept as scaffolding for local runs.
+    [Fact(Skip = DaemonSkipReason)] public void Store_AddsToKeyring_AndSetsProvider() { }
+    [Fact(Skip = DaemonSkipReason)] public void Retrieve_RoundTrip() { }
+    [Fact(Skip = DaemonSkipReason)] public void Retrieve_ReturnsNull_WhenNotPresent() { }
+    [Fact(Skip = DaemonSkipReason)] public void Delete_RemovesFromKeyring() { }
+    [Fact(Skip = DaemonSkipReason)] public void Delete_Idempotent() { }
+    [Fact(Skip = DaemonSkipReason)] public void Cache_ReturnsQuickly_OnSecondRetrieve() { }
+    [Fact(Skip = DaemonSkipReason)] public void ExceptionMessage_DoesNotContainKey() { }
+}
+
+// ── CredentialStoreFactory — Linux branch detection ────────────────
+//
+// We can't easily test the positive branch (returns SecretToolCredentialStore)
+// on CI because /usr/bin/secret-tool isn't installed. But we can verify the
+// negative branch: no DBus → plaintext fallback even on Linux.
+
+[Collection("UserConfigFile")]
+public sealed class CredentialStoreFactoryLinuxTests : CredentialStoreTestBase
+{
+    [LinuxOnlyFact]
+    public void NoDbus_FallsBackToPlaintext_OnLinux()
+    {
+        // Strip DBUS_SESSION_BUS_ADDRESS for the scope of this test so the
+        // factory's Linux branch rejects libsecret regardless of whether
+        // secret-tool happens to be installed.
+        string? original = Environment.GetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS");
+        try
+        {
+            Environment.SetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS", null);
+            var store = CredentialStoreFactory.Create(new UserConfig());
+            Assert.IsType<PlaintextCredentialStore>(store);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS", original);
+        }
+    }
+
+    [Fact]
+    public void NotLinux_DoesNotReturnSecretToolStore()
+    {
+        // Covered cross-platform: on Windows/macOS the factory never picks
+        // the libsecret branch even with DBUS_SESSION_BUS_ADDRESS set.
+        if (OperatingSystem.IsLinux())
+        {
+            return; // tautological on Linux; the guard above covers it.
+        }
+
+        string? original = Environment.GetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS");
+        try
+        {
+            Environment.SetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/fake");
+            var store = CredentialStoreFactory.Create(new UserConfig());
+            Assert.False(store.GetType().Name.Contains("SecretTool", StringComparison.Ordinal),
+                $"Expected non-libsecret store on this OS, got {store.GetType().Name}");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS", original);
+        }
+    }
+}

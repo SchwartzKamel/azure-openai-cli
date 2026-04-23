@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(credentials):** Opportunistic libsecret credential store on
+  Linux. When `/usr/bin/secret-tool` is present and a DBus session
+  bus is available, `az-ai` now stores credentials via libsecret
+  (GNOME Keyring / KDE Wallet) instead of plaintext. Falls back to
+  plaintext on systems without libsecret or without a session bus
+  (headless containers, minimal installs). Zero new NuGet deps.
 - **docs(perf):** Reference-hardware pinning doc (`docs/perf/reference-hardware.md`)
   captures the canonical bench rig (`malachor`, i7-10710U, linux-x64), the
   pre-merge protocol (governor=performance, AC power, N=500, warm-up=5,
