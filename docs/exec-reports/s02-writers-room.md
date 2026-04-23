@@ -21,7 +21,7 @@ that?"* is the most valuable question in the room.
 
 See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.agent.md).
 
-## Aired so far (29 episodes; 2 main-arc remaining + 1 off-roster queued)
+## Aired so far (30 episodes; 2 main-arc remaining + 1 off-roster queued)
 
 | # | Title | Featured cast | Status |
 |---|-------|---------------|--------|
@@ -54,6 +54,7 @@ See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.age
 | S02E30 | *The Cast* | Elaine (lead), Kramer (guest) | aired (off-roster) |
 | S02E31 | *The Audition* | David Puddy (lead), Maestro (guest) | aired (off-roster) |
 | S02E32 | *The Bypass* | Newman (lead), Kramer (guest) | aired (off-roster, security hotfix) |
+| S02E33 | *The Uninstaller* | Jerry (lead), Lloyd (guest) | aired (off-roster, Jerry floor corrective) |
 
 **Remaining S02 main arc:** E10 *Press Kit* (Lippman + Peterman + Elaine -- after all bullet-emitting episodes), E24 *Finale* (Pitt + ensemble -- absolute last).
 
@@ -66,14 +67,13 @@ S02E29 *The Casting Call* introduced the cast-balance audit and immediately surf
 - **Kramer:** 3 leads (E01, E02, E04) -- floor met.
 - **Elaine:** 3 leads (E03, E30, E25) -- floor met.
 - **Newman:** 2 leads (E13, E32) -- floor met after E32 corrective.
+- **Jerry:** 2 leads (E14, E33) plus S06 blueprint off-roster -- **floor met after E33 corrective.**
 - **Morty:** 1 lead (E09) -- supporting-floor met (was at 0).
-- **Jerry:** 1 lead (E14) plus S06 blueprint off-roster -- still one short of main-cast floor.
 - **Costanza (George):** 1 lead (E11), substantial guest in E09 -- still one short of main-cast floor.
 
-**Corrective for the closing wave:** Costanza and Jerry both still owe one S02 lead each. Candidates:
+**Corrective for the closing wave:** Costanza still owes one S02 lead. Jerry's gap closed by E33 *The Uninstaller* (Makefile migration helper, Lloyd guest). Candidate remaining:
 
 - **E10 *Press Kit*** (currently Lippman-led). Promote Costanza to co-lead -- "is this release a good investment, what's the customer story." Lippman owns the SemVer + CHANGELOG mechanics; Costanza owns the customer narrative. Closes Costanza's gap.
-- **Jerry's gap:** E10's CI release plumbing is his lane as guest, but that's a guest spot, not a lead. Either accept that Jerry's 1 main-arc lead (E14) plus the S06 blueprint authorship counts as "above floor with off-roster credit" -- or slot a corrective off-roster between E10 and E24 for Jerry to lead. Recommend: accept the off-roster credit, document the gap explicitly in the finale retrospective.
 
 Logged for the closing-wave dispatch decision.
 

@@ -60,12 +60,13 @@ the cast would tell you it's time for a retool.
 | S02E25   | *The Story Editor* | [s02e25-the-story-editor.md](s02e25-the-story-editor.md) | `7d57a01` | Doc-tree consolidation: new `docs/README.md` map + 8 cross-link footers |
 | S02E09   | *The Receipt*      | [s02e09-the-receipt.md](s02e09-the-receipt.md)          | `8897880` | Opt-in `--show-cost` receipts (Morty's S02 debut, 11 priced models) |
 | S02E32   | *The Bypass*       | [s02e32-the-bypass.md](s02e32-the-bypass.md)            | `a4fd184` | Structural shell-blocklist rewrite -- 8 reactivated bypass tests pass |
+| S02E33   | *The Uninstaller*  | [s02e33-the-uninstaller.md](s02e33-the-uninstaller.md)  | `350e67a` | `make migrate-check` + `make migrate-clean` for v1 az-ai leftovers   |
 
 **Rest of the season:** see [`s02-writers-room.md`](s02-writers-room.md)
-for the remaining arc -- E10 *Press Kit* (Lippman -- after all
-bullet-emitting episodes), E26 *Locked Drawer* (Newman + Kramer --
-ReadFileTool blocklist extension), E24 *Finale* (Pitt + ensemble --
-absolute last).
+for the remaining arc -- E10 *Press Kit* (Lippman + Peterman + Elaine --
+after all bullet-emitting episodes), E26 *Locked Drawer* (Newman +
+Kramer -- ReadFileTool blocklist extension), E24 *Finale* (Pitt +
+ensemble -- absolute last).
 
 ### Season 3 -- *(unaired)*
 
