@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **docs(distribution):** Homebrew, Scoop, and Nix packaging drafts
+  for the v1 line under `packaging/{homebrew,scoop,nix/azure-openai-cli}/`,
+  paired with `docs/distribution/{homebrew,scoop,nix,README}.md`
+  (approach + comparison + install verification). Manifests are
+  marked DRAFT -- no tap, bucket, or flake registry exists yet;
+  SHA256s are tag-time placeholders. Pre-publish install paths
+  documented for each channel. ([s02e16-the-catalog])
 - **docs(onboarding):** `docs/onboarding.md` -- Lloyd Braun's
   first-hour walkthrough for new contributors: literal step-by-step
   from `git clone` to first PR, friction log of every assumption the
