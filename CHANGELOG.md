@@ -166,6 +166,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([bania-v2-01])
 - **docs(community):** Contributor onboarding refreshed (CONTRIBUTING.md,
   issue/PR templates). ([s02e17-the-newsletter])
+- **docs(market):** Competitive landscape + analysis refreshed for 2026 (MCP table-stakes, multi-provider coverage, single-binary distribution).
 ### Deprecated
 ### Removed
 ### Fixed

@@ -1,8 +1,17 @@
 # Competitive Analysis -- CLI AI Tooling Landscape (April 2026)
 
 **Authors:** Costanza (product), Sue Ellen Mischke (competitive), Morty Seinfeld (FinOps)
-**Date:** 2026-04-20
+**Date:** 2026-04-20 (last refresh: 2026 sweep, see §2.5)
 **Status:** Research deliverable for roadmap input
+
+**Companion doc:** [`docs/competitive-landscape.md`](./competitive-landscape.md)
+is the brief, brand-tone version with the opinionated "where we lead /
+where we yield" framing and the J. Peterman positioning copy. This file
+is the long-form research underneath it -- per-tool feature matrix,
+research-question answers, FinOps annex, and footnoted sources. The
+two are deliberately not duplicated: if you want one paragraph per
+competitor, read the brief; if you want the matrix and the receipts,
+stay here.
 
 ## 1. Scope
 
@@ -20,11 +29,11 @@ Methodology:
 |------|-------------------|--------------------|-----------------|---------------------|------------------|----------------------|-------------|-------------|------------------|
 | **az-ai** (this repo) | 2.0.6 | .NET 10, Native AOT | Single ~13 MiB binary; `make install`, GHCR image | ✅ True AOT, zero runtime | Internal tool registry (`shell`, `file`, `web`, `clipboard`, `delegate`); FR-012 external plugins planned | ✅ First-class (only target) | ❌ Not yet (opportunity) | 10.7 ms p50 cold start, Espanso-grade latency, persona+memory `.squad/` | Single-provider lock, no MCP yet, no public package repos, small GH footprint |
 | **shell-gpt / sgpt** [^1] | 1.5.0 (Jan 2026) | Python | `pip install shell-gpt` | ❌ Python cold start (~300-800 ms typical) | Function calling + LiteLLM backends | ⚠️ Via `API_BASE_URL` hack | ❌ No | Shell command suggestion w/ hotkey completion (Bash/Zsh) | Python startup latency [^8], local-model story "not optimized" per own wiki |
-| **llm** (Simon Willison) [^2] | 0.30 (Apr 2026) | Python (pluggy) | `pip` / `uv tool install llm` | ❌ No | ✅ Deepest plugin ecosystem (llm-*) incl. Anthropic, Gemini, Ollama, toolboxes | ⚠️ Community plugin only | ⚠️ Partial via plugins (v0.30 roadmap explores server-side tools) | Richest plugin/tool model of any Python CLI; SQLite log of all calls | Cold start ~0.5-1.0 s, not designed for inline text-injection |
-| **aichat** (sigoden) [^3] | 0.30.0 | Rust | `cargo install`, homebrew, prebuilt | ✅ Single binary | ✅ `llm-functions` repo; 20+ providers; RAG; sessions | ✅ Supported via OpenAI-compatible base URL | ✅ "AI Tools & MCP" first-class | Most complete OSS: CMD + REPL + HTTP server modes; RAG built-in | Heavier than az-ai (~10+ MB Rust binary), RAG requires local embedding setup |
+| **llm** (Simon Willison) [^2] | 0.30 (Apr 2026) | Python (pluggy) | `pip` / `uv tool install llm` | ❌ No | ✅ Deepest plugin ecosystem (llm-*) incl. Anthropic, Gemini, Ollama, toolboxes | ⚠️ Community plugin only | ⚠️ Partial via plugins; 2026 API-redesign work explicitly tracking native MCP | Richest plugin/tool model of any Python CLI; SQLite log of all calls | Cold start ~0.5-1.0 s, not designed for inline text-injection |
+| **aichat** (sigoden) [^3] | 0.30.0 | Rust | `cargo install`, homebrew, prebuilt | ✅ Single binary | ✅ `llm-functions` repo; 20+ providers; RAG; sessions | ✅ First-class Azure OpenAI provider section (not just base-URL hack) | ✅ "AI Tools & MCP" first-class | Most complete OSS: CMD + REPL + HTTP server modes; RAG built-in | Heavier than az-ai (~10+ MB Rust binary), RAG requires local embedding setup |
 | **gh copilot cli** [^4] | GA Feb 2026 | Node/TS (prebuilt) | `gh extension install`; Homebrew/winget/npm | ❌ Node runtime wrapper | Built-in agents (Explore/Task/Review), custom MCP servers, hooks | ❌ OpenAI/Anthropic/Gemini via GitHub | ✅ Full MCP + hooks | Plan/Autopilot/Fleet modes, repo memory, enterprise policy | Paid ($10-$39/user/mo), GitHub-account gated, no Azure-native, telemetry mandatory |
-| **mods** (Charmbracelet) [^5] | **ARCHIVED Mar 9 2026** | Go | Homebrew/Go | ✅ Single binary | ✅ (MCP) | ⚠️ OpenAI-compatible endpoint | ✅ (final releases) | RIP -- use `crush` | Abandoned; migrate path to `crush` incomplete for some users |
-| **crush** (Charmbracelet) [^5] | Active (successor to mods) | Go | Homebrew/Go | ✅ Single binary | ✅ MCP | ⚠️ Endpoint-based | ✅ Yes | Charm's polished TUI/TTY-first agent | Still maturing; feature parity w/ mods not 100% |
+| **mods** (Charmbracelet) [^5] | **ARCHIVED Mar 9 2026** | Go | Homebrew/Go | ✅ Single binary | ✅ (MCP, final v1.8.x) | ⚠️ OpenAI-compatible endpoint | ✅ (final releases) | RIP -- use `crush` | Abandoned; migrate path to `crush` largely complete by Apr 2026 |
+| **crush** (Charmbracelet) [^5] | Active flagship | Go | Homebrew, npm, Nix, AUR, prebuilt | ✅ Single binary | ✅ MCP-native (stdio/HTTP/SSE), LSP-aware | ✅ First-class Azure OpenAI provider section | ✅ Yes | Charm's polished agentic TUI; multi-provider (10+) | FSL-1.1-MIT (source-available, MIT after 2 yr) -- not a pure-OSS license; some shops will block |
 | **fabric** (Daniel Miessler) [^6] | Active (Go rewrite) | Go | Prebuilt binaries, brew | ✅ Single binary | ✅ Pattern library (hundreds of prompts) | ⚠️ `--model` via OpenAI-compatible | ✅ Pattern/session MCP | Huge curated *pattern library* + YAML config | Pattern-centric (not text-injection); plugin system less mature than llm |
 | **chatblade** (npiv) [^7] | 0.7.0 -- **ARCHIVED** | Python | `pip`, Arch | ❌ No | ❌ No | ❌ No | ❌ No | Early "swiss army knife"; historical footprint | **Not maintained**; upstream recommends llm/fabric |
 | **llama.cpp + chat clients** | Active | C++ | Source build or `brew install llama.cpp` | ✅ Yes | ⚠️ Tool calling via model templates | N/A (local) | ⚠️ Emerging | Best local-first perf; GGUF ecosystem | Model ops complexity; not a chat UX by itself |
@@ -35,6 +44,89 @@ Methodology:
 | **Azure AI CLI** (`az cognitiveservices`) [^11] | Built into Azure CLI | Python (azure-cli) | `az` install | ❌ No | ❌ chat -- **management only** | ✅ (management plane) | ❌ No | First-party Microsoft tool | Provisioning tool; **not a chat client**. Gap az-ai fills. |
 
 **Key observation:** Among tools that deliver Azure-OpenAI-native *chat/agent* UX, az-ai is the only one with true AOT, sub-15 ms startup, and a text-injection pipeline. Microsoft's own `az cognitiveservices` is purely control-plane.
+
+## 2.5 -- 2026 Update Notes
+
+The 2026 sweep validates every row in §2 against current upstream
+state and adds the three axes the category has converged on
+(provider coverage, MCP support, single-binary distribution). Per-tool
+deltas since the last review:
+
+### Existing tools -- status changes
+
+- **`mods` -- archived 2026-03-09.** Charm sunset the repo; final
+  releases shipped MCP. Migration target is `crush`. Kept in the
+  matrix for historical context only.
+- **`crush` -- promoted from "new entrant" to Tier-1 substitute.**
+  AGPL-style FSL-1.1-MIT (source-available now, MIT after two years).
+  10+ first-class providers including Azure OpenAI as a configured
+  section, MCP-native client (stdio / HTTP / SSE), LSP integration,
+  and distribution via Homebrew, npm, Nix, AUR, and prebuilt binaries.
+  Closest functional peer to `aichat` in the OSS field.
+- **`chatblade` -- archive notice landed upstream.** Repository now
+  carries an explicit "use `llm` or `fabric` instead" notice. No
+  features in 2026; remains in the matrix for the same reason as `mods`.
+- **`llm` -- MCP shifted from "no" to "partial".** The 2026 API
+  redesign work (Willison's `research-llm-apis 2026-04-04` post)
+  explicitly tracks native MCP-client behaviour; Anthropic donated MCP
+  to the Linux Foundation Agentic AI Foundation in Dec 2025, which
+  unblocked neutral-governance integration work.
+- **`aichat` -- Azure OpenAI is now first-class, not base-URL.** The
+  provider catalog ships with an Azure OpenAI section. MCP support
+  remains first-class.
+- **`shell-gpt` -- maintained but slowing.** v1.5.0 in Jan 2026; no
+  native MCP; MCP integration is the open question for any 2026
+  Python CLI that wants to stay relevant.
+- **`gh copilot cli` -- GA Feb 2026 confirmed.** Built-in GitHub MCP
+  server, accepts custom MCP servers and hooks, config files at
+  `~/.copilot/mcp-config.json` (user) and `.copilot/mcp-config.json`
+  (project). Distribution: npm, Homebrew, WinGet, `gh extension install`.
+- **`Codex CLI` -- now MCP-central, not bolted on.** OpenAI's Rust
+  CLI ships with `codex mcp add/list/login`, parallel MCP tool calls,
+  and shared MCP config across CLI / VS Code / macOS app. Apache 2.0.
+- **`Gemini CLI` -- weekly stable cadence.** Apache 2.0; npm primary
+  with Homebrew, MacPorts, Conda. Official MCP servers shipped
+  (chrome-devtools-mcp, Data Commons MCP).
+- **`Claude Code` -- distribution channel matrix expanded.** Native
+  installer (recommended), Homebrew, WinGet, npm (deprecated). MCP
+  v2.1.76 introduces lazy-loaded MCP elicitation. Bedrock and Vertex
+  paths officially documented.
+
+### New entrants worth flagging
+
+- **`opencode` (sst / community).** MIT, TypeScript on Bun (single
+  bundled binary), 75+ providers via routing, MCP-compatible, weekly
+  releases, ~11.5k GitHub stars. Caveat: Anthropic blocks unofficial
+  CLI access to Claude models; users need an official Claude key or
+  must route around. Not a substitute for us (different seam) but
+  notable as a "bring your own everything" hub. Adjacent to `aichat`
+  / `crush` in design intent.
+- **`cursor` Cursor CLI.** Proprietary, bundled-runtime binary
+  distributed via Homebrew cask and AUR. Tied to a Cursor account;
+  Plan / Ask modes; MCP integration. Not a substitute -- it's a
+  terminal companion to the Cursor IDE -- but lands in the same
+  developer-mindshare bucket as `claude` and `codex`.
+- **`continue.dev` `cn` CLI.** Apache 2.0, TypeScript on Node. The
+  CLI matured significantly in 2026: TUI mode (`cn`), headless mode
+  (`cn -p ...`) for CI/CD, persistent sessions, fine-grained
+  permissions (`--allow` / `--ask` / `--exclude`), MCP-native agent
+  loop, BYOM provider model. Worth tracking as the
+  "rules-as-markdown enforcement on every PR" pattern is novel.
+
+### Net effect on positioning
+
+The category-default 2026 axes are now **single-binary distribution
++ multi-provider coverage + MCP client**. Of those three, `az-ai`
+ships #1, has #2 on the S03 blueprint, and has #3 on the S05
+blueprint. We do not race the field on raw axis count -- our seam
+(text-injection / Espanso / agentic delegation) is orthogonal -- but
+shipping S03 + S05 is what closes the only two columns where we
+currently look behind to a casual reader of the comparison matrix.
+
+The opinionated cut of all of the above lives in
+[`docs/competitive-landscape.md`](./competitive-landscape.md) and is
+the canonical place to read the "where we lead / where we yield"
+framing. This file is the receipts.
 
 ## 3. Research Question Answers
 
@@ -133,17 +225,20 @@ Plus fixed subscription costs (CLI-licence):
 ## 5. Summary -- One-liners Per Tool
 
 - **az-ai** -- 10.7 ms p50 AOT Azure-native with persona memory; Espanso's native speaking partner.
-- **sgpt** -- Python veteran for shell-command suggestions; Python tax on every call.
-- **llm** -- Simon Willison's plugin superpower; richest ecosystem, slowest cold start.
-- **aichat** -- Rust swiss-army; CMD+REPL+HTTP, RAG, MCP. Closest functional peer.
-- **gh copilot cli** -- GA Feb 2026; polished Plan/Autopilot, paid, no Azure-native.
+- **sgpt** -- Python veteran for shell-command suggestions; Python tax on every call; no MCP.
+- **llm** -- Simon Willison's plugin superpower; richest ecosystem, slowest cold start; MCP shifting from "no" to native in the 2026 API redesign.
+- **aichat** -- Rust swiss-army; CMD+REPL+HTTP, RAG, MCP, first-class Azure OpenAI. Closest functional peer.
+- **gh copilot cli** -- GA Feb 2026; MCP-first with built-in GitHub server; paid; no Azure-native.
 - **mods** -- RIP March 2026; migrate to crush.
-- **crush** -- Charm's new flagship TUI agent, MCP-first.
+- **crush** -- Charm's new flagship MCP-native multi-provider agent; FSL-1.1-MIT (source-available now, MIT in 2 yr); Azure OpenAI first-class.
 - **fabric** -- Pattern library king; Go rewrite; session + MCP.
-- **chatblade** -- Archived; historical interest only.
+- **chatblade** -- Archived (notice landed upstream); historical interest only.
 - **llama.cpp** -- Local-first inference engine; not a chat UX.
-- **ollama** -- Easiest local LLM runner; agent mode via bridges.
-- **Codex CLI / Gemini CLI / Claude Code** -- Vendor-flagship coding agents; each tied to its own cloud.
+- **ollama** -- Easiest local LLM runner; agent mode via bridges (`ollmcp`).
+- **Codex CLI / Gemini CLI / Claude Code** -- Vendor-flagship coding agents; each MCP-native; each tied to its own cloud.
+- **opencode** -- BYOM router CLI; 75+ providers, MIT, MCP-compatible; Anthropic blocks unofficial Claude access.
+- **cursor CLI** -- IDE-tethered terminal companion; MCP + plan / ask modes; not a substitute for an Azure-native binary.
+- **continue.dev `cn`** -- BYOM CLI with headless CI mode and rules-as-markdown PR enforcement; MCP-native.
 - **Azure AI CLI** -- Microsoft's management-plane tool; not a chat client.
 
 ---

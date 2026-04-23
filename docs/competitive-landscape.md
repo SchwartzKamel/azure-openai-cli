@@ -16,47 +16,87 @@ each that a reader can actually quote.
 
 The CLI LLM category has matured. Every credible entrant ships a
 single binary or a one-line installer, every credible entrant supports
-some flavor of tool calling, and every credible entrant has a story for
-MCP. The differentiation game is no longer "do you have a chat loop"
-but rather "what is the seam you fit into, and how cleanly do you fit
-there." Most of the field is fitting itself into the general-purpose
-"terminal copilot" seam: an interactive REPL with a plugin marketplace
-aimed at developers doing exploratory work. That is a crowded runway.
+some flavor of tool calling, and -- as of 2026 -- every credible
+entrant ships an MCP client. The differentiation game is no longer
+"do you have a chat loop" but rather "what is the seam you fit into,
+and how cleanly do you fit there." Most of the field is fitting itself
+into the general-purpose "terminal copilot" seam: an interactive REPL
+or TUI agent with a provider marketplace and an MCP slot, aimed at
+developers doing exploratory work. That is a crowded runway, and
+Charm's `crush` (the successor to the now-archived `mods`) just
+walked it in heels.
 
 `azure-openai-cli` is not on that runway. It is a single-shot,
 Azure-OpenAI-native, sub-15-millisecond binary that exists primarily to
 be invoked by Espanso, AHK, shell scripts, and agentic delegation --
 not by a human typing at a prompt. Once you understand that, the
-comparison stops being "do we have what `aichat` has" and starts being
-"do we have what the seam we chose actually requires." The answer, in
-this brief, is yes for three things and no for three things, and the
-no's are not accidents.
+comparison stops being "do we have what `aichat` or `crush` has" and
+starts being "do we have what the seam we chose actually requires."
+The answer, in this brief, is yes for three things and no for the
+three current category-default columns (multi-provider, MCP client,
+public-package distribution). The no's are not accidents; two of the
+three have dedicated season blueprints behind them (S03 for providers,
+S05 for MCP, S02E16 for distribution).
 
 ## Comparison set
 
-Five competitors. Picked because each one represents a distinct point
-in the design space we could plausibly be confused with.
+Eight competitors in two tiers. Tier 1 is the small set we are
+actually substitutable with: single-shot or scriptable CLIs that a
+user could realistically swap us for. Tier 2 is the vendor-flagship
+coding-agent field -- not a substitute for an Azure-OpenAI-native
+binary, but the field everyone is benchmarked against, so we list
+their 2026 axes for completeness. The long-form per-tool research
+lives in [`docs/competitive-analysis.md`](./competitive-analysis.md);
+this brief is the trimmed, opinionated cut.
 
-| Tool | Language / Runtime | Distribution | Auth model | Tools / Agents | Docker / AOT | License | Maintenance signal |
-|------|--------------------|--------------|------------|----------------|--------------|---------|--------------------|
-| `azure-openai-cli` (this) | C# / .NET 10, Native AOT | Single ~13 MiB binary; GHCR Alpine image; `make install` | Per-OS keystore (DPAPI / Keychain / libsecret) with plaintext fallback | Internal registry: `shell_exec`, `read_file`, `web_fetch`, `get_clipboard`, `get_datetime`, `delegate_task` (capped at depth 3); persona memory in `.squad/` | True AOT, multi-stage Alpine image, Trivy-clean | MIT | v2 line active; weekly cadence; small contributor count |
-| `llm` (Simon Willison) | Python (pluggy) | `pip` / `uv tool install llm` | API key in env or file; provider plugins manage their own auth | Deepest plugin ecosystem (`llm-*`); SQLite log of every call; toolbox plugins for function calling | No AOT; no first-party container | Apache 2.0 | Very active; broad contributor base; mature plugin marketplace |
-| `aichat` (sigoden) | Rust | `cargo install`, Homebrew, prebuilt binaries | Config file with provider sections; env-var override | First-class function calling, RAG, sessions, `llm-functions` tool repo, MCP support | Single Rust binary; community Docker images | MIT / Apache 2.0 | Very active; large contributor base; frequent releases |
-| `mods` (Charmbracelet) | Go | Homebrew, Go install, prebuilt | YAML config with provider sections; env-var override | Pipe-friendly single-shot; MCP client in late releases | Single Go binary | MIT | Archived March 2026; superseded by `crush`. Listed for historical context |
-| OpenAI Python CLI / `azure ai` extension | Python (`openai`, `azure-cli`) | `pip install openai`, `az extension add` | Env vars and `~/.azure/` profile; `az login` for management plane | OpenAI SDK exposes function calling but the CLIs themselves are mostly thin REST wrappers; the Azure extension is provisioning, not chat | No AOT; Python interpreter required | Apache 2.0 | First-party, very active; chat UX is not their job |
-| `chatblade` | Python | `pip`, Arch | API key in env or config | None (early "swiss army knife" pattern) | No AOT | MIT | Effectively archived; upstream points users at `llm` / `fabric` |
+The 2026 axes the rest of the field has converged on -- and that
+this table now scores explicitly -- are: provider coverage (one or
+many), MCP client support, and single-binary distribution. All three
+are in our active backlog (S03, S05, S02E16) and openly absent today.
 
-Two notes on the matrix:
+### Tier 1 -- direct substitutes
 
-- "Maintenance signal" is a ballpark from public release cadence and
-  contributor counts at time of writing. Not a quality judgment.
-- We did not include Claude Code, Codex CLI, Gemini CLI, or
-  `gh copilot cli` in this brief because they are vertically integrated
-  with their parent platform's billing and auth. They are not
-  substitutes for an Azure-OpenAI-native binary; they are substitutes
-  for buying a different cloud relationship. The long-form analysis in
-  [`docs/competitive-analysis.md`](./competitive-analysis.md) covers
-  them anyway.
+| Tool | License | Lang / runtime | Single binary | Provider coverage | MCP support | Distribution | Status (2026) |
+|------|---------|----------------|---------------|-------------------|-------------|--------------|---------------|
+| `azure-openai-cli` (this) | MIT | C# / .NET 10 AOT | Yes (~13 MiB) | Azure OpenAI only (S03 will widen) | None (S05 will add) | GHCR image + GitHub Releases; Homebrew/Scoop/Nix pending S02E16 | v2 active; weekly cadence |
+| `llm` (Simon Willison) | Apache 2.0 | Python (pluggy) | No (interpreter) | OpenAI, Anthropic, Gemini, Ollama, OpenRouter, llama.cpp, +others via `llm-*` plugins | Partial; plugin-route, dynamic-tool refactor in flight for the 2026 API redesign | `pip`, `uv tool install`, Homebrew | Very active; broadest plugin marketplace in the category |
+| `aichat` (sigoden) | MIT / Apache 2.0 | Rust | Yes | 20+ first-class incl. Azure OpenAI, OpenAI, Anthropic, Gemini, Bedrock, VertexAI, Ollama, Groq, Cohere, OpenRouter | Yes; first-class MCP client | `cargo install`, Homebrew, prebuilt | Very active; closest functional peer |
+| `crush` (Charmbracelet) | FSL-1.1-MIT (Charm-style source-available, MIT after 2-yr) | Go | Yes | Azure OpenAI, OpenAI, Anthropic, Gemini, Bedrock, VertexAI, Groq, Ollama, OpenRouter, OpenAI-compat | Yes; MCP-native (stdio / HTTP / SSE), LSP-aware | Homebrew, npm, Nix, AUR, prebuilt | New flagship; replaces `mods` (archived March 9 2026) |
+| `mods` (Charmbracelet) | MIT | Go | Yes | OpenAI-compatible endpoint (incl. Azure OpenAI) | Yes (final v1.8.x) | Homebrew, Go install, prebuilt | Archived 2026-03-09; migrate to `crush`. Kept for historical context |
+| `shell-gpt` / `sgpt` | MIT | Python | No (interpreter) | OpenAI direct, anything via LiteLLM (Azure OpenAI via base-URL hack) | No | `pip` | Maintained but slowing; v1.5.0 Jan 2026 |
+| `chatblade` | MIT | Python | No | OpenAI only | No | `pip`, AUR | Archived; upstream points at `llm` / `fabric` |
+| OpenAI Python CLI / `az` AI extension | Apache 2.0 / MIT | Python | No | First-party (OpenAI / Azure mgmt-plane) | No | `pip install openai`, `az extension add` | Active first-party; chat UX is not their job |
+
+### Tier 2 -- vendor-flagship coding agents (here for axis comparison, not as substitutes)
+
+| Tool | License | Lang / runtime | Single binary | Provider coverage | MCP support | Distribution | Status (2026) |
+|------|---------|----------------|---------------|-------------------|-------------|--------------|---------------|
+| `claude` (Anthropic Claude Code) | Proprietary | Rust + TS | Yes (native installer) | Anthropic direct, AWS Bedrock, GCP Vertex | Yes; MCP-native | Native installer, Homebrew, WinGet, npm (deprecated path) | $20 Pro / $100 Max; no free tier |
+| `codex` (OpenAI Codex CLI) | Apache 2.0 | Rust (+ Node modules) | Yes | OpenAI direct (ChatGPT account or API key) | Yes; MCP-native, parallel tool calls | Native installer, Homebrew, npm | Very active; OSS CLI billed via ChatGPT Plus quota |
+| `gemini` (Google Gemini CLI) | Apache 2.0 | TypeScript on Node | No (npm wrapper) | Google Gemini direct (incl. Vertex auth) | Yes; MCP-native | `npm i -g @google/gemini-cli`, Homebrew, MacPorts, Conda | Very active; weekly stable cadence |
+| GitHub Copilot CLI (`gh-copilot` host of this conversation) | Proprietary | Node / TS | No (Node runtime) | OpenAI / Anthropic / Gemini routed through GitHub Models | Yes; ships with built-in GitHub MCP server, accepts custom MCP servers + hooks | npm, Homebrew, WinGet, `gh extension install` | GA Feb 2026; requires paid Copilot seat ($10-$39/user/mo) |
+| `cursor` Cursor CLI | Proprietary | Bundled runtime | Yes (cask/AUR-distributed) | Cursor-routed (OpenAI / Anthropic / Gemini family) | Yes; MCP + marketplace | Homebrew cask, AUR, installer scripts | Active; tied to Cursor account |
+| Continue.dev `cn` | Apache 2.0 | TypeScript on Node | No | BYOM -- OpenAI, Anthropic, Ollama, custom; same `config.yaml` as IDE | Yes; first-class MCP servers in agent loop | npm install, curl installer | Very active; headless mode for CI/CD |
+| `opencode` (sst / community) | MIT | TypeScript (Bun-bundled) | Bundled binary | 75+ providers via routing layer (OpenAI, Anthropic*, Gemini, Copilot, Groq, Ollama, LM Studio, ...) | Yes; MCP-compatible | npm, install script, prebuilt | Very active; weekly releases. *Anthropic blocks unofficial CLI access -- bring an official Claude key |
+
+A few notes on the matrix:
+
+- "Single binary" means the artifact is a self-contained executable
+  the user copies into `PATH`. Bundled-runtime tools (Node-on-pkg,
+  Bun-bundled) get a "Bundled binary" mark; they ship as one file but
+  the runtime is inside it, not the OS.
+- "Provider coverage" lists what the tool supports without third-party
+  plugins. Many of the Tier 1 tools can reach more providers via
+  OpenAI-compatible base URLs; that does not count here.
+- "MCP support" refers to MCP-client capability (the CLI can mount
+  external MCP servers as tools). Server mode is mentioned per-tool
+  where it exists. By 2026 this is table stakes -- a "No" in this
+  column is now the headline weakness, including ours.
+- Adjacent tools we do not score here -- `fabric` (pattern library),
+  `ollama` (model runner), `elia` and `oterm` (TUI clients),
+  `llama.cpp` (local engine) -- are covered in
+  [`docs/competitive-analysis.md`](./competitive-analysis.md) §2 and
+  §2.5 because they serve a different seam.
 
 ## Three things we do better
 
@@ -108,21 +148,30 @@ wizard is the difference between a working tool in two minutes and a
 working tool in two afternoons of reading Microsoft Learn pages. No
 competitor in the comparison set ships an equivalent.
 
-## Three things we don't do
+## Four things we don't do (yet)
 
-### 1. We are Azure-OpenAI-only. No OpenAI direct, no Anthropic, no local models.
+The original brief listed three. The 2026 sweep promotes MCP from
+implicit-table-stakes to its own column, so the list is now four. Two
+of the four (multi-provider, MCP) have explicit season blueprints
+behind them; the other two (no-TUI, no-router) are deliberate and not
+on the roadmap.
 
-Every competitor in the matrix supports multiple providers, often via
-plugins (`llm`), config sections (`aichat`), or OpenAI-compatible base
-URLs (`mods`). We do not, and we are not planning to. The reason is
-load-bearing: every differentiator above (the AOT binary, the keystore
-factory, the wizard) is small and tight precisely because we are
-solving one provider's auth model and one provider's deployment-vs-model
-distinction. Adding a second provider doubles the configuration
-surface, the keystore semantics, and the wizard branching. The user
-who needs three providers is not our user. The user who lives inside
-an Azure tenant and wants the binary to disappear into their workflow
-is.
+### 1. We are Azure-OpenAI-only. No OpenAI direct, no Anthropic, no local models. (S03 will narrow this gap, deliberately.)
+
+Every Tier 1 competitor supports multiple providers, often via
+plugins (`llm`), first-class config sections (`aichat`, `crush`), or
+OpenAI-compatible base URLs (everyone). We do not yet, and our S03
+blueprint commits to expanding -- on our own terms -- to a small
+hand-picked set (Azure OpenAI, OpenAI direct, AWS Bedrock, local
+Ollama / llama.cpp), not to chasing the 20+ provider marketplaces
+`aichat` and `crush` have built. The reason for the cap is
+load-bearing: every differentiator above (the AOT binary, the
+keystore factory, the wizard) is small and tight precisely because
+each new provider doubles the configuration surface, the keystore
+semantics, and the wizard branching. The user who needs every
+provider on the planet is not our user; they should reach for `llm`
+or `crush`. The user who lives inside an Azure tenant and occasionally
+wants a local fallback is.
 
 ### 2. We do not ship an interactive TUI mode.
 
@@ -135,27 +184,46 @@ TUI would be a different product. If a user wants a TUI on top of our
 binary they can drive it with `fzf` or `gum`; we will not ship one in
 the box.
 
-### 3. No multi-model routing and (until S02E18 lands) no prompt template library.
+### 3. No MCP client today. (S05 owns this -- it is the load-bearing gap.)
+
+By 2026 every credible CLI in the comparison set ships an MCP client:
+`claude`, `codex`, `gemini`, GitHub Copilot CLI, `cursor`, `crush`,
+`aichat`, `opencode`, `continue`, even `ollama` via bridge clients,
+and `llm` via plugin. MCP is the de facto standard for "let the
+model reach external tools without each CLI inventing its own
+plugin shape." We do not have one. Our internal six-tool registry
+(`shell_exec`, `read_file`, `web_fetch`, `get_clipboard`,
+`get_datetime`, `delegate_task`) is intentionally fixed and audited;
+adding MCP means adding an unbounded surface, which is why we are
+sequencing it carefully under the S05 blueprint rather than racing
+the field. Until S05 lands, this is the column where we are visibly
+behind, and we say so on the tin.
+
+### 4. No multi-model routing and no curated prompt library shipped in the box.
 
 Competitors increasingly ship a "use the cheap model for this, the
 smart model for that" router and a curated prompt library to back it.
-`fabric` is the leader here with hundreds of named patterns. We have
-neither, by choice for the router and by sequencing for the library.
-Multi-model routing belongs to a CLI that owns the user's model
-selection; we want the user to keep that decision in their squad
-config or their script. The prompt library is a real gap that the
-Maestro episode (S02E18) is expected to close. Until then, users who
-want a curated prompt collection should layer one on top -- the CLI is
-prompt-shaped on stdin and does not need to own the prompt registry.
+`fabric` is the leader here with hundreds of named patterns; `crush`
+and `claude` route per-task to per-model. We have neither, by choice
+for the router and by sequencing for the library. Multi-model routing
+belongs to a CLI that owns the user's model selection; we want the
+user to keep that decision in their squad config or their script.
+The prompt library work landed in the Maestro episode (S02E18) as a
+design sketch under `docs/prompts/`, not yet a runtime registry --
+users who want a curated prompt collection should still layer one on
+top, since the CLI is prompt-shaped on stdin and does not need to own
+the prompt registry.
 
 ## Where this leaves us
 
 We are not the most flexible CLI in the category and we will not try to
 be. We are the Azure-OpenAI-native binary that disappears into a
 keyboard shortcut. The three differentiators above are the things that
-make that role viable; the three accepted gaps are the things we do
-not need to win that role and would slow us down if we tried. A
-positioning sentence a contributor can repeat without checking notes:
+make that role viable; the four accepted gaps (one of which -- MCP --
+is now a category-default rather than an exotic feature) are the
+things we do not need to win that role today, with two of them having
+explicit S03 / S05 fixes already scoped. A positioning sentence a
+contributor can repeat without checking notes:
 *the fastest, smallest, most Azure-native single-binary chat client,
 optimized for text-injection and agentic delegation, not for sitting
 inside a terminal REPL.*
@@ -169,6 +237,15 @@ Refresh on the earlier of:
 - When a competitor in the matrix ships a feature that lands in our
   three "we do better" list (especially: per-OS keystore parity, true
   AOT in a Python or Node tool, or an Azure-first wizard).
+- When one of our four "don't do" gaps closes -- in particular when
+  S03 (multi-provider) or S05 (MCP) ships, the corresponding row in
+  the comparison set should flip and the gap section should retire.
+
+Last refresh: 2026 sweep that added the MCP-support, multi-provider
+coverage, and single-binary distribution columns; promoted `crush`
+to Tier 1 as `mods`'s successor; added a Tier 2 block for the
+vendor-flagship coding agents (`claude`, `codex`, `gemini`,
+GitHub Copilot CLI, `cursor`, `continue`, `opencode`).
 
 Refresh delta lives in this file -- no separate "v2 of the brief"
 document. Bump the date in the front matter and edit in place. Long-
