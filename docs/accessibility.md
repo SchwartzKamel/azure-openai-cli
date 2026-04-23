@@ -355,7 +355,7 @@ matter for a binary that doesn't currently emit color:
 
 1. `NO_COLOR` non-empty → off.
 2. `FORCE_COLOR` non-empty and not `"0"` → on (even if stdout is
-   redirected — for CI log viewers that render ANSI).
+   redirected -- for CI log viewers that render ANSI).
 3. Otherwise: on iff stdout is a TTY.
 
 It exists as a guardrail. Any future v1 call site that wants to emit
@@ -408,7 +408,7 @@ Verified by `RunAsync_AbortsAfterEndpoint_NoConfigSideEffectsOnDisk` in
   Babu's territory ([docs/i18n.md](i18n.md)) and are tracked separately.
 - **Spinner redesign.** The Braille spinner stays as-is; a future Russell
   episode can revisit it. `--raw` and `--json` already suppress it.
-- **`--accessible` flag.** Out of scope by design — the fix is
+- **`--accessible` flag.** Out of scope by design -- the fix is
   behavioural (env-var precedence + announcement line), not a new UX
   surface to teach.
 - **Vendor screen-reader testing.** Orca / NVDA / JAWS / VoiceOver
