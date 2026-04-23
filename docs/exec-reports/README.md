@@ -63,11 +63,12 @@ the cast would tell you it's time for a retool.
 | S02E33   | *The Uninstaller*  | [s02e33-the-uninstaller.md](s02e33-the-uninstaller.md)  | `350e67a` | `make migrate-check` + `make migrate-clean` for v1 az-ai leftovers   |
 | S02E34   | *The Index*        | [s02e34-the-index.md](s02e34-the-index.md)              | `54b9c19` | Docs orphan cleanup: 17→0 orphans, `docs/launch/README.md` authored  |
 | S02E26   | *The Locked Drawer* | [s02e26-locked-drawer.md](s02e26-locked-drawer.md)     | `04be3ee` | `ReadFileTool` blocklist extended to 7 home-dir credential paths     |
+| S02E10   | *The Press Kit*    | [s02e10-the-press-kit.md](s02e10-the-press-kit.md)      | `ee10121` | v2.1.0 release curation: CHANGELOG backfill + release notes + version bump |
+| S02E36   | *The Attribution*  | [s02e36-the-attribution.md](s02e36-the-attribution.md)  | `6e26608` | Pre-v2.1.0 license audit -- 39 deps, zero copyleft, ship-cleared      |
 
 **Rest of the season:** see [`s02-writers-room.md`](s02-writers-room.md)
-for the remaining arc -- E10 *Press Kit* (Lippman + Peterman + Elaine
-with Costanza promoted to co-lead) and E24 *Finale* (Pitt + ensemble --
-absolute last).
+for the remaining arc -- only E24 *Finale* (Pitt + ensemble --
+absolute last) remains before S03 pre-production.
 
 ### Season 3 -- *(unaired)*
 

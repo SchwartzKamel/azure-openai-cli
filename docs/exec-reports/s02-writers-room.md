@@ -21,7 +21,7 @@ that?"* is the most valuable question in the room.
 
 See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.agent.md).
 
-## Aired so far (32 episodes; 2 main-arc remaining)
+## Aired so far (34 episodes; 1 main-arc remaining)
 
 | # | Title | Featured cast | Status |
 |---|-------|---------------|--------|
@@ -57,10 +57,12 @@ See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.age
 | S02E33 | *The Uninstaller* | Jerry (lead), Lloyd (guest) | aired (off-roster, Jerry floor corrective) |
 | S02E34 | *The Index* | Lloyd Braun (lead), Elaine (guest) | aired (off-roster, docs orphan cleanup) |
 | S02E26 | *The Locked Drawer* | Newman (lead), Kramer (guest) | aired (off-roster, security hotfix -- ReadFile) |
+| S02E10 | *The Press Kit* | Mr. Lippman (lead), George Costanza (co-lead), Peterman + Elaine + Jerry (guests) | aired (main-arc, v2.1.0 release curation) |
+| S02E36 | *The Attribution* | Jackie Chiles (lead), Bob Sacamano (guest) | aired (off-roster, pre-v2.1.0 license audit) |
 
-**Remaining S02 main arc:** E10 *Press Kit* (Lippman + Peterman + Elaine with Costanza promoted to co-lead -- closes Costanza's floor + curates the 8-episode CHANGELOG backlog), E24 *Finale* (Pitt + ensemble -- absolute last; hands off to S03).
+**Remaining S02 main arc:** E24 *Finale* (Pitt + ensemble -- absolute last; hands off to S03).
 
-**Off-roster pending:** *(none -- Wave 6 cleared the off-roster queue)*
+**Off-roster pending:** *(none -- Wave 7 cleared the pre-release queue)*
 
 ## Casting drift -- multi-lead floor failure (per writers-room-cast-balance audit)
 
@@ -71,10 +73,12 @@ S02E29 *The Casting Call* introduced the cast-balance audit and immediately surf
 - **Newman:** 3 leads (E13, E32, E26) -- floor met after E32 + E26 correctives.
 - **Jerry:** 2 leads (E14, E33) plus S06 blueprint off-roster -- floor met after E33 corrective.
 - **Lloyd:** 2 leads (E12, E34) -- junior lens keeps earning it.
+- **Jackie Chiles:** 2 leads (E15, E36) -- picked up E36 license audit.
+- **Mr. Lippman:** 1 lead (E10) -- release-manager floor met.
 - **Morty:** 1 lead (E09) -- supporting-floor met (was at 0).
-- **Costanza (George):** 1 lead (E11), substantial guest in E09 -- still one short of main-cast floor.
+- **Costanza (George):** 1 lead (E11) + 1 co-lead (E10 *Press Kit*, customer-story angle) -- floor met via E10 co-lead corrective.
 
-**Corrective for the closing wave:** Costanza is the sole remaining main-cast floor miss. Plan stands: promote him to co-lead on E10 *Press Kit* (customer-story angle opposite Lippman's SemVer mechanics). No other correctives needed.
+**Corrective status:** closed. Costanza floor met via E10 co-lead credit (customer-story section opposite Lippman's SemVer mechanics). No remaining main-cast floor misses.
 
 Logged for the closing-wave dispatch decision.
 

@@ -40,6 +40,7 @@ that shipped it, and where to read more.
 - **`make migrate-check` and `make migrate-clean`** (S02E33 *The Uninstaller*). Contributor-facing targets that help you move a workstation from v1 to v2 and tidy up the v1 leftovers. Full procedure in [`migration-v1-to-v2.md`](migration-v1-to-v2.md); the targets are defined in [`../Makefile`](../Makefile).
 - **Structural shell-blocklist hardening** (S02E32 *The Bypass*). The run-shell tool now rejects a wider family of command-chaining and redirection bypass attempts before they reach a subprocess. The rationale and threat model live in [`../SECURITY.md`](../SECURITY.md).
 - **Expanded file-read sensitive-path blocklist** (S02E26 *The Locked Drawer*). `ReadFileTool` now hard-blocks seven home-directory credential paths (`~/.ssh`, `~/.kube`, `~/.gnupg`, `~/.netrc`, `~/.docker/config.json`, `~/.git-credentials` + XDG variant, `~/.npmrc`/`~/.pypirc`) with a structural validate pipeline matching E32's shell-side shape. See [`../SECURITY.md`](../SECURITY.md).
+- **v2.1.0 release** (S02E10 *The Press Kit*). Minor bump bundling ten polish-era episodes: `--show-cost` receipts, 12-persona cast, migrate targets, expanded credential blocklist, structural shell hardening, Alpine Docker hardening, NO_COLOR / FORCE_COLOR gates, OTLP lazy-init. See [`release-notes-v2.1.0.md`](release-notes-v2.1.0.md) and the [`[2.1.0]` entry in CHANGELOG](../CHANGELOG.md).
 
 ## Architecture and decisions
 
