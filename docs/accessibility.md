@@ -340,10 +340,93 @@ it. Accessibility bugs are triaged at the same severity as crashes.
 
 ---
 
+## 6. The v1 first-run wizard (S02E06)
+
+The v1 binary (`azureopenai-cli/`) keeps its own narrower contract, since
+its surface is smaller than v2's: no SGR escapes anywhere in the tree
+today, no decorated prefixes, just a Braille-glyph spinner on stderr.
+
+### Color helper
+
+`AzureOpenAI_CLI.ConsoleIO.AnsiPolicy.IsColorEnabled()` is the v1
+chokepoint, kept in lockstep with v2's `Theme.UseColor()`. It applies
+the same precedence the user sees in §1, narrowed to the two knobs that
+matter for a binary that doesn't currently emit color:
+
+1. `NO_COLOR` non-empty → off.
+2. `FORCE_COLOR` non-empty and not `"0"` → on (even if stdout is
+   redirected — for CI log viewers that render ANSI).
+3. Otherwise: on iff stdout is a TTY.
+
+It exists as a guardrail. Any future v1 call site that wants to emit
+color **must** route through `AnsiPolicy.IsColorEnabled()` rather than
+testing `Console.IsOutputRedirected` in isolation, so the
+`NO_COLOR` / `FORCE_COLOR` semantics are honored uniformly.
+
+### The masked-key announcement
+
+When the wizard is about to read the API key on a real TTY, it prints a
+single line **before** the prompt:
+
+```text
+Your key will be masked as you type. Press Enter when done.
+API key (input hidden)
+> ••••••••••••••••
+```
+
+The announcement is Mickey's: a screen reader gets one humane sentence
+explaining what's about to happen, instead of being thrown into a stream
+of bullet glyphs with no warning. The masking glyphs themselves remain
+(they're still useful sighted-user feedback), and the line is **only**
+emitted on the masked-console path -- when stdin is redirected the
+wizard reads with `ReadLineAsync` and never echoes anything, so the
+announcement would be a lie and is suppressed.
+
+### Redirected stdin
+
+`FirstRunWizard._useConsoleKeyMasking` is the gate:
+`ReferenceEquals(_input, Console.In) && !Console.IsInputRedirected`.
+When stdin is piped (Espanso, AHK, test harness, `echo … | az-ai
+--init`), the wizard skips `Console.ReadKey` entirely and calls
+`TextReader.ReadLineAsync()`. **No bullet glyphs are written**, no
+backspace-rewrite tricks, no ANSI. A piped-in key reads cleanly and
+does not leak its length to a screen reader watching stderr.
+
+### Clean abort
+
+The wizard persists exactly once, at the bottom of `RunAsync` after all
+three prompts succeed and validation either passes or the user
+explicitly force-saves. If the user hits Ctrl+C, sends EOF, or aborts
+the validation prompt, the flow falls through `CancelAsync` and returns
+`false` without ever calling `_store.Store(...)` or `_config.Save()`.
+Verified by `RunAsync_AbortsAfterEndpoint_NoConfigSideEffectsOnDisk` in
+`tests/AzureOpenAI_CLI.Tests/FirstRunWizardTests.cs`.
+
+### What S02E06 explicitly did *not* fix
+
+- **i18n / `--locale`.** Translations and locale-aware formatting are
+  Babu's territory ([docs/i18n.md](i18n.md)) and are tracked separately.
+- **Spinner redesign.** The Braille spinner stays as-is; a future Russell
+  episode can revisit it. `--raw` and `--json` already suppress it.
+- **`--accessible` flag.** Out of scope by design — the fix is
+  behavioural (env-var precedence + announcement line), not a new UX
+  surface to teach.
+- **Vendor screen-reader testing.** Orca / NVDA / JAWS / VoiceOver
+  testing remains aspirational; we lean on the silent-by-default
+  baseline and `--raw` instead. (See §5 "Known gaps".)
+- **Routing the existing v1 spinner / status writes through
+  `AnsiPolicy`.** Those call sites emit no color today, so the
+  helper is a guardrail for *future* color, not a behaviour change for
+  current output. Tracked as `v1-color-routing` follow-up.
+
+---
+
 ## See also
 
 - [`azureopenai-cli-v2/Theme.cs:108-142`](../azureopenai-cli-v2/Theme.cs)
-  -- the color precedence, in code, as ground truth.
+  -- the v2 color precedence, in code, as ground truth.
+- [`azureopenai-cli/ConsoleIO/AnsiPolicy.cs`](../azureopenai-cli/ConsoleIO/AnsiPolicy.cs)
+  -- the v1 color helper (`NO_COLOR` / `FORCE_COLOR` / TTY).
 - [docs/espanso-ahk-integration.md](espanso-ahk-integration.md) --
   keyboard-only trigger setup for Espanso and AHK.
 - [docs/i18n.md](i18n.md) -- Babu's internationalization contract and
