@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **docs(prompts):** Prompt library, temperature cookbook, and
+  eval-framework design sketch under `docs/prompts/` -- inventory
+  of every system prompt, instruction string, and tool description
+  the CLI puts in front of a model (12 IDs across `Program.cs`,
+  `Squad/`, and `Tools/`), plus the design seam for a future small
+  eval harness (no runner yet). ([s02e18-the-maestro])
+- **docs(ethics):** Responsible-use posture and disclosure docs under
+  `docs/ethics/` -- the Rabbi's eight-row ought / must matrix
+  (five `ENFORCED`, two `PARTIAL`, one honest `NAMED-ONLY` for
+  model bias) with Newman callouts mapping each "ought" to the
+  implementing code path, plus a one-page user-facing AI-use
+  disclosure naming the data path, the non-storage / non-training
+  posture, and the per-OS keystore. ([s02e21-the-conscience])
+- **docs(talks):** Speaker package for the LOLBin credentials talk
+  under `docs/talks/lolbin-credentials/` (abstract, speaker bio,
+  demo script, slide outline, stage notes; 27-minute outline that
+  fits a 25-30 minute slot). ([s02e20-the-conference])
 - **docs(security):** `docs/security/v2-audit.md` -- end-to-end
   audit of the v2 surface (credential stores, shell_exec,
   read_file, web_fetch SSRF, dependency vulns, subagent depth
