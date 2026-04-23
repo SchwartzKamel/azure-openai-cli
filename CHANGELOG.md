@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(squad):** Bake the 12 Seinfeld-themed cast as default
+  runtime personas in `--squad-init` -- `costanza`, `kramer`,
+  `elaine`, `jerry`, `newman` (main cast), `larry-david` (showrunner),
+  `lloyd-braun` (junior dev), and 5 supporting players (`maestro`,
+  `mickey-abbott`, `frank-costanza`, `soup-nazi`, `mr-wilhelm`).
+  Additive on top of the 5 generics (now 17 personas total). Direct
+  cast-name routing wins over generic keyword scoring -- `az-ai
+  --persona auto "kramer review this csproj"` resolves to `kramer`,
+  not `reviewer`. Existing `.squad.json` files untouched. See
+  `azureopenai-cli/Squad/SquadInitializer.cs` and
+  [`docs/persona-guide.md`](docs/persona-guide.md#cast-personas-the-show-lives-on).
+  ([s02e30-the-cast])
 - **docs(distribution):** Homebrew, Scoop, and Nix packaging drafts
   for the v1 line under `packaging/{homebrew,scoop,nix/azure-openai-cli}/`,
   paired with `docs/distribution/{homebrew,scoop,nix,README}.md`
@@ -178,8 +190,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Fixed
 ### Security
+- **security(docker):** Hardened the Alpine multi-stage Docker image
+  -- explicit numeric `USER 10001:10001` (Kubernetes `runAsNonRoot` /
+  PSA `restricted` compatible), `COPY --chown --chmod` for binary
+  (`0755`) and license bundle (`0444`), explicit `HEALTHCHECK NONE`
+  for the short-lived CLI workload, `DOTNET_CLI_TELEMETRY_OPTOUT=1`
+  baked in, expanded `apk` cache wipe, and a broader `.dockerignore`
+  allowlist. Posture documented in
+  `docs/distribution/docker-hardening.md`. ([s02e14-the-container])
 
-## [2.0.6] — 2026-04-22
 
 > **Fix-forward from cancelled v2.0.5.** The v2.0.5 release-workflow run
 > failed at CI integration-test because `tests/integration_tests.sh`

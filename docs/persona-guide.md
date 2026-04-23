@@ -218,7 +218,84 @@ Verified against `azureopenai-cli-v2/Squad/SquadInitializer.cs`.
 
 ---
 
-## Examples
+## Cast personas (the show lives on)
+
+Starting with the S02E30 *The Cast* release, `--squad-init` seeds **17**
+personas, not 5: the original generics (`coder`, `reviewer`, `architect`,
+`writer`, `security`) plus **12 Seinfeld-themed cast members** compressed
+from the project's [`AGENTS.md`](../AGENTS.md) archetypes into runnable
+system prompts. The cast lived in process documentation for two seasons;
+now it ships in the binary.
+
+The 12 cast personas, by domain:
+
+| Persona          | Role                                | When to reach for them                                      |
+|------------------|-------------------------------------|--------------------------------------------------------------|
+| `costanza`       | Product Manager                     | Latency obsession, FR proposals, preference schema          |
+| `kramer`         | Engineer (C#, Docker, Azure OpenAI) | Hands-on implementation, AOT-clean code, hardening tests    |
+| `elaine`         | Technical Writer                    | README, ADRs, prose that earns its place                    |
+| `jerry`          | DevOps / Modernization              | Dockerfile, Makefile, CI hygiene, dependency sweeps         |
+| `newman`         | Security Inspector                  | Threat models, blocklists, SSRF, supply chain               |
+| `larry-david`    | Showrunner / Orchestrator           | Multi-step planning, fleet dispatch, episode framing        |
+| `lloyd-braun`    | Junior Developer / Onboarding lens  | First-hour audits, glossary, jargon-free explainers         |
+| `maestro`        | Prompt Engineer                     | Prompt library, model A/B, temperature cookbook             |
+| `mickey-abbott`  | Accessibility / CLI Ergonomics      | NO_COLOR, screen-reader output, --raw discipline            |
+| `frank-costanza` | SRE / Observability                 | SLOs, opt-in telemetry, runbooks, ralph-mode safety review  |
+| `soup-nazi`      | Code Style / Merge Gatekeeper       | Conventional Commits, dotnet format, docs-lint              |
+| `mr-wilhelm`     | Process / Change Management         | PR gates, retros, ADR stewardship, release flow             |
+
+Each cast persona is the runtime compression of its `.github/agents/<name>.agent.md`
+archetype: voice, focus areas, standards, and the explicit "things you do NOT
+do" boundary that keeps personas in their lane.
+
+### Direct-name routing wins over keyword routing
+
+`--persona auto` (or any call to `SquadCoordinator.RouteByKeyword`) now
+prefers direct cast-name matches over generic keyword scoring:
+
+```bash
+az-ai --persona auto "kramer review this csproj"
+# -> 🎭 Auto-routed to: kramer (Engineer)
+# (NOT 'reviewer', even though "review" is in reviewer's keyword list.)
+
+az-ai --persona auto "ask larry-david to greenlight the next episode"
+# -> 🎭 Auto-routed to: larry-david (Showrunner)
+```
+
+The 5 generic names (`coder`, `reviewer`, `architect`, `writer`, `security`)
+are deliberately excluded from direct-name precedence -- they collide with
+their own routing keywords ("security audit" should still route to the
+`security` persona), so they go through the standard keyword-score path.
+
+### Existing `.squad.json` files are untouched
+
+Only `--squad-init` (a fresh seed) gets the cast. If your repo already has a
+`.squad.json`, nothing changes -- the file is the source of truth and will
+not be rewritten. To pull in the cast on an existing repo:
+
+```bash
+mv .squad.json .squad.json.bak
+az-ai --squad-init                # writes the 17-persona default
+# Then merge any custom personas from .squad.json.bak into .squad.json by hand.
+```
+
+### Relationship to the archetype files
+
+The `.github/agents/<name>.agent.md` files remain the **canonical voice**
+for each cast member -- they are what GitHub Copilot's custom-agent system
+loads, and they're also where Larry David (the showrunner) reads to cast
+episodes. The runtime persona is a compressed, in-character system prompt
+derived from that archetype. If voice drifts, the archetype wins; the
+runtime prompt is regenerated to match.
+
+See [`AGENTS.md`](../AGENTS.md) for the full 25-agent roster, the dispatch
+pipeline diagram, and the supporting players who did NOT make the runtime
+cut (those archetypes still operate as Copilot custom agents during
+development; they just are not seeded into your local `.squad.json`).
+
+---
+
+
 
 ```bash
 # One-shot coding task.
