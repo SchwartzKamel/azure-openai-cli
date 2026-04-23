@@ -39,6 +39,7 @@ that shipped it, and where to read more.
 - **`--show-cost` opt-in cost summary** (S02E09 *The Receipt*). Prints a per-invocation breakdown of tokens and dollars after each run. See the `[Unreleased]` / v2 entries in [`../CHANGELOG.md`](../CHANGELOG.md) and the source under [`../azureopenai-cli/Observability/`](../azureopenai-cli/Observability/) (`CostEstimator.cs`, `CostEvent.cs`, `CostHook.cs`).
 - **`make migrate-check` and `make migrate-clean`** (S02E33 *The Uninstaller*). Contributor-facing targets that help you move a workstation from v1 to v2 and tidy up the v1 leftovers. Full procedure in [`migration-v1-to-v2.md`](migration-v1-to-v2.md); the targets are defined in [`../Makefile`](../Makefile).
 - **Structural shell-blocklist hardening** (S02E32 *The Bypass*). The run-shell tool now rejects a wider family of command-chaining and redirection bypass attempts before they reach a subprocess. The rationale and threat model live in [`../SECURITY.md`](../SECURITY.md).
+- **Expanded file-read sensitive-path blocklist** (S02E26 *The Locked Drawer*). `ReadFileTool` now hard-blocks seven home-directory credential paths (`~/.ssh`, `~/.kube`, `~/.gnupg`, `~/.netrc`, `~/.docker/config.json`, `~/.git-credentials` + XDG variant, `~/.npmrc`/`~/.pypirc`) with a structural validate pipeline matching E32's shell-side shape. See [`../SECURITY.md`](../SECURITY.md).
 
 ## Architecture and decisions
 

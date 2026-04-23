@@ -21,7 +21,7 @@ that?"* is the most valuable question in the room.
 
 See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.agent.md).
 
-## Aired so far (30 episodes; 2 main-arc remaining + 1 off-roster queued)
+## Aired so far (32 episodes; 2 main-arc remaining)
 
 | # | Title | Featured cast | Status |
 |---|-------|---------------|--------|
@@ -55,10 +55,12 @@ See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.age
 | S02E31 | *The Audition* | David Puddy (lead), Maestro (guest) | aired (off-roster) |
 | S02E32 | *The Bypass* | Newman (lead), Kramer (guest) | aired (off-roster, security hotfix) |
 | S02E33 | *The Uninstaller* | Jerry (lead), Lloyd (guest) | aired (off-roster, Jerry floor corrective) |
+| S02E34 | *The Index* | Lloyd Braun (lead), Elaine (guest) | aired (off-roster, docs orphan cleanup) |
+| S02E26 | *The Locked Drawer* | Newman (lead), Kramer (guest) | aired (off-roster, security hotfix -- ReadFile) |
 
-**Remaining S02 main arc:** E10 *Press Kit* (Lippman + Peterman + Elaine -- after all bullet-emitting episodes), E24 *Finale* (Pitt + ensemble -- absolute last).
+**Remaining S02 main arc:** E10 *Press Kit* (Lippman + Peterman + Elaine with Costanza promoted to co-lead -- closes Costanza's floor + curates the 8-episode CHANGELOG backlog), E24 *Finale* (Pitt + ensemble -- absolute last; hands off to S03).
 
-**Off-roster pending:** E26 *Locked Drawer* (Newman + Kramer -- ReadFileTool blocklist extension; expanded from original E13 finding to cover the 7 home-dir paths E23 confirmed). Sequenced AFTER E32 *Bypass* (now landed) so the hardening wave finishes before E10 *Press Kit* curates the CHANGELOG.
+**Off-roster pending:** *(none -- Wave 6 cleared the off-roster queue)*
 
 ## Casting drift -- multi-lead floor failure (per writers-room-cast-balance audit)
 
@@ -66,14 +68,13 @@ S02E29 *The Casting Call* introduced the cast-balance audit and immediately surf
 
 - **Kramer:** 3 leads (E01, E02, E04) -- floor met.
 - **Elaine:** 3 leads (E03, E30, E25) -- floor met.
-- **Newman:** 2 leads (E13, E32) -- floor met after E32 corrective.
-- **Jerry:** 2 leads (E14, E33) plus S06 blueprint off-roster -- **floor met after E33 corrective.**
+- **Newman:** 3 leads (E13, E32, E26) -- floor met after E32 + E26 correctives.
+- **Jerry:** 2 leads (E14, E33) plus S06 blueprint off-roster -- floor met after E33 corrective.
+- **Lloyd:** 2 leads (E12, E34) -- junior lens keeps earning it.
 - **Morty:** 1 lead (E09) -- supporting-floor met (was at 0).
 - **Costanza (George):** 1 lead (E11), substantial guest in E09 -- still one short of main-cast floor.
 
-**Corrective for the closing wave:** Costanza still owes one S02 lead. Jerry's gap closed by E33 *The Uninstaller* (Makefile migration helper, Lloyd guest). Candidate remaining:
-
-- **E10 *Press Kit*** (currently Lippman-led). Promote Costanza to co-lead -- "is this release a good investment, what's the customer story." Lippman owns the SemVer + CHANGELOG mechanics; Costanza owns the customer narrative. Closes Costanza's gap.
+**Corrective for the closing wave:** Costanza is the sole remaining main-cast floor miss. Plan stands: promote him to co-lead on E10 *Press Kit* (customer-story angle opposite Lippman's SemVer mechanics). No other correctives needed.
 
 Logged for the closing-wave dispatch decision.
 
@@ -490,10 +491,34 @@ an unaired special:
   - **CLOSED:** `e23-shell-ifs-tokenization` -- structural fix shipped
     in `a4fd184`; all 8 reactivated bypass tests pass; no new findings
     surfaced during the rewrite.
-  - The remaining 7 readfile blocklist gaps (`e23-readfile-*`) and the
-    DNS rebinding TOCTOU finding remain open and route to S02E26
-    *Locked Drawer* (in flight after this batch) and a future S03
-    hardening episode respectively.
+  - **CLOSED (Wave 6):** all seven `e23-readfile-*` findings --
+    structural fix shipped in `04be3ee` (S02E26 *The Locked Drawer*);
+    53 new facts in `ReadFileSensitivePathTests.cs` covering `~/.ssh`,
+    `~/.kube`, `~/.gnupg`, `~/.netrc`, `~/.docker/config.json`,
+    `~/.git-credentials` (+ XDG variant), `~/.npmrc`, `~/.pypirc`.
+    Each of `e23-readfile-{ssh-userdir,kube-config,gnupg,netrc,
+    docker-config,git-credentials,npmrc-pypirc}-not-blocked` is closed.
+  - The DNS rebinding TOCTOU finding remains open and routes to a
+    future S03 hardening episode.
+
+  **From S02E34 *The Index* (Wave 6, Lloyd + Elaine):**
+  - **CLOSED:** `e25-orphan-docs` -- 17 orphan `docs/*.md` files linked
+    from `docs/README.md`. Three new H2 sections added additively
+    (Recent additions / Observability and telemetry / Quality audits
+    and reviews). No existing anchors broken.
+  - **CLOSED:** `e25-launch-dir-no-index` -- new `docs/launch/README.md`
+    indexes the 18 launch artifacts with "when you want this" Lloyd-voice
+    descriptions.
+  - **CLOSED (already-resolved):** `e25-readme-documentation-section-flat`
+    -- top-level `README.md` Documentation section was already
+    categorized into six H3 sub-sections at audit time. Finding was
+    stale; no code change needed.
+  - Flagged for future pass (B-plot): subdirectory link convention --
+    `announce/`, `talks/`, `devrel/` are directory-linked rather than
+    README-linked. Navigable via GitHub directory rendering; flagged
+    for a consistency pass.
+
+  **Still open from S02E25 *The Story Editor* (route to future episodes):**
 
   **Process / orchestration findings (orchestrator-owned):**
   - **Five cross-sub-agent file sweeps via `git add -A`** (now five,
