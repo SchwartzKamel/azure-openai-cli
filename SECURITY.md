@@ -691,13 +691,24 @@ Use this checklist when deploying or operating the Azure OpenAI CLI:
 
 | Protection | Detail |
 |---|---|
-| **Symlink traversal** | Resolves symlinks via `Path.GetFullPath` before checking against blocked paths -- prevents aliasing attacks. |
+| **Defense-in-depth validation pipeline** (S02E26) | NFKC-normalize → tilde-expand → `Path.GetFullPath` (canonicalize `..`, collapse `//`, strip trailing `/`) → exact-prefix blocklist match. Substring-on-raw-input is forbidden. Mirrors the E32 shell-exec structural rewrite. |
+| **Evasion rejection** (S02E26) | Control bytes (including NUL), percent-encoded path segments (`%2E`, `%2F`, `%00`), and invalid Unicode are rejected up front as they indicate bypass intent rather than legitimate filenames. |
+| **Symlink traversal** | Resolves symlinks via `File.ResolveLinkTarget` and re-checks the final target against the blocklist -- prevents aliasing a readable path to a sensitive one. |
 | **Prefix-based path blocking** | Blocks all files *under* sensitive directories, not just exact paths (e.g., `/root/.ssh/id_rsa` is blocked, not only `/root/.ssh`). |
 | **File size cap** | 256 KB maximum -- prevents memory exhaustion from large files. |
 
-Blocked path prefixes:
+Blocked path prefixes (system-level + per-user credential stores). S02E26
+*The Locked Drawer* extended the per-user list to close the 7
+`e23-readfile-*` gaps logged in S02E23 *The Adversary* -- OpenSSH user
+keys (`~/.ssh`), Kubernetes cluster creds (`~/.kube`), GPG keyrings
+(`~/.gnupg`), machine/login/password creds (`~/.netrc`), Docker
+registry auth (`~/.docker/config.json`), git credential store
+(`~/.git-credentials`, `~/.config/git/credentials`), and
+package-registry upload tokens (`~/.npmrc`, `~/.pypirc`). GitHub CLI
+OAuth tokens (`~/.config/gh/hosts.yml`) added as same-shape bonus.
 
 ```text
+# System
 /etc/shadow
 /etc/passwd
 /etc/sudoers
@@ -705,7 +716,29 @@ Blocked path prefixes:
 /root/.ssh
 /proc/self/environ
 /proc/self/cmdline
+/var/run/secrets
+/run/secrets
+/var/run/docker.sock
+
+# Per-user credential stores
+~/.aws
+~/.azure
+~/.config/az-ai
+~/.azureopenai-cli.json
+~/.ssh
+~/.kube
+~/.gnupg
+~/.netrc
+~/.docker/config.json
+~/.git-credentials
+~/.config/git/credentials
+~/.npmrc
+~/.pypirc
+~/.config/gh/hosts.yml
 ```
+
+Ground truth: [`azureopenai-cli/Tools/ReadFileTool.cs`](azureopenai-cli/Tools/ReadFileTool.cs).
+Adversarial coverage: [`tests/AzureOpenAI_CLI.Tests/Adversary/ReadFileSensitivePathTests.cs`](tests/AzureOpenAI_CLI.Tests/Adversary/ReadFileSensitivePathTests.cs).
 
 #### ShellExecTool
 
