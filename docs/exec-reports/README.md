@@ -25,6 +25,11 @@ the cast would tell you it's time for a retool.
 |----------|--------------------|-----------------------------------------------------|-----------|---------------------------------------------------------|
 | S02E01   | *The Wizard*       | [s02e01-the-wizard.md](s02e01-the-wizard.md)        | `f57032f` | Interactive first-run wizard + per-OS LOLBin storage     |
 | S02E02   | *The Cleanup*      | [s02e02-the-cleanup.md](s02e02-the-cleanup.md)      | `f65adbd` | docs-lint green + whitespace-key guard across all stores |
+| S02E03   | *The Warn-Only Lie* | [s02e03-the-warn-only-lie.md](s02e03-the-warn-only-lie.md) | `b36ec19` | docs-lint Summary step honesty -- label matches behaviour |
+| S02E04   | *The Locksmith*    | [s02e04-the-locksmith.md](s02e04-the-locksmith.md)  | `ef8756c` | Opportunistic libsecret credential store on Linux        |
+
+**Rest of the season:** see [`s02-writers-room.md`](s02-writers-room.md)
+for the planned arc (E05-E11), cast rotation, and dispatch order.
 
 ### Season 3 -- *(unaired)*
 
