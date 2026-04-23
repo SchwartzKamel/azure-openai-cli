@@ -88,7 +88,7 @@ the tail does not track the flag set.
 
 Thirteen samples exceeded 11 ms. Their iteration indices:
 
-```
+```text
 124 (14.60), 129 (11.88), 176 (11.86), 258 (11.15),
 268 (14.69), 270 (14.43), 272 (14.07), 274 (15.24),
 329 (14.23), 476 (14.40), 478 (14.66), 480 (15.90), 492 (13.11)

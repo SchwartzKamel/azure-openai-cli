@@ -135,9 +135,9 @@ Scorecard picked up the push at report time.
 ## Metrics
 
 - **Diff size:** 446 insertions, 2 deletions across 7 modified files
-  + 10 new files.
-- **Test delta:** +74 new tests (31 credstore + 28 wizard/detection
-  + 9 userconfig + ... platform gating makes exact counts fuzzy, but
+  and 10 new files.
+- **Test delta:** +74 new tests (31 credstore, 28 wizard/detection,
+  9 userconfig, ... -- platform gating makes exact counts fuzzy, but
   the shape is right).
 - **Preflight:** all gates green -- format, build (0/0), unit
   (1578/1578 non-skipped), integration (150/150 non-skipped).
