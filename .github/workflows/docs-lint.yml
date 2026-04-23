@@ -1,8 +1,8 @@
 # docs-lint-ci — The Soup Nazi's line.
 #
-# Three audit-demanded rules + markdownlint standard hygiene.
-# All three core rules ship WARN-ONLY on first run because the current tree
-# red-lines on every one of them. See per-step TODOs to flip to fail.
+# Three audit-demanded rules + markdownlint standard hygiene, all hard-fail
+# post Wave 5/6 sweeps. Filename-convention check remains warn-only by design
+# (style preference, not a correctness gate).
 #
 # Owner: Soup Nazi. Coordination: Babu (i18n text), Elaine (docs), Jackie (legal).
 name: docs-lint
@@ -217,9 +217,10 @@ jobs:
       # ----------------------------------------------------------------------
       # Filename convention: kebab-case only under docs/ (excluding known
       # PascalCase/SCREAMING conventions like README.md, ADR-*.md).
-      # Warn-only initially.
+      # Warn-only by design: style preference, not a correctness gate.
       # ----------------------------------------------------------------------
       - name: Filename convention — docs/ kebab-case (warn-only)
+        id: filename-convention
         continue-on-error: true
         run: |
           set +e
@@ -275,9 +276,10 @@ jobs:
             echo "| smart-quote (hard-fail) | ${{ steps.smart-quotes.outcome }} |"
             echo "| link-check (hard-fail) | ${{ steps.link-check.outcome }} |"
             echo "| bare-emoji (hard-fail) | ${{ steps.bare-emoji.outcome }} |"
-            echo "| markdownlint (warn-only) | ${{ steps.markdownlint.outcome }} |"
+            echo "| markdownlint (hard-fail) | ${{ steps.markdownlint.outcome }} |"
+            echo "| filename-convention (warn-only) | ${{ steps.filename-convention.outcome }} |"
             echo ""
-            echo "Warn-only checks will be flipped to hard-fail once the"
-            echo "follow-up sweep todos close. See TODO comments in the"
-            echo ".github/workflows/docs-lint.yml for owners."
+            echo "All checks except filename-convention fail the job on"
+            echo "violation. filename-convention is a style preference and"
+            echo "reports warnings only."
           } >> "$GITHUB_STEP_SUMMARY"
