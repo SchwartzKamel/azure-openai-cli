@@ -36,6 +36,7 @@ versioning, and trust boundary design (plugins can see prompts and
 tool call payloads). Newman + Rabbi signoff mandatory.
 
 **Likely episode arc.**
+
 1. *The Protocol* -- MCP client: consume external MCP servers.
 2. *The Reciprocation* -- MCP server: expose our built-in tools.
 3. *The Registry* -- plugin discovery, signing, sandboxing.
@@ -60,6 +61,7 @@ a crisp `IModelProvider` interface that doesn't paper over
 capabilities.
 
 **Likely episode arc.**
+
 1. *The Provider* -- `IModelProvider` abstraction + Azure
    passthrough.
 2. *The Local* -- llama.cpp adapter.
@@ -87,6 +89,7 @@ into "we invented a framework" if the pattern library isn't
 bounded.
 
 **Likely episode arc.**
+
 1. *The Alias* -- canonical model names + config migration.
 2. *The Cache* -- prompt/response cache with safe invalidation.
 3. *The Library* -- pattern library + cost estimator.
@@ -116,6 +119,7 @@ These can ship any time, between seasons or as an opening bridge:
 ## How this file retires
 
 When the showrunner picks a theme:
+
 1. Season 3's header goes into `docs/exec-reports/README.md`.
 2. The chosen arc above becomes the rough episode plan.
 3. This file gets moved to `docs/exec-reports/archive/` for
