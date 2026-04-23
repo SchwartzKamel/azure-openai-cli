@@ -247,6 +247,14 @@ internal sealed class FirstRunWizard
         while (true)
         {
             ct.ThrowIfCancellationRequested();
+            // Mickey's "announcement": give a screen reader something humane
+            // to say *before* a stream of bullet glyphs starts arriving. Only
+            // emitted on the masked-console path — when stdin is redirected
+            // we never echo masking glyphs, so the line would be a lie.
+            if (_useConsoleKeyMasking)
+            {
+                await _output.WriteLineAsync("Your key will be masked as you type. Press Enter when done.").ConfigureAwait(false);
+            }
             await _output.WriteLineAsync("API key (input hidden)").ConfigureAwait(false);
             await _output.WriteAsync("> ").ConfigureAwait(false);
             await _output.FlushAsync(ct).ConfigureAwait(false);

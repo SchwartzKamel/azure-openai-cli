@@ -288,6 +288,48 @@ public class FirstRunWizardTests : IDisposable
 
     // ── Argument validation ────────────────────────────────────────
 
+    // ── Accessibility (S02E06) ─────────────────────────────────────
+
+    [Fact]
+    public async Task RunAsync_RedirectedStdin_DoesNotEmitMaskingAnnouncement()
+    {
+        // When the wizard is driven via an injected StringReader (the test
+        // path, equivalent to a redirected stdin), it MUST NOT print the
+        // "Your key will be masked..." announcement — there is no masking
+        // happening, so the line would lie to a screen reader.
+        var h = MakeWizard(Lines(UnreachableEndpoint, ValidKey, "gpt-4o", "y"));
+
+        bool ok = await h.Wizard.RunAsync(CancellationToken.None);
+
+        Assert.True(ok);
+        Assert.DoesNotContain("masked as you type", h.Output.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RunAsync_AbortsAfterEndpoint_NoConfigSideEffectsOnDisk()
+    {
+        // Drive the wizard with a single valid endpoint line and then EOF
+        // (no key, no model). The wizard's ReadLineAsync returns null for
+        // the key prompt → CancelAsync → return false. Nothing should be
+        // written to disk, no credential should be stored, no UserConfig
+        // field should be populated.
+        var configPath = UserConfig.GetConfigPath();
+        bool preExisted = File.Exists(configPath);
+        Assert.False(preExisted, "test fixture should have removed the config file in its ctor");
+
+        var h = MakeWizard(UnreachableEndpoint + "\n");
+
+        bool ok = await h.Wizard.RunAsync(CancellationToken.None);
+
+        Assert.False(ok);
+        Assert.False(File.Exists(configPath), "wizard must not create the config file when it aborts before all inputs succeed");
+        Assert.Null(h.Store.StoredKey);
+        Assert.Null(h.Config.Endpoint);
+        Assert.Null(h.Config.ApiKeyFingerprint);
+        Assert.Null(h.Config.ApiKeyProvider);
+        Assert.Empty(h.Config.AvailableModels);
+    }
+
     [Fact]
     public void Ctor_NullConfig_Throws()
     {
