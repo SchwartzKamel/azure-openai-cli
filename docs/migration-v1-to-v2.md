@@ -85,7 +85,27 @@ existing users; they are called out so you are not surprised.
 
 Nothing in this table alters CLI output format or exit codes.
 
-## 4. Rollback
+## 4. Cleaning up v1 leftovers
+
+If you never touched `make install` or your shell rc, you have nothing to
+clean - skip this section.
+
+Otherwise: two targets help you find and remove stale v1 `az-ai` bits that
+can silently shadow the v2 binary (the classic case is a docker-run alias
+in `~/.bashrc` from 2024 that wins the PATH race against the new AOT
+binary in `~/.local/bin/az-ai`).
+
+- `make migrate-check` - read-only scan. Lists stale shell aliases, stale
+  binaries on PATH, and stale v1 Docker images. Safe to run any time.
+- `make migrate-clean` - dry-run by default (prints what it would do and
+  exits 0). Re-run with `FORCE=1 make migrate-clean` to actually apply.
+  Rc files are backed up to `<path>.bak-azai-<timestamp>` before edits.
+  Docker images are never auto-removed - the command line is printed for
+  you to run manually (cross-tag risk is too high to automate).
+
+Your `~/.azureopenai-cli.json` config is left alone - v2 reads it as-is.
+
+## 5. Rollback
 
 v2 ships as `az-ai-v2` during the dual-tree window. After cutover, the v2
 binary is installed as `az-ai`; the v1 binary remains available as a pinned
@@ -122,7 +142,7 @@ scoop install azure-openai-cli@1.9.1
 The v1.x branch continues to receive critical security fixes. No new features
 will land there.
 
-## 5. Performance notes
+## 6. Performance notes
 
 Detailed benchmarks land in `docs/perf-baseline-v2.md` (forward link --
 document published alongside the 2.0.0 release). Summary:
@@ -138,7 +158,7 @@ If your use case is latency-critical (Espanso triggers, AHK hotkeys), the
 hot path is safe. If you are orchestrating thousands of calls per second,
 benchmark against `perf-baseline-v2.md` when it publishes.
 
-## 6. Cost notes
+## 7. Cost notes
 
 - **Binary size** -- MAF adds to cold-start working set. Phase 0 measured the
   published AOT binary at ~19 MB after strip (up from ~9 MB in v1.9.x). Trim
@@ -152,7 +172,7 @@ benchmark against `perf-baseline-v2.md` when it publishes.
 - **Opt-in telemetry** -- cost events go to stderr as JSON; `--raw` suppresses
   them entirely.
 
-## 7. Known limitations at 2.0.0
+## 8. Known limitations at 2.0.0
 
 Tracked in the issue tracker; not blockers for cutover.
 

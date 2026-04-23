@@ -51,8 +51,15 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
 	publish-all bench bench-quick bench-full install uninstall \
+	migrate-check migrate-clean \
 	install-nim-gemma-2b uninstall-nim-gemma-2b nim-status nim-warmup \
 	demo-hero-gif
+
+# Regex used by migrate-check / migrate-clean to find stale v1 az-ai shell
+# entries. Matches: `alias az-ai=...`, `az-ai() { ... }`, `function az-ai ...`,
+# and `export FOO_AZ_AI=...` style env lines. Kept as a Make variable so the
+# two targets stay in lockstep.
+MIGRATE_ALIAS_PATTERN := (^[[:space:]]*alias[[:space:]]+az-ai[[:space:]]*=|^[[:space:]]*(function[[:space:]]+)?az-ai[[:space:]]*\(\)|^[[:space:]]*function[[:space:]]+az-ai[[:space:]]*\{|export[[:space:]]+[A-Za-z_]*AZ[_-]?AI)
 
 ## Help: list available make targets (default target)
 help:
@@ -94,6 +101,8 @@ help:
 	@echo "Native-install & benchmark (drop Docker for speed — ideal for Espanso/AHK):"
 	@echo "  make install      - Install host-AOT binary to ~/.local/bin/az-ai (Linux/macOS/WSL)"
 	@echo "  make uninstall    - Remove ~/.local/bin/az-ai"
+	@echo "  make migrate-check - Scan shell rc files, binaries, and Docker images for stale v1 'az-ai' leftovers (read-only)"
+	@echo "  make migrate-clean - Remove stale v1 leftovers. Dry-run by default; re-run with FORCE=1 to apply."
 	@echo "  make bench-quick  - 5-10s directional smoke (N=50, no warm-up, stdout only) — pre-commit sanity"
 	@echo "  make bench        - Measure cold-start time of dist/aot/$(BIN_NAME) (N=100, warm-up=5) — mid-PR check"
 	@echo "  make bench-full   - Canonical pre-merge sweep (N=500, --flag-matrix, JSON to docs/perf/runs/)"
@@ -374,6 +383,108 @@ dist/aot/$(BIN_NAME):
 uninstall:
 	@rm -f $(INSTALL_BIN)
 	@echo ">> Removed $(INSTALL_BIN)"
+
+## Migrate-check: scan for stale v1 'az-ai' leftovers (shell rc files, binaries,
+## Docker images). Read-only. Exits 0 if clean, 1 if anything stale is found,
+## so CI and scripts can gate on it. POSIX sh, no sudo, no writes.
+migrate-check:
+	@set -e; \
+	stale=0; \
+	echo "== Shell aliases =="; \
+	alias_hits=0; \
+	for f in "$$HOME/.bashrc" "$$HOME/.bash_aliases" "$$HOME/.bash_profile" "$$HOME/.zshrc" "$$HOME/.profile" "$$HOME/.config/fish/config.fish"; do \
+	  [ -f "$$f" ] || continue; \
+	  matches=$$(grep -nE "$(MIGRATE_ALIAS_PATTERN)" "$$f" 2>/dev/null || true); \
+	  if [ -n "$$matches" ]; then \
+	    printf '%s\n' "$$matches" | awk -v p="$$f" '{print "  " p ":" $$0}'; \
+	    n=$$(printf '%s\n' "$$matches" | wc -l | tr -d ' '); \
+	    alias_hits=$$((alias_hits + n)); \
+	  fi; \
+	done; \
+	echo "  ($$alias_hits hit(s))"; \
+	stale=$$((stale + alias_hits)); \
+	echo ""; \
+	echo "== Installed binaries =="; \
+	bin_hits=0; \
+	for b in "$$HOME/.local/bin/az-ai" "/usr/local/bin/az-ai" "$$HOME/bin/az-ai"; do \
+	  [ -e "$$b" ] || continue; \
+	  ver=$$("$$b" --version 2>/dev/null || echo unknown); \
+	  case "$$ver" in \
+	    *2.*) echo "  $$b: $$ver (ok)" ;; \
+	    *)    echo "  $$b: $$ver (STALE)"; bin_hits=$$((bin_hits + 1)) ;; \
+	  esac; \
+	done; \
+	echo "  ($$bin_hits stale)"; \
+	stale=$$((stale + bin_hits)); \
+	echo ""; \
+	echo "== Docker images =="; \
+	img_hits=0; \
+	if command -v docker >/dev/null 2>&1; then \
+	  imgs=$$(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -E 'schwartzkamel/azure-openai-cli:(1\.|v1\.)' || true); \
+	  if [ -n "$$imgs" ]; then \
+	    printf '%s\n' "$$imgs" | awk '{print "  " $$0}'; \
+	    img_hits=$$(printf '%s\n' "$$imgs" | wc -l | tr -d ' '); \
+	  fi; \
+	else \
+	  echo "  (docker not on PATH - skipped)"; \
+	fi; \
+	echo "  ($$img_hits stale)"; \
+	stale=$$((stale + img_hits)); \
+	echo ""; \
+	if [ $$stale -eq 0 ]; then \
+	  echo "Clean - nothing to migrate."; \
+	  exit 0; \
+	else \
+	  echo "Stale artifacts found: $$stale"; \
+	  exit 1; \
+	fi
+
+## Migrate-clean: remove stale v1 leftovers. Dry-run by default; re-run with
+## FORCE=1 to apply. Backs up rc files to <path>.bak-azai-<timestamp> before
+## editing. Removes stale binaries at /usr/local/bin/az-ai and ~/bin/az-ai
+## (NOT ~/.local/bin/az-ai - that is v2's install path). For stale Docker
+## images, prints the 'docker rmi' command to run manually (cross-tag risk
+## is too high to auto-remove).
+migrate-clean:
+	@set -e; \
+	if [ "$(FORCE)" != "1" ]; then \
+	  echo "Dry-run. Re-run with \`FORCE=1 make migrate-clean\` to apply."; \
+	  echo ""; \
+	  $(MAKE) --no-print-directory migrate-check 2>/dev/null || true; \
+	  exit 0; \
+	fi; \
+	echo ">> FORCE=1 set - applying changes."; \
+	echo ""; \
+	stamp=$$(date +%Y%m%d%H%M%S); \
+	changed=0; \
+	for f in "$$HOME/.bashrc" "$$HOME/.bash_aliases" "$$HOME/.bash_profile" "$$HOME/.zshrc" "$$HOME/.profile" "$$HOME/.config/fish/config.fish"; do \
+	  [ -f "$$f" ] || continue; \
+	  if grep -qE "$(MIGRATE_ALIAS_PATTERN)" "$$f" 2>/dev/null; then \
+	    cp "$$f" "$$f.bak-azai-$$stamp"; \
+	    sed -i.tmp -E "/$(MIGRATE_ALIAS_PATTERN)/d" "$$f"; \
+	    rm -f "$$f.tmp"; \
+	    echo "  cleaned $$f (backup: $$f.bak-azai-$$stamp)"; \
+	    changed=$$((changed + 1)); \
+	  fi; \
+	done; \
+	for b in "/usr/local/bin/az-ai" "$$HOME/bin/az-ai"; do \
+	  [ -e "$$b" ] || continue; \
+	  ver=$$("$$b" --version 2>/dev/null || echo unknown); \
+	  case "$$ver" in \
+	    *2.*) echo "  kept $$b ($$ver - v2, not stale)" ;; \
+	    *)    rm -f "$$b"; echo "  removed $$b ($$ver)"; changed=$$((changed + 1)) ;; \
+	  esac; \
+	done; \
+	if command -v docker >/dev/null 2>&1; then \
+	  imgs=$$(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -E 'schwartzkamel/azure-openai-cli:(1\.|v1\.)' || true); \
+	  if [ -n "$$imgs" ]; then \
+	    echo ""; \
+	    echo "Stale Docker images found. Cross-tag risk is high - run these manually:"; \
+	    printf '%s\n' "$$imgs" | awk '{print "  docker rmi " $$0}'; \
+	  fi; \
+	fi; \
+	echo ""; \
+	echo "Summary: $$changed item(s) changed."
 
 ## Quick directional smoke: N=50, no warm-up, no flag matrix, stdout only
 ## (~5–10s on the reference rig). Intended for the pre-commit / dev loop to
