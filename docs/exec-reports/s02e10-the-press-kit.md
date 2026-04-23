@@ -2,7 +2,7 @@
 
 > Lippman and Costanza curate thirty-plus episodes into one tagged, release-note-ready version.
 
-**Commit:** `<filled-at-push>`
+**Commit:** `ee10121`
 **Branch:** `main` (direct push)
 **Runtime:** ~35 minutes
 **Director:** Larry David (showrunner)
