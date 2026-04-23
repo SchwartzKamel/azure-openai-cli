@@ -100,53 +100,36 @@ LABEL org.opencontainers.image.licenses="MIT" \
 
 WORKDIR /app
 
-# HEALTHCHECK is intentionally disabled. This image ships a short-lived CLI
-# (`docker run --rm ...`), not a long-running service, so a probing healthcheck
-# would either be spurious (the process exits before the first probe) or
-# wasteful (a child `dotnet --info` invocation per interval). `NONE` also
-# overrides any HEALTHCHECK inherited from a future base-image change so the
-# behavior is explicit and audit-grade. Newman + Frank reviewed; documented in
-# docs/distribution/docker-hardening.md.
-HEALTHCHECK NONE
+# HEALTHCHECK is not applicable for CLI tools that run and exit.
+# This container is intended to be invoked via `docker run`, not kept running.
 
-# Install runtime dependencies first so these layers are cached unless deps change.
-# `apk upgrade` pulls any post-base-snapshot CVE fixes from the Alpine main
-# repo without bumping the pinned base digest -- belt + suspenders for the
-# Trivy gate. `--no-progress` keeps build logs grep-friendly.
-RUN apk add --no-cache --no-progress \
+# Install runtime dependencies first so these layers are cached unless deps change
+RUN apk add --no-cache \
     icu-libs \
- && apk upgrade --no-cache --no-progress \
- && rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+ && apk upgrade --no-cache \
+ && rm -rf /var/cache/apk/*
 
-# Create non-root user with EXPLICIT, NUMERIC UID/GID. Kubernetes
-# `runAsNonRoot: true` and Pod Security Admission `restricted` profile both
-# require a numeric UID; `--system` alone gives an unstable id. 10001 is well
-# above the Alpine/Debian system-user range (<1000) and the typical host-user
-# range (1000-9999), so host-mounted volumes won't accidentally collide.
-RUN addgroup --system --gid 10001 appgroup \
- && adduser --system --uid 10001 --ingroup appgroup --no-create-home --shell /sbin/nologin appuser \
- && mkdir -p /opt/config /tmp/dotnet_bundle \
- && chown -R appuser:appgroup /app /opt/config /tmp/dotnet_bundle
+# Create non-root user and set permissions in one layer
+RUN addgroup --system appgroup \
+ && adduser --system --ingroup appgroup appuser \
+ && mkdir -p /opt/config \
+ && chown -R appuser:appgroup /app /opt/config
 
-ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
-    DOTNET_BUNDLE_EXTRACT_BASE_DIR=/tmp/dotnet_bundle \
-    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
-    DOTNET_NOLOGO=1
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+# Set DOTNET_BUNDLE_EXTRACT_BASE_DIR to a writable location for non-root user
+ENV DOTNET_BUNDLE_EXTRACT_BASE_DIR=/tmp/dotnet_bundle
+RUN mkdir -p /tmp/dotnet_bundle && chown -R appuser:appgroup /tmp/dotnet_bundle
 
-# Copy published self-contained single-file binary with --chown + --chmod in
-# one layer (avoids a separate `RUN chmod` layer that would double the
-# binary's on-disk footprint).
-COPY --from=build --chown=appuser:appgroup --chmod=0755 /app/AzureOpenAI_CLI /app/AzureOpenAI_CLI
+# Copy published self-contained single-file binary last (changes most often)
+COPY --from=build /app/AzureOpenAI_CLI /app/AzureOpenAI_CLI
+RUN chmod +x /app/AzureOpenAI_CLI
 
 # Bundle license + third-party attribution notices into the image so redistribution
 # complies with MIT and the transitive dependency attribution requirements.
-# Read-only for the non-root runtime user.
-COPY --chown=appuser:appgroup --chmod=0444 LICENSE NOTICE THIRD_PARTY_NOTICES.md /licenses/
+COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md /licenses/
 
-# Drop privileges for runtime. Numeric form (preferred per CIS Docker Benchmark
-# 4.1) so downstream `--user` overrides and Kubernetes `runAsNonRoot` checks
-# can validate the UID without resolving /etc/passwd inside the container.
-USER 10001:10001
+# Drop privileges for runtime
+USER appuser
 
 # Credentials should be injected at runtime, never baked into the image:
 #   docker run --rm --env-file .env azureopenai-cli "your prompt"

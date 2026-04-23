@@ -124,13 +124,11 @@ public class SquadInitializerTests : IDisposable
     // ── CreateDefaultConfig: Personas ───────────────────────────────────
 
     [Fact]
-    public void CreateDefaultConfig_HasSeventeenPersonas_FiveGenericsPlusTwelveCast()
+    public void CreateDefaultConfig_HasExactlyFivePersonas()
     {
         var config = SquadInitializer.CreateDefaultConfig();
 
-        // 5 stock generics (coder, reviewer, architect, writer, security) +
-        // 12 Seinfeld-themed cast personas baked in by S02E30 The Cast.
-        Assert.Equal(17, config.Personas.Count);
+        Assert.Equal(5, config.Personas.Count);
     }
 
     [Fact]
@@ -287,7 +285,7 @@ public class SquadInitializerTests : IDisposable
         });
 
         Assert.NotNull(loaded);
-        Assert.Equal(17, loaded.Personas.Count);
+        Assert.Equal(5, loaded.Personas.Count);
 
         var coder = loaded.Personas.FirstOrDefault(p => p.Name == "coder");
         Assert.NotNull(coder);
