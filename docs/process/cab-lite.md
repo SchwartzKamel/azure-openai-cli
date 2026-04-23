@@ -207,3 +207,10 @@ truth.
   [`morty`](../../.github/agents/morty.agent.md),
   [`wilhelm`](../../.github/agents/wilhelm.agent.md),
   [`mr-pitt`](../../.github/agents/mr-pitt.agent.md).
+
+## Sibling process docs
+
+- [`change-management.md`](change-management.md) -- change classes and stage gates.
+- [`adr-stewardship.md`](adr-stewardship.md) -- when a change earns an ADR.
+- [`retrospective-cadence.md`](retrospective-cadence.md) -- post-episode and post-incident retros.
+- Index: [`README.md`](README.md).

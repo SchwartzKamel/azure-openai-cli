@@ -262,3 +262,10 @@ episode, or `wontfix`).
   [`s02-writers-room.md`](../exec-reports/s02-writers-room.md)
   (current arc plan; finale will seed `s03-writers-room.md`),
   [`s03-blueprint.md`](../exec-reports/s03-blueprint.md) (long-horizon).
+
+## Sibling process docs
+
+- [`change-management.md`](change-management.md) -- change classes and stage gates.
+- [`adr-stewardship.md`](adr-stewardship.md) -- when a change earns an ADR.
+- [`cab-lite.md`](cab-lite.md) -- when cross-cast review is required.
+- Index: [`README.md`](README.md).

@@ -208,6 +208,8 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 
 ## Documentation
 
+📚 **Start here:** [docs/README.md](docs/README.md) — the full docs map (architecture, ops, security, perf, process, ADRs, exec reports, proposals).
+
 ### Architecture & decisions
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — system design, tool registry, squad internals

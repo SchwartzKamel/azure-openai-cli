@@ -314,3 +314,11 @@ the picker; S04E05 implements its `ResolveSmartDefault()` in earnest.
 from George Costanza (smart-defaults UX), Mr. Pitt (program
 management), and a quietly enthusiastic Morty Seinfeld
 (estimator + budget guardrails are finally on the slate).*
+
+---
+
+## Adjacent blueprints
+
+- Previous blueprint: [`s03-blueprint.md`](s03-blueprint.md) -- *Local & Multi-Provider*.
+- Next blueprint: [`s05-blueprint.md`](s05-blueprint.md) -- *Protocols & Plugins*.
+- Long-horizon slate: [`seasons-roadmap.md`](seasons-roadmap.md).

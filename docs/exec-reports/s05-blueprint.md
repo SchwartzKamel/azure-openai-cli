@@ -352,3 +352,11 @@ Newman (still saying "Hello, Kramer." in the hallway every morning),
 program-management notes from Mr. Pitt, and a quiet "are you sure
 you want a marketplace, Jerry?" from Morty Seinfeld at the back of
 the writers' room.*
+
+---
+
+## Adjacent blueprints
+
+- Previous blueprint: [`s04-blueprint.md`](s04-blueprint.md) -- *Model Intelligence*.
+- Next blueprint: [`s06-blueprint.md`](s06-blueprint.md) -- *Dogfooding*.
+- Long-horizon slate: [`seasons-roadmap.md`](seasons-roadmap.md).

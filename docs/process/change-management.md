@@ -258,3 +258,10 @@ process; CI is the safety net, not the gate.
   [`frank`](../../.github/agents/frank.agent.md).
 - Templates: [`PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md),
   [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
+
+## Sibling process docs
+
+- [`adr-stewardship.md`](adr-stewardship.md) -- when a change earns an ADR.
+- [`cab-lite.md`](cab-lite.md) -- when cross-cast review is required.
+- [`retrospective-cadence.md`](retrospective-cadence.md) -- post-episode and post-incident retros.
+- Index: [`README.md`](README.md).

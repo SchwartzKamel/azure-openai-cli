@@ -238,3 +238,10 @@ ADRs rot when nobody re-reads them. The cadence:
   [`wilhelm`](../../.github/agents/wilhelm.agent.md),
   [`elaine`](../../.github/agents/elaine.agent.md),
   [`costanza`](../../.github/agents/costanza.agent.md).
+
+## Sibling process docs
+
+- [`change-management.md`](change-management.md) -- change classes and stage gates.
+- [`cab-lite.md`](cab-lite.md) -- when cross-cast review is required.
+- [`retrospective-cadence.md`](retrospective-cadence.md) -- post-episode and post-incident retros.
+- Index: [`README.md`](README.md).

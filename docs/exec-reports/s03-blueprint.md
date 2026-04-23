@@ -355,3 +355,11 @@ consult work everywhere. Both are deliberate.
 *Pitch closed. Costanza out. Kramer's last word from the back of
 the room: "The seam is the season. Get the seam right and the
 adapters write themselves."*
+
+---
+
+## Adjacent blueprints
+
+- Previous season (in production): [`s02-writers-room.md`](s02-writers-room.md).
+- Next blueprint: [`s04-blueprint.md`](s04-blueprint.md) -- *Model Intelligence*.
+- Long-horizon slate: [`seasons-roadmap.md`](seasons-roadmap.md).

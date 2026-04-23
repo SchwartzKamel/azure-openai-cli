@@ -435,3 +435,10 @@ Supporting players each get at least one named appearance.
    showrunner-of-showrunners using `az-ai` for the season-finale
    blueprint of S07 would be the strongest possible signal -- and
    the strongest possible failure mode. Larry's call.
+
+---
+
+## Adjacent blueprints
+
+- Previous blueprint: [`s05-blueprint.md`](s05-blueprint.md) -- *Protocols & Plugins*.
+- Next: [`seasons-roadmap.md`](seasons-roadmap.md) (S07+ slate; no blueprint yet).
