@@ -29,8 +29,19 @@ See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.age
 | S02E02 | *The Cleanup* | Kramer (lead), Puddy (guest) | aired |
 | S02E03 | *The Warn-Only Lie* | Elaine (lead), Soup Nazi (guest) | aired |
 | S02E04 | *The Locksmith* | Kramer (lead), Newman (guest) | aired |
-| S02E05 | *The Marathon* | Kenny Bania (lead), Jerry (guest) | filming |
-| S02E06 | *The Screen Reader* | Mickey Abbott (lead), Russell (guest) | filming |
+| S02E05 | *The Marathon* | Kenny Bania (lead), Jerry (guest) | aired |
+| S02E06 | *The Screen Reader* | Mickey Abbott (lead), Russell (guest) | aired |
+| S02E07 | *The Observability* | Frank Costanza (lead), Newman (guest) | aired |
+| S02E08 | *The Translation* | Babu Bhatt (lead), Mickey + Lloyd (guests) | aired |
+| S02E11 | *The Spec* | George Costanza (lead), Lloyd + Elaine (guests) | aired |
+| S02E13 | *The Inspector* | Newman (lead), FDR + Jackie (guests) | aired |
+| S02E17 | *The Newsletter* | Uncle Leo (lead), Elaine (guest) | aired |
+| S02E19 | *The Competition* | Sue Ellen Mischke (lead), Peterman (guest) | aired |
+| S02E12 | *The Apprentice* | Lloyd Braun (lead), Elaine + Jerry + Kramer (guests) | filming |
+| S02E15 | *The Lawyer* | Jackie Chiles (lead), Lloyd (guest) | filming |
+| S02E18 | *The Maestro* | The Maestro (lead), Kramer (guest) | filming |
+| S02E20 | *The Conference* | Keith Hernandez (lead), Peterman + Elaine (guests) | filming |
+| S02E21 | *The Conscience* | Rabbi Kirschbaum (lead), Newman (guest) | filming |
 
 ## Casting corrective
 
@@ -290,10 +301,41 @@ because of shared-file collision risk on `CHANGELOG.md` and
 Items that could slot into any episode as a B-plot or stand alone as
 an unaired special:
 
+- **S02E25 *The Story Editor*** (Elaine lead, Lloyd + Mickey guests).
+  Doc-tree consolidation pass: thin overlap between `competitive-
+  analysis.md` + `competitive-landscape.md`, `i18n-audit.md` + `i18n.md`
+  + `i18n/`, `licensing-audit.md` + `legal/license-audit.md`,
+  `security-review-v2.md` + `security/v2-audit.md` + `security/reaudit-
+  v2-phase5.md`. Add cross-links. Archive duplicates to `docs/archive/`
+  with a redirect note. Triggered by 2026-04-22 audit -- 170+ doc files
+  with no top-level discovery surface for non-episode docs.
+- **S02E26 *The Locked Drawer*** (Newman lead, Kramer guest). Surfaced
+  by E13 audit: extend `ReadFileTool.BlockedPathPrefixes` to cover
+  `~/.ssh`, `~/.kube`, `~/.gnupg`, `~/.netrc`, `~/.docker/config.json`,
+  `~/.git-credentials`, `~/.config/git/credentials`,
+  `~/.config/gh/hosts.yml`. One-PR scope + matching xUnit cases.
+  Touches production code -- preflight required.
+- **Findings backlog from S02 audits** (becomes B-plots or one-line
+  fixes; do not lose):
+  - Dual-telemetry reality (E07): v2 has opt-in OTel pipeline at
+    `azureopenai-cli-v2/Observability/Telemetry.cs`.
+  - `:F0` against current culture in `Program.cs:1445` (E08): latent
+    de-DE bug, one-line fix candidate.
+  - Plural shortcut `iteration(s)` in Ralph mode (E08).
+  - `,-N` padding-spec column alignment in 3 sites (E08, CJK-blocker).
+  - Arabic list-separator U+060C silently rejected (E08).
+  - Lone-surrogate masked-input edge case (E08).
+  - Binary-split confusion / `--config show` precedence (E11 product
+    smells).
+  - MCP support gap (E19): table-stakes among premium CLIs; already
+    tracked as FR-013.
 - Mac Keychain test-body rewrite (needs a Mac owner -- held open).
 - Linux `systemd-creds` provider (seam exists; not this season).
 - The `filename-convention` docs-lint step hard-flip when convenient
   (currently warn-only by design, no urgency).
+- `docs/audits/docs-audit-2026-04-22-EPISODE.md` -- placeholder filename
+  from a parallel naming scheme that didn't make it into the canonical
+  exec-reports tree. Decide: rename + integrate, or archive.
 
 *-- Mr. Pitt (program management), with corrective notes from
 George Costanza (product, returning from undeserved bench), Elaine

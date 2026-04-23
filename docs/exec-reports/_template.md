@@ -5,7 +5,9 @@
 **Commit:** `<sha>`
 **Branch:** `<branch>` (direct push / PR #N)
 **Runtime:** `<rough wall-clock>`
-**Director:** Copilot (fleet orchestrator)
+**Director:** Larry David (showrunner) -- pre-S02E07 episodes were
+directed by Copilot (fleet orchestrator) before Larry was cast; that
+is canonical history, do not retro-edit.
 **Cast:** N sub-agents across M dispatch waves
 
 ## The pitch

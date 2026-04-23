@@ -29,10 +29,16 @@ the cast would tell you it's time for a retool.
 | S02E04   | *The Locksmith*    | [s02e04-the-locksmith.md](s02e04-the-locksmith.md)  | `ef8756c` | Opportunistic libsecret credential store on Linux        |
 | S02E05   | *The Marathon*     | [s02e05-the-marathon.md](s02e05-the-marathon.md)    | `42b14bb` | `make bench-quick` + CI bench-canary (directional only)  |
 | S02E06   | *The Screen Reader* | [s02e06-the-screen-reader.md](s02e06-the-screen-reader.md) | `6b22a7a` | NO_COLOR / FORCE_COLOR gates + wizard a11y hardening     |
+| S02E07   | *The Observability* | [s02e07-the-observability.md](s02e07-the-observability.md) | `87d190d` | Telemetry posture doc + incident runbooks (no code yet)  |
+| S02E08   | *The Translation*  | [s02e08-the-translation.md](s02e08-the-translation.md) | `0c3a6ae` | i18n readiness audit + project glossary                  |
+| S02E11   | *The Spec*         | [s02e11-the-spec.md](s02e11-the-spec.md)            | `8854588` | User-stories doc translating S02 features for non-engineers |
+| S02E13   | *The Inspector*    | [s02e13-the-inspector.md](s02e13-the-inspector.md)  | `9bee782` | v2 surface security audit (5 PASS / 1 follow-up named)   |
+| S02E17   | *The Newsletter*   | [s02e17-the-newsletter.md](s02e17-the-newsletter.md) | `63c37db` | CONTRIBUTING refresh + named contributor wall            |
+| S02E19   | *The Competition*  | [s02e19-the-competition.md](s02e19-the-competition.md) | `fc58fb4` | Competitive landscape brief + draft positioning copy     |
 
 **Rest of the season:** see [`s02-writers-room.md`](s02-writers-room.md)
-for the planned arc (E07-E24, 24-episode order), cast rotation, and
-dispatch order.
+for the planned arc (remaining E09/E10/E12/E14/E15/E16/E18/E20/E21/E22/E23/E24
+plus E25 *Story Editor* off-roster special), cast rotation, and dispatch order.
 
 ### Season 3 -- *(unaired)*
 
@@ -43,6 +49,26 @@ themes awaiting showrunner greenlight.
 
 Retroactive coverage pending. See `git log` and `CHANGELOG.md` for the raw
 timeline until an on-screen cast member back-fills the pilot episodes.
+
+## Where to find non-episode docs
+
+The exec-report log covers *episodes* (fleet-mode coding sessions). The
+broader `docs/` tree has 170+ files across security audits, ADRs,
+runbooks, proposals, perf baselines, launch playbooks, and prompt
+engineering. Top-level entry points:
+
+- [`docs/proposals/`](../proposals/) -- feature proposals (FR-NNN).
+- [`docs/adr/`](../adr/) -- architecture decision records.
+- [`docs/security/`](../security/), [`docs/legal/`](../legal/) -- audit trails.
+- [`docs/runbooks/`](../runbooks/), [`docs/ops/`](../ops/) -- operational playbooks.
+- [`docs/perf/`](../perf/), [`docs/benchmarks/`](../benchmarks/) -- performance.
+- [`docs/launch/`](../launch/) -- release playbooks and announcements.
+- [`docs/prompts/`](../prompts/) -- prompt library and personas.
+
+A consolidation pass (S02E25 *The Story Editor*) is queued to thin
+overlap between e.g. `competitive-analysis.md` + `competitive-landscape.md`,
+`i18n-audit.md` + `i18n.md` + `i18n/`, and `licensing-audit.md` +
+`legal/license-audit.md`.
 
 ## Naming conventions
 
