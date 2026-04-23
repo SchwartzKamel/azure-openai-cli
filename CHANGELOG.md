@@ -8,6 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [2.1.0] — 2026-04-23
+
+### Added
+- **feat(makefile):** `make migrate-check` / `make migrate-clean` targets
+  help v1.x `az-ai` users audit and remove stale install artifacts before
+  switching to the v2 binary. `migrate-check` is read-only — it reports
+  any remaining v1 shims on `$PATH`, stray config under
+  `~/.config/az-ai`, and pre-2.0 keystore entries. `migrate-clean`
+  performs the removal behind an explicit prompt and is safe to re-run.
+  Pairs with [`docs/migration-v1-to-v2.md`](docs/migration-v1-to-v2.md).
+  ([s02e33-the-uninstaller])
+- **docs(index):** `docs/README.md` is now the canonical docs entry-point
+  map — one page indexing every user-facing doc grouped by task (install,
+  migrate, troubleshoot, contribute, audit), with 8 cross-link footers so
+  every leaf page points back to the map. Closes the "where do I find X"
+  friction Lloyd had been filing for five episodes.
+  ([s02e25-the-story-editor])
 - **feat(cost):** Opt-in cost summary via `--show-cost` -- prints a
   one-line receipt to stderr after the response (`[cost] in=N out=N
   total=N tokens (~$X.XXXX @ model)`). Token counts are always shown;
@@ -171,6 +199,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **and** neither `--raw` nor `--json` is set **and** we are not
   in a container.
 ### Changed
+- **docs(index):** Doc-tree cleanup — the 11 docs orphaned since E25 are
+  either re-linked from `docs/README.md` or retired, and the launch
+  artifacts get their own index at `docs/launch/README.md`. Closes
+  findings `e25-orphan-docs` and `e25-launch-dir-no-index`.
+  ([s02e34-the-index])
+- **docs(process):** Change-management contract under `docs/process/` —
+  ADR stewardship (`docs/adr/`), a CAB-lite review checklist for risky
+  merges, and a bi-weekly retrospective cadence. Mr. Wilhelm's floor for
+  how changes move from idea to main without surprising on-call.
+  ([s02e22-the-process])
+- **docs(process):** Writers' bible — consolidates the prior season's
+  episode-shape, fleet-dispatch, and shared-file protocols into
+  `.github/skills/{episode-brief,fleet-dispatch,shared-file-protocol}.md`
+  so sub-agents stop re-deriving the rules per episode.
+  ([s02e27-the-bible])
+- **docs(process):** Three hygiene skills under `.github/skills/` —
+  `ascii-validation.md`, `docs-only-commit.md`, and
+  `changelog-append.md` — canonicalize the grep, decision tree, and
+  CHANGELOG append protocol that doc-touching episodes had been inlining
+  with minor drift. Reviewers now cite the skill instead of re-deriving
+  the rules in PR comments. ([s02e28-the-style-guide])
+- **docs(process):** Writers'-room cohesion skills —
+  `.github/skills/writers-room-cast-balance.md` and
+  `.github/skills/findings-backlog.md` — codify casting discipline for
+  co-lead episodes and a standard shape for cross-episode findings
+  triage. ([s02e29-the-casting-call])
+- **test(adversary):** Chaos drill against the tool surface — a new
+  adversarial suite under `tests/AzureOpenAI_CLI.Tests/Adversary/`
+  exercises the `read_file`, `shell_exec`, and `web_fetch` chokepoints
+  against fuzz / injection / unicode-bypass inputs. Suite is gated in
+  CI; no production code-path changes. ([s02e23-the-adversary])
+- **test(squad):** Adversarial coverage of the 5 pre-cast generic
+  personas (`coder`, `reviewer`, `security`, `writer`, `analyst`) —
+  9 findings filed, 1 bug fixed in the persona-routing scorer's
+  tie-break path. ([s02e31-the-audition])
 - **feat(ralph):** Ralph `--validate <cmd>` validation loop now defaults to a
   low sampling temperature (0.15) when the operator has not explicitly pinned
   one via `--temperature` or `AZURE_TEMPERATURE`. High creative temperature
@@ -199,6 +262,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Fixed
 ### Security
+- **security(tools):** Extend the `ReadFileTool` path blocklist to cover
+  seven home-dir credential-path families — `~/.ssh/`, `~/.kube/`,
+  `~/.gnupg/`, `~/.netrc`, `~/.docker/config.json`,
+  `~/.git-credentials` + `$XDG_CONFIG_HOME/git/credentials`, and
+  `~/.npmrc` / `~/.pypirc`. Paired with 53 new adversary-test facts
+  exercising symlink, case-variant, and `$HOME`-override bypass paths.
+  Closes the E26 findings queue. ([s02e26-locked-drawer])
 - **security(tools):** Harden `shell_exec` blocklist against IFS,
   Unicode, and shell-tokenization bypass. Substring-on-raw-input is
   replaced with a defense-in-depth pipeline: reject shell-substitution
