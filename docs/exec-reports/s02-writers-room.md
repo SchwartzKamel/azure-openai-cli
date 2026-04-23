@@ -21,7 +21,12 @@ that?"* is the most valuable question in the room.
 
 See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.agent.md).
 
-## Aired so far (34 episodes; 1 main-arc remaining)
+## Aired (35 episodes; season SEALED at E24)
+
+> **S02 is closed.** This document is the canonical S02 record. No
+> further edits to the aired table, casting drift, or remaining-arc
+> sections after the E24 sign-off commit. Findings backlog remains
+> live as a handoff to S03.
 
 | # | Title | Featured cast | Status |
 |---|-------|---------------|--------|
@@ -59,10 +64,11 @@ See [`.github/agents/lloyd-braun.agent.md`](../../.github/agents/lloyd-braun.age
 | S02E26 | *The Locked Drawer* | Newman (lead), Kramer (guest) | aired (off-roster, security hotfix -- ReadFile) |
 | S02E10 | *The Press Kit* | Mr. Lippman (lead), George Costanza (co-lead), Peterman + Elaine + Jerry (guests) | aired (main-arc, v2.1.0 release curation) |
 | S02E36 | *The Attribution* | Jackie Chiles (lead), Bob Sacamano (guest) | aired (off-roster, pre-v2.1.0 license audit) |
+| S02E24 | *The Finale* | Mr. Pitt (lead), ensemble credited | aired (main-arc, season-close retrospective) |
 
-**Remaining S02 main arc:** E24 *Finale* (Pitt + ensemble -- absolute last; hands off to S03).
+**Remaining S02 main arc:** *(none -- E24 aired; S02 sealed)*.
 
-**Off-roster pending:** *(none -- Wave 7 cleared the pre-release queue)*
+**Off-roster pending:** *(none -- Wave 7 cleared the pre-release queue; E24 closed the main arc)*
 
 ## Casting drift -- multi-lead floor failure (per writers-room-cast-balance audit)
 

@@ -65,10 +65,10 @@ the cast would tell you it's time for a retool.
 | S02E26   | *The Locked Drawer* | [s02e26-locked-drawer.md](s02e26-locked-drawer.md)     | `04be3ee` | `ReadFileTool` blocklist extended to 7 home-dir credential paths     |
 | S02E10   | *The Press Kit*    | [s02e10-the-press-kit.md](s02e10-the-press-kit.md)      | `ee10121` | v2.1.0 release curation: CHANGELOG backfill + release notes + version bump |
 | S02E36   | *The Attribution*  | [s02e36-the-attribution.md](s02e36-the-attribution.md)  | `6e26608` | Pre-v2.1.0 license audit -- 39 deps, zero copyleft, ship-cleared      |
+| S02E24   | *The Finale*       | [s02e24-the-finale.md](s02e24-the-finale.md)            | `93fe4fb` | Season retrospective + S03 handoff -- Mr. Pitt leads, ensemble credited |
 
-**Rest of the season:** see [`s02-writers-room.md`](s02-writers-room.md)
-for the remaining arc -- only E24 *Finale* (Pitt + ensemble --
-absolute last) remains before S03 pre-production.
+**S02 sealed at E24.** 35 episodes aired. S03 *Local & Multi-Provider*
+is pre-production -- see [`s03-blueprint.md`](s03-blueprint.md).
 
 ### Season 3 -- *(unaired)*
 

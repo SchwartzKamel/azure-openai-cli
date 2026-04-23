@@ -2,7 +2,7 @@
 
 > *The season signs off. Pitt tallies the ledger, thanks the cast, and points at S03.*
 
-**Commit:** `<sha>`
+**Commit:** `93fe4fb`
 **Branch:** `main` (direct push)
 **Runtime:** ~45 minutes (pure doc work, zero code)
 **Director:** Larry David (showrunner)
