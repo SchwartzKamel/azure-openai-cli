@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **docs(product):** `docs/user-stories.md` -- one-paragraph user
+  stories translating every shipped S02 feature (and a handful of
+  pre-S02 catch-up entries) out of engineering jargon, grouped by
+  user role. ([s02e11-the-spec])
 - **feat(a11y):** `NO_COLOR` and `FORCE_COLOR` env-var gates land in v1
   via the new `AzureOpenAI_CLI.ConsoleIO.AnsiPolicy` helper — the
   forward-looking chokepoint for any future color in the v1 binary.
