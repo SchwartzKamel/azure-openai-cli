@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **docs(i18n):** `docs/i18n-audit.md` inventories every user-facing
+  string in the v1 CLI binary and classifies each as locale-agnostic,
+  translation-ready, or needing refactor before l10n can begin. No
+  strings translated; no `--locale` flag added. ([s02e08-the-translation])
+- **docs(glossary):** `docs/glossary.md` is the new project glossary --
+  AOT, DPAPI, libsecret, i18n, l10n, RTL, CJK, MCP, TPM, RPM, SSRF.
+  Single source of truth; future episodes append. ([s02e08-the-translation])
+- **docs(observability):** New `docs/telemetry.md` -- one-page honesty
+  pass on the project's zero-default-telemetry posture, with the grep
+  commands a contributor can run to audit the tree themselves.
+  ([s02e07-the-observability])
+- **docs(observability):** New `docs/incident-runbooks.md` -- three
+  short runbooks (401 auth, 429 rate limit, DNS/TLS) for the
+  user-facing failures we see most often, plus a plain-English Lloyd
+  callout on what an SLO is. ([s02e07-the-observability])
 - **docs(product):** `docs/user-stories.md` -- one-paragraph user
   stories translating every shipped S02 feature (and a handful of
   pre-S02 catch-up entries) out of engineering jargon, grouped by
