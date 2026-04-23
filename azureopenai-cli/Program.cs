@@ -100,6 +100,7 @@ class Program
         bool ListPersonas,
         bool Raw,
         bool Init,
+        bool ShowCost,
         string[] RemainingArgs);
 
     /// <summary>
@@ -131,6 +132,7 @@ class Program
         bool listPersonas = false;
         bool raw = false;
         bool init = false;
+        bool showCost = false;
         var cleanedArgs = new List<string>();
 
         for (int i = 0; i < args.Length; i++)
@@ -314,6 +316,14 @@ class Program
             {
                 init = true;
             }
+            else if (arg == "--show-cost")
+            {
+                // S02E09: opt-in cost receipt (tokens always; dollars when
+                // model is in CostAccounting.Prices). Goes to stderr so
+                // pipelines stay clean. Never default-on -- adding cost
+                // noise to every response is a UX regression.
+                showCost = true;
+            }
             else
             {
                 cleanedArgs.Add(args[i]);
@@ -322,7 +332,7 @@ class Program
 
         return (new CliOptions(cliTemperature, cliMaxTokens, cliSystemPrompt, showConfig,
             agentMode, maxAgentRounds, enabledTools, jsonSchema, ralphMode, validateCommand,
-            taskFile, maxIterations, personaName, squadInit, listPersonas, raw, init, cleanedArgs.ToArray()), null);
+            taskFile, maxIterations, personaName, squadInit, listPersonas, raw, init, showCost, cleanedArgs.ToArray()), null);
     }
 
     // === ADR-005: Azure AI Foundry routing ===============================
@@ -787,6 +797,7 @@ class Program
                     chatClient, deploymentName, userPrompt, opts.ValidateCommand,
                     opts.MaxIterations, requestOptions, opts.EnabledTools,
                     opts.MaxAgentRounds, jsonMode, timeoutSeconds, effectiveSystemPrompt,
+                    opts.ShowCost, opts.Raw,
                     shutdownCts.Token);
             }
 
@@ -795,6 +806,7 @@ class Program
             {
                 return await RunAgentLoop(chatClient, messages, requestOptions,
                     deploymentName, opts.EnabledTools, opts.MaxAgentRounds, jsonMode, timeoutSeconds,
+                    opts.ShowCost, opts.Raw, costAcc: null,
                     shutdownCts.Token);
             }
 
@@ -932,6 +944,14 @@ class Program
                 {
                     var total = promptTokens.Value + completionTokens.GetValueOrDefault();
                     Console.Error.WriteLine($"  [tokens: {promptTokens}→{completionTokens}, {total} total]");
+                }
+                // S02E09: opt-in cost receipt -- always to stderr, even in raw
+                // mode, so pipelines stay clean. Tokens always; dollars only
+                // when the deployment is in CostAccounting's price table.
+                if (opts.ShowCost && promptTokens.HasValue)
+                {
+                    var entry = CostAccounting.Entry(deploymentName, promptTokens, completionTokens);
+                    Console.Error.WriteLine(CostAccounting.FormatReceipt(entry, deploymentName));
                 }
                 // In raw mode, skip the trailing newline
                 if (!opts.Raw)
@@ -1255,6 +1275,8 @@ complete -c azureopenai-cli -w az-ai
         Console.WriteLine("  --system <prompt>     Override system prompt for this invocation");
         Console.WriteLine("  --schema <json>       enforce structured output with json schema (strict mode)");
         Console.WriteLine("  --raw                 raw text only, no spinner/formatting (for Espanso, AHK, pipes)");
+        Console.WriteLine("  --show-cost           print a cost receipt to stderr after the response");
+        Console.WriteLine("                        (tokens always; dollars when model is in price table)");
         Console.WriteLine("  --config show         display effective configuration and exit");
         Console.WriteLine("  --init, --configure, --login");
         Console.WriteLine("                        run the interactive setup wizard");
@@ -1483,8 +1505,12 @@ complete -c azureopenai-cli -w az-ai
         int maxRounds,
         bool jsonMode,
         int timeoutSeconds,
+        bool showCost,
+        bool raw,
+        CostAccumulator? costAcc,
         CancellationToken externalToken = default)
     {
+        _ = raw; // accepted for symmetry with RunRalphLoop; agent receipt is stderr-only.
         var registry = ToolRegistry.Create(enabledToolNames);
 
         // Add tool definitions directly to the options (already configured with temp/tokens/etc)
@@ -1516,6 +1542,11 @@ complete -c azureopenai-cli -w az-ai
         int totalToolCalls = 0;
         int? promptTokens = null;
         int? completionTokens = null;
+
+        // S02E09: per-loop accumulator for the cost receipt. We keep one
+        // even when --show-cost is off so the Ralph caller (which always
+        // passes its own accumulator) gets a roll-up across iterations.
+        var localAcc = costAcc ?? new CostAccumulator();
 
         if (showStatus)
             Console.Error.Write("⚡ Agent mode");
@@ -1576,6 +1607,9 @@ complete -c azureopenai-cli -w az-ai
                 {
                     promptTokens = update.Usage.InputTokenCount;
                     completionTokens = update.Usage.OutputTokenCount;
+                    // S02E09: accumulate per-round cost for the running receipt.
+                    localAcc.Add(CostAccounting.Entry(
+                        deploymentName, update.Usage.InputTokenCount, update.Usage.OutputTokenCount));
                 }
             }
 
@@ -1642,6 +1676,15 @@ complete -c azureopenai-cli -w az-ai
                     var total = promptTokens.Value + completionTokens.GetValueOrDefault();
                     Console.Error.WriteLine($"  [tokens: {promptTokens}→{completionTokens}, {total} total]");
                 }
+                // S02E09: opt-in cost receipt. When the caller passed an
+                // accumulator (Ralph mode), it owns the print -- we stay
+                // silent so the per-iteration receipt does not duplicate
+                // the Ralph rollup. Stderr only -- raw stdout stays clean.
+                if (showCost && costAcc is null && localAcc.Calls > 0)
+                {
+                    Console.Error.WriteLine(
+                        CostAccounting.FormatTotalReceipt(localAcc, deploymentName, "agent"));
+                }
                 Console.WriteLine();
             }
 
@@ -1676,10 +1719,25 @@ complete -c azureopenai-cli -w az-ai
         bool jsonMode,
         int timeoutSeconds,
         string effectiveSystemPrompt,
+        bool showCost,
+        bool raw,
         CancellationToken externalToken = default)
     {
+        _ = raw; // receipt is stderr-only; raw affects stdout behavior elsewhere.
         bool showStatus = !jsonMode && !Console.IsErrorRedirected;
         var iterationLog = new StringBuilder();
+        // S02E09: roll up cost across all Ralph iterations. RunAgentLoop will
+        // attribute its per-round usage into this accumulator, and we print
+        // the running total once when the loop exits.
+        var ralphAcc = new CostAccumulator();
+        void PrintRalphReceipt()
+        {
+            if (showCost && ralphAcc.Calls > 0)
+            {
+                Console.Error.WriteLine(
+                    CostAccounting.FormatTotalReceipt(ralphAcc, deploymentName, "ralph"));
+            }
+        }
 
         if (showStatus)
         {
@@ -1708,6 +1766,7 @@ complete -c azureopenai-cli -w az-ai
                 WriteRalphLog(iterationLog.ToString());
                 if (showStatus)
                     Console.Error.WriteLine("\n[cancelled] Ralph loop interrupted — log flushed.");
+                PrintRalphReceipt();
                 return EXIT_CODE_CANCELLED;
             }
 
@@ -1755,7 +1814,9 @@ complete -c azureopenai-cli -w az-ai
                 agentResult = await RunAgentLoop(
                     chatClient, messages, iterOptions,
                     deploymentName, enabledToolNames, maxAgentRounds,
-                    jsonMode, timeoutSeconds, externalToken);
+                    jsonMode, timeoutSeconds,
+                    showCost: false, raw: false, costAcc: ralphAcc,
+                    externalToken);
             }
             catch (OperationCanceledException) when (externalToken.IsCancellationRequested)
             {
@@ -1769,6 +1830,7 @@ complete -c azureopenai-cli -w az-ai
                 if (!jsonMode) Console.SetOut(originalOut);
                 if (showStatus)
                     Console.Error.WriteLine("\n[cancelled] Ralph loop interrupted — log flushed.");
+                PrintRalphReceipt();
                 return EXIT_CODE_CANCELLED;
             }
             finally
@@ -1801,6 +1863,7 @@ complete -c azureopenai-cli -w az-ai
                     if (!string.IsNullOrEmpty(agentResponse) && !agentResponse.EndsWith('\n'))
                         Console.WriteLine();
                     WriteRalphLog(iterationLog.ToString());
+                    PrintRalphReceipt();
                     return 0;
                 }
                 // Agent failed — retry with error context
@@ -1825,6 +1888,7 @@ complete -c azureopenai-cli -w az-ai
                 if (!string.IsNullOrEmpty(agentResponse) && !agentResponse.EndsWith('\n'))
                     Console.WriteLine();
                 WriteRalphLog(iterationLog.ToString());
+                PrintRalphReceipt();
                 return 0;
             }
 
@@ -1855,6 +1919,7 @@ complete -c azureopenai-cli -w az-ai
         {
             OutputJsonError(exhaustedMsg, 1);
         }
+        PrintRalphReceipt();
         return 1;
     }
 

@@ -444,6 +444,18 @@ public class CliParserTests
     public void Given_RawFlag_When_Parsing_Then_RawIsTrue() =>
         Assert.True(ParseOk("--raw").Raw);
 
+    [Fact]
+    public void Given_NoArgs_When_Parsing_Then_ShowCostIsFalse() =>
+        Assert.False(ParseOk().ShowCost);
+
+    [Fact]
+    public void Given_ShowCostFlag_When_Parsing_Then_ShowCostIsTrue() =>
+        Assert.True(ParseOk("--show-cost").ShowCost);
+
+    [Fact]
+    public void Given_ShowCostFlag_When_Parsing_Then_FlagDoesNotLeakIntoRemainingArgs() =>
+        Assert.DoesNotContain("--show-cost", ParseOk("--show-cost", "hello").RemainingArgs);
+
     // ─────────────────────────────────────────────────────────────────
     // combinations and fall-through
     // ─────────────────────────────────────────────────────────────────

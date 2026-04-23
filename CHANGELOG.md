@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(cost):** Opt-in cost summary via `--show-cost` -- prints a
+  one-line receipt to stderr after the response (`[cost] in=N out=N
+  total=N tokens (~$X.XXXX @ model)`). Token counts are always shown;
+  dollar estimates appear only when the deployment name is in the
+  hard-coded price table (snapshot 2026-04, see
+  `azureopenai-cli/CostAccounting.cs`). Agent and Ralph modes
+  accumulate across rounds / iterations and print one rollup at the
+  end. Stderr-only -- raw stdout pipelines stay clean.
+  ([s02e09-the-receipt])
 - **feat(squad):** Bake the 12 Seinfeld-themed cast as default
   runtime personas in `--squad-init` -- `costanza`, `kramer`,
   `elaine`, `jerry`, `newman` (main cast), `larry-david` (showrunner),
