@@ -65,7 +65,7 @@ sub-agents elbowing the file.
 | Pass | Surface | Outcome |
 |------|---------|---------|
 | **1** | `azureopenai-cli/AzureOpenAI_CLI.csproj` | `<Version>2.0.6</Version>` → `<Version>2.1.0</Version>`. Single line. |
-| **2** | `CHANGELOG.md` `[Unreleased]` → `[2.1.0]` cutover | Fresh empty `[Unreleased]` block at top with all six standard sub-headings; renamed the old `[Unreleased]` heading to `## [2.1.0] — 2026-04-23`. |
+| **2** | `CHANGELOG.md` `[Unreleased]` → `[2.1.0]` cutover | Fresh empty `[Unreleased]` block at top with all six standard sub-headings; renamed the old `[Unreleased]` heading to `## [2.1.0] -- 2026-04-23`. |
 | **3** | `CHANGELOG.md` new entries | Ten new entries inserted at the top of the right sub-sections (2× Added, 7× Changed, 1× Security). All ten cited SHAs confirmed to resolve. |
 | **4** | `docs/release-notes-v2.1.0.md` | New longer-form narrative. Peterman opener, Lippman mechanics section, distinct Costanza-voice customer story, thin migration section, 27-line cast acknowledgments. |
 | **5** | Jerry's CI check | `.github/workflows/release.yml` 4-leg matrix intact (linux-x64, linux-musl-x64, osx-arm64, win-x64). Dockerfile has no hard-coded `<Version>` label -- only OCI `source` / `title` / `description` -- so no bump required. No workflow edits. |
@@ -78,7 +78,7 @@ sub-agents elbowing the file.
 ═══════════════════════════════════════════
  All 34 tests passed! (2 skipped)
 ═══════════════════════════════════════════
-[preflight] all gates green — safe to commit
+[preflight] all gates green -- safe to commit
 ```
 
 Single commit, explicit paths, Copilot trailer, no tag.
@@ -101,7 +101,7 @@ green under the bump.
 ### Docs
 
 - `CHANGELOG.md` -- ten new entries added; `[Unreleased]` block
-  cut to `## [2.1.0] — 2026-04-23`; fresh empty `[Unreleased]` left
+  cut to `## [2.1.0] -- 2026-04-23`; fresh empty `[Unreleased]` left
   at the top.
 - `docs/release-notes-v2.1.0.md` -- new, ~11 KB narrative release
   notes modelled on `docs/release-notes-v2.0.0.md`. Structure: cold
