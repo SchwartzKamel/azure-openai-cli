@@ -96,6 +96,7 @@ internal sealed class UserConfig
             {
                 if (!File.Exists(path)) continue;
                 var json = File.ReadAllText(path);
+                if (string.IsNullOrWhiteSpace(json)) continue;
                 var cfg = JsonSerializer.Deserialize(json, AppJsonContext.Default.UserConfig);
                 if (cfg != null)
                 {

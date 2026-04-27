@@ -19,6 +19,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [2.1.1] -- 2026-04-24
+
+### Fixed
+- **fix(config):** Empty or whitespace-only `~/.azureopenai-cli.json` no
+  longer emits a `[WARNING] ... invalid JSON` line on every invocation.
+  Empty files are now treated as "no config, use defaults" (the obvious
+  intent when the file was created by `touch` or `:>`). Malformed
+  non-empty JSON still warns as before.
+- **fix(makefile):** `BIN_NAME` was still `AzureOpenAI_CLI` after the v2
+  consolidation in `b913617` renamed `<AssemblyName>` to `az-ai`. This
+  broke `make install`, `make publish-aot`, `make bench` /
+  `make bench-quick`, and the `ci / bench-canary` gate -- which in turn
+  blocked the v2.1.0 release workflow from publishing a GitHub Release
+  (tag landed, artifacts never built). Fix-forward release. Also
+  corrects 7 cross-RID `@ls` lines (linux-x64, linux-musl-x64,
+  linux-arm64, osx-x64, osx-arm64, win-x64, win-arm64) for the same
+  rename. No functional v2 code change.
+
 ## [2.1.0] — 2026-04-23
 
 ### Added
