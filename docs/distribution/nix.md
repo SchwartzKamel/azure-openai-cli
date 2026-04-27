@@ -9,7 +9,7 @@
 Three escalating paths:
 
 1. **In-repo flake** (this episode) -- `flake.nix` lives under
-   [`packaging/nix/azure-openai-cli/`](../../packaging/nix/azure-openai-cli/).
+   `packaging/nix/azure-openai-cli/` (planned; not yet committed).
    Users consume it directly via
    `github:SchwartzKamel/azure-openai-cli?dir=packaging/nix/azure-openai-cli`.
    Zero infrastructure outside this repo. Good for early adopters.
@@ -65,8 +65,8 @@ exposing `packages.default` (whichever is current) and
 }
 ```
 
-Full file:
-[`packaging/nix/azure-openai-cli/flake.nix`](../../packaging/nix/azure-openai-cli/flake.nix).
+Full file: `packaging/nix/azure-openai-cli/flake.nix` (planned; not yet
+committed).
 
 ## Hash strategy (SRI form)
 

@@ -357,12 +357,12 @@ first and show it doesn't work before opening a package-addition PR.
 - [ADR-003: Behaviour-Driven Development in xUnit](../adr/ADR-003-behavior-driven-development.md)
 - [Test sanity audit](./test-sanity-audit.md) -- the findings that
   motivated this guide
-- [`tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs`](../../tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs)
-  -- the DSL implementation (~200 LOC)
+- `tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs`
+  -- the DSL implementation (~200 LOC; planned, not yet committed)
 - [`tests/AzureOpenAI_CLI.Tests/CliParserTests.cs`](../../tests/AzureOpenAI_CLI.Tests/CliParserTests.cs)
   -- pilot: pure-function BDD
-- [`tests/AzureOpenAI_CLI.Tests/ToolTests.cs`](../../tests/AzureOpenAI_CLI.Tests/ToolTests.cs)
-  -- pilot: async BDD with DSL
+- `tests/AzureOpenAI_CLI.Tests/ToolTests.cs`
+  -- pilot: async BDD with DSL (planned)
 
 ---
 

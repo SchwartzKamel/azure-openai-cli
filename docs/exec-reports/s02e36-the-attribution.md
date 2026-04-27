@@ -68,10 +68,12 @@ those surfaces are disjoint from this episode.
 **Tests** -- n/a (no behavior change).
 
 **Docs** --
+
 - `docs/exec-reports/s02e36-the-attribution.md` (**NEW**) -- this report,
   plus the dependency table below and the verification receipts.
 
 **Not shipped** (intentional follow-ups):
+
 - **`NOTICE` v1-baseline retained block trimming.** `NOTICE` lines 35-168
   still carry the v1 production closure as historical continuity content.
   It is not misleading (the v2 summary at lines 19-33 is correct and
@@ -141,6 +143,7 @@ tasks package (AOT trimmer). Not redistributed in `az-ai` binaries;
 listed for completeness per the existing TPN convention.
 
 **License distribution (v2.1.0 resolved graph):**
+
 - MIT: 34 packages
 - Apache-2.0: 4 packages (all OpenTelemetry)
 - BSD-3-Clause: 1 package (Google.Protobuf)
@@ -184,7 +187,7 @@ honored by the project's trademark posture (`docs/legal/trademark-policy.md`).
 
 ## Verification receipts
 
-```
+```bash
 $ grep -c 'PackageReference' azureopenai-cli/AzureOpenAI_CLI.csproj \
       tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj
 azureopenai-cli/AzureOpenAI_CLI.csproj:7
@@ -205,10 +208,12 @@ tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj:6
   `docs/licensing-audit.md`.
 
 **TPN entry counts:**
+
 - Before: 34 MIT + 4 Apache-2.0 + 1 BSD-3-Clause = **39 rows** (v2.x table).
 - After:  34 MIT + 4 Apache-2.0 + 1 BSD-3-Clause = **39 rows** (unchanged).
 
 **Before/after diff summary:**
+
 - `THIRD_PARTY_NOTICES.md`: **0 lines added, 0 removed** (no drift detected).
 - `NOTICE`: **0 lines added, 0 removed.**
 - `NOTICE-assets.md`: **0 lines added, 0 removed.**

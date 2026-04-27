@@ -52,7 +52,7 @@ says it doesn't know -- never both.
 - `dotnet format` -- one autofix sweep on `CostAccounting.cs`
   whitespace alignment; re-verified clean.
 - `dotnet test` -- **1226 passed, 0 failed**, 45 skipped (DPAPI Windows
-  + SSRF integration -- pre-existing).
+  and SSRF integration -- pre-existing).
 - `bash tests/integration_tests.sh` -- **150 passed, 3 skipped**.
 - Single commit, explicit paths, Copilot trailer, `-c
   commit.gpgsign=false`.
@@ -132,27 +132,32 @@ says it doesn't know -- never both.
 ## Sample receipt outputs
 
 Standard mode (`--show-cost`):
+
 ```text
 [cost] in=1234 out=567 total=1801 tokens (~$0.0091 @ gpt-4o)
 ```
 
 Standard mode, model not in table:
+
 ```text
 [cost] in=1234 out=567 total=1801 tokens (model 'custom-deploy' not in price table)
 ```
 
 Agent mode (`--agent --show-cost`, accumulated across rounds):
+
 ```text
 [cost] agent: calls=3 in=4521 out=812 total=5333 tokens (~$0.0194 @ gpt-4o)
 ```
 
 Ralph mode (`--ralph --show-cost`, accumulated across iterations):
+
 ```text
 [cost] ralph: calls=12 in=18450 out=3920 total=22370 tokens (~$0.0853 @ gpt-4o)
 ```
 
 Raw mode (`--raw --show-cost`) -- stdout is the bare model output;
 **stderr** carries the receipt:
+
 ```text
 $ az-ai --raw --show-cost "say hi" 2>cost.log
 hi

@@ -257,10 +257,10 @@ parsers use naming-only BDD and skip the fluent helper.
   companion audit that motivated this ADR.
 - [`docs/testing/bdd-guide.md`](../testing/bdd-guide.md) -- developer-
   facing how-to for writing BDD tests in this repo.
-- [`tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs`](../../tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs) --
-  the DSL implementation.
-- [`tests/AzureOpenAI_CLI.Tests/Bdd/ScenarioTests.cs`](../../tests/AzureOpenAI_CLI.Tests/Bdd/ScenarioTests.cs) --
-  DSL self-tests (pass / fail, sync / async, exception capture).
+- `tests/AzureOpenAI_CLI.Tests/Bdd/Scenario.cs` -- the DSL implementation
+  (planned; not yet committed).
+- `tests/AzureOpenAI_CLI.Tests/Bdd/ScenarioTests.cs` -- DSL self-tests
+  (pass / fail, sync / async, exception capture; planned).
 - [`ADR-001-native-aot-recommended.md`](./ADR-001-native-aot-recommended.md) --
   zero-dep discipline origin.
 - [`ADR-002-squad-persona-memory.md`](./ADR-002-squad-persona-memory.md) --

@@ -30,7 +30,7 @@ ifeq ($(findstring win,$(RID)),win)
 else
   BIN_EXT :=
 endif
-BIN_NAME := AzureOpenAI_CLI$(BIN_EXT)
+BIN_NAME := az-ai$(BIN_EXT)
 
 IMAGE_NAME := azureopenai-cli
 IMAGE_TAG := gpt-5-chat
@@ -311,37 +311,37 @@ _publish_rid = \
 publish-linux-x64:
 	@echo ">> Publishing linux-x64 (ReadyToRun, self-contained) to dist/linux-x64/"
 	@$(call _publish_rid,linux-x64)
-	@ls -lh dist/linux-x64/AzureOpenAI_CLI
+	@ls -lh dist/linux-x64/az-ai
 
 publish-linux-musl-x64:
 	@echo ">> Publishing linux-musl-x64 (Alpine) to dist/linux-musl-x64/"
 	@$(call _publish_rid,linux-musl-x64)
-	@ls -lh dist/linux-musl-x64/AzureOpenAI_CLI
+	@ls -lh dist/linux-musl-x64/az-ai
 
 publish-linux-arm64:
 	@echo ">> Publishing linux-arm64 to dist/linux-arm64/"
 	@$(call _publish_rid,linux-arm64)
-	@ls -lh dist/linux-arm64/AzureOpenAI_CLI
+	@ls -lh dist/linux-arm64/az-ai
 
 publish-osx-x64:
 	@echo ">> Publishing osx-x64 (macOS Intel) to dist/osx-x64/"
 	@$(call _publish_rid,osx-x64)
-	@ls -lh dist/osx-x64/AzureOpenAI_CLI
+	@ls -lh dist/osx-x64/az-ai
 
 publish-osx-arm64:
 	@echo ">> Publishing osx-arm64 (Apple Silicon) to dist/osx-arm64/"
 	@$(call _publish_rid,osx-arm64)
-	@ls -lh dist/osx-arm64/AzureOpenAI_CLI
+	@ls -lh dist/osx-arm64/az-ai
 
 publish-win-x64:
 	@echo ">> Publishing win-x64 to dist/win-x64/"
 	@$(call _publish_rid,win-x64)
-	@ls -lh dist/win-x64/AzureOpenAI_CLI.exe
+	@ls -lh dist/win-x64/az-ai.exe
 
 publish-win-arm64:
 	@echo ">> Publishing win-arm64 to dist/win-arm64/"
 	@$(call _publish_rid,win-arm64)
-	@ls -lh dist/win-arm64/AzureOpenAI_CLI.exe
+	@ls -lh dist/win-arm64/az-ai.exe
 
 ## Publish all 7 supported RIDs (~7× single-build time). Local-dev convenience.
 ## NOTE: this builds MORE than the shipped release matrix. The release

@@ -101,28 +101,59 @@ internal class Program
         int CacheTtlHours,           // --cache-ttl <hours> / AZ_CACHE_TTL_HOURS
                                      // ── Parse-error detail (Scope 3 — reject unknown flags) ─────────────
         int ParseErrorExitCode,      // Exit code for parse errors (default 1; unknown flag = 2)
-        string? UnknownFlag          // Populated when the parse error was an unknown flag
+        string? UnknownFlag,         // Populated when the parse error was an unknown flag
+        bool Setup                   // --setup: launch interactive configuration wizard
     );
 
     private static async Task<int> Main(string[] args)
     {
-        // Load .env file if present (matches v1 behavior)
-        DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true, probeForEnv: true));
-
-        var opts = ParseArgs(args);
-
-        // Initialize OpenTelemetry if --otel/--metrics/--telemetry flags (or AZ_TELEMETRY env) are set.
-        // Must be called before any Activities or Metrics are emitted.
-        Observability.Telemetry.Initialize(opts.EnableOtel, opts.EnableMetrics, opts.EnableTelemetry);
+        // Ultra-early bailout: --help and --version must NEVER fail, even when
+        // the endpoint is unreachable, env vars are missing, or init throws.
+        // This runs before DotEnv, Telemetry, or any code that can touch the
+        // network. The user must always be able to reach help text.
+        if (args.Any(a => a is "--help" or "-h" or "help"))
+        {
+            ShowHelp();
+            return 0;
+        }
+        if (args.Any(a => a is "--version" or "-v"))
+        {
+            ShowVersion(args.Any(a => a is "--short"));
+            return 0;
+        }
 
         try
         {
-            return await RunAsync(opts);
+            // Load .env file if present (matches v1 behavior)
+            DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true, probeForEnv: true));
+
+            var opts = ParseArgs(args);
+
+            // Initialize OpenTelemetry if --otel/--metrics/--telemetry flags (or AZ_TELEMETRY env) are set.
+            // Must be called before any Activities or Metrics are emitted.
+            Observability.Telemetry.Initialize(opts.EnableOtel, opts.EnableMetrics, opts.EnableTelemetry);
+
+            try
+            {
+                return await RunAsync(opts);
+            }
+            finally
+            {
+                // Shutdown and flush telemetry providers
+                Observability.Telemetry.Shutdown();
+            }
         }
-        finally
+        catch (Exception ex)
         {
-            // Shutdown and flush telemetry providers
-            Observability.Telemetry.Shutdown();
+            // Top-level catch: no exception should ever escape as an
+            // "UNHANDLED ERROR" from the .NET runtime. Surface a clean
+            // [ERROR] line with guidance instead.
+            var inner = ex;
+            while (inner is AggregateException agg && agg.InnerException != null)
+                inner = agg.InnerException;
+            Console.Error.WriteLine($"[ERROR] {inner.GetType().Name}: {inner.Message}");
+            Console.Error.WriteLine("Run 'az-ai --help' for usage or 'az-ai --setup' to reconfigure.");
+            return 99;
         }
     }
 
@@ -145,6 +176,14 @@ internal class Program
         {
             ShowVersion(opts.VersionShort);
             return 0;
+        }
+
+        // --setup / "setup": interactive configuration wizard. Runs before
+        // credential resolution so it works even when env vars are missing
+        // or the endpoint is unreachable — that's the whole point.
+        if (opts.Setup)
+        {
+            return await SetupWizard.RunAsync();
         }
 
         // Shell completions (emit script to stdout, exit 0 or 2)
@@ -252,12 +291,12 @@ internal class Program
 
         if (string.IsNullOrWhiteSpace(endpoint))
         {
-            return ErrorAndExit("AZUREOPENAIENDPOINT environment variable not set", 1, jsonMode: opts.Json);
+            return ErrorAndExit("AZUREOPENAIENDPOINT environment variable not set. Run 'az-ai --setup' for guided configuration.", 1, jsonMode: opts.Json);
         }
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return ErrorAndExit("AZUREOPENAIAPI environment variable not set", 1, jsonMode: opts.Json);
+            return ErrorAndExit("AZUREOPENAIAPI environment variable not set. Run 'az-ai --setup' for guided configuration.", 1, jsonMode: opts.Json);
         }
 
         // FR-007: fire-and-forget TLS / DNS prewarm against the configured
@@ -635,8 +674,16 @@ internal class Program
             var exEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
             var exApiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
             var unwrapped = UnwrapException(ex);
+            var msg = UnsafeReplaceSecrets(unwrapped, exApiKey, exEndpoint);
+            // Detect DNS / connectivity failures and add actionable guidance.
+            if (msg.Contains("Name does not resolve", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("No such host", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("actively refused", StringComparison.OrdinalIgnoreCase))
+            {
+                msg += " Endpoint may be deleted or unreachable. Run 'az-ai --setup' to reconfigure.";
+            }
             return ErrorAndExit(
-                $"Request failed: {UnsafeReplaceSecrets(unwrapped, exApiKey, exEndpoint)}",
+                $"Request failed: {msg}",
                 1, jsonMode: opts.Json);
         }
     }
@@ -690,7 +737,8 @@ internal class Program
         CacheEnabled: false,
         CacheTtlHours: PromptCache.DefaultTtlHours,
         ParseErrorExitCode: 1,
-        UnknownFlag: null
+        UnknownFlag: null,
+        Setup: false
     );
 
     /// <summary>Default agent tool-call round cap, matching v1 (<c>--max-rounds</c>).</summary>
@@ -741,6 +789,7 @@ internal class Program
         bool prewarm = false;
         bool cacheEnabled = false;
         int? cacheTtlHours = null;
+        bool setup = false;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -987,6 +1036,9 @@ internal class Program
                     { cacheTtlHours = cttl; i++; }
                     else { Fail("--cache-ttl requires a positive integer (hours)"); }
                     break;
+                case "--setup":
+                    setup = true;
+                    break;
                 default:
                     // Scope 3: reject unknown flags. Anything that looks like a
                     // flag (starts with '-' but isn't bare '-', which some CLIs
@@ -995,6 +1047,19 @@ internal class Program
                     if (arg.Length > 1 && arg[0] == '-' && arg != "--")
                     {
                         FailUnknownFlag(arg);
+                        break;
+                    }
+                    // Bare subcommands: "help" and "setup" as positional words.
+                    // "help" is also handled ultra-early in Main() but we set
+                    // the flag here too for ParseArgs-only callers (tests).
+                    if (string.Equals(arg, "help", StringComparison.OrdinalIgnoreCase) && !afterDoubleDash)
+                    {
+                        showHelp = true;
+                        break;
+                    }
+                    if (string.Equals(arg, "setup", StringComparison.OrdinalIgnoreCase) && !afterDoubleDash)
+                    {
+                        setup = true;
                         break;
                     }
                     positionalArgs.Add(args[i]);
@@ -1210,6 +1275,7 @@ internal class Program
             Prewarm = prewarm,
             CacheEnabled = cacheEnabled,
             CacheTtlHours = cacheTtlHours ?? PromptCache.DefaultTtlHours,
+            Setup = setup,
         };
     }
 
@@ -1542,6 +1608,10 @@ Configuration (FR-003/FR-009, precedence: env > CLI > ./.azureopenai-cli.json > 
   --config reset            Delete the config file
   --config show             Show effective configuration
 
+Setup:
+  --setup                   Interactive guided configuration wizard
+                            (works even when endpoint/credentials are broken)
+
 Shell Completions:
   --completions <shell>     Emit bash|zsh|fish completion script to stdout
 
@@ -1572,7 +1642,14 @@ Environment Variables (required):
   AZUREOPENAIENDPOINT       Azure OpenAI endpoint URL
   AZUREOPENAIAPI            API key
 
+  Run 'az-ai --setup' for guided configuration if these are not set.
+
+Subcommands (bare words):
+  az-ai help                Same as --help
+  az-ai setup               Same as --setup
+
 Examples:
+  az-ai --setup
   az-ai ""What is the capital of France?""
   az-ai --model fast --temperature 0.7 ""Write a haiku""
   az-ai --set-model fast=gpt-4o-mini
@@ -1609,7 +1686,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup""
 
     case ""${prev}"" in
         --completions)
@@ -1670,6 +1747,7 @@ _az-ai() {
         '--metrics[Enable OTLP metrics]'
         '--validate[Ralph validator]:cmd:'
         '--task-file[Ralph task file]:path:'
+        '--setup[Interactive setup wizard]'
     )
     _arguments -s $opts
 }
@@ -1708,6 +1786,7 @@ complete -c az-ai -l otel -d 'Enable OTLP traces'
 complete -c az-ai -l metrics -d 'Enable OTLP metrics'
 complete -c az-ai -l validate -d 'Ralph validator' -r
 complete -c az-ai -l task-file -d 'Ralph task file' -r
+complete -c az-ai -l setup -d 'Interactive setup wizard'
 complete -c az-ai -w az-ai
 ";
 

@@ -5,11 +5,11 @@
 **Status:** **Frozen at 2.0.0**. Any change to a span name, attribute name, attribute type, meter name, cost-event field, or unit requires a formal schema bump and review -- see §7.
 **Authoritative code:**
 
-- [`azureopenai-cli-v2/Observability/Telemetry.cs`](../../azureopenai-cli-v2/Observability/Telemetry.cs) -- `ActivitySource`, `Meter`, flag plumbing.
-- [`azureopenai-cli-v2/Observability/CostEvent.cs`](../../azureopenai-cli-v2/Observability/CostEvent.cs) -- stderr JSON schema.
-- [`azureopenai-cli-v2/Observability/CostHook.cs`](../../azureopenai-cli-v2/Observability/CostHook.cs) -- pricing + cost-event emission.
-- [`azureopenai-cli-v2/Program.cs`](../../azureopenai-cli-v2/Program.cs) (around line 494) -- `az.chat.request` span.
-- [`azureopenai-cli-v2/Ralph/RalphWorkflow.cs`](../../azureopenai-cli-v2/Ralph/RalphWorkflow.cs) (around line 66) -- `az.ralph.iteration` span.
+- [`azureopenai-cli/Observability/Telemetry.cs`](../../azureopenai-cli/Observability/Telemetry.cs) -- `ActivitySource`, `Meter`, flag plumbing.
+- [`azureopenai-cli/Observability/CostEvent.cs`](../../azureopenai-cli/Observability/CostEvent.cs) -- stderr JSON schema.
+- [`azureopenai-cli/Observability/CostHook.cs`](../../azureopenai-cli/Observability/CostHook.cs) -- pricing + cost-event emission.
+- [`azureopenai-cli/Program.cs`](../../azureopenai-cli/Program.cs) (around line 494) -- `az.chat.request` span.
+- [`azureopenai-cli/Ralph/RalphWorkflow.cs`](../../azureopenai-cli/Ralph/RalphWorkflow.cs) (around line 66) -- `az.ralph.iteration` span.
 **Cross-links:**
 - [`docs/observability.md`](../observability.md) -- user-facing telemetry guide (same schema, different audience).
 - [`docs/ops/v2-sre-runbook.md`](v2-sre-runbook.md) §3 -- operator decoder ring.
@@ -46,7 +46,7 @@ Telemetry turns on only when exactly one of these triggers is set per invocation
 **`ActivitySource` name:** `azureopenai-cli-v2`
 **`ActivitySource` version:** set from `Telemetry.ServiceVersion` constant.
 
-> ⚠️ **Drift observed at freeze time.** `Telemetry.ServiceVersion` in `azureopenai-cli-v2/Observability/Telemetry.cs:31` reads `"2.0.0-alpha.1"` at the v2.0.0 release commit, while the git tag and csproj `<Version>` are `2.0.0`. This is reported as-shipped and consumers should treat a `service.version=2.0.0-alpha.1` OTel resource attribute as equivalent to v2.0.0 for this release. Tracked for fix-forward in a future patch -- no schema change, just a string correction. (Constraint: this doc does not modify code.)
+> ⚠️ **Drift observed at freeze time.** `Telemetry.ServiceVersion` in `azureopenai-cli/Observability/Telemetry.cs:31` reads `"2.0.0-alpha.1"` at the v2.0.0 release commit, while the git tag and csproj `<Version>` are `2.0.0`. This is reported as-shipped and consumers should treat a `service.version=2.0.0-alpha.1` OTel resource attribute as equivalent to v2.0.0 for this release. Tracked for fix-forward in a future patch -- no schema change, just a string correction. (Constraint: this doc does not modify code.)
 
 ### 2.1 Span catalogue (exhaustive)
 
@@ -107,7 +107,7 @@ Emitted when `--metrics` or `--telemetry` or `AZ_TELEMETRY=1` is set and a real 
 
 ### 4.1 Schema
 
-Source: [`CostEvent.cs`](../../azureopenai-cli-v2/Observability/CostEvent.cs), priced by [`CostHook.cs`](../../azureopenai-cli-v2/Observability/CostHook.cs). Serialized through `AppJsonContext` source-gen -- reflection-free under AOT.
+Source: [`CostEvent.cs`](../../azureopenai-cli/Observability/CostEvent.cs), priced by [`CostHook.cs`](../../azureopenai-cli/Observability/CostHook.cs). Serialized through `AppJsonContext` source-gen -- reflection-free under AOT.
 
 ```json
 {"ts":"2026-04-20T12:34:56.789Z","kind":"cost","model":"gpt-4o-mini","input_tokens":1200,"output_tokens":340,"usd":0.000384,"mode":"standard"}

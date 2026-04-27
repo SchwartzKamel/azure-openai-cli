@@ -12,7 +12,7 @@
 
 - **Date:** 2026-04-20 window
 - **Commit:** [`4f1acdd`](../../) -- `feat(v2): FR-008 prompt cache + UX fixes (json-stderr, unknown-flag, comment)`
-- **Implementation:** [`azureopenai-cli-v2/Cache/PromptCache.cs`](../../azureopenai-cli-v2/Cache/PromptCache.cs)
+- **Implementation:** [`azureopenai-cli/Cache/PromptCache.cs`](../../azureopenai-cli/Cache/PromptCache.cs)
 - **Tests:** `tests/AzureOpenAI_CLI.V2.Tests/PromptCacheTests.cs` (19 cases), `tests/AzureOpenAI_CLI.V2.Tests/V2UxAndCacheWaveTests.cs` (cache-flag cases)
 - **Release notes:** [`CHANGELOG.md`](../../CHANGELOG.md) v2.0.0 section, [`docs/release-notes-v2.0.0.md`](../release-notes-v2.0.0.md)
 
@@ -77,7 +77,7 @@ A simple file-based cache with deterministic keys:
 
 #### Cache Key Derivation
 
-> **As shipped:** the key is SHA-256 (hex, lowercase) of a **canonical sorted-JSON** payload over exactly five fields, in this property order: `max_tokens`, `model`, `system_prompt`, `temperature` (formatted `F4`, invariant culture), `user_prompt`. Endpoint URL and API key are **intentionally excluded** -- rotating credentials must not invalidate the cache, and credentials must never touch disk. The `ToolHardeningTests.ComputeKey_Ignores_Endpoint_And_ApiKey_By_Design` test pins this contract. See [`PromptCache.ComputeKey`](../../azureopenai-cli-v2/Cache/PromptCache.cs).
+> **As shipped:** the key is SHA-256 (hex, lowercase) of a **canonical sorted-JSON** payload over exactly five fields, in this property order: `max_tokens`, `model`, `system_prompt`, `temperature` (formatted `F4`, invariant culture), `user_prompt`. Endpoint URL and API key are **intentionally excluded** -- rotating credentials must not invalidate the cache, and credentials must never touch disk. The `ToolHardeningTests.ComputeKey_Ignores_Endpoint_And_ApiKey_By_Design` test pins this contract. See [`PromptCache.ComputeKey`](../../azureopenai-cli/Cache/PromptCache.cs).
 >
 > **Originally proposed:** a newline-delimited string over `model`, `systemPrompt`, `userPrompt`, `temperature` -- `max_tokens` was explicitly excluded. The shipped version includes `max_tokens` because truncation *is* user-visible when the cap is hit, and canonical JSON is more auditable than ad-hoc string concatenation.
 
@@ -330,7 +330,7 @@ For an Espanso user who fires 50 expansions/day with ~30% prompt repetition:
 >
 > | File | Change |
 > |---|---|
-> | [`azureopenai-cli-v2/Cache/PromptCache.cs`](../../azureopenai-cli-v2/Cache/PromptCache.cs) | New: cache implementation + `CachedResponse` record. |
+> | [`azureopenai-cli/Cache/PromptCache.cs`](../../azureopenai-cli/Cache/PromptCache.cs) | New: cache implementation + `CachedResponse` record. |
 > | `azureopenai-cli-v2/AppJsonContext.cs` | `[JsonSerializable(typeof(CachedResponse))]` for AOT. |
 > | `azureopenai-cli-v2/Program.cs` | `--cache`, `--cache-ttl`, `AZ_CACHE`, `AZ_CACHE_TTL_HOURS` wiring; never-cache gates; stderr `[cache] hit`/`[cache] miss`. |
 > | `tests/AzureOpenAI_CLI.V2.Tests/PromptCacheTests.cs` | 19 unit cases: key determinism, credential-independence, TTL, eviction, perms, corrupt-entry miss. |

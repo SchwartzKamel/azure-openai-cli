@@ -534,7 +534,7 @@ an unaired special:
   - **Five cross-sub-agent file sweeps via `git add -A`** (now five,
     not four): `f3046e1`, `4a4b894`, `3bd0acb`, `93dfac7`, plus the
     Wave 5 stash-isolate-restore turbulence on `Program.cs` (Morty
-    + Newman). The Wave 5 case did NOT result in a sweep -- the
+    and Newman). The Wave 5 case did NOT result in a sweep -- the
     `shared-file-protocol` "Shared working tree" rule (added in
     `207d042`) caught it: Morty performed 7 stash-isolate-restore
     cycles, Newman performed 5+, all WIP recovered, no collateral.
