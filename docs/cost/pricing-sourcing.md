@@ -15,7 +15,7 @@ here. No exceptions. If you add a price, you add a row. If the row
 goes stale, you either refresh it or you remove the quote.
 
 **Authoritative hardcoded table:**
-[`azureopenai-cli-v2/Observability/CostHook.cs`](../../azureopenai-cli-v2/Observability/CostHook.cs)
+[`azureopenai-cli/Observability/CostHook.cs`](../../azureopenai-cli/Observability/CostHook.cs)
 (the `PriceTable` dictionary, roughly lines 20-30). Override at
 runtime via `AZAI_PRICE_TABLE=/path/to/prices.json` (schema in
 [`docs/observability.md`](../observability.md)). This doc tracks the
@@ -66,7 +66,7 @@ az cognitiveservices account deployment list \
   -o table
 
 # Walk the hardcoded table in code (source of truth at runtime):
-grep -n -A 20 'PriceTable' azureopenai-cli-v2/Observability/CostHook.cs
+grep -n -A 20 'PriceTable' azureopenai-cli/Observability/CostHook.cs
 ```
 
 ### Portal-only checks (no curl breadcrumb possible)
@@ -165,7 +165,7 @@ possible audit trail and does not depend on any individual's inbox.
    Cached Input changes). New modifiers are new rows or new
    §1 mentions -- file the PR.
 4. Sanity-check the hardcoded `PriceTable` in
-   `azureopenai-cli-v2/Observability/CostHook.cs` against §1. If they
+   `azureopenai-cli/Observability/CostHook.cs` against §1. If they
    disagree, the code is canonical *for what the CLI reports* but §1
    is canonical *for what docs may quote*. Reconcile in the same PR.
 5. Mark the tracking issue (#1 above) closed. Open next quarter's.

@@ -34,7 +34,7 @@ piece of information conveyed by color is also conveyed by adjacent text
 ### Precedence -- what wins over what
 
 The runtime order is implemented in
-[`azureopenai-cli-v2/Theme.cs:108-142`](../azureopenai-cli-v2/Theme.cs).
+[`azureopenai-cli/Theme.cs:108-142`](../azureopenai-cli/Theme.cs).
 Seven rules, evaluated top-to-bottom on every color decision. The first
 rule that matches wins:
 
@@ -107,7 +107,7 @@ When `--raw` is set, `az-ai` emits:
 - **Zero stderr warnings** -- a malformed config file does not spam
   stderr in raw mode; `UserConfig.Load(quiet: opts.Raw)` respects the
   caller's promise of stderr cleanliness (see
-  [`Program.cs:141`](../azureopenai-cli-v2/Program.cs)).
+  [`Program.cs:141`](../azureopenai-cli/Program.cs)).
 - **Zero version banner** -- no `az-ai v2.0.x` preamble.
 - **Zero token-usage footer** -- the `~123 in / ~456 out tokens` stderr
   line is suppressed.
@@ -162,7 +162,7 @@ meaningful, stable non-zero code. The full table:
 | `0`  | Success                                         | Model replied, tool calls resolved, Ralph validation passed.                   |
 | `1`  | Runtime error                                   | Model call failed, config invalid, tool execution failed, Ralph hit `--max-iterations` without a clean validation, stdin exceeded the 1 MB limit, `--default-model` asked but none configured. This is the generic "something broke" code. |
 | `2`  | CLI usage error                                 | Unknown flag, bad value for `--max-iterations` (not in 1-50), missing required positional. Parser bails before the model is ever called. |
-| `130`| SIGINT (Ctrl+C)                                 | User interrupted. POSIX-standard `128 + SIGINT(2)`. `Console.CancelKeyPress` handler at [`Program.cs:406`](../azureopenai-cli-v2/Program.cs). |
+| `130`| SIGINT (Ctrl+C)                                 | User interrupted. POSIX-standard `128 + SIGINT(2)`. `Console.CancelKeyPress` handler at [`Program.cs:406`](../azureopenai-cli/Program.cs). |
 
 ### Guarantees
 
@@ -423,10 +423,10 @@ Verified by `RunAsync_AbortsAfterEndpoint_NoConfigSideEffectsOnDisk` in
 
 ## See also
 
-- [`azureopenai-cli-v2/Theme.cs:108-142`](../azureopenai-cli-v2/Theme.cs)
-  -- the v2 color precedence, in code, as ground truth.
-- [`azureopenai-cli/ConsoleIO/AnsiPolicy.cs`](../azureopenai-cli/ConsoleIO/AnsiPolicy.cs)
-  -- the v1 color helper (`NO_COLOR` / `FORCE_COLOR` / TTY).
+- [`azureopenai-cli/Theme.cs:108-142`](../azureopenai-cli/Theme.cs)
+  -- the color precedence, in code, as ground truth.
+- `azureopenai-cli/ConsoleIO/AnsiPolicy.cs` -- legacy v1 color helper
+  (`NO_COLOR` / `FORCE_COLOR` / TTY); folded into `Theme.cs` in v2.
 - [docs/espanso-ahk-integration.md](espanso-ahk-integration.md) --
   keyboard-only trigger setup for Espanso and AHK.
 - [docs/i18n.md](i18n.md) -- Babu's internationalization contract and
@@ -462,8 +462,8 @@ the patterns.
 - [`accessibility/low-bandwidth-ssh.md`](accessibility/low-bandwidth-ssh.md)
   -- byte-budget guidance for 56 kbps / satellite / multi-hop SSH.
   `--raw`, `ControlMaster`, `--cache`, and a worked byte table.
-- [`../man/az-ai-v2.1`](../man/az-ai-v2.1) -- Unix man page (groff).
-  Preview with `man -l man/az-ai-v2.1`. Stub: NAME, SYNOPSIS,
+- [`../man/az-ai.1`](../man/az-ai.1) -- Unix man page (groff).
+  Preview with `man -l man/az-ai.1`. Stub: NAME, SYNOPSIS,
   DESCRIPTION, OPTIONS, ENVIRONMENT, EXIT STATUS, FILES, EXAMPLES,
   ACCESSIBILITY, BUGS, SEE ALSO, AUTHORS.
 
