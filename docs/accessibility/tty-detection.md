@@ -5,7 +5,7 @@
 `docs/accessibility.md` §1 states the seven-rule color precedence in
 the abstract. This appendix shows the same rules in action, command by
 command, with the exact observed output class. Pair with
-[`azureopenai-cli-v2/Theme.cs:108-142`](../../azureopenai-cli-v2/Theme.cs)
+[`azureopenai-cli/Theme.cs:108-142`](../../azureopenai-cli/Theme.cs)
 for the ground-truth implementation.
 
 **Legend** (used in every table below):
@@ -173,7 +173,7 @@ via a lone red glyph.
   -- pipes, `$EDITOR`, Espanso/AHK.
 - [`docs/accessibility/low-bandwidth-ssh.md`](low-bandwidth-ssh.md) --
   why `--raw` is a byte-budget win, not just an a11y win.
-- [`azureopenai-cli-v2/Theme.cs`](../../azureopenai-cli-v2/Theme.cs)
+- [`azureopenai-cli/Theme.cs`](../../azureopenai-cli/Theme.cs)
   -- the seven rules, in code.
 
 ---

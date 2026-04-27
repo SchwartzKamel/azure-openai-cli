@@ -133,7 +133,7 @@ docs/exec-reports/s02e33-the-uninstaller.md`.
 
 **Tests** -- n/a (no unit-test harness for Makefile logic in this repo).
 Verified by hand against a disposable `$HOME` fixture with alias + function
-+ unrelated shell line; confirmed the detection regex catches what it
+and unrelated shell line; confirmed the detection regex catches what it
 should and leaves unrelated `export PATH=...` alone.
 
 **Docs** --

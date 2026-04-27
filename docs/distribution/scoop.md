@@ -21,8 +21,8 @@ stability before asking for upstream trust.
 
 ## Draft manifest
 
-Lives at
-[`packaging/scoop/azure-openai-cli.json`](../../packaging/scoop/azure-openai-cli.json).
+Lives at `packaging/scoop/azure-openai-cli.json` (not yet committed; see
+`packaging/scoop/az-ai.json` for the current v2-line manifest).
 Key fields:
 
 ```json
