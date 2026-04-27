@@ -89,7 +89,7 @@ surface; file boundaries did not overlap. No coordination events.
 
 Preflight (all four gates, `make preflight`):
 
-```
+```text
 Format gate          -- 0 changes needed
 Build gate           -- 0 warnings, 0 errors
 Test gate            -- all suites passed
@@ -99,7 +99,7 @@ Integration gate     -- 34 passed, 2 skipped (API-key-gated)
 
 Targeted test run (paste per brief):
 
-```
+```text
 $ dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj \
     --filter "FullyQualifiedName~ReadFile" --verbosity minimal
 Passed!  - Failed: 0, Passed: 54, Skipped: 0, Total: 54
@@ -113,7 +113,7 @@ by the full test-gate run above).
 
 Skip-attribute check:
 
-```
+```text
 $ grep -n 'Skip' tests/AzureOpenAI_CLI.Tests/Adversary/ReadFileSensitivePathTests.cs \
     || echo "no skipped facts remaining"
 no skipped facts remaining
@@ -267,6 +267,6 @@ closure + structural hardening, no new adversarial probing).
 
 Commit trailer on the episode commit:
 
-```
+```text
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 ```
