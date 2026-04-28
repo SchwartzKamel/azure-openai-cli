@@ -181,8 +181,26 @@ internal class Program
         // --setup / "setup": interactive configuration wizard. Runs before
         // credential resolution so it works even when env vars are missing
         // or the endpoint is unreachable — that's the whole point.
+        //
+        // Hard gates (Newman/Puddy invariants from the parallel stash impl):
+        //   * Refuse under --raw / --json: machine surfaces must never block
+        //     on an interactive prompt.
+        //   * Refuse when stdin or stdout is redirected: pipes / CI / scripts
+        //     get a clean error, not a hung process.
         if (opts.Setup)
         {
+            if (opts.Raw || opts.Json)
+            {
+                return ErrorAndExit(
+                    "--setup cannot be combined with --raw or --json (interactive only)",
+                    1, jsonMode: opts.Json);
+            }
+            if (!SetupWizard.IsInteractiveTty())
+            {
+                return ErrorAndExit(
+                    "--setup requires an interactive terminal (stdin/stdout must not be redirected)",
+                    1, jsonMode: opts.Json);
+            }
             return await SetupWizard.RunAsync();
         }
 
@@ -1037,6 +1055,7 @@ internal class Program
                     else { Fail("--cache-ttl requires a positive integer (hours)"); }
                     break;
                 case "--setup":
+                case "--init-wizard":
                     setup = true;
                     break;
                 default:

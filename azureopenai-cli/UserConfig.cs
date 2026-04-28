@@ -49,6 +49,21 @@ internal sealed class UserConfig
     public UserDefaults Defaults { get; set; } = new();
 
     /// <summary>
+    /// Azure OpenAI endpoint URL (written by the setup wizard). Used as a fallback
+    /// when the <c>AZUREOPENAIENDPOINT</c> environment variable is not set.
+    /// </summary>
+    [JsonPropertyName("endpoint")]
+    public string? Endpoint { get; set; }
+
+    /// <summary>
+    /// Azure OpenAI API key (written by the setup wizard). Used as a fallback
+    /// when the <c>AZUREOPENAIAPI</c> environment variable is not set. Stored
+    /// in a 0600-permissioned file; redacted by <see cref="ListKeys"/>.
+    /// </summary>
+    [JsonPropertyName("api_key")]
+    public string? ApiKey { get; set; }
+
+    /// <summary>
     /// Path this config was loaded from (null if no file found). Not serialized.
     /// </summary>
     [JsonIgnore]
@@ -169,6 +184,12 @@ internal sealed class UserConfig
             case "default_model":
                 DefaultModel = value;
                 return true;
+            case "endpoint":
+                Endpoint = value;
+                return true;
+            case "api_key":
+                ApiKey = value;
+                return true;
             case "models" when parts.Length == 2:
                 Models[parts[1]] = value;
                 return true;
@@ -187,6 +208,8 @@ internal sealed class UserConfig
         return parts[0] switch
         {
             "default_model" => DefaultModel,
+            "endpoint" => Endpoint,
+            "api_key" => ApiKey,
             "models" when parts.Length == 2 => Models.TryGetValue(parts[1], out var v) ? v : null,
             "defaults" when parts.Length == 2 => Defaults.GetKey(parts[1]),
             _ => null,
@@ -198,6 +221,10 @@ internal sealed class UserConfig
     {
         if (!string.IsNullOrEmpty(DefaultModel))
             yield return $"default_model={DefaultModel}";
+        if (!string.IsNullOrEmpty(Endpoint))
+            yield return $"endpoint={Endpoint}";
+        if (!string.IsNullOrEmpty(ApiKey))
+            yield return "api_key=<redacted>";
         foreach (var kv in Models.OrderBy(k => k.Key, StringComparer.Ordinal))
             yield return $"models.{kv.Key}={kv.Value}";
         foreach (var line in Defaults.ListKeys())

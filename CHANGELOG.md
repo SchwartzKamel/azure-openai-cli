@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(wizard):** First-run interactive setup wizard. Running bare `az-ai`
+  on an interactive terminal with no credentials configured now launches a
+  guided setup that prompts for the Azure OpenAI endpoint, API key (masked
+  input), and default model deployment, then persists them to
+  `~/.azureopenai-cli.json` (0600 perms). Re-run any time with `az-ai --setup`
+  (alias `--init-wizard`). `UserConfig` gained `endpoint` and `api_key`
+  fields that serve as fallbacks when the matching environment variables
+  are unset; `api_key` is redacted (`api_key=<redacted>`) in
+  `az-ai --config list` output. The wizard is suppressed under `--raw`,
+  `--json`, or when stdin/stdout is redirected so scripted and piped
+  callers continue to see the existing env-var error.
 
 ### Changed
 
