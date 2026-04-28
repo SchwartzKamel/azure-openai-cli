@@ -271,10 +271,20 @@ internal static class SetupWizard
         }
         catch (InvalidOperationException)
         {
-            // Console.ReadKey throws when stdin is redirected. Caller gates
-            // on that; this is purely defensive. Fall back to plain ReadLine
-            // so the wizard still completes (no masking, but won't crash).
-            return Console.ReadLine();
+            // Console.ReadKey throws on pseudo-TTYs that pass the redirect
+            // check but lack a real console (some container runtimes,
+            // dotnet test capture, certain CI runners with tty: true but no
+            // /dev/tty wiring, restricted hosts, WSL + ssh -t edge cases).
+            // Fail closed: do NOT fall back to Console.ReadLine, which would
+            // echo the secret to scrollback / tmux logs / TTY loggers. Emit
+            // a one-line stderr warning and return null so the caller short-
+            // circuits to ExitCanceled (130) without ever accepting plaintext.
+            // Newman audit H-1.
+            Console.Error.WriteLine(
+                "[ERROR] Cannot read masked input on this terminal; refusing to "
+                + "accept API key in plaintext. Set AZUREOPENAIAPI environment "
+                + "variable instead.");
+            return null;
         }
     }
 }

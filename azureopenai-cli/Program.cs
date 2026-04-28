@@ -1971,6 +1971,22 @@ complete -c az-ai -w az-ai
                 {
                     return ErrorAndExit("--config get requires <key>", 1, opts.Json);
                 }
+                // Newman audit H-2: never print the raw API key to stdout.
+                // Even though ListKeys redacts, the get-by-name path was an
+                // escape hatch that leaks via scrollback, shell history of
+                // pipe targets, screen-share, and terminal logs. Refuse with
+                // a helpful message; users can re-run --setup or read the
+                // 0600 config file directly.
+                if (string.Equals(opts.ConfigKey, "api_key", StringComparison.Ordinal))
+                {
+                    return ErrorAndExit(
+                        "Refusing to print api_key to stdout (would leak via scrollback, "
+                        + "shell history, and pipe targets). "
+                        + "To inspect: cat ~/.azureopenai-cli.json (file is mode 0600). "
+                        + "To re-set:  az-ai --setup",
+                        1,
+                        opts.Json);
+                }
                 var value = config.GetKey(opts.ConfigKey);
                 if (value == null)
                 {
