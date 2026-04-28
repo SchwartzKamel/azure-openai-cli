@@ -303,9 +303,27 @@ internal class Program
             return RunEstimate(opts);
         }
 
-        // Resolve endpoint and API key from env
+        // Resolve endpoint and API key. Precedence: env > UserConfig (set via the
+        // setup wizard or `--config set`) > error/auto-wizard. Environment variables
+        // win so a project-local .env / shell export always overrides the persisted
+        // user config (matches FR-003/FR-009 documented precedence).
         var endpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+        if (string.IsNullOrWhiteSpace(endpoint)) endpoint = userConfig.Endpoint;
+
         var apiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
+        if (string.IsNullOrWhiteSpace(apiKey)) apiKey = userConfig.ApiKey;
+
+        // First-run wizard auto-trigger: credentials are missing, the user did
+        // not give us a prompt or task file, stdin is a TTY, and no machine-
+        // readable output flags are set. Walk them through setup instead of
+        // dumping a terse env-var error. Explicit --setup above takes precedence;
+        // this block only fires when the user simply ran bare `az-ai` with
+        // nothing configured yet. (CHANGELOG claim, restored from stash impl.)
+        if (ShouldAutoLaunchSetup(opts, endpoint, apiKey,
+                SetupWizard.IsInteractiveTty(), Console.IsInputRedirected))
+        {
+            return await SetupWizard.RunAsync();
+        }
 
         if (string.IsNullOrWhiteSpace(endpoint))
         {
@@ -768,6 +786,42 @@ internal class Program
     /// Parse errors set <c>ParseError=true</c> and <c>ShowHelp=true</c>; they do
     /// not throw. Caller is expected to check <c>ParseError</c> and exit(1).
     /// </summary>
+    /// <summary>
+    /// First-run wizard auto-trigger predicate. Returns true when the user
+    /// invoked bare <c>az-ai</c> with no usable credentials on an interactive
+    /// terminal and no machine-readable output flags. Extracted as a pure
+    /// function (no Console / env reads) so the decision is unit-testable
+    /// without a PTY harness — the caller passes in the terminal facts.
+    ///
+    /// Gates (must ALL hold to auto-launch):
+    ///   * Credentials missing: endpoint OR apiKey is null/whitespace.
+    ///   * No prompt: <c>opts.Prompt</c> and <c>opts.TaskFile</c> are empty.
+    ///   * Stdin is not redirected (no pipe / heredoc feeding us).
+    ///   * Stdin and stdout are both TTYs (<c>isInteractiveTty</c>).
+    ///   * Neither <c>--raw</c> nor <c>--json</c> is set.
+    ///
+    /// Explicit <c>--setup</c> / <c>--init-wizard</c> handling earlier in
+    /// <c>RunAsync</c> takes precedence; this only fires for bare invocations.
+    /// </summary>
+    internal static bool ShouldAutoLaunchSetup(
+        CliOptions opts,
+        string? endpoint,
+        string? apiKey,
+        bool isInteractiveTty,
+        bool stdinRedirected)
+    {
+        bool credsMissing = string.IsNullOrWhiteSpace(endpoint)
+            || string.IsNullOrWhiteSpace(apiKey);
+        bool noPromptOrPipe = string.IsNullOrWhiteSpace(opts.Prompt)
+            && string.IsNullOrWhiteSpace(opts.TaskFile)
+            && !stdinRedirected;
+        return credsMissing
+            && noPromptOrPipe
+            && !opts.Raw
+            && !opts.Json
+            && isInteractiveTty;
+    }
+
     internal static CliOptions ParseArgs(string[] args)
     {
         string? model = null;
@@ -1630,6 +1684,7 @@ Configuration (FR-003/FR-009, precedence: env > CLI > ./.azureopenai-cli.json > 
 Setup:
   --setup                   Interactive guided configuration wizard
                             (works even when endpoint/credentials are broken)
+  --init-wizard             Alias for --setup
 
 Shell Completions:
   --completions <shell>     Emit bash|zsh|fish completion script to stdout
@@ -1705,7 +1760,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
 
     case ""${prev}"" in
         --completions)
@@ -1767,6 +1822,7 @@ _az-ai() {
         '--validate[Ralph validator]:cmd:'
         '--task-file[Ralph task file]:path:'
         '--setup[Interactive setup wizard]'
+        '--init-wizard[Alias for --setup]'
     )
     _arguments -s $opts
 }
@@ -1806,6 +1862,7 @@ complete -c az-ai -l metrics -d 'Enable OTLP metrics'
 complete -c az-ai -l validate -d 'Ralph validator' -r
 complete -c az-ai -l task-file -d 'Ralph task file' -r
 complete -c az-ai -l setup -d 'Interactive setup wizard'
+complete -c az-ai -l init-wizard -d 'Alias for --setup'
 complete -c az-ai -w az-ai
 ";
 
