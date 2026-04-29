@@ -1979,10 +1979,11 @@ complete -c az-ai -w az-ai
                 // 0600 config file directly.
                 if (string.Equals(opts.ConfigKey, "api_key", StringComparison.Ordinal))
                 {
+                    var configPath = config.LoadedFrom ?? UserConfig.DefaultPath;
                     return ErrorAndExit(
                         "Refusing to print api_key to stdout (would leak via scrollback, "
                         + "shell history, and pipe targets). "
-                        + "To inspect: cat ~/.azureopenai-cli.json (file is mode 0600). "
+                        + $"To inspect: {configPath} (file is mode 0600). "
                         + "To re-set:  az-ai --setup",
                         1,
                         opts.Json);
