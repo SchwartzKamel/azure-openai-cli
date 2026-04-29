@@ -172,7 +172,7 @@ internal static class SetupWizard
         // Reject deep paths, query strings, and fragments — the endpoint
         // must be the Azure OpenAI resource root. Anything deeper will
         // silently break the client SDK's URL construction at runtime.
-        if ((uri.AbsolutePath is not ("" or "/")) ||
+        if (uri.AbsolutePath != "/" ||
             !string.IsNullOrEmpty(uri.Query) ||
             !string.IsNullOrEmpty(uri.Fragment))
         {
