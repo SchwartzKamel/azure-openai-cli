@@ -55,7 +55,9 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 	install-nim-gemma-2b uninstall-nim-gemma-2b nim-status nim-warmup \
 	demo-hero-gif \
 	load-env run-native \
-	add-model remove-model models
+	add-model remove-model models \
+	providers set-foundry \
+	espanso-install espanso-test
 
 # Regex used by migrate-check / migrate-clean to find stale v1 az-ai shell
 # entries. Matches: `alias az-ai=...`, `az-ai() { ... }`, `function az-ai ...`,
@@ -108,6 +110,10 @@ help:
 	@echo "  make models       - List allowed models from env file"
 	@echo "  make add-model MODEL=<name> - Add a model to the allowed list in env"
 	@echo "  make remove-model MODEL=<name> - Remove a model from the allowed list in env"
+	@echo "  make providers    - Show configured providers (Azure OpenAI + Foundry)"
+	@echo "  make set-foundry ENDPOINT=<url> KEY=<key> MODELS=<m1,m2> - Configure Foundry provider in env"
+	@echo "  make espanso-install - Copy hardened Espanso config to Windows Espanso match dir (WSL)"
+	@echo "  make espanso-test   - Verify Espanso can reach az-ai through the WSL boundary"
 	@echo "  make migrate-check - Scan shell rc files, binaries, and Docker images for stale v1 'az-ai' leftovers (read-only)"
 	@echo "  make migrate-clean - Remove stale v1 leftovers. Dry-run by default; re-run with FORCE=1 to apply."
 	@echo "  make bench-quick  - 5-10s directional smoke (N=50, no warm-up, stdout only) — pre-commit sanity"
@@ -489,6 +495,100 @@ remove-model:
 	sed -i 's|^export AZUREOPENAIMODEL=.*|export AZUREOPENAIMODEL="'"$$new_line"'"|' "$(ENV_FILE)"; \
 	echo "✓ Removed '$(MODEL)' from allowed models."; \
 	echo "  AZUREOPENAIMODEL=\"$$new_line\""
+
+## Show configured providers
+providers:
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "Error: $(ENV_FILE) not found. Run 'make setup-secrets' first." >&2; \
+		exit 1; \
+	fi
+	@echo "=== Azure OpenAI (primary) ==="
+	@endpoint=$$(grep '^export AZUREOPENAIENDPOINT=' "$(ENV_FILE)" | sed 's/^export AZUREOPENAIENDPOINT="//' | sed 's/"$$//'); \
+	model_line=$$(grep '^export AZUREOPENAIMODEL=' "$(ENV_FILE)" | sed 's/^export AZUREOPENAIMODEL="//' | sed 's/"$$//'); \
+	echo "  Endpoint: $${endpoint:-<not set>}"; \
+	echo "  Models:   $${model_line:-<not set>}"
+	@echo ""
+	@echo "=== Azure AI Foundry / GitHub Models (optional) ==="
+	@f_endpoint=$$(grep '^export AZURE_FOUNDRY_ENDPOINT=' "$(ENV_FILE)" | sed 's/^export AZURE_FOUNDRY_ENDPOINT="//' | sed 's/"$$//'); \
+	f_models=$$(grep '^export AZURE_FOUNDRY_MODELS=' "$(ENV_FILE)" | sed 's/^export AZURE_FOUNDRY_MODELS="//' | sed 's/"$$//'); \
+	if [ -n "$$f_endpoint" ]; then \
+		echo "  Endpoint: $$f_endpoint"; \
+		echo "  Models:   $${f_models:-<none>}"; \
+	else \
+		echo "  Not configured. Use 'make set-foundry ENDPOINT=... KEY=... MODELS=...' to enable."; \
+	fi
+
+## Configure Foundry/GitHub Models provider: make set-foundry ENDPOINT=https://... KEY=abc MODELS=gpt-4o,gpt-4.1
+set-foundry:
+	@if [ -z "$(ENDPOINT)" ] || [ -z "$(KEY)" ]; then \
+		echo "Usage: make set-foundry ENDPOINT=<url> KEY=<api-key> MODELS=<m1,m2,...>" >&2; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "Error: $(ENV_FILE) not found. Run 'make setup-secrets' first." >&2; \
+		exit 1; \
+	fi
+	@# Remove any existing commented or uncommented foundry lines
+	@sed -i '/^#\?export AZURE_FOUNDRY_ENDPOINT=/d' "$(ENV_FILE)"
+	@sed -i '/^#\?export AZURE_FOUNDRY_KEY=/d' "$(ENV_FILE)"
+	@sed -i '/^#\?export AZURE_FOUNDRY_MODELS=/d' "$(ENV_FILE)"
+	@# Remove the comment block about Foundry if present
+	@sed -i '/^# Azure AI Foundry/d' "$(ENV_FILE)"
+	@sed -i '/^# Models listed in AZURE_FOUNDRY_MODELS/d' "$(ENV_FILE)"
+	@sed -i '/^# of the Azure OpenAI endpoint/d' "$(ENV_FILE)"
+	@sed -i '/^# api-key auth (ADR-005)/d' "$(ENV_FILE)"
+	@# Append fresh entries
+	@echo '' >> "$(ENV_FILE)"
+	@echo '# Azure AI Foundry / GitHub Models (ADR-005)' >> "$(ENV_FILE)"
+	@echo 'export AZURE_FOUNDRY_ENDPOINT="$(ENDPOINT)"' >> "$(ENV_FILE)"
+	@echo 'export AZURE_FOUNDRY_KEY="$(KEY)"' >> "$(ENV_FILE)"
+	@echo 'export AZURE_FOUNDRY_MODELS="$(MODELS)"' >> "$(ENV_FILE)"
+	@echo "✓ Foundry provider configured in $(ENV_FILE)"
+	@echo "  Endpoint: $(ENDPOINT)"
+	@echo "  Models:   $(MODELS)"
+	@echo ""
+	@echo "Models in AZURE_FOUNDRY_MODELS will route through Foundry instead of Azure OpenAI."
+	@echo "Remember to also add them to AZUREOPENAIMODEL if you want allowlist enforcement."
+
+## Install hardened Espanso config for WSL Path B (Windows Espanso -> WSL -> az-ai).
+## Copies examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml to the Windows
+## Espanso match directory. Requires WSL with /mnt/c access.
+ESPANSO_WIN_DIR ?= /mnt/c/Users/$(shell cmd.exe /c "echo %USERNAME%" 2>/dev/null | tr -d '\r')/AppData/Roaming/espanso/match
+espanso-install:
+	@if [ ! -d "$(ESPANSO_WIN_DIR)" ]; then \
+		echo "Error: Espanso match dir not found at $(ESPANSO_WIN_DIR)." >&2; \
+		echo "  Is Espanso installed on Windows? Is WSL /mnt/c mounted?" >&2; \
+		exit 1; \
+	fi
+	@cp examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml "$(ESPANSO_WIN_DIR)/ai-wsl.yml"
+	@echo "✓ Installed ai-wsl.yml to $(ESPANSO_WIN_DIR)/ai-wsl.yml"
+	@echo "  Restart Espanso on Windows to pick up changes."
+
+## Verify Espanso can reach az-ai through the WSL boundary.
+## Simulates the exact PowerShell -> wsl.exe -> bash -lc -> az-ai chain.
+espanso-test:
+	@echo "Testing az-ai reachability from login shell..."
+	@bash -lc 'command -v az-ai' > /dev/null 2>&1 || { \
+		echo "FAIL: az-ai not found in login shell PATH." >&2; \
+		echo "  Run: make install" >&2; \
+		exit 1; \
+	}
+	@echo "  ✓ az-ai found at: $$(bash -lc 'command -v az-ai')"
+	@echo "Testing env vars load in login shell..."
+	@bash -lc 'test -n "$$AZUREOPENAIENDPOINT"' || { \
+		echo "FAIL: AZUREOPENAIENDPOINT not set in login shell." >&2; \
+		echo "  Ensure ~/.config/az-ai/env is sourced in ~/.profile" >&2; \
+		exit 1; \
+	}
+	@echo "  ✓ AZUREOPENAIENDPOINT set"
+	@echo "Testing env auto-load (clean env, no shell profile)..."
+	@env -i HOME=$(HOME) PATH="$(HOME)/.local/bin:/usr/local/bin:/usr/bin:/bin" \
+		az-ai --version > /dev/null 2>&1 || { \
+		echo "FAIL: az-ai --version failed with clean env." >&2; \
+		exit 1; \
+	}
+	@echo "  ✓ LoadConfigEnv works (auto-loads ~/.config/az-ai/env)"
+	@echo "All Espanso integration checks passed."
 
 ## Migrate-check: scan for stale v1 'az-ai' leftovers (shell rc files, binaries,
 ## Docker images). Read-only. Exits 0 if clean, 1 if anything stale is found,

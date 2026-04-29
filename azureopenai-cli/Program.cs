@@ -127,6 +127,12 @@ internal class Program
             // Load .env file if present (matches v1 behavior)
             DotEnv.Load(options: new DotEnvOptions(ignoreExceptions: true, probeForEnv: true));
 
+            // Also load ~/.config/az-ai/env if it exists — this is the canonical
+            // credential store written by setup-secrets.sh. Critical for contexts
+            // where the shell profile hasn't sourced it (Espanso, AHK, cron, etc.).
+            // The file uses shell syntax (export KEY="value") so we parse manually.
+            LoadConfigEnv();
+
             var opts = ParseArgs(args);
 
             // Initialize OpenTelemetry if --otel/--metrics/--telemetry flags (or AZ_TELEMETRY env) are set.
@@ -447,22 +453,15 @@ internal class Program
             }
         }
 
-        // Build chat client
+        // Build chat client — dispatches to Azure OpenAI or Foundry/GitHub Models
+        // based on endpoint env vars. See ADR-005.
         try
         {
-            // SECURITY-AUDIT-001 MEDIUM-002: HTTPS-only endpoint guard.
-            // Ported from v1 Program.cs:383-387 — reject non-HTTPS endpoints
-            // before client construction so API keys cannot be sent in cleartext.
-            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri)
-                || endpointUri.Scheme != "https")
+            var chatClient = BuildChatClient(endpoint, apiKey, model, opts.Json);
+            if (chatClient == null)
             {
-                return ErrorAndExit(
-                    $"Invalid endpoint URL: '{endpoint}'. Must be a valid HTTPS URL.",
-                    1, jsonMode: opts.Json);
+                return 1; // BuildChatClient already emitted the error
             }
-
-            var client = new AzureOpenAIClient(endpointUri, new ApiKeyCredential(apiKey));
-            var chatClient = client.GetChatClient(model).AsIChatClient();
 
             // System prompt for agent: persona override > opts.SystemPrompt.
             var baseSystem = effectiveSystemPrompt ?? opts.SystemPrompt;
@@ -1508,6 +1507,66 @@ internal class Program
     }
 
     /// <summary>
+    /// Load <c>~/.config/az-ai/env</c> if it exists. The file uses shell syntax
+    /// (<c>export KEY="value"</c>) so we parse manually rather than using dotenv.
+    /// Only sets env vars that are not already set (shell profile takes priority).
+    /// This ensures Espanso, AHK, cron, and other non-login-shell contexts can
+    /// find credentials without the user having to source the file.
+    /// </summary>
+    internal static void LoadConfigEnv()
+    {
+        var configEnvPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".config", "az-ai", "env");
+        LoadConfigEnvFrom(configEnvPath);
+    }
+
+    /// <summary>Testable overload that accepts a custom path.</summary>
+    internal static void LoadConfigEnvFrom(string path)
+    {
+        if (!File.Exists(path)) return;
+
+        try
+        {
+            foreach (var rawLine in File.ReadAllLines(path))
+            {
+                var line = rawLine.Trim();
+
+                // Skip comments and blank lines
+                if (line.Length == 0 || line[0] == '#') continue;
+
+                // Strip leading "export " if present
+                if (line.StartsWith("export ", StringComparison.Ordinal))
+                    line = line["export ".Length..];
+
+                var eq = line.IndexOf('=');
+                if (eq <= 0) continue;
+
+                var key = line[..eq].Trim();
+                var val = line[(eq + 1)..].Trim();
+
+                // Strip surrounding quotes
+                if (val.Length >= 2
+                    && ((val[0] == '"' && val[^1] == '"')
+                     || (val[0] == '\'' && val[^1] == '\'')))
+                {
+                    val = val[1..^1];
+                }
+
+                // Don't overwrite env vars already set (shell profile wins)
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+                {
+                    Environment.SetEnvironmentVariable(key, val);
+                }
+            }
+        }
+        catch
+        {
+            // Silent by contract -- same as DotEnv ignoreExceptions
+        }
+    }
+
+    /// <summary>
     /// Parse <c>AZUREOPENAIMODEL</c> as a comma-separated list.
     /// First entry is the default model; all entries form the allowed set.
     /// When only one model is listed (or env is unset), returns a null
@@ -1526,6 +1585,146 @@ internal class Program
 
         var allowed = new HashSet<string>(parts, StringComparer.OrdinalIgnoreCase);
         return (defaultModel, allowed);
+    }
+
+    /// <summary>
+    /// Parse <c>AZURE_FOUNDRY_MODELS</c> as a comma-separated set of model names
+    /// that should be routed to the Foundry/GitHub Models endpoint instead of
+    /// Azure OpenAI. Returns null if the env var is unset.
+    /// </summary>
+    internal static HashSet<string>? ParseFoundryModels()
+    {
+        var raw = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_MODELS");
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+
+        var parts = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length > 0
+            ? new HashSet<string>(parts, StringComparer.OrdinalIgnoreCase)
+            : null;
+    }
+
+    /// <summary>
+    /// ADR-005 provider dispatch. Constructs the appropriate <see cref="IChatClient"/>
+    /// based on environment configuration:
+    /// <list type="bullet">
+    ///   <item><b>Foundry path</b>: when <c>AZURE_FOUNDRY_ENDPOINT</c> is set AND the model
+    ///     is in <c>AZURE_FOUNDRY_MODELS</c>, routes through the Foundry/GitHub Models
+    ///     endpoint using <see cref="FoundryAuthPolicy"/>.</item>
+    ///   <item><b>Azure OpenAI path</b> (default): uses <c>AzureOpenAIClient</c> with the
+    ///     standard <c>AZUREOPENAIENDPOINT</c>.</item>
+    /// </list>
+    /// Returns null if the endpoint is invalid (error already emitted).
+    /// </summary>
+    internal static IChatClient? BuildChatClient(string endpoint, string apiKey, string model, bool jsonMode)
+    {
+        // Check if this model should route to Foundry/GitHub Models
+        var foundryEndpoint = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_ENDPOINT");
+        var foundryKey = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_KEY");
+        var foundryModels = ParseFoundryModels();
+
+        bool useFoundry = !string.IsNullOrWhiteSpace(foundryEndpoint)
+            && foundryModels != null
+            && foundryModels.Contains(model, StringComparer.OrdinalIgnoreCase);
+
+        if (useFoundry)
+        {
+            // Foundry/GitHub Models path (ADR-005): OpenAI wire protocol with
+            // api-key header auth + api-version query param.
+            if (!Uri.TryCreate(foundryEndpoint, UriKind.Absolute, out var foundryUri)
+                || (foundryUri.Scheme != "https" && foundryUri.Scheme != "http"))
+            {
+                ErrorAndExit(
+                    $"Invalid Foundry endpoint URL: '{foundryEndpoint}'. Must be a valid HTTPS URL.",
+                    1, jsonMode: jsonMode);
+                return null;
+            }
+
+            // SECURITY: allow http:// only for localhost (local model servers)
+            if (foundryUri.Scheme == "http" && !IsLoopback(foundryUri))
+            {
+                ErrorAndExit(
+                    $"HTTP endpoint '{foundryEndpoint}' is only allowed for localhost. Use HTTPS for remote endpoints.",
+                    1, jsonMode: jsonMode);
+                return null;
+            }
+
+            var effectiveKey = !string.IsNullOrWhiteSpace(foundryKey) ? foundryKey : apiKey;
+            var options = new OpenAI.OpenAIClientOptions { Endpoint = foundryUri };
+            options.AddPolicy(new FoundryAuthPolicy(effectiveKey, "2024-05-01-preview"),
+                System.ClientModel.Primitives.PipelinePosition.PerCall);
+            return new ChatClient(model, new ApiKeyCredential(effectiveKey), options).AsIChatClient();
+        }
+
+        // Default: Azure OpenAI path
+        // SECURITY-AUDIT-001 MEDIUM-002: HTTPS-only endpoint guard.
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri)
+            || endpointUri.Scheme != "https")
+        {
+            ErrorAndExit(
+                $"Invalid endpoint URL: '{endpoint}'. Must be a valid HTTPS URL.",
+                1, jsonMode: jsonMode);
+            return null;
+        }
+
+        var client = new AzureOpenAIClient(endpointUri, new ApiKeyCredential(apiKey));
+        return client.GetChatClient(model).AsIChatClient();
+    }
+
+    /// <summary>Returns true if the URI points to a loopback address.</summary>
+    private static bool IsLoopback(Uri uri)
+    {
+        var host = uri.Host;
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return true;
+        if (host == "127.0.0.1" || host == "::1" || host == "[::1]") return true;
+        return false;
+    }
+
+    /// <summary>
+    /// ADR-005 pipeline policy for Foundry/GitHub Models endpoints.
+    /// Swaps OpenAI SDK's <c>Authorization: Bearer</c> for <c>api-key:</c> header
+    /// and appends <c>api-version</c> to the query string. Required because
+    /// Azure AI Foundry uses the same OpenAI wire protocol but different auth headers.
+    /// </summary>
+    internal sealed class FoundryAuthPolicy : System.ClientModel.Primitives.PipelinePolicy
+    {
+        private readonly string _apiKey;
+        private readonly string _apiVersion;
+
+        internal FoundryAuthPolicy(string apiKey, string apiVersion)
+        {
+            _apiKey = apiKey;
+            _apiVersion = apiVersion;
+        }
+
+        public override void Process(
+            System.ClientModel.Primitives.PipelineMessage message,
+            IReadOnlyList<System.ClientModel.Primitives.PipelinePolicy> pipeline,
+            int currentIndex)
+        {
+            Apply(message);
+            ProcessNext(message, pipeline, currentIndex);
+        }
+
+        public override async ValueTask ProcessAsync(
+            System.ClientModel.Primitives.PipelineMessage message,
+            IReadOnlyList<System.ClientModel.Primitives.PipelinePolicy> pipeline,
+            int currentIndex)
+        {
+            Apply(message);
+            await ProcessNextAsync(message, pipeline, currentIndex).ConfigureAwait(false);
+        }
+
+        private void Apply(System.ClientModel.Primitives.PipelineMessage message)
+        {
+            var req = message.Request;
+            req.Headers.Set("api-key", _apiKey);
+            req.Headers.Remove("Authorization");
+            if (req.Uri is Uri uri && !uri.Query.Contains("api-version=", StringComparison.OrdinalIgnoreCase))
+            {
+                var sep = string.IsNullOrEmpty(uri.Query) ? "?" : "&";
+                req.Uri = new Uri(uri.AbsoluteUri + sep + "api-version=" + _apiVersion);
+            }
+        }
     }
 
     /// <summary>
@@ -1852,10 +2051,14 @@ complete -c az-ai -w az-ai
         if (allowedModels != null)
         {
             Console.WriteLine("Allowed models (from AZUREOPENAIMODEL):");
+            var foundryModels = ParseFoundryModels();
             foreach (var m in allowedModels.OrderBy(m => m, StringComparer.Ordinal))
             {
                 var marker = string.Equals(m, envDefault, StringComparison.OrdinalIgnoreCase) ? " (default)" : "";
-                Console.WriteLine($"  {m}{marker}");
+                var provider = foundryModels != null && foundryModels.Contains(m, StringComparer.OrdinalIgnoreCase)
+                    ? " [Foundry]"
+                    : " [Azure OpenAI]";
+                Console.WriteLine($"  {m}{marker}{provider}");
             }
             Console.WriteLine();
         }
@@ -1863,6 +2066,19 @@ complete -c az-ai -w az-ai
         {
             Console.WriteLine($"Active model (from AZUREOPENAIMODEL): {envDefault}");
             Console.WriteLine("  Tip: add more comma-separated models to enforce an allowlist.");
+            Console.WriteLine();
+        }
+
+        // Show Foundry config status
+        var foundryEndpoint = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_ENDPOINT");
+        if (!string.IsNullOrWhiteSpace(foundryEndpoint))
+        {
+            var foundryModelSet = ParseFoundryModels();
+            Console.WriteLine($"Foundry endpoint: {foundryEndpoint}");
+            if (foundryModelSet != null && foundryModelSet.Count > 0)
+                Console.WriteLine($"Foundry models:   {string.Join(", ", foundryModelSet.OrderBy(m => m, StringComparer.Ordinal))}");
+            else
+                Console.WriteLine("Foundry models:   <none configured>");
             Console.WriteLine();
         }
 

@@ -32,9 +32,12 @@ internal static class ShellExecTool
     private static readonly string[] SensitiveEnvVars = new[]
     {
         "AZURE_OPENAI_API_KEY",
-        "AZUREOPENAIAPI",      // this repo's convention — see project memory
+        "AZUREOPENAIAPI",      // this repo's convention -- see project memory
         "AZUREOPENAIENDPOINT",
         "AZUREOPENAIMODEL",
+        "AZURE_FOUNDRY_ENDPOINT",
+        "AZURE_FOUNDRY_KEY",
+        "AZURE_FOUNDRY_MODELS",
         "GITHUB_TOKEN",
         "GH_TOKEN",
         "OPENAI_API_KEY",
