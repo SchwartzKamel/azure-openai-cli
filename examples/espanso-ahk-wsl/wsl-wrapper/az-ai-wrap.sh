@@ -8,8 +8,12 @@
 #
 # This wrapper sources ~/.bashrc if the vars aren't already set, then execs
 # az-ai with all arguments forwarded. Stdin/stdout/stderr pass through
-# unchanged — the caller is still responsible for `--raw` and stderr
+# unchanged -- the caller is still responsible for `--raw` and stderr
 # redirection.
+#
+# NOTE (v2.1.1+): az-ai now auto-loads ~/.config/az-ai/env at startup.
+# If you store credentials there instead of ~/.bashrc, this wrapper is
+# unnecessary -- call az-ai directly from your Espanso/AHK configs.
 #
 # Install:
 #   sudo install -m 0755 az-ai-wrap.sh /usr/local/bin/az-ai-wrap

@@ -90,12 +90,68 @@ local users on shared machines.
 
 ---
 
+## Environment variables
+
+The CLI reads these environment variables at startup. See
+[Prerequisites](prerequisites.md) for the quick-start setup.
+
+### Core (Azure OpenAI)
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `AZUREOPENAIENDPOINT` | **yes** | Azure OpenAI resource URL |
+| `AZUREOPENAIAPI` | **yes** | API key (note: **not** `KEY`) |
+| `AZUREOPENAIMODEL` | **yes** | Default model deployment. Supports **comma-separated** values: first = default, rest = allowed set. When only one model is listed, no allowlist is enforced. Example: `gpt-5.4-nano,gpt-4o-mini,gpt-4o` |
+
+### Foundry / GitHub Models routing
+
+These variables enable dual-provider routing (ADR-005). When configured,
+requests for specific models are sent to the Foundry endpoint instead of
+Azure OpenAI.
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `AZURE_FOUNDRY_ENDPOINT` | no | Foundry / GitHub Models endpoint URL. When set (along with `AZURE_FOUNDRY_MODELS`), enables the Foundry routing path. |
+| `AZURE_FOUNDRY_KEY` | no | API key for the Foundry endpoint. Falls back to `AZUREOPENAIAPI` if unset. |
+| `AZURE_FOUNDRY_MODELS` | no | Comma-separated list of model names to route through Foundry instead of Azure OpenAI. Only models in this list are sent to the Foundry endpoint; all others use Azure OpenAI. |
+
+### Auto-loaded env file (`~/.config/az-ai/env`)
+
+At startup the CLI automatically loads `~/.config/az-ai/env` if it
+exists. The file uses shell `export KEY="value"` syntax:
+
+```bash
+# ~/.config/az-ai/env -- auto-loaded by az-ai at startup
+export AZUREOPENAIENDPOINT="https://my-resource.openai.azure.com/"
+export AZUREOPENAIAPI="ab12cd34ef56..."
+export AZUREOPENAIMODEL="gpt-4o"
+
+# Optional Foundry routing
+export AZURE_FOUNDRY_ENDPOINT="https://models.inference.ai.azure.com"
+export AZURE_FOUNDRY_MODELS="gpt-5.4-nano,o3-mini"
+```
+
+**Behavior:**
+
+- Variables already set in your shell are **not** overwritten (shell
+  profile wins).
+- Comments (`#`) and blank lines are ignored.
+- Surrounding single or double quotes on values are stripped.
+- Loading is silent -- a missing or unreadable file is not an error.
+
+This is especially useful in contexts where the shell profile hasn't run
+(Espanso, AHK, cron, systemd). The file is written by `setup-secrets.sh`
+but can be created or edited manually.
+
+---
+
 ## Precedence
 
 When resolving a setting, the CLI checks, in order (first wins):
 
 1. **CLI flag** -- e.g., `--model`, `--temperature`, `--max-tokens`
 2. **Environment variable** -- e.g., `AZUREOPENAIMODEL` for the model name
+   (includes vars loaded from `~/.config/az-ai/env`)
 3. **Project-local config** -- `./.azureopenai-cli.json`
 4. **User-global config** -- `~/.azureopenai-cli.json`
 5. **Built-in default** -- `gpt-4o-mini` for model, provider defaults for rest
@@ -254,9 +310,20 @@ this config file consistently across both hosts.
 ## Security notes
 
 - **Never put your API key or endpoint in this file.** Use the
-  `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` environment variables.
+  `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` environment variables
+  (or `~/.config/az-ai/env`).
   The CLI intentionally provides no config-file slot for credentials
   -- config files get committed, shared, or synced; env vars don't.
+- **`~/.config/az-ai/env` should be chmod `0600`.**
+  `setup-secrets.sh` sets this automatically. If you create the file
+  manually, run `chmod 600 ~/.config/az-ai/env` to keep credentials
+  owner-only.
+- **`shell_exec` scrubs sensitive env vars** from child processes.
+  All six credential variables (`AZUREOPENAIAPI`, `AZUREOPENAIENDPOINT`,
+  `AZUREOPENAIMODEL`, `AZURE_FOUNDRY_ENDPOINT`, `AZURE_FOUNDRY_KEY`,
+  `AZURE_FOUNDRY_MODELS`) plus `GITHUB_TOKEN`, `GH_TOKEN`,
+  `OPENAI_API_KEY`, and `ANTHROPIC_API_KEY` are removed from the
+  child environment so an LLM-crafted `printenv` cannot leak them.
 - **`system_prompt` is not secret.** It's echoed by `--config show`
   and included in request bodies that can be captured by Fiddler /
   Wireshark / network telemetry. Treat it as public.

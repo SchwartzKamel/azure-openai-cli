@@ -1,6 +1,6 @@
 # ADR-005 -- Azure AI Foundry endpoint routing
 
-**Status**: 🟡 Proposed  
+**Status**: 🟢 Implemented (commit `23be25f`)  
 **Date**: 2026-04-20  
 **Deciders**: Costanza (product), Kramer (engineering), Morty (FinOps), The Maestro (prompts)  
 **Supersedes**: none  
@@ -49,7 +49,7 @@ Existing `gpt-5.4-nano` / `gpt-4o-mini` users see zero diff: they don't set `AZU
 
 ### Negative
 
-- **Hard-coded model list**: updating the Foundry-routable models requires a code change. Mitigated by documenting the list in code comments + adding to CONTRIBUTING.md.
+- **~~Hard-coded model list~~**: *(resolved)* `AZURE_FOUNDRY_MODELS` env var makes the list user-configurable; no code change needed to add models.
 - **Query-string URL binding**: if Foundry changes the api-version or URL structure, we re-bind at constructor. Small maintenance burden.
 - **No AAD support for Foundry in v1**: only API-key auth. AAD + Foundry ships under MAF in v2. Document as a known limitation.
 
@@ -83,5 +83,21 @@ These belong in `docs/spikes/phi-bench.md`, not in this ADR decision:
 5. Prompt-tuning ROI? (Does a tweaked system prompt improve Phi instruction-following on benchmark set?)
 
 ---
+
+## Implementation notes (post-`23be25f`)
+
+The following deviations from the original proposal emerged during implementation.
+All are positive refinements; none change the spirit of the decision.
+
+| ADR claim | Actual implementation | Verdict |
+|---|---|---|
+| Hard-coded model list (`Phi-4-mini-instruct`, etc.) | `AZURE_FOUNDRY_MODELS` env var (user-configurable, comma-separated) | **Better** -- no code change to add models |
+| Routing in `ValidateConfiguration()` | `BuildChatClient()` factory dispatches to Azure OpenAI or Foundry | Equivalent -- cleaner separation of concerns |
+| Bake `api-version` into URL query string | `FoundryAuthPolicy` pipeline policy appends `api-version` AND swaps `Authorization: Bearer` to `api-key:` header | **Better** -- SDK-idiomatic, handles auth header swap |
+| Single API key only | `AZURE_FOUNDRY_KEY` env var supports a separate Foundry key; falls back to `AZUREOPENAIAPI` | **Better** -- supports distinct credentials per provider |
+| *(not mentioned)* | HTTP-only endpoint allowed exclusively for localhost (local model servers) | Security hardening addition |
+| *(not mentioned)* | `ShellExecTool` scrubs `AZURE_FOUNDRY_*` env vars from child processes | Security hardening addition |
+| ~50-80 LOC | ~100 LOC (`BuildChatClient` + `FoundryAuthPolicy` + `ParseFoundryModels`) | Slightly larger; auth policy accounts for the delta |
+| "Hard-coded model list" negative consequence | No longer applies -- model list is env-var-driven | Resolved |
 
 **Morty's sign-off**: "Phi-4-mini-instruct is the first serious Phi contender. Until Foundry routing lands in Program.cs, the gpt-4o-mini default stands by default-of-default. Ship this. Then we measure."

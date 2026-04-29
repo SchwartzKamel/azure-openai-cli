@@ -12,6 +12,10 @@
 #     goes to $null; Espanso only sees clean stdout.
 #   * UTF-8 is forced for PowerShell output to avoid UTF-16 mojibake.
 #
+# Since v2.1.1, az-ai auto-loads ~/.config/az-ai/env at startup, so the
+# wrapper (az-ai-wrap) is only needed if you keep creds exclusively in
+# ~/.bashrc. If you use ~/.config/az-ai/env, you can call az-ai directly.
+#
 # Expected latency: ~3 s per trigger (Azure round-trip + ~30–90 ms WSL hop).
 
 matches:
@@ -122,5 +126,5 @@ matches:
             wsl.exe -e bash -c 'CLIP=$(cat | tr -d \"\\r\");
             printf %s \"$CLIP\" | az-ai-wrap --raw --persona reviewer --max-tokens 500 2>/dev/null ||
             printf %s \"$CLIP\" | az-ai-wrap --raw --max-tokens 500 --temperature 0.3
-            --system ''You are a senior code reviewer. Identify bugs, security issues, and design problems. Be concise, specific, and actionable. Use bullet points. Output ONLY the review.''
+            --system ''You are a senior code reviewer. Identify bugs, security issues, and design problems in the following code. Be concise, specific, and actionable. Use bullet points. Output ONLY the review.''
             2>/dev/null'" 2>NUL

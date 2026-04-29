@@ -15,6 +15,8 @@ several focused files rather than a single monolith. Start here:
 | Migration guide (v1 → v2 flags, env vars, exit codes) | [`docs/migration-v1-to-v2.md`](docs/migration-v1-to-v2.md) |
 | Use-case walkthroughs (standard, `--agent`, Ralph, Squad, config) | [`docs/use-cases.md`](docs/use-cases.md) and siblings (`use-cases-agent.md`, `use-cases-ralph-squad.md`, `use-cases-standard.md`, `use-cases-config-integration.md`) |
 | Configuration reference (env vars, `~/.azureopenai-cli.json`, precedence) | [`docs/config-reference.md`](docs/config-reference.md) |
+| Provider routing (Azure OpenAI vs Foundry dispatch) | [`docs/adr/ADR-005-foundry-routing.md`](docs/adr/ADR-005-foundry-routing.md) |
+| Model resolution chain (allowlist, aliases, fallback) | [`docs/adr/ADR-009-default-model-resolution.md`](docs/adr/ADR-009-default-model-resolution.md) |
 | Security posture, threat model, vulnerability reporting | [`SECURITY.md`](SECURITY.md) and [`docs/security/`](docs/security/) |
 | Observability, logs, metrics, OTEL wiring | [`docs/observability.md`](docs/observability.md) |
 | AOT / trim investigation, binary-size budget | [`docs/aot-trim-investigation.md`](docs/aot-trim-investigation.md) |
@@ -31,10 +33,24 @@ several focused files rather than a single monolith. Start here:
   image at `ghcr.io/schwartzkamel/azure-openai-cli/az-ai`. macOS Intel
   (`osx-x64`) is no longer in the release matrix as of v2.0.4 -- see
   [`CHANGELOG.md`](CHANGELOG.md).
-- **Credentials:** `.env` is **never baked into images**. It is injected at
-  runtime via `--env-file` or bind-mount. See
-  [`SECURITY.md`](SECURITY.md) §Credential handling and
+- **Startup sequence:** `DotEnv.Load()` → `LoadConfigEnv()`
+  (`~/.config/az-ai/env`, shell `export KEY="value"` format, does not
+  overwrite existing env vars) → arg parsing → telemetry init → `RunAsync`.
+- **Credentials:** `.env` and `~/.config/az-ai/env` supply credentials at
+  runtime. Neither is baked into images; inject via `--env-file` or
+  bind-mount. See [`SECURITY.md`](SECURITY.md) §Credential handling and
   [`README.md`](README.md) §Security.
+- **Client construction:** `BuildChatClient()` (Program.cs) is a factory
+  that dispatches to **Azure OpenAI** (`AzureOpenAIClient`) or **Foundry**
+  (`OpenAI.ChatClient` + `FoundryAuthPolicy`) based on env vars.
+  `AZURE_FOUNDRY_ENDPOINT` + `AZURE_FOUNDRY_MODELS` opt a model into the
+  Foundry path; everything else stays on Azure OpenAI. See
+  [ADR-005](docs/adr/ADR-005-foundry-routing.md).
+- **Model resolution:** CLI flag → `AZUREOPENAIMODEL` (comma-separated;
+  first = default, all = allowlist) → `UserConfig.ResolveSmartDefault()` →
+  hardcoded fallback (`gpt-4o-mini`). Allowlist is enforced when multiple
+  models are configured. See
+  [ADR-009](docs/adr/ADR-009-default-model-resolution.md).
 - **Agent framework:** v2 uses **Microsoft Agent Framework**
   (`Microsoft.Agents.AI`) in-process for tool-calling and Ralph
   iterations -- it does **not** shell out to child CLIs via `Process.Start`

@@ -11,9 +11,10 @@
 2. [Prerequisites](#prerequisites)
 3. [Espanso Configuration](#espanso-configuration) -- Linux / macOS / Windows / **WSL**
 4. [AutoHotKey Configuration](#autohotkey-configuration)
-5. [Performance Tips](#performance-tips)
-6. [Troubleshooting](#troubleshooting)
-7. [Advanced: Persona Integration](#advanced-persona-integration)
+5. [Loading Placeholder](#loading-placeholder) -- "yada yada yada" visual feedback
+6. [Performance Tips](#performance-tips)
+7. [Troubleshooting](#troubleshooting)
+8. [Advanced: Persona Integration](#advanced-persona-integration)
 
 ---
 
@@ -99,6 +100,8 @@ make alias
 | `AZUREOPENAIMODEL`    | default deployment name (e.g. `gpt-4o-mini`)     |
 
 **Never put these in `.azureopenai-cli.json`** -- that file is for model aliases and defaults, not credentials. Config files get committed, synced to OneDrive, or shared across a team; environment variables don't. See [`docs/config-reference.md`](./config-reference.md#security-notes).
+
+> **v2.0.6+: Auto-load from `~/.config/az-ai/env`.** The `az-ai` binary now calls `LoadConfigEnv()` at startup, which reads `~/.config/az-ai/env` (shell `export KEY="value"` syntax) and sets any env vars that aren't already present. This means Espanso and AHK invocations no longer *strictly* need `bash -lc` or `source ~/.bashrc` to find credentials -- the binary finds them itself. `bash -lc` remains recommended (it also resolves PATH), but if credentials are in `~/.config/az-ai/env`, they'll load even from a bare `wsl.exe -e az-ai` invocation. Run `make setup-secrets` to create this file, or see [`docs/config-reference.md`](./config-reference.md#auto-loaded-env-file-configaz-aienv) for the format.
 
 #### Linux / macOS / WSL -- secure storage
 
@@ -259,6 +262,8 @@ echo "test" | az-ai --raw
 
 You should see a short AI response with no spinner, no decorations, no trailing newline. If this works, you're ready for integration.
 
+**WSL users:** Run `make espanso-test` to verify the full Espanso integration chain -- it checks that `az-ai` is on PATH in a login shell, that env vars are present, and that `LoadConfigEnv` can auto-load `~/.config/az-ai/env` even without a shell profile.
+
 ---
 
 ## Espanso Configuration
@@ -360,6 +365,10 @@ matches:
           cmd: "xclip -selection clipboard -o | az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'"
 ```
 
+> **⚠️ Quote-safety warning for the `:ai` form trigger.** The basic config above passes `{{form1.prompt}}` as a shell argument inside single quotes. If the user types a prompt containing a literal single quote (e.g. `don't`), the shell command breaks. The clipboard-based triggers (`:aifix`, `:aiemail`, etc.) are safe because input arrives via stdin pipe. For a hardened `:ai` trigger that pipes form input via a heredoc (immune to metacharacters), see the reference config in [`examples/espanso-ahk-wsl/espanso/ai.yml`](../examples/espanso-ahk-wsl/espanso/ai.yml).
+
+> **Loading placeholder available.** The example configs in `examples/` include a "yada yada yada" loading placeholder that shows visual feedback while `az-ai` processes. See the [Loading Placeholder](#loading-placeholder) section for details.
+
 ### macOS Variants
 
 macOS uses `pbpaste` instead of `xclip`. Replace the clipboard command in each trigger:
@@ -408,6 +417,8 @@ matches:
         params:
           cmd: "pbpaste | az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'"
 ```
+
+> **Loading placeholder available.** On macOS, the placeholder uses `osascript` to inject keystrokes via System Events, which requires **Accessibility permission** for your terminal or Espanso. See [Loading Placeholder](#loading-placeholder) for the full pattern.
 
 ### Windows Variants
 
@@ -508,6 +519,8 @@ If you *really* want to skip the login shell (say, to shave another 3-5 ms): put
 
 Drop this into `%APPDATA%\espanso\match\ai-wsl.yml` -- it mirrors the Linux trigger set 1:1 (`:ai`, `:aifix`, `:aiemail`, `:aiexplain`, `:aisum`, `:aien`, `:aishort`, `:aicommit`), routed through PowerShell → `wsl.exe` → the Linux AOT binary:
 
+> **Hardened reference config available.** The config below is the simple `shell: powershell` version for readability. The production-hardened version in [`examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml`](../examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml) goes further: it pipes form input via stdin (heredoc), forces `[Console]::OutputEncoding` to UTF-8, and suppresses stderr at every layer. Use `make espanso-install` to deploy it directly to your Windows Espanso match directory.
+
 ```yaml
 # %APPDATA%\espanso\match\ai-wsl.yml
 # Windows Espanso → WSL → AOT az-ai (Path B)
@@ -602,6 +615,8 @@ matches:
           cmd: "Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'\""
           shell: powershell
 ```
+
+> **Loading placeholder available.** The example configs in `examples/` include a "yada yada yada" loading placeholder that shows visual feedback while `az-ai` processes. On Windows/WSL this uses `SendKeys`. See [Loading Placeholder](#loading-placeholder) for details.
 
 **Gotchas -- read these before you spend an hour debugging:**
 
@@ -795,6 +810,59 @@ AiTransform(text, systemPrompt, extraFlags := "") {
 
 ---
 
+## Loading Placeholder
+
+### The Problem
+
+When you type a trigger like `:aifix`, there's a 2-3 second gap while `az-ai` calls Azure OpenAI, streams the response, and hands it back to Espanso. During that gap you see... nothing. No spinner, no cursor change, no feedback. It looks like the trigger didn't fire.
+
+### The "Yada Yada Yada" Solution
+
+The example configs in `examples/` include an optional **loading placeholder** pattern: while `az-ai` processes the request, the text `yada yada yada` appears at the cursor position. When the real response arrives, the placeholder is backspaced away and replaced with actual output. (The name is on-brand -- this project names its [agent fleet](../AGENTS.md) after Seinfeld characters.)
+
+The flow is:
+
+1. **Type placeholder** -- use an OS-level keystroke API to inject `yada yada yada` at the cursor
+2. **Run `az-ai`** -- capture the real response into a variable
+3. **Clear placeholder** -- send enough `BackSpace` keystrokes to erase the placeholder text
+4. **Espanso pastes** -- the real response replaces the trigger as normal
+
+### Platform-Specific Mechanism
+
+| Platform | Type placeholder | Clear placeholder | Requirement |
+|----------|-----------------|-------------------|-------------|
+| Windows (PowerShell) | `[System.Windows.Forms.SendKeys]::SendWait($ph)` | `[System.Windows.Forms.SendKeys]::SendWait("{BS N}")` | `System.Windows.Forms` (built-in) |
+| Linux (X11) | `xdotool type --clearmodifiers "$ph"` | `xdotool key --repeat N BackSpace` | `xdotool` package |
+| Linux (Wayland) | `wtype "$ph"` | `wtype -k BackSpace` (xN) | `wtype` package |
+| macOS | `osascript -e 'tell app "System Events" to keystroke "$ph"'` | `osascript -e '... key code 51'` (xN) | Accessibility permission |
+
+Where `$ph` is the placeholder string (default `yada yada yada`, 14 characters) and `N` is its length.
+
+### Example (Linux / X11)
+
+```bash
+#!/usr/bin/env bash
+# Wrapper: type placeholder → run az-ai → clear placeholder → print result
+ph="yada yada yada"
+xdotool type --clearmodifiers "$ph"
+result=$(xclip -selection clipboard -o | az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.')
+xdotool key --repeat ${#ph} BackSpace
+echo "$result"
+```
+
+Use this as the `cmd:` in your Espanso trigger, or call it from a wrapper script.
+
+### Customization
+
+- **Change the placeholder text:** edit the `ph` variable. Any string works -- `yada yada yada` is just the default.
+- **Disable the placeholder entirely:** remove the `xdotool` / `osascript` / `SendKeys` lines. The trigger works the same, just without visual feedback.
+
+> **Wayland note:** `xdotool` does not work under Wayland compositors. Use [`wtype`](https://github.com/atx/wtype) instead: `wtype "$ph"` to type, `wtype -k BackSpace` repeated N times to clear. Most distros package it as `wtype`.
+
+> **macOS note:** The `osascript` keystroke injection requires **Accessibility permission** for your terminal (or Espanso itself) in System Settings > Privacy & Security > Accessibility. Without it, the placeholder won't appear.
+
+---
+
 ## Performance Tips
 
 ### 1. Always Use `--raw`
@@ -913,6 +981,15 @@ If you installed via `make alias`, consider switching to a native binary for exp
 
 **Cause:** Espanso spawns a new shell that doesn't inherit your `.bashrc`/`.zshrc` environment.
 
+**Quickest fix (v2.0.6+):** If your credentials are in `~/.config/az-ai/env`, `az-ai` auto-loads them at startup via `LoadConfigEnv()` -- no shell profile required. Run `make setup-secrets` to create this file. Verify with:
+
+```bash
+# Simulates a bare invocation with no shell profile (exactly what Espanso does)
+env -i HOME=$HOME PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin" az-ai --version
+```
+
+If that works, your Espanso triggers will too. If you also need env vars visible to *other* tools, use the shell-profile options below.
+
 **Fix (Linux):** Set env vars in `~/.profile` or `/etc/environment` (these are read by login shells and most desktop environments):
 
 ```bash
@@ -1010,6 +1087,9 @@ xclip -selection clipboard -o | az-ai --raw --system "Repeat this text exactly."
 # 5. Does clipboard piping work? (macOS)
 echo "test text" | pbcopy
 pbpaste | az-ai --raw --system "Repeat this text exactly."
+
+# 6. Full WSL integration check (binary + env vars + LoadConfigEnv)
+make espanso-test
 ```
 
 ---

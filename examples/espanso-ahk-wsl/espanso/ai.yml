@@ -9,7 +9,24 @@
 #     is not expanded by the shell.
 #   * Clipboard read uses a fallback chain: wl-paste → xclip → PowerShell.
 #
+# Since v2.1.1, az-ai auto-loads ~/.config/az-ai/env at startup (env vars
+# that aren't already set). This means non-login-shell contexts (Espanso,
+# cron, systemd) find credentials without a wrapper or profile hook.
+#
 # Expected latency: 2–3 s per trigger in steady state (Azure round-trip).
+#
+# Placeholder while processing ("yada yada yada"):
+#   Each trigger types a visible placeholder into the active text field via
+#   xdotool while az-ai processes the request, then backspaces over it before
+#   Espanso pastes the real response. This gives the user immediate feedback
+#   that the trigger fired. The backspace count uses ${#ph} so changing the
+#   placeholder string only requires editing one line.
+#
+#   Wayland note: xdotool does not work under Wayland compositors. Install
+#   `wtype` (https://github.com/atx/wtype) and replace the two xdotool lines:
+#     xdotool type --clearmodifiers "$ph"  →  wtype "$ph"
+#     xdotool key --repeat ${#ph} BackSpace  →  wtype -k BackSpace -s 50 (×${#ph})
+#   A loop works: for i in $(seq 1 ${#ph}); do wtype -k BackSpace; done
 
 matches:
 
@@ -32,9 +49,15 @@ matches:
         params:
           shell: bash
           cmd: |
-            az-ai --raw 2>/dev/null <<'__AZ_AI_EOF__'
+            ph='yada yada yada'
+            xdotool type --clearmodifiers "$ph"
+            response=$(az-ai --raw 2>/dev/null <<'__AZ_AI_EOF__'
             {{form1.prompt}}
             __AZ_AI_EOF__
+            )
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            printf '%s' "$response"
 
   # ── :aifix — grammar/spelling fix on clipboard ─────────────────────────
   - trigger: ":aifix"
@@ -45,13 +68,18 @@ matches:
         params:
           shell: bash
           cmd: |
-            { wl-paste 2>/dev/null \
+            ph='yada yada yada'
+            xdotool type --clearmodifiers "$ph"
+            response=$({ wl-paste 2>/dev/null \
               || xclip -selection clipboard -o 2>/dev/null \
               || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
             | tr -d '\r' \
             | az-ai --raw --max-tokens 500 --temperature 0.3 \
                 --system 'Fix grammar and spelling. Preserve meaning, tone, and formatting. Output ONLY the corrected text, nothing else.' \
-                2>/dev/null
+                2>/dev/null)
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            printf '%s' "$response"
 
   # ── :aiexp — explain clipboard contents (code or prose) ────────────────
   - trigger: ":aiexp"
@@ -62,13 +90,18 @@ matches:
         params:
           shell: bash
           cmd: |
-            { wl-paste 2>/dev/null \
+            ph='yada yada yada'
+            xdotool type --clearmodifiers "$ph"
+            response=$({ wl-paste 2>/dev/null \
               || xclip -selection clipboard -o 2>/dev/null \
               || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
             | tr -d '\r' \
             | az-ai --raw --max-tokens 300 --temperature 0.4 \
                 --system 'Explain the following clearly in 2-3 sentences. If it is code, be precise and technical. Output ONLY the explanation, no preamble.' \
-                2>/dev/null
+                2>/dev/null)
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            printf '%s' "$response"
 
   # ── :aitldr — 2-sentence summary of clipboard ──────────────────────────
   - trigger: ":aitldr"
@@ -79,13 +112,18 @@ matches:
         params:
           shell: bash
           cmd: |
-            { wl-paste 2>/dev/null \
+            ph='yada yada yada'
+            xdotool type --clearmodifiers "$ph"
+            response=$({ wl-paste 2>/dev/null \
               || xclip -selection clipboard -o 2>/dev/null \
               || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
             | tr -d '\r' \
             | az-ai --raw --max-tokens 150 --temperature 0.4 \
                 --system 'Summarize in exactly 2 sentences. Be concise. Output ONLY the summary.' \
-                2>/dev/null
+                2>/dev/null)
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            printf '%s' "$response"
 
   # ── :airw — rewrite clipboard more professionally ──────────────────────
   - trigger: ":airw"
@@ -96,13 +134,18 @@ matches:
         params:
           shell: bash
           cmd: |
-            { wl-paste 2>/dev/null \
+            ph='yada yada yada'
+            xdotool type --clearmodifiers "$ph"
+            response=$({ wl-paste 2>/dev/null \
               || xclip -selection clipboard -o 2>/dev/null \
               || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
             | tr -d '\r' \
             | az-ai --raw --max-tokens 600 --temperature 0.5 \
                 --system 'Rewrite the following in a more professional, polished tone. Preserve meaning and key facts. Do not add information. Output ONLY the rewritten text.' \
-                2>/dev/null
+                2>/dev/null)
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            printf '%s' "$response"
 
   # ── :aic — code review on clipboard ────────────────────────────────────
   # Uses the 'reviewer' persona if squad is configured (see `az-ai --squad-init`).
@@ -116,13 +159,18 @@ matches:
         params:
           shell: bash
           cmd: |
+            ph='yada yada yada'
+            xdotool type --clearmodifiers "$ph"
             CLIP="$( { wl-paste 2>/dev/null \
                        || xclip -selection clipboard -o 2>/dev/null \
                        || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
                      | tr -d '\r' )"
-            printf '%s' "$CLIP" \
+            response=$( printf '%s' "$CLIP" \
               | az-ai --raw --persona reviewer --max-tokens 500 2>/dev/null \
               || printf '%s' "$CLIP" \
                  | az-ai --raw --max-tokens 500 --temperature 0.3 \
                      --system 'You are a senior code reviewer. Identify bugs, security issues, and design problems in the following code. Be concise, specific, and actionable. Use bullet points. Output ONLY the review.' \
-                     2>/dev/null
+                     2>/dev/null )
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            printf '%s' "$response"

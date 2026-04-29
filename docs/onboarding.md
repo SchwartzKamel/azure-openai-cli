@@ -138,9 +138,25 @@ export AZUREOPENAIAPI="your-api-key-here"   # NOTE: AZUREOPENAIAPI, not _KEY
 export AZUREOPENAIMODEL="gpt-4o"
 ```
 
+`AZUREOPENAIMODEL` accepts a **comma-separated list** of deployment
+names (e.g. `"gpt-4o,gpt-4.1"`). This doubles as a **model allowlist**
+-- agent mode will only use models that appear in the list.
+
 I tripped on `AZUREOPENAIAPI` versus `AZUREOPENAIKEY` for ten minutes.
 The variable is named **`AZUREOPENAIAPI`**. Full env-var reference is
 in [`docs/prerequisites.md`](prerequisites.md).
+
+**Path C -- env file auto-load (recommended for daily use).**
+Place your exports in `~/.config/az-ai/env` (shell format, one
+`export VAR="value"` per line). `az-ai` auto-loads this file at
+startup via `LoadConfigEnv` -- no need to `source` it manually.
+`make setup-secrets` creates the file for you; `make load-env` prints
+a `source` command if you want the vars in your current shell too.
+
+```bash
+make setup-secrets   # creates ~/.config/az-ai/env interactively
+az-ai --version      # env is loaded automatically, no sourcing needed
+```
 
 ### 6. First successful invocation (2 min)
 
@@ -165,7 +181,41 @@ The model can now call the built-in tools: `shell_exec`, `read_file`,
 `web_fetch`, `get_clipboard`, `get_datetime`, `delegate_task`. Each
 has a security blocklist; see [`SECURITY.md`](../SECURITY.md).
 
-### 8. Make a tiny change and run preflight (10 min)
+### 8. (Optional) Multi-provider: add Foundry / GitHub Models (5 min)
+
+If you have access to Azure AI Foundry or GitHub Models in addition to
+Azure OpenAI, you can route specific models through a second provider.
+Set three extra env vars (in your env file or shell):
+
+```bash
+make set-foundry ENDPOINT=https://models.inference.ai.azure.com \
+                 KEY=your-foundry-key \
+                 MODELS=gpt-4o,gpt-4.1
+```
+
+This writes `AZURE_FOUNDRY_ENDPOINT`, `AZURE_FOUNDRY_KEY`, and
+`AZURE_FOUNDRY_MODELS` into `~/.config/az-ai/env`. Models listed in
+`AZURE_FOUNDRY_MODELS` route through Foundry; everything else routes
+through your primary Azure OpenAI endpoint.
+
+Use `make providers` to see what is configured. Manage the model
+allowlist with `make models`, `make add-model MODEL=<name>`, and
+`make remove-model MODEL=<name>`.
+
+### 9. (Optional) Espanso integration (5 min)
+
+If you use [Espanso](https://espanso.org) as a text expander, the
+hardened config ships in `examples/` and can be installed with:
+
+```bash
+make espanso-install   # copies config to Windows Espanso match dir (WSL)
+make espanso-test      # verifies Espanso can reach az-ai through the WSL boundary
+```
+
+See [`docs/espanso-ahk-integration.md`](espanso-ahk-integration.md) for
+the full wiring guide.
+
+### 10. Make a tiny change and run preflight (10 min)
 
 Edit anything trivial -- fix a typo in this doc, for example. Then
 run the local validation gate before you commit. This is what CI runs;
@@ -184,7 +234,7 @@ That target chains: `dotnet format --verify-no-changes`, the color
 contract lint, build, unit tests, integration tests. All four must be
 green or do not commit.
 
-### 9. Commit (3 min)
+### 11. Commit (3 min)
 
 Commit messages follow Conventional Commits. Lowercase type, imperative
 subject, 72 char ceiling. Full rules in
@@ -197,7 +247,7 @@ git -c commit.gpgsign=false commit -m "docs(onboarding): fix typo
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 ```
 
-### 10. Open the PR (5 min)
+### 12. Open the PR (5 min)
 
 Push to your branch, open the PR, and let the template walk you
 through the checklist. Reviewers usually respond in a few days; nudge
@@ -289,6 +339,10 @@ glossary and `docs/verifying-releases.md`.
 The full target list is in the [`Makefile`](../Makefile) itself.
 Skim it once -- there are useful `bench-quick`, `bench`, `bench-full`,
 `scan`, and `audit` targets that the curated help does not surface.
+Newer additions include `make providers` (show configured providers),
+`make set-foundry` (add Foundry/GitHub Models provider), `make models`
+/ `add-model` / `remove-model` (manage the model allowlist), and
+`make espanso-install` / `espanso-test` (Espanso text-expander wiring).
 **Pointer:** [`Makefile`](../Makefile).
 
 ### Q10. Conventional Commits -- where is the actual rule sheet?

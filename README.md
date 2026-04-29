@@ -147,6 +147,8 @@ Most humans should just run `az-ai` and let the [first-run wizard](#first-run) h
 
 Precedence (highest → lowest): **CLI flag > environment variable > user config > built-in default** (`gpt-4o-mini` for model). An explicit `--config <path>` takes priority over `./.azureopenai-cli.json`, which takes priority over `~/.azureopenai-cli.json`. Inspect the effective config with `az-ai --config show`.
 
+The binary also auto-loads `~/.config/az-ai/env` at startup (shell `export KEY="value"` format, written by `make setup-secrets`). Existing env vars are not overwritten, so your shell profile still wins. This is critical for non-login-shell contexts like Espanso, AHK, and cron where your profile isn't sourced.
+
 Full env-var reference (single source of truth): [docs/prerequisites.md](docs/prerequisites.md).
 
 ### Power user / scripted setup
@@ -165,16 +167,39 @@ Or drop them in a `.env` file (`cp azureopenai-cli/.env.example .env`) and sourc
 |----------|:--------:|--------:|-------------|
 | `AZUREOPENAIENDPOINT` | ✅ | — | Azure OpenAI resource endpoint |
 | `AZUREOPENAIAPI` | ✅ | — | Azure OpenAI API key |
-| `AZUREOPENAIMODEL` | ✅ | — | Comma-separated deployment names (first = default) |
+| `AZUREOPENAIMODEL` | ✅ | — | Comma-separated deployment names (first = default, all = allowed set) |
 | `SYSTEMPROMPT` |  | *(built-in)* | Default system prompt |
 | `AZURE_MAX_TOKENS` |  | `10000` | Max output tokens (1–128000) |
 | `AZURE_TEMPERATURE` |  | `0.55` | Sampling temperature (0.0–2.0) |
 | `AZURE_TIMEOUT` |  | `120` | Streaming timeout (seconds) |
 | `AZ_TELEMETRY` |  | *unset* | Set to `1` to enable OTel + cost events (equivalent to `--telemetry`) |
+| `AZURE_FOUNDRY_ENDPOINT` |  | — | Azure AI Foundry / GitHub Models endpoint URL (enables multi-provider routing) |
+| `AZURE_FOUNDRY_KEY` |  | — | API key for the Foundry endpoint |
+| `AZURE_FOUNDRY_MODELS` |  | — | Comma-separated model names routed to Foundry instead of Azure OpenAI |
 
 Switch models on the fly: `az-ai --models`, `az-ai --set-model gpt-4o` (persisted to `~/.azureopenai-cli.json`).
 
 Keeping token spend sane — model selection, caching, and per-persona budgets: [docs/cost-optimization.md](docs/cost-optimization.md).
+
+### Multi-provider routing (Foundry / GitHub Models)
+
+Set `AZURE_FOUNDRY_ENDPOINT`, `AZURE_FOUNDRY_KEY`, and `AZURE_FOUNDRY_MODELS` to route specific models through Azure AI Foundry or GitHub Models instead of Azure OpenAI. Any model listed in `AZURE_FOUNDRY_MODELS` is dispatched to the Foundry endpoint via `FoundryAuthPolicy` (swaps Bearer auth to `api-key` header); all other models use the default Azure OpenAI path. Configure interactively with `make set-foundry ENDPOINT=... KEY=... MODELS=...` and inspect with `make providers`. See [docs/adr/ADR-005-foundry-routing.md](docs/adr/ADR-005-foundry-routing.md).
+
+### Makefile targets
+
+The core targets (`make setup`, `make install`, `make test`, `make preflight`) are documented in [CONTRIBUTING.md](CONTRIBUTING.md). Additional management targets:
+
+| Target | Purpose |
+|--------|---------|
+| `make models` | List allowed models from env file |
+| `make add-model MODEL=<name>` | Add a deployment to the allowlist |
+| `make remove-model MODEL=<name>` | Remove a deployment from the allowlist |
+| `make providers` | Show configured providers (Azure OpenAI + Foundry) |
+| `make set-foundry ENDPOINT=... KEY=... MODELS=...` | Configure Foundry/GitHub Models provider |
+| `make load-env` | Print the `source` command for `~/.config/az-ai/env` |
+| `make run-native ARGS="..."` | Run the native binary with env auto-loaded |
+| `make espanso-install` | Install hardened Espanso config for WSL Path B |
+| `make espanso-test` | Verify Espanso can reach az-ai through WSL |
 
 ## Security
 
