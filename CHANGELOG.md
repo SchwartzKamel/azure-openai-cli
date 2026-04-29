@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(wizard):** First-run interactive setup wizard. Running bare `az-ai`
+  on an interactive terminal with no credentials configured now launches a
+  guided setup that prompts for the Azure OpenAI endpoint, API key (masked
+  input), and default model deployment, then persists them to
+  `~/.azureopenai-cli.json` (0600 perms). Re-run any time with `az-ai --setup`
+  (alias `--init-wizard`). `UserConfig` gained `endpoint` and `api_key`
+  fields that serve as fallbacks when the matching environment variables
+  are unset; `api_key` is redacted (`api_key=<redacted>`) in
+  `az-ai --config list` output. The wizard is suppressed under `--raw`,
+  `--json`, or when stdin/stdout is redirected so scripted and piped
+  callers continue to see the existing env-var error.
 
 ### Changed
 
@@ -18,6 +29,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Security
+- Fail closed when masked input is unavailable: `SetupWizard.ReadMaskedLine`
+  no longer falls back to unmasked `Console.ReadLine` when `Console.ReadKey`
+  throws on pseudo-TTYs (some container runtimes, `dotnet test` capture, CI
+  runners with `tty: true` but no `/dev/tty`, restricted hosts, WSL +
+  `ssh -t` edge cases). The fallback echoed every keystroke of the API key
+  to scrollback / tmux logs / TTY loggers. The wizard now emits a one-line
+  `[ERROR]` warning to stderr and short-circuits to exit 130 without ever
+  accepting plaintext input. Newman audit H-1.
+- Refuse `az-ai --config get api_key` to prevent secret leakage via
+  scrollback, shell history of pipe targets, screen-share, and terminal
+  logs. The get-by-name path was an escape hatch around the `--config list`
+  redaction. Users should re-run `az-ai --setup` or read
+  `~/.azureopenai-cli.json` directly (file is mode 0600). `UserConfig.GetKey`
+  itself still returns the raw value for in-process callers (e.g. the
+  wizard); the refusal lives at the print site only. Newman audit H-2.
 
 ## [2.1.1] -- 2026-04-24
 

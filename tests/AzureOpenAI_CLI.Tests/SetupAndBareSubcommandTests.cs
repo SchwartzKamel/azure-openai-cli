@@ -107,7 +107,76 @@ public class SetupAndBareSubcommandTests
 
         var output = sw.ToString();
         Assert.Contains("--setup", output);
+        Assert.Contains("--init-wizard", output);
         Assert.Contains("az-ai help", output);
         Assert.Contains("az-ai setup", output);
+    }
+
+    // ── ShouldAutoLaunchSetup decision helper ─────────────────────────────
+    // Pure predicate (no Console / env reads): the caller passes terminal
+    // facts in. Tests cover both the positive path (bare az-ai with no
+    // creds on a TTY -> launch) and the four documented negative gates.
+
+    [Fact]
+    public void ShouldAutoLaunchSetup_BareInteractiveNoCreds_ReturnsTrue()
+    {
+        var opts = Program.ParseArgs([]);
+        Assert.True(Program.ShouldAutoLaunchSetup(
+            opts, endpoint: null, apiKey: null,
+            isInteractiveTty: true, stdinRedirected: false));
+    }
+
+    [Fact]
+    public void ShouldAutoLaunchSetup_CredsPresent_ReturnsFalse()
+    {
+        var opts = Program.ParseArgs([]);
+        Assert.False(Program.ShouldAutoLaunchSetup(
+            opts, endpoint: "https://example.openai.azure.com",
+            apiKey: "k",
+            isInteractiveTty: true, stdinRedirected: false));
+    }
+
+    [Fact]
+    public void ShouldAutoLaunchSetup_PromptGiven_ReturnsFalse()
+    {
+        // Bare prompt => user wants to chat, not configure. Fall through to
+        // the env-var error so they see why their unconfigured run failed.
+        var opts = Program.ParseArgs(["hello"]);
+        Assert.False(Program.ShouldAutoLaunchSetup(
+            opts, endpoint: null, apiKey: null,
+            isInteractiveTty: true, stdinRedirected: false));
+    }
+
+    [Fact]
+    public void ShouldAutoLaunchSetup_StdinRedirected_ReturnsFalse()
+    {
+        // Pipe / heredoc => caller is scripted; never block on a prompt.
+        var opts = Program.ParseArgs([]);
+        Assert.False(Program.ShouldAutoLaunchSetup(
+            opts, endpoint: null, apiKey: null,
+            isInteractiveTty: true, stdinRedirected: true));
+    }
+
+    [Fact]
+    public void ShouldAutoLaunchSetup_RawOrJson_ReturnsFalse()
+    {
+        var rawOpts = Program.ParseArgs(["--raw"]);
+        Assert.False(Program.ShouldAutoLaunchSetup(
+            rawOpts, endpoint: null, apiKey: null,
+            isInteractiveTty: true, stdinRedirected: false));
+
+        var jsonOpts = Program.ParseArgs(["--json"]);
+        Assert.False(Program.ShouldAutoLaunchSetup(
+            jsonOpts, endpoint: null, apiKey: null,
+            isInteractiveTty: true, stdinRedirected: false));
+    }
+
+    [Fact]
+    public void ShouldAutoLaunchSetup_NotInteractive_ReturnsFalse()
+    {
+        var opts = Program.ParseArgs([]);
+        Assert.False(Program.ShouldAutoLaunchSetup(
+            opts, endpoint: null, apiKey: null,
+            isInteractiveTty: false, stdinRedirected: false));
     }
 }
