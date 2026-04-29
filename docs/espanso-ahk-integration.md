@@ -13,8 +13,9 @@
 4. [AutoHotKey Configuration](#autohotkey-configuration)
 5. [Loading Placeholder](#loading-placeholder) -- "yada yada yada" visual feedback
 6. [Performance Tips](#performance-tips)
-7. [Troubleshooting](#troubleshooting)
-8. [Advanced: Persona Integration](#advanced-persona-integration)
+7. [Unicode and Encoding](#unicode-and-encoding) -- UTF-8 enforcement for non-ASCII text
+8. [Troubleshooting](#troubleshooting)
+9. [Advanced: Persona Integration](#advanced-persona-integration)
 
 ---
 
@@ -973,6 +974,83 @@ If you installed via `make alias`, consider switching to a native binary for exp
 
 ---
 
+## Unicode and Encoding
+
+Non-ASCII text (CJK, accented Latin, Cyrillic, Arabic, emoji) requires
+explicit UTF-8 encoding at every boundary in the Espanso -> PowerShell
+-> WSL -> `az-ai` pipeline. This section documents the requirements and
+the reasoning behind them.
+
+### The Problem
+
+A Windows user copies Japanese text to the clipboard and triggers
+`:aifix`. The pipeline is:
+
+```
+Clipboard ("いい子") -> Get-Clipboard -> pipe to wsl.exe -> az-ai -> stdout -> Espanso
+```
+
+Without explicit encoding, the output is `???`. Three independent
+encoding boundaries can corrupt the text:
+
+1. **PowerShell pipe encoding.** `$OutputEncoding` in PS 5.1 defaults
+   to ASCII. Any byte above 0x7F becomes `?` when piped to a native
+   command like `wsl.exe`.
+2. **Console host encoding.** `[Console]::OutputEncoding` controls how
+   the console host encodes stdout back to the calling process
+   (Espanso). If this is still set to the system code page, non-ASCII
+   bytes are re-encoded through a lossy conversion.
+3. **WSL locale.** A non-login WSL shell may inherit `LANG=` (empty),
+   which defaults to `POSIX`/`C` locale. Some programs in the WSL
+   environment may not handle UTF-8 correctly under this locale.
+
+### The Fix
+
+**Espanso PowerShell commands:** Prefix every `cmd:` that handles
+non-ASCII content with:
+
+```powershell
+$OutputEncoding = [Text.UTF8Encoding]::new(); [Console]::OutputEncoding = [Text.UTF8Encoding]::new();
+```
+
+This sets both the pipe encoding and the console host encoding to UTF-8
+for the duration of that command. The production-hardened configs in
+[`examples/espanso-ahk-wsl/`](../examples/espanso-ahk-wsl/) include
+these declarations in every trigger.
+
+**WSL wrapper script:** `az-ai-wrap.sh` includes a locale fallback:
+
+```bash
+LANG=${LANG:-C.UTF-8}
+```
+
+This ensures the `C.UTF-8` locale is active even in non-login shells
+where no profile files are sourced.
+
+**The `az-ai` binary itself:** `Program.cs` sets
+`Console.InputEncoding` and `Console.OutputEncoding` to UTF-8 at
+startup. `ShellExecTool` and `GetClipboardTool` set
+`StandardOutputEncoding = Encoding.UTF8` on every subprocess. These
+are defense-in-depth -- the binary does not rely on the caller to
+provide a correct encoding environment.
+
+### Why Both PowerShell Variables Matter
+
+| Variable | Controls | PS 5.1 default | PS 7+ default |
+|----------|----------|-----------------|---------------|
+| `$OutputEncoding` | Encoding used when piping to native commands | ASCII | UTF-8 |
+| `[Console]::OutputEncoding` | Encoding used by the console host for stdout | System code page | UTF-8 |
+
+Setting only one leaves the other boundary unprotected. For Espanso on
+Windows with PS 5.1, both must be set explicitly. PS 7+ defaults to
+UTF-8 for both, but setting them explicitly is harmless and makes the
+config forward-compatible.
+
+For the full encoding enforcement audit, see
+[docs/i18n.md](i18n.md#utf-8-enforcement-points).
+
+---
+
 ## Troubleshooting
 
 ### Environment Variables Not Found
@@ -1065,6 +1143,27 @@ RunWaitOne('C:\Users\you\tools\AzureOpenAI_CLI.exe --raw "' prompt '"')
 
 ```yaml
 cmd: "xclip -selection clipboard -o | az-ai --raw --system '...' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'"
+```
+
+### Non-ASCII Text Shows as `???` or Mojibake
+
+**Symptom:** Japanese, Chinese, Korean, accented, or other non-ASCII characters from the clipboard become `???`, `????`, or garbled sequences in the Espanso output.
+
+**Cause:** PowerShell 5.1 defaults `$OutputEncoding` to ASCII. When `Get-Clipboard` returns non-ASCII text and pipes it to `wsl.exe`, PowerShell encodes the pipe as ASCII, replacing every non-ASCII character with `?`. A second variable, `[Console]::OutputEncoding`, controls how the console host encodes stdout bytes back to Espanso -- it must also be UTF-8.
+
+**Fix:** Add both encoding declarations at the start of every Espanso PowerShell `cmd:` that handles non-ASCII content:
+
+```yaml
+cmd: "$OutputEncoding = [Text.UTF8Encoding]::new(); [Console]::OutputEncoding = [Text.UTF8Encoding]::new(); Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'\""
+```
+
+Both variables must be set. Setting only `$OutputEncoding` fixes the pipe to `wsl.exe` but not the stdout back to Espanso; setting only `[Console]::OutputEncoding` fixes the return path but not the pipe. See [docs/i18n.md](i18n.md) for the full encoding enforcement table.
+
+**Also check the WSL side:** If `az-ai` runs inside WSL via a non-login shell and `LANG` is unset, the C runtime may default to the `POSIX` locale. The `az-ai-wrap.sh` wrapper sets `LANG=${LANG:-C.UTF-8}` as a fallback. If you invoke `az-ai` directly (without the wrapper), add this to your WSL shell profile:
+
+```bash
+# ~/.bashrc or ~/.profile
+export LANG="${LANG:-C.UTF-8}"
 ```
 
 ### Quick Diagnostic Checklist

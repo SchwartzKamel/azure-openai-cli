@@ -24,6 +24,10 @@
 
 set -euo pipefail
 
+# Ensure UTF-8 locale for correct handling of non-ASCII text (CJK, Arabic,
+# accented characters). WSL non-login shells may inherit a bare POSIX locale.
+export LANG="${LANG:-C.UTF-8}"
+
 # Only source if creds are missing — avoids re-running .bashrc on every call
 # from inside an already-configured shell.
 if [[ -z "${AZUREOPENAIENDPOINT:-}" || -z "${AZUREOPENAIAPI:-}" ]]; then

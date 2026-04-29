@@ -1,16 +1,24 @@
 # %APPDATA%\espanso\match\ai.yml
 # az-ai Espanso matches — Option B (Espanso on Windows, shells to WSL).
 #
-# Boundary layers to survive:  Espanso → cmd.exe → powershell.exe → wsl.exe → bash
+# Boundary layers to survive:  Espanso -> cmd.exe -> powershell.exe -> wsl.exe -> bash
 # Rules to keep those layers sane:
 #   * Every outer cmd: block uses shell: cmd (Espanso's default on Windows).
-#   * User text (form or clipboard) enters bash via STDIN only — never as an
-#     argument — so shell metachars are inert at every layer.
+#   * User text (form or clipboard) enters bash via STDIN only -- never as an
+#     argument -- so shell metachars are inert at every layer.
 #   * We invoke `wsl.exe -e /usr/local/bin/az-ai-wrap` (the wrapper sources
 #     ~/.bashrc so env vars are present even in a non-login shell).
 #   * stderr from the WSL side goes to /dev/null; the outer PowerShell's stderr
 #     goes to $null; Espanso only sees clean stdout.
 #   * UTF-8 is forced for PowerShell output to avoid UTF-16 mojibake.
+#
+# ENCODING -- CRITICAL for non-ASCII text (CJK, Arabic, accented chars):
+#   PowerShell 5.1 defaults $OutputEncoding to ASCII. When Get-Clipboard
+#   pipes non-ASCII content to wsl.exe, those bytes become '???' unless
+#   BOTH of these are set inside the PowerShell -Command string:
+#     $OutputEncoding = [Text.UTF8Encoding]::new()   <-- pipe-to-native encoding
+#     [Console]::OutputEncoding = [Text.UTF8Encoding]::new()  <-- .NET stdout
+#   PowerShell 7+ defaults to UTF-8 but setting both is harmless and safe.
 #
 # Since v2.1.1, az-ai auto-loads ~/.config/az-ai/env at startup, so the
 # wrapper (az-ai-wrap) is only needed if you keep creds exclusively in
@@ -38,7 +46,7 @@ matches:
         params:
           shell: cmd
           cmd: |
-            powershell -NoProfile -Command "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new(); wsl.exe -e bash -c 'az-ai-wrap --raw 2>/dev/null <<''__AZ_AI_EOF__''
+            powershell -NoProfile -Command "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new(); wsl.exe -e bash -c 'az-ai-wrap --raw 2>/dev/null <<''__AZ_AI_EOF__''
             {{form1.prompt}}
             __AZ_AI_EOF__
             '" 2>NUL
@@ -53,7 +61,7 @@ matches:
           shell: cmd
           cmd: >
             powershell -NoProfile -Command
-            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
             Get-Clipboard -Raw |
             wsl.exe -e bash -c 'tr -d \"\\r\" |
             az-ai-wrap --raw --max-tokens 500 --temperature 0.3
@@ -70,7 +78,7 @@ matches:
           shell: cmd
           cmd: >
             powershell -NoProfile -Command
-            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
             Get-Clipboard -Raw |
             wsl.exe -e bash -c 'tr -d \"\\r\" |
             az-ai-wrap --raw --max-tokens 300 --temperature 0.4
@@ -87,7 +95,7 @@ matches:
           shell: cmd
           cmd: >
             powershell -NoProfile -Command
-            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
             Get-Clipboard -Raw |
             wsl.exe -e bash -c 'tr -d \"\\r\" |
             az-ai-wrap --raw --max-tokens 150 --temperature 0.4
@@ -104,7 +112,7 @@ matches:
           shell: cmd
           cmd: >
             powershell -NoProfile -Command
-            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
             Get-Clipboard -Raw |
             wsl.exe -e bash -c 'tr -d \"\\r\" |
             az-ai-wrap --raw --max-tokens 600 --temperature 0.5
@@ -121,7 +129,7 @@ matches:
           shell: cmd
           cmd: >
             powershell -NoProfile -Command
-            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
             Get-Clipboard -Raw |
             wsl.exe -e bash -c 'CLIP=$(cat | tr -d \"\\r\");
             printf %s \"$CLIP\" | az-ai-wrap --raw --persona reviewer --max-tokens 500 2>/dev/null ||

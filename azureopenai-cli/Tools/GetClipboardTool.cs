@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 
 namespace AzureOpenAI_CLI.Tools;
 
@@ -51,6 +52,8 @@ internal static class GetClipboardTool
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
         };
 
         try
@@ -100,6 +103,7 @@ internal static class GetClipboardTool
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
             };
 
             using var process = Process.Start(psi);

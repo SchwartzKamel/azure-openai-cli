@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 
 namespace AzureOpenAI_CLI.Tools;
 
@@ -103,6 +104,8 @@ internal static class ShellExecTool
             RedirectStandardInput = true,
             UseShellExecute = false,
             CreateNoWindow = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
         };
         psi.ArgumentList.Add("-c");
         psi.ArgumentList.Add(command);

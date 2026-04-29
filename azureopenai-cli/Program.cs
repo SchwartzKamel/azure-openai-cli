@@ -122,6 +122,15 @@ internal class Program
             return 0;
         }
 
+        // Ensure non-ASCII content (CJK, emoji, RTL) survives the trip from
+        // LLM responses through stdout. Without this, Windows consoles default
+        // to the system code page and mangle anything outside ASCII/Latin-1.
+        // On Unix this is usually a no-op (already UTF-8) but is harmless.
+        // Placed after --help/--version so those zero-dependency paths stay fast
+        // and never touch encoding state (important for test isolation).
+        Console.OutputEncoding = Encoding.UTF8;
+        Console.InputEncoding  = Encoding.UTF8;
+
         try
         {
             // Load .env file if present (matches v1 behavior)
