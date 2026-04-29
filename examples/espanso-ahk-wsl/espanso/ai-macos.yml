@@ -1,0 +1,165 @@
+# ~/.config/espanso/match/ai.yml
+# az-ai Espanso matches — macOS native.
+#
+# "Yada yada yada" placeholder UX:
+#   While az-ai processes, the text "yada yada yada" appears at the cursor
+#   so the user knows something is happening. Once the response arrives,
+#   the placeholder is deleted (via backspaces) and the response is printed
+#   for Espanso to paste. The placeholder length is derived from ${#ph} so
+#   adding/changing the text automatically adjusts the backspace count.
+#
+# macOS keystroke simulation uses osascript (AppleScript) which ships with
+# every macOS install. Key code 51 = Delete (backspace).
+#
+# ⚠️  Accessibility permission required:
+#   The first time osascript sends keystrokes, macOS will prompt you to
+#   grant Accessibility access. Go to:
+#     System Settings → Privacy & Security → Accessibility → enable Espanso
+#   Without this, the placeholder typing/clearing will silently fail but
+#   az-ai itself will still work (you just won't see the placeholder).
+#
+# Design rules (do not weaken without reading the kit README §5.6):
+#   * --raw on every invocation (no spinner, no stats, no trailing newline).
+#   * stderr → /dev/null (defense-in-depth against spinner leakage).
+#   * User text (clipboard or form) reaches az-ai via STDIN, never via
+#     shell-interpolated args. Forms use a single-quoted heredoc so the body
+#     is not expanded by the shell.
+#   * Clipboard read uses pbpaste (always available on macOS).
+#
+# Since v2.1.1, az-ai auto-loads ~/.config/az-ai/env at startup (env vars
+# that aren't already set). This means non-login-shell contexts (Espanso,
+# launchd) find credentials without a wrapper or profile hook.
+#
+# Expected latency: 2–3 s per trigger in steady state (Azure round-trip).
+
+matches:
+
+  # ── :ai <space> — free-form prompt via form, stdin-piped ───────────────
+  # User types ":ai " → form pops → prompt → response replaces trigger.
+  # The form body goes through a *quoted* heredoc (__AZ_AI_EOF__), so shell
+  # metachars in the user's prompt are inert.
+  - trigger: ":ai "
+    replace: "{{output}}"
+    vars:
+      - name: form1
+        type: form
+        params:
+          layout: "AI prompt:\n\n[[prompt]]"
+          fields:
+            prompt:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            ph='yada yada yada'
+            osascript -e "tell application \"System Events\" to keystroke \"$ph\""
+            response=$(az-ai --raw 2>/dev/null <<'__AZ_AI_EOF__'
+            {{form1.prompt}}
+            __AZ_AI_EOF__
+            )
+            osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            printf '%s' "$response"
+
+  # ── :aifix — grammar/spelling fix on clipboard ─────────────────────────
+  - trigger: ":aifix"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            ph='yada yada yada'
+            osascript -e "tell application \"System Events\" to keystroke \"$ph\""
+            response=$(pbpaste \
+              | az-ai --raw --max-tokens 500 --temperature 0.3 \
+                  --system 'Fix grammar and spelling. Preserve meaning, tone, and formatting. Output ONLY the corrected text, nothing else.' \
+                  2>/dev/null)
+            osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            printf '%s' "$response"
+
+  # ── :aiexp — explain clipboard contents (code or prose) ────────────────
+  - trigger: ":aiexp"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            ph='yada yada yada'
+            osascript -e "tell application \"System Events\" to keystroke \"$ph\""
+            response=$(pbpaste \
+              | az-ai --raw --max-tokens 300 --temperature 0.4 \
+                  --system 'Explain the following clearly in 2-3 sentences. If it is code, be precise and technical. Output ONLY the explanation, no preamble.' \
+                  2>/dev/null)
+            osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            printf '%s' "$response"
+
+  # ── :aitldr — 2-sentence summary of clipboard ──────────────────────────
+  - trigger: ":aitldr"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            ph='yada yada yada'
+            osascript -e "tell application \"System Events\" to keystroke \"$ph\""
+            response=$(pbpaste \
+              | az-ai --raw --max-tokens 150 --temperature 0.4 \
+                  --system 'Summarize in exactly 2 sentences. Be concise. Output ONLY the summary.' \
+                  2>/dev/null)
+            osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            printf '%s' "$response"
+
+  # ── :airw — rewrite clipboard more professionally ──────────────────────
+  - trigger: ":airw"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            ph='yada yada yada'
+            osascript -e "tell application \"System Events\" to keystroke \"$ph\""
+            response=$(pbpaste \
+              | az-ai --raw --max-tokens 600 --temperature 0.5 \
+                  --system 'Rewrite the following in a more professional, polished tone. Preserve meaning and key facts. Do not add information. Output ONLY the rewritten text.' \
+                  2>/dev/null)
+            osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            printf '%s' "$response"
+
+  # ── :aic — code review on clipboard ────────────────────────────────────
+  # Uses the 'reviewer' persona if squad is configured (see `az-ai --squad-init`).
+  # Falls back to a plain --system prompt if persona isn't available —
+  # az-ai exits non-zero for unknown personas, and the `||` branch kicks in.
+  - trigger: ":aic"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            ph='yada yada yada'
+            osascript -e "tell application \"System Events\" to keystroke \"$ph\""
+            CLIP="$(pbpaste)"
+            response=$(printf '%s' "$CLIP" \
+              | az-ai --raw --persona reviewer --max-tokens 500 2>/dev/null \
+              || printf '%s' "$CLIP" \
+                 | az-ai --raw --max-tokens 500 --temperature 0.3 \
+                     --system 'You are a senior code reviewer. Identify bugs, security issues, and design problems in the following code. Be concise, specific, and actionable. Use bullet points. Output ONLY the review.' \
+                     2>/dev/null)
+            osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            printf '%s' "$response"

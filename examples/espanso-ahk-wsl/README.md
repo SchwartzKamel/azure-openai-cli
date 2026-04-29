@@ -17,10 +17,11 @@ shell-interpolated args).
 |------|---------|
 | `espanso/ai.yml`               | Espanso matches for **Option A** (Espanso runs inside WSL). |
 | `espanso/ai-windows-to-wsl.yml`| Espanso matches for **Option B** (Espanso on Windows → `wsl.exe`). |
+| `espanso/ai-macos.yml`         | Espanso matches for **Option C** (Espanso on macOS, native). |
 | `ahk/az-ai.ahk`                | AutoHotkey v2 script for global Windows hotkeys → WSL. |
 | `wsl-wrapper/az-ai-wrap.sh`    | Optional login-shell wrapper so Windows callers inherit env vars. |
 
-Pick **one** Espanso option (A or B). AHK is independent and complements either.
+Pick **one** Espanso option (A, B, or C). AHK is independent and complements A or B.
 
 > **No GPU? No problem.** This kit works with **just Azure creds** -- no
 > Docker, no systemd, no NIM. Follow §1 and skip the entire "Local NIM
@@ -46,7 +47,24 @@ sudo install -m 0755 dist/aot/AzureOpenAI_CLI /usr/local/bin/az-ai
 az-ai --help | head -5
 ```
 
-### 1.2 Export env vars in `~/.bashrc`
+### 1.2 Set up credentials
+
+**Preferred (v2.1.1+):** write a config-env file that `az-ai` auto-loads on
+every invocation -- no shell-profile hook needed, and non-login contexts
+(Espanso, AHK, cron) pick up the vars automatically:
+
+```bash
+mkdir -p ~/.config/az-ai
+cat > ~/.config/az-ai/env <<'EOF'
+AZUREOPENAIENDPOINT="https://YOUR-RESOURCE.openai.azure.com"
+AZUREOPENAIAPI="YOUR-API-KEY"
+AZUREOPENAIMODEL="gpt-4o-mini"
+EOF
+chmod 600 ~/.config/az-ai/env
+```
+
+**Alternative:** export in `~/.bashrc` (works but requires `az-ai-wrap` for
+Windows-side callers since `wsl.exe` skips login profiles):
 
 ```bash
 cat >> ~/.bashrc <<'BASHRC'
@@ -62,6 +80,9 @@ source ~/.bashrc
 
 > Keep credentials inside WSL only -- do **not** forward them through `WSLENV`
 > from the Windows side. Smaller blast radius, simpler compliance story.
+>
+> If both `~/.config/az-ai/env` and shell-exported vars exist, the shell
+> export wins (auto-load never overwrites an already-set variable).
 
 ### 1.3 Verify the happy path
 
@@ -72,7 +93,12 @@ echo "say hello in 3 words" | az-ai --raw 2>/dev/null
 
 If that fails, **fix it before continuing** -- every path below depends on it.
 
-### 1.4 Install the optional wrapper (recommended for Option B and AHK)
+### 1.4 Install the optional wrapper (Option B / AHK with bashrc-only creds)
+
+> **v2.1.1+ users who store creds in `~/.config/az-ai/env` (section 1.2) can
+> skip this step** -- `az-ai` auto-loads that file at startup, even in
+> non-login shells. The wrapper is only needed if creds live exclusively in
+> `~/.bashrc`.
 
 `wsl.exe` does **not** start a login shell by default, so `~/.bashrc` isn't
 sourced and env vars are missing. Install the wrapper:
@@ -161,9 +187,60 @@ warming up -- this is expected.
 
 ---
 
-## 4. AutoHotkey v2 on Windows → WSL
+## 4. Option C -- Espanso on **macOS** (native)
 
-Complements either Espanso option (or stands alone).
+**Best for:** primary text work in macOS-native apps (Mail, Safari, Notes,
+VS Code, Terminal, any Cocoa text field).
+
+### Prerequisites
+
+1. Install `az-ai` (the AOT binary or via `dotnet tool`).
+2. Set up credentials in `~/.config/az-ai/env` (same as section 1.2, works on
+   macOS too).
+3. **Accessibility permission:** the first time a trigger fires, macOS will
+   prompt you to grant Accessibility access. Go to:
+   **System Settings → Privacy & Security → Accessibility → enable Espanso**.
+   Without this, the "yada yada yada" placeholder will silently fail (but
+   `az-ai` itself will still work).
+
+### Install Espanso for macOS
+
+```bash
+brew install espanso
+espanso service register
+espanso start
+```
+
+Or download from <https://espanso.org/install/>.
+
+### Drop in the match file
+
+```bash
+mkdir -p ~/Library/Application\ Support/espanso/match
+cp espanso/ai-macos.yml ~/Library/Application\ Support/espanso/match/ai.yml
+espanso restart
+```
+
+### Placeholder UX
+
+While `az-ai` processes, the text **yada yada yada** appears at the cursor
+so you know something is happening. Once the response arrives, the placeholder
+is deleted via backspaces and replaced with the actual response. This uses
+`osascript` (AppleScript) to simulate keystrokes -- hence the Accessibility
+permission requirement.
+
+### Smoke test
+
+1. In any text field type `:ai` → a form pops up → type `say hi` → submit →
+   "yada yada yada" appears briefly → response replaces it.
+2. Copy any sentence with a typo, then type `:aifix` → placeholder → corrected
+   text replaces it.
+
+---
+
+## 5. AutoHotkey v2 on Windows → WSL
+
+Complements Espanso Option A or B (or stands alone).
 
 ### Install
 
@@ -189,15 +266,20 @@ Complements either Espanso option (or stands alone).
 
 ---
 
-## 5. Troubleshooting
+## 6. Troubleshooting
 
-### 5.1 "endpoint/api key not found" when triggered, works in shell
+### 6.1 "endpoint/api key not found" when triggered, works in shell
 
 `wsl.exe` starts a **non-login, non-interactive** shell; `~/.bashrc` may be
-skipped. Use `az-ai-wrap` (section 1.4) -- it sources `~/.bashrc` explicitly
-before forwarding args.
+skipped. Two fixes:
 
-### 5.2 Env-var inheritance across WSL boundary
+1. **(v2.1.1+ recommended)** Put credentials in `~/.config/az-ai/env`
+   (section 1.2). `az-ai` auto-loads this file at startup regardless of shell
+   context -- no wrapper needed.
+2. **Legacy:** Use `az-ai-wrap` (section 1.4) -- it sources `~/.bashrc`
+   explicitly before forwarding args.
+
+### 6.2 Env-var inheritance across WSL boundary
 
 Do **not** rely on `WSLENV` for credentials; keep them inside WSL. If you
 genuinely need a Windows env var visible inside WSL:
@@ -208,18 +290,19 @@ setx WSLENV "SOME_VAR/u:$env:WSLENV"
 
 (But for `az-ai` secrets -- don't. Put them in `~/.bashrc` inside WSL.)
 
-### 5.3 Clipboard bridging
+### 6.3 Clipboard bridging
 
 | Where you are | Read clipboard                  | Write clipboard                   |
 |---------------|----------------------------------|------------------------------------|
 | WSL (WSLg)    | `wl-paste` / `xclip -o`          | `wl-copy` / `xclip -selection c`   |
 | WSL (any)     | `powershell.exe Get-Clipboard`   | `clip.exe`                          |
 | Windows CMD   | `powershell -c Get-Clipboard`    | `clip`                              |
+| macOS         | `pbpaste`                         | `pbcopy`                            |
 | AHK v2        | `A_Clipboard`                    | `A_Clipboard := "text"`             |
 
 `ai.yml` uses a fallback chain: `wl-paste → xclip → powershell.exe Get-Clipboard`.
 
-### 5.4 CRLF / newline handling
+### 6.4 CRLF / newline handling
 
 PowerShell's `Get-Clipboard` emits **CRLF**. When piped into `az-ai` that's
 fine (the model tolerates it), but if the *output* goes back through a
@@ -227,13 +310,13 @@ Windows-aware tool you may see doubled newlines. `ai-windows-to-wsl.yml` pipes
 clipboard via PowerShell and lets WSL strip CRs; if you see stray `^M` in
 pasted output, add `| tr -d '\r'` at the end of the command.
 
-### 5.5 Spinner / stats leaking into pasted text
+### 6.5 Spinner / stats leaking into pasted text
 
 Every command in this kit routes stderr to `/dev/null` (Linux) or `NUL`
 (Windows). If you customize a snippet, **keep the redirect** -- and keep
 `--raw`. Defense-in-depth against both spinner and usage-stats leakage.
 
-### 5.6 Input sanitization -- why stdin not args
+### 6.6 Input sanitization -- why stdin not args
 
 Form-entered text and clipboard contents are piped via **stdin** in every
 trigger. This means a user typing `$(rm -rf ~)` into a form pops up as literal
@@ -245,13 +328,13 @@ The one place where Espanso text substitution is unavoidable (the form body
 going into a heredoc) uses a **quoted heredoc delimiter** (`<<'__AZ_AI_EOF__'`),
 which disables all shell expansion inside the body.
 
-### 5.7 WSL binary lives on a Windows drive
+### 6.7 WSL binary lives on a Windows drive
 
 Don't install `az-ai` into `/mnt/c/...`. Every syscall pays for 9P translation
 and cold-start balloons from ~10 ms to ~150 ms. Install into `/usr/local/bin`
 on the ext4 root.
 
-### 5.8 Quick diagnostic checklist
+### 6.8 Quick diagnostic checklist
 
 ```bash
 # Inside WSL:
@@ -268,10 +351,10 @@ All four should print a short response in under 3 s.
 
 ---
 
-## 6. Decisions the operator should confirm
+## 7. Decisions the operator should confirm
 
-- **Option A vs B.** Where do you do most of your text work? Linux-side →
-  Option A (simpler, faster). Windows-side apps → Option B.
+- **Option A vs B vs C.** Where do you do most of your text work? Linux-side →
+  Option A (simplest). Windows-side apps → Option B. macOS → Option C.
 - **`gpt-4o-mini` as the default model.** Fastest, cheapest, plenty smart for
   text-expansion transforms. Override with `AZUREOPENAIMODEL` if you want
   `gpt-4o`.
