@@ -54,7 +54,8 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 	migrate-check migrate-clean \
 	install-nim-gemma-2b uninstall-nim-gemma-2b nim-status nim-warmup \
 	demo-hero-gif \
-	load-env run-native
+	load-env run-native \
+	add-model remove-model models
 
 # Regex used by migrate-check / migrate-clean to find stale v1 az-ai shell
 # entries. Matches: `alias az-ai=...`, `az-ai() { ... }`, `function az-ai ...`,
@@ -104,6 +105,9 @@ help:
 	@echo "  make uninstall    - Remove ~/.local/bin/az-ai"
 	@echo "  make run-native   - Run native binary with env loaded from ~/.config/az-ai/env"
 	@echo "  make load-env     - Print 'source' command for ~/.config/az-ai/env (eval in your shell)"
+	@echo "  make models       - List allowed models from env file"
+	@echo "  make add-model MODEL=<name> - Add a model to the allowed list in env"
+	@echo "  make remove-model MODEL=<name> - Remove a model from the allowed list in env"
 	@echo "  make migrate-check - Scan shell rc files, binaries, and Docker images for stale v1 'az-ai' leftovers (read-only)"
 	@echo "  make migrate-clean - Remove stale v1 leftovers. Dry-run by default; re-run with FORCE=1 to apply."
 	@echo "  make bench-quick  - 5-10s directional smoke (N=50, no warm-up, stdout only) — pre-commit sanity"
@@ -410,6 +414,81 @@ run-native: $(INSTALL_BIN)
 		exit 1; \
 	fi
 	@source "$(ENV_FILE)" && $(INSTALL_BIN) $(ARGS)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Model management (AZUREOPENAIMODEL comma-separated allowlist in env file)
+# ─────────────────────────────────────────────────────────────────────────────
+
+## List allowed models from the env file.
+models:
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "Error: $(ENV_FILE) not found. Run 'make setup-secrets' first." >&2; \
+		exit 1; \
+	fi
+	@model_line=$$(grep '^export AZUREOPENAIMODEL=' "$(ENV_FILE)" | sed 's/^export AZUREOPENAIMODEL="//' | sed 's/"$$//'); \
+	if [ -z "$$model_line" ]; then \
+		echo "No models configured in $(ENV_FILE)."; \
+		exit 0; \
+	fi; \
+	echo "Allowed models (from $(ENV_FILE)):"; \
+	default=$$(echo "$$model_line" | cut -d, -f1); \
+	IFS=, read -ra parts <<< "$$model_line"; \
+	for m in "$${parts[@]}"; do \
+		m=$$(echo "$$m" | xargs); \
+		if [ "$$m" = "$$default" ]; then \
+			echo "  → $$m (default)"; \
+		else \
+			echo "    $$m"; \
+		fi; \
+	done
+
+## Add a model to the allowed list: make add-model MODEL=gpt-4o
+add-model:
+	@if [ -z "$(MODEL)" ]; then \
+		echo "Usage: make add-model MODEL=<deployment-name>" >&2; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "Error: $(ENV_FILE) not found. Run 'make setup-secrets' first." >&2; \
+		exit 1; \
+	fi
+	@model_line=$$(grep '^export AZUREOPENAIMODEL=' "$(ENV_FILE)" | sed 's/^export AZUREOPENAIMODEL="//' | sed 's/"$$//'); \
+	if echo ",$$model_line," | grep -qi ",$(MODEL),"; then \
+		echo "Model '$(MODEL)' is already in the list."; \
+		exit 0; \
+	fi; \
+	if [ -z "$$model_line" ]; then \
+		new_line="$(MODEL)"; \
+	else \
+		new_line="$$model_line,$(MODEL)"; \
+	fi; \
+	sed -i 's|^export AZUREOPENAIMODEL=.*|export AZUREOPENAIMODEL="'"$$new_line"'"|' "$(ENV_FILE)"; \
+	echo "✓ Added '$(MODEL)' to allowed models."; \
+	echo "  AZUREOPENAIMODEL=\"$$new_line\""
+
+## Remove a model from the allowed list: make remove-model MODEL=gpt-4o
+remove-model:
+	@if [ -z "$(MODEL)" ]; then \
+		echo "Usage: make remove-model MODEL=<deployment-name>" >&2; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "Error: $(ENV_FILE) not found. Run 'make setup-secrets' first." >&2; \
+		exit 1; \
+	fi
+	@model_line=$$(grep '^export AZUREOPENAIMODEL=' "$(ENV_FILE)" | sed 's/^export AZUREOPENAIMODEL="//' | sed 's/"$$//'); \
+	new_line=$$(echo "$$model_line" | tr ',' '\n' | grep -iv "^$(MODEL)$$" | paste -sd, -); \
+	if [ "$$model_line" = "$$new_line" ]; then \
+		echo "Model '$(MODEL)' was not in the list."; \
+		exit 0; \
+	fi; \
+	if [ -z "$$new_line" ]; then \
+		echo "Error: cannot remove the last model — at least one must remain." >&2; \
+		exit 1; \
+	fi; \
+	sed -i 's|^export AZUREOPENAIMODEL=.*|export AZUREOPENAIMODEL="'"$$new_line"'"|' "$(ENV_FILE)"; \
+	echo "✓ Removed '$(MODEL)' from allowed models."; \
+	echo "  AZUREOPENAIMODEL=\"$$new_line\""
 
 ## Migrate-check: scan for stale v1 'az-ai' leftovers (shell rc files, binaries,
 ## Docker images). Read-only. Exits 0 if clean, 1 if anything stale is found,

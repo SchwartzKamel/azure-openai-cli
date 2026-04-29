@@ -311,11 +311,28 @@ internal class Program
 
         // FR-010: resolve model via alias map, then env, then UserConfig smart default,
         // then hardcoded fallback. CLI flag always resolves through alias map first.
+        //
+        // AZUREOPENAIMODEL supports comma-separated values:
+        //   "gpt-5.4-nano,gpt-4o,gpt-4o-mini"
+        // First entry = default model. All entries = allowed set.
+        // When an allowed set is configured, the resolved model must be in it.
+        var (envDefaultModel, allowedModels) = ParseModelEnv();
+
         var resolvedCliModel = userConfig.ResolveModel(opts.Model);
         var model = resolvedCliModel
-            ?? Environment.GetEnvironmentVariable("AZUREOPENAIMODEL")
+            ?? envDefaultModel
             ?? userConfig.ResolveSmartDefault()
             ?? DefaultModelFallback;
+
+        // Enforce model allowlist when AZUREOPENAIMODEL defines multiple models.
+        if (allowedModels != null && !allowedModels.Contains(model, StringComparer.OrdinalIgnoreCase))
+        {
+            var list = string.Join(", ", allowedModels);
+            return ErrorAndExit(
+                $"Model '{model}' is not in the allowed list. Allowed models: [{list}]. "
+                + "Add it to AZUREOPENAIMODEL (comma-separated) or use --set-model to create an alias to an allowed deployment.",
+                1, jsonMode: opts.Json);
+        }
 
         // Resolve prompt: --task-file > positional arg > stdin if redirected > error
         var prompt = opts.Prompt;
@@ -1320,8 +1337,9 @@ internal class Program
         // (Alias resolution and UserConfig smart-default are skipped here because estimate
         // must work without a config file; operators who want the smart default should
         // pass --model explicitly.)
+        var (estEnvDefault, _) = ParseModelEnv();
         var model = opts.Model
-            ?? Environment.GetEnvironmentVariable("AZUREOPENAIMODEL")
+            ?? estEnvDefault
             ?? DefaultModelFallback;
 
         // Resolve prompt: --task-file > positional > stdin
@@ -1487,6 +1505,27 @@ internal class Program
             Console.Error.WriteLine($"[ERROR] {message}");
         }
         return exitCode;
+    }
+
+    /// <summary>
+    /// Parse <c>AZUREOPENAIMODEL</c> as a comma-separated list.
+    /// First entry is the default model; all entries form the allowed set.
+    /// When only one model is listed (or env is unset), returns a null
+    /// allowed set — no restriction is enforced.
+    /// </summary>
+    internal static (string? DefaultModel, HashSet<string>? AllowedModels) ParseModelEnv()
+    {
+        var raw = Environment.GetEnvironmentVariable("AZUREOPENAIMODEL");
+        if (string.IsNullOrWhiteSpace(raw)) return (null, null);
+
+        var parts = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return (null, null);
+
+        var defaultModel = parts[0];
+        if (parts.Length == 1) return (defaultModel, null);
+
+        var allowed = new HashSet<string>(parts, StringComparer.OrdinalIgnoreCase);
+        return (defaultModel, allowed);
     }
 
     /// <summary>
@@ -1805,9 +1844,28 @@ complete -c az-ai -w az-ai
 
     // ── Model-alias commands (FR-010) ──────────────────────────────────────────
 
-    /// <summary>--models / --list-models: print configured alias→deployment map.</summary>
+    /// <summary>--models / --list-models: print configured alias→deployment map and env allowlist.</summary>
     internal static int ListModelsCommand(UserConfig config)
     {
+        // Show env allowlist first (AZUREOPENAIMODEL comma-separated)
+        var (envDefault, allowedModels) = ParseModelEnv();
+        if (allowedModels != null)
+        {
+            Console.WriteLine("Allowed models (from AZUREOPENAIMODEL):");
+            foreach (var m in allowedModels.OrderBy(m => m, StringComparer.Ordinal))
+            {
+                var marker = string.Equals(m, envDefault, StringComparison.OrdinalIgnoreCase) ? " (default)" : "";
+                Console.WriteLine($"  {m}{marker}");
+            }
+            Console.WriteLine();
+        }
+        else if (!string.IsNullOrWhiteSpace(envDefault))
+        {
+            Console.WriteLine($"Active model (from AZUREOPENAIMODEL): {envDefault}");
+            Console.WriteLine("  Tip: add more comma-separated models to enforce an allowlist.");
+            Console.WriteLine();
+        }
+
         if (config.Models.Count == 0)
         {
             Console.WriteLine("No model aliases configured.");
@@ -1823,7 +1881,10 @@ complete -c az-ai -w az-ai
                 && string.Equals(config.DefaultModel, kv.Key, StringComparison.OrdinalIgnoreCase);
             var marker = isDefault ? " *" : "";
             var prefix = isDefault ? "→ " : "  ";
-            Console.WriteLine($"{prefix}{kv.Key,-16} {kv.Value}{marker}");
+            var warn = allowedModels != null && !allowedModels.Contains(kv.Value, StringComparer.OrdinalIgnoreCase)
+                ? " [NOT IN ALLOWLIST]"
+                : "";
+            Console.WriteLine($"{prefix}{kv.Key,-16} {kv.Value}{marker}{warn}");
         }
         Console.WriteLine();
         Console.WriteLine($"Config file: {config.LoadedFrom ?? UserConfig.DefaultPath}");
