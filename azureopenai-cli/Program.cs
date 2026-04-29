@@ -1959,7 +1959,7 @@ complete -c az-ai -w az-ai
                 if (!config.SetKey(opts.ConfigKey, opts.ConfigValue))
                 {
                     return ErrorAndExit(
-                        $"Unknown config key '{opts.ConfigKey}'. Supported: default_model, models.<alias>, defaults.<temperature|max_tokens|timeout_seconds|system_prompt>",
+                        $"Unknown config key '{opts.ConfigKey}'. Supported: endpoint, api_key, default_model, models.<alias>, defaults.<temperature|max_tokens|timeout_seconds|system_prompt>",
                         1, opts.Json);
                 }
                 config.Save();

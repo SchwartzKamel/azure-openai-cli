@@ -50,7 +50,7 @@ public class SetupWizardTests
             var cfg = new UserConfig
             {
                 Endpoint = "https://example.openai.azure.com",
-                ApiKey = "sk-test-0123456789abcdef-0123456789abcdef",
+                ApiKey = "api-key-test-0123456789abcdef0123456789abcdef",
                 DefaultModel = "default",
             };
             cfg.Models["default"] = "gpt-4o-mini";
@@ -59,7 +59,7 @@ public class SetupWizardTests
             var loaded = UserConfig.Load(path);
 
             Assert.Equal("https://example.openai.azure.com", loaded.Endpoint);
-            Assert.Equal("sk-test-0123456789abcdef-0123456789abcdef", loaded.ApiKey);
+            Assert.Equal("api-key-test-0123456789abcdef0123456789abcdef", loaded.ApiKey);
             Assert.Equal("default", loaded.DefaultModel);
             Assert.Equal("gpt-4o-mini", loaded.Models["default"]);
         }
