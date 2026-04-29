@@ -1,0 +1,12 @@
+Binary:     dist/aot/az-ai
+Size:       13.57 MiB (14231760 bytes)
+Host:       Intel(R) Core(TM) i9-14900HX | Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35 | governor=?
+
+scenario                  N     min     p50    mean     p90     p95     p99   p99.9     max  sigma
+--------------------------------------------------------------------------------------------------
+help-no-flags           500   5.439   6.004   6.175   6.988   7.309   8.260   9.587   9.587  0.567
+help-otel               500   5.351   5.946   6.084   6.649   7.078   8.028   9.076   9.076  0.501
+help-metrics            500   5.428   5.996   6.145   6.762   7.197   8.258   9.254   9.254  0.522
+help-otel-metrics       500   5.322   5.994   6.150   6.831   7.225   8.337  14.544  14.544  0.649
+
+All figures in ms. Warm-up iterations discarded from stats.
