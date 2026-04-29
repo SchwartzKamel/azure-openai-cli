@@ -31,6 +31,14 @@
     -->
     <OptimizationPreference>Size</OptimizationPreference>
     <StackTraceSupport>false</StackTraceSupport>
+
+    <!--
+      MAF 1.1.0 (Microsoft.Agents.AI) uses reflection-based System.Text.Json
+      internally. Native AOT disables reflection serialization by default,
+      causing a TypeInitializationException at runtime. Re-enable it so MAF
+      can serialize its internal types while AppJsonContext still handles ours.
+    -->
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <ItemGroup>

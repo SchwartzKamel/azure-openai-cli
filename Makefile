@@ -53,7 +53,8 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 	publish-all bench bench-quick bench-full install uninstall \
 	migrate-check migrate-clean \
 	install-nim-gemma-2b uninstall-nim-gemma-2b nim-status nim-warmup \
-	demo-hero-gif
+	demo-hero-gif \
+	load-env run-native
 
 # Regex used by migrate-check / migrate-clean to find stale v1 az-ai shell
 # entries. Matches: `alias az-ai=...`, `az-ai() { ... }`, `function az-ai ...`,
@@ -101,6 +102,8 @@ help:
 	@echo "Native-install & benchmark (drop Docker for speed — ideal for Espanso/AHK):"
 	@echo "  make install      - Install host-AOT binary to ~/.local/bin/az-ai (Linux/macOS/WSL)"
 	@echo "  make uninstall    - Remove ~/.local/bin/az-ai"
+	@echo "  make run-native   - Run native binary with env loaded from ~/.config/az-ai/env"
+	@echo "  make load-env     - Print 'source' command for ~/.config/az-ai/env (eval in your shell)"
 	@echo "  make migrate-check - Scan shell rc files, binaries, and Docker images for stale v1 'az-ai' leftovers (read-only)"
 	@echo "  make migrate-clean - Remove stale v1 leftovers. Dry-run by default; re-run with FORCE=1 to apply."
 	@echo "  make bench-quick  - 5-10s directional smoke (N=50, no warm-up, stdout only) — pre-commit sanity"
@@ -383,6 +386,30 @@ dist/aot/$(BIN_NAME):
 uninstall:
 	@rm -f $(INSTALL_BIN)
 	@echo ">> Removed $(INSTALL_BIN)"
+
+# Env-file location for native (non-Docker) usage.
+# setup-secrets.sh writes here; chmod 600 by convention.
+ENV_FILE ?= $(HOME)/.config/az-ai/env
+
+## Print the source command for the env file. Designed for eval:
+##   eval "$(make load-env)"
+## Or just run `source ~/.config/az-ai/env` directly.
+load-env:
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "Error: $(ENV_FILE) not found. Run 'make setup-secrets' first." >&2; \
+		exit 1; \
+	fi
+	@echo "source $(ENV_FILE)"
+
+## Run the native binary with env loaded from ~/.config/az-ai/env.
+## Usage: make run-native ARGS="your prompt"
+##        make run-native ARGS="--agent --tools shell,file 'summarize this dir'"
+run-native: $(INSTALL_BIN)
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "Error: $(ENV_FILE) not found. Run 'make setup-secrets' first." >&2; \
+		exit 1; \
+	fi
+	@source "$(ENV_FILE)" && $(INSTALL_BIN) $(ARGS)
 
 ## Migrate-check: scan for stale v1 'az-ai' leftovers (shell rc files, binaries,
 ## Docker images). Read-only. Exits 0 if clean, 1 if anything stale is found,
