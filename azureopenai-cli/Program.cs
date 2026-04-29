@@ -106,7 +106,8 @@ internal class Program
                                      // ── Image generation (FLUX.2-pro / DALL-E) ─────────────
         bool ImageMode,              // --image: generate image instead of chat
         string? OutputPath,          // --output <path>: save image to explicit file path
-        string? ImageSize            // --size <WxH>: image dimensions (e.g. 1024x1024)
+        string? ImageSize,           // --size <WxH>: image dimensions (e.g. 1024x1024)
+        bool ConfirmPrintSecret      // --i-understand-this-will-print-the-secret: required confirmation for `--config export-env`
     );
 
     private static async Task<int> Main(string[] args)
@@ -818,7 +819,8 @@ internal class Program
         Setup: false,
         ImageMode: false,
         OutputPath: null,
-        ImageSize: null
+        ImageSize: null,
+        ConfirmPrintSecret: false
     );
 
     /// <summary>Default agent tool-call round cap, matching v1 (<c>--max-rounds</c>).</summary>
@@ -906,6 +908,7 @@ internal class Program
         bool cacheEnabled = false;
         int? cacheTtlHours = null;
         bool setup = false;
+        bool confirmPrintSecret = false;
         bool imageMode = false;
         string? outputPath = null;
         string? imageSize = null;
@@ -934,7 +937,7 @@ internal class Program
         // Known --config subcommands. Anything else after --config is treated as
         // an alt config file path (flag #5 in the audit).
         var configSubs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { "set", "get", "list", "reset", "show" };
+            { "set", "get", "list", "reset", "show", "export-env" };
 
         for (int i = 0; i < args.Length && !parseFailed; i++)
         {
@@ -1158,6 +1161,9 @@ internal class Program
                 case "--setup":
                 case "--init-wizard":
                     setup = true;
+                    break;
+                case "--i-understand-this-will-print-the-secret":
+                    confirmPrintSecret = true;
                     break;
                 case "--image":
                     imageMode = true;
@@ -1417,6 +1423,7 @@ internal class Program
             ImageMode = imageMode,
             OutputPath = outputPath,
             ImageSize = imageSize,
+            ConfirmPrintSecret = confirmPrintSecret,
         };
     }
 
@@ -2195,6 +2202,8 @@ Configuration (FR-003/FR-009, precedence: env > CLI > ./.azureopenai-cli.json > 
   --config list             List all config keys
   --config reset            Delete the config file
   --config show             Show effective configuration
+  --config export-env       Print resolved AZUREOPENAI* env-var lines (KV or
+                            JSON). Requires --i-understand-this-will-print-the-secret.
 
 Setup:
   --setup                   Interactive guided configuration wizard
@@ -2299,7 +2308,7 @@ _az_ai_completions()
             return 0
             ;;
         --config)
-            COMPREPLY=( $(compgen -W ""set get list reset show"" -- ${cur}) )
+            COMPREPLY=( $(compgen -W ""set get list reset show export-env"" -- ${cur}) )
             return 0
             ;;
         --set-model|--model)
@@ -2343,7 +2352,7 @@ _az-ai() {
         '--tools[Enable tools list]:tools:'
         '--max-rounds[Max agent rounds]:rounds:'
         '--max-iterations[Max ralph iters]:n:'
-        '--config[Config subcommand or path]:what:(set get list reset show)'
+        '--config[Config subcommand or path]:what:(set get list reset show export-env)'
         '--short[Bare semver (with --version)]'
         '--estimate[Estimate cost]'
         '--estimate-with-output[Estimate with output]:n:'
@@ -2383,7 +2392,7 @@ complete -c az-ai -l schema -d 'JSON schema' -r
 complete -c az-ai -l tools -d 'Tools list' -r
 complete -c az-ai -l max-rounds -d 'Max agent rounds' -r
 complete -c az-ai -l max-iterations -d 'Ralph iterations' -r
-complete -c az-ai -l config -d 'Config subcmd or path' -xa 'set get list reset show'
+complete -c az-ai -l config -d 'Config subcmd or path' -xa 'set get list reset show export-env'
 complete -c az-ai -l short -d 'Bare semver (with --version)'
 complete -c az-ai -l estimate -d 'Estimate cost'
 complete -c az-ai -l estimate-with-output -d 'Estimate with output' -r
@@ -2606,8 +2615,81 @@ complete -c az-ai -w az-ai
                 }
                 return 0;
 
+            case "export-env":
+                return HandleExportEnv(opts, config);
+
             default:
                 return ErrorAndExit($"Unknown --config subcommand '{opts.ConfigSubcommand}'", 1, opts.Json);
         }
+    }
+
+    /// <summary>
+    /// Handles <c>--config export-env</c> — resolves Azure OpenAI credentials
+    /// (env > UserConfig+backend) and prints them as <c>KEY=VALUE</c> lines on
+    /// stdout (or a JSON object under <c>--json</c>) so operators can source
+    /// them into a CI pipeline / shell. Refuses to run without
+    /// <c>--i-understand-this-will-print-the-secret</c>; errors out cleanly
+    /// (no partial output) when endpoint or key cannot be resolved.
+    /// </summary>
+    internal static int HandleExportEnv(CliOptions opts, UserConfig config)
+    {
+        if (!opts.ConfirmPrintSecret)
+        {
+            return ErrorAndExit(
+                "export-env will print your API key in plaintext. Re-run with --i-understand-this-will-print-the-secret to confirm.",
+                1, opts.Json);
+        }
+
+        // Resolver order matches Program.Main: env > UserConfig (with backend
+        // resolution for the api_key_ref). Keeps CI overrides predictable.
+        var endpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+        if (string.IsNullOrWhiteSpace(endpoint))
+            endpoint = config.Endpoint;
+
+        var apiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
+        if (string.IsNullOrWhiteSpace(apiKey))
+            apiKey = config.ApiKey;
+
+        var model = Environment.GetEnvironmentVariable("AZUREOPENAIMODEL");
+        if (string.IsNullOrWhiteSpace(model))
+            model = config.ResolveSmartDefault() ?? string.Empty;
+
+        // Hard-fail before any partial print so operators do not get a half-set
+        // env block that silently masks a missing key with the previous value.
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            return ErrorAndExit(
+                "export-env: Azure OpenAI endpoint not configured. Set AZUREOPENAIENDPOINT or run 'az-ai --setup'.",
+                1, opts.Json);
+        }
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return ErrorAndExit(
+                "export-env: Azure OpenAI API key not configured. Set AZUREOPENAIAPI or run 'az-ai --setup'.",
+                1, opts.Json);
+        }
+
+        // Loud-but-suppressible warning. Skipped under --raw / --json so the
+        // machine-readable surfaces stay clean (Espanso/AHK/jq contracts).
+        if (!opts.Raw && !opts.Json)
+        {
+            Console.Error.WriteLine(
+                "[WARNING] About to print API key in plaintext to stdout. Do not redirect to a file unless intended.");
+        }
+
+        if (opts.Json)
+        {
+            var payload = new ExportEnvJson(endpoint!, apiKey!, model ?? string.Empty);
+            Console.WriteLine(JsonSerializer.Serialize(payload, AppJsonContext.Default.ExportEnvJson));
+            return 0;
+        }
+
+        // Unquoted KV lines so `eval "$(az-ai --config export-env ...)"` and
+        // `env $(az-ai --config export-env ...) some-cmd` both work without
+        // shell-quoting surprises.
+        Console.WriteLine($"AZUREOPENAIENDPOINT={endpoint}");
+        Console.WriteLine($"AZUREOPENAIAPI={apiKey}");
+        Console.WriteLine($"AZUREOPENAIMODEL={model}");
+        return 0;
     }
 }

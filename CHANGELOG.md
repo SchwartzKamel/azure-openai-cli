@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(config):** New `--config export-env` subcommand resolves Azure
+  OpenAI credentials (env > config) and prints them as
+  `AZUREOPENAIENDPOINT=`/`AZUREOPENAIAPI=`/`AZUREOPENAIMODEL=` lines (or
+  a JSON object under `--json`) so operators can `eval`/`env`-source them
+  into a shell or CI pipeline. Refuses to run without
+  `--i-understand-this-will-print-the-secret`; emits a STDERR `[WARNING]`
+  before any plaintext output (suppressed under `--raw`/`--json`).
 - **feat(wizard):** First-run interactive setup wizard. Running bare `az-ai`
   on an interactive terminal with no credentials configured now launches a
   guided setup that prompts for the Azure OpenAI endpoint, API key (masked

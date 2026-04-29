@@ -27,6 +27,18 @@ internal record UnknownFlagDetail(
 );
 
 /// <summary>
+/// JSON envelope emitted by <c>--config export-env --json</c>. Contains the
+/// resolved Azure OpenAI credentials in a machine-readable form so callers can
+/// pipe through <c>jq</c> instead of parsing KV lines. Same security caveats
+/// apply: the API key is plaintext.
+/// </summary>
+internal record ExportEnvJson(
+    [property: JsonPropertyName("AZUREOPENAIENDPOINT")] string Endpoint,
+    [property: JsonPropertyName("AZUREOPENAIAPI")] string ApiKey,
+    [property: JsonPropertyName("AZUREOPENAIMODEL")] string Model
+);
+
+/// <summary>
 /// System.Text.Json source generator context for AOT-compatible serialization.
 /// Covers all types that are serialized/deserialized across the CLI.
 ///
@@ -48,6 +60,7 @@ internal record UnknownFlagDetail(
 [JsonSerializable(typeof(ErrorJsonResponse))]
 [JsonSerializable(typeof(UnknownFlagJsonError))]
 [JsonSerializable(typeof(UnknownFlagDetail))]
+[JsonSerializable(typeof(ExportEnvJson))]
 [JsonSerializable(typeof(AzureOpenAI_CLI.Observability.EstimateResult))]
 // ── FR-008 prompt/response cache ────────────────────────────────
 [JsonSerializable(typeof(CachedResponse))]
