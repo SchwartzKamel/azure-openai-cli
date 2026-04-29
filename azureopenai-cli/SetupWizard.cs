@@ -6,8 +6,8 @@ namespace AzureOpenAI_CLI;
 /// Interactive setup wizard (<c>--setup</c> / <c>--init-wizard</c> /
 /// <c>az-ai setup</c>). Walks the user through configuring the Azure OpenAI
 /// endpoint, API key, and a default model deployment, then persists the
-/// values to <c>~/.azureopenai-cli.json</c> (0600 perms via
-/// <see cref="UserConfig.Save"/>).
+/// values to the user config file at <see cref="UserConfig.DefaultPath"/>
+/// (0600 perms via <see cref="UserConfig.Save"/>).
 ///
 /// <para>
 /// Invariants:
