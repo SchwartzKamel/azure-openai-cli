@@ -56,7 +56,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 	demo-hero-gif \
 	load-env run-native \
 	add-model remove-model models \
-	providers set-foundry \
+	providers set-foundry set-image-model \
 	espanso-install espanso-test
 
 # Regex used by migrate-check / migrate-clean to find stale v1 az-ai shell
@@ -112,6 +112,7 @@ help:
 	@echo "  make remove-model MODEL=<name> - Remove a model from the allowed list in env"
 	@echo "  make providers    - Show configured providers (Azure OpenAI + Foundry)"
 	@echo "  make set-foundry ENDPOINT=<url> KEY=<key> MODELS=<m1,m2> - Configure Foundry provider in env"
+	@echo "  make set-image-model MODEL=<name> - Set the default image generation model in env"
 	@echo "  make espanso-install - Copy hardened Espanso config to Windows Espanso match dir (WSL)"
 	@echo "  make espanso-test   - Verify Espanso can reach az-ai through the WSL boundary"
 	@echo "  make migrate-check - Scan shell rc files, binaries, and Docker images for stale v1 'az-ai' leftovers (read-only)"
@@ -549,6 +550,26 @@ set-foundry:
 	@echo ""
 	@echo "Models in AZURE_FOUNDRY_MODELS will route through Foundry instead of Azure OpenAI."
 	@echo "Remember to also add them to AZUREOPENAIMODEL if you want allowlist enforcement."
+
+## Configure the default image generation model: make set-image-model MODEL=FLUX.2-pro
+set-image-model:
+	@if [ -z "$(MODEL)" ]; then \
+		echo "Usage: make set-image-model MODEL=<deployment-name>" >&2; \
+		echo "  Example: make set-image-model MODEL=FLUX.2-pro" >&2; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "Error: $(ENV_FILE) not found. Run 'make setup-secrets' first." >&2; \
+		exit 1; \
+	fi
+	@sed -i '/^#\?export AZURE_IMAGE_MODEL=/d' "$(ENV_FILE)"
+	@echo 'export AZURE_IMAGE_MODEL="$(MODEL)"' >> "$(ENV_FILE)"
+	@echo "Done. AZURE_IMAGE_MODEL set to '$(MODEL)' in $(ENV_FILE)"
+	@echo ""
+	@echo "Usage: az-ai --image \"a cat wearing a top hat\""
+	@echo ""
+	@echo "The image model also needs to be in AZURE_FOUNDRY_MODELS if it's"
+	@echo "hosted on Foundry (e.g. FLUX.2-pro). Use 'make set-foundry' first."
 
 ## Install hardened Espanso config for WSL Path B (Windows Espanso -> WSL -> az-ai).
 ## Copies examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml to the Windows

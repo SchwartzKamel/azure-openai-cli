@@ -39,6 +39,7 @@ internal static class ShellExecTool
         "AZURE_FOUNDRY_ENDPOINT",
         "AZURE_FOUNDRY_KEY",
         "AZURE_FOUNDRY_MODELS",
+        "AZURE_IMAGE_MODEL",
         "GITHUB_TOKEN",
         "GH_TOKEN",
         "OPENAI_API_KEY",

@@ -15,7 +15,8 @@
 6. [Performance Tips](#performance-tips)
 7. [Unicode and Encoding](#unicode-and-encoding) -- UTF-8 enforcement for non-ASCII text
 8. [Troubleshooting](#troubleshooting)
-9. [Advanced: Persona Integration](#advanced-persona-integration)
+9. [Power Triggers](#power-triggers----complex-text-expansion) -- web search, tone picker, structured extraction
+10. [Advanced: Persona Integration](#advanced-persona-integration)
 
 ---
 
@@ -518,7 +519,7 @@ If you *really* want to skip the login shell (say, to shave another 3-5 ms): put
 
 #### Full Path B WSL config (copy-paste)
 
-Drop this into `%APPDATA%\espanso\match\ai-wsl.yml` -- it mirrors the Linux trigger set 1:1 (`:ai`, `:aifix`, `:aiemail`, `:aiexplain`, `:aisum`, `:aien`, `:aishort`, `:aicommit`), routed through PowerShell → `wsl.exe` → the Linux AOT binary:
+Drop this into `%APPDATA%\espanso\match\ai-wsl.yml` -- it mirrors the Linux trigger set 1:1 (`:ai`, `:aifix`, `:aiemail`, `:aiexplain`, `:aisum`, `:aien`, `:aishort`, `:aicommit`, `:aic`, `:aiimg`, plus the power triggers: `:aiexpand`, `:aiweb`, `:aitone`, `:aibullets`, `:aidata`, `:aiflip`), routed through PowerShell -> `wsl.exe` -> the Linux AOT binary:
 
 > **Hardened reference config available.** The config below is the simple `shell: powershell` version for readability. The production-hardened version in [`examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml`](../examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml) goes further: it pipes form input via stdin (heredoc), forces `[Console]::OutputEncoding` to UTF-8, and suppresses stderr at every layer. Use `make espanso-install` to deploy it directly to your Windows Espanso match directory.
 
@@ -1193,6 +1194,61 @@ make espanso-test
 
 ---
 
+## Power Triggers -- Complex Text Expansion
+
+Beyond the basic clipboard-in/text-out triggers, these demonstrate what's possible when you combine `az-ai` features like agent mode, web search, structured prompts, and multi-field forms.
+
+### `:aiexpand` -- Expand on This
+
+Copy text to clipboard, type `:aiexpand`. The AI takes your brief notes and adds depth, context, and supporting detail while keeping your voice.
+
+**Use case:** You jotted down three bullet points in a meeting. Expand them into a full paragraph for the follow-up email.
+
+### `:aiweb ` -- Web-Augmented Prompt
+
+Type `:aiweb ` (with trailing space) and a form pops up. The AI uses **agent mode with the `web_fetch` tool** to actually search the web for current information before answering.
+
+**Use case:** "What are the latest changes in .NET 10 Preview 4?" -- the AI fetches the actual blog post and synthesizes the answer with source links.
+
+**How it works:** This trigger uses `--agent --tools web --max-rounds 5`, giving the LLM up to 5 tool-call rounds to fetch URLs and build a grounded answer. The placeholder says "searching the web..." instead of "yada yada yada" to set expectations for the longer wait.
+
+### `:aitone` -- Rewrite in Any Tone
+
+Copy text, type `:aitone`. A form appears with a **dropdown of 8 tones**:
+
+- Professional
+- Casual / Friendly
+- Academic / Formal
+- Concise / Direct
+- Enthusiastic
+- Diplomatic / Careful
+- Sarcastic
+- ELI5 (Explain Like I'm 5)
+
+The selected tone gets interpolated into the system prompt. Same text, completely different register.
+
+**Use case:** You wrote a blunt Slack message. Rewrite it as "Diplomatic / Careful" before hitting send.
+
+### `:aibullets` -- Convert to Bullet Points
+
+Copy a wall of text, type `:aibullets`. Gets back a clean, grouped bullet-point list with bold headings per topic.
+
+**Use case:** Meeting notes pasted from a transcript. Instantly structured.
+
+### `:aidata` -- Extract Key Facts
+
+Copy any text, type `:aidata`. Extracts names, dates, numbers, decisions, and action items into a structured list grouped by category.
+
+**Use case:** A vendor sent a 3-paragraph email. Pull out just the dates, dollar amounts, and action items.
+
+### `:aiflip` -- Devil's Advocate
+
+Copy an argument or proposal, type `:aiflip`. Returns counter-arguments, unstated assumptions, and blind spots. Not contrarian for its own sake -- intellectually honest pushback.
+
+**Use case:** You're about to send an architecture proposal. Run it through `:aiflip` first to pre-empt objections.
+
+---
+
 ## Advanced: Persona Integration
 
 The [persona system](../README.md#performing_arts-persona-system--ai-team-members) lets you invoke specialized AI team members, each with their own system prompt, tool access, and persistent memory. You can combine personas with Espanso triggers for role-specific text expansion.
@@ -1277,19 +1333,27 @@ cmd: "... | az-ai --raw --persona writer --temperature 0.8"
 
 ## Quick Reference Card
 
-| Trigger | Tool | Action | Input Source |
-|---------|------|--------|-------------|
-| `:ai` | Espanso | Free-form prompt | Form dialog |
-| `:aifix` | Espanso | Grammar/spelling fix | Clipboard |
-| `:aiemail` | Espanso | Professional email rewrite | Clipboard |
-| `:aiexplain` | Espanso | Code explanation | Clipboard |
-| `:aisum` | Espanso | Summarize text | Clipboard |
-| `:aien` | Espanso | Translate to English | Clipboard |
-| `:aishort` | Espanso | Make text concise | Clipboard |
-| `:aicommit` | Espanso | Git commit message | Clipboard |
-| `:aireview` | Espanso | Code review (persona) | Clipboard |
-| `Ctrl+Shift+A` | AHK | Free-form prompt | Dialog box |
-| `Ctrl+Shift+F` | AHK | Grammar fix | Selected text |
-| `Ctrl+Shift+E` | AHK | Explain code | Selected text |
-| `Ctrl+Shift+R` | AHK | Email rewrite | Selected text |
-| `Ctrl+Shift+S` | AHK | Summarize | Selected text |
+| Trigger | Action | Input Source | Key Feature |
+|---------|--------|-------------|-------------|
+| `:ai ` | Free-form prompt | Form dialog | General-purpose |
+| `:aifix` | Grammar/spelling fix | Clipboard | Low temp (0.3) |
+| `:aiemail` | Professional email rewrite | Clipboard | Tone adjustment |
+| `:aiexplain` | Code explanation | Clipboard | 200 token cap |
+| `:aisum` | Summarize text | Clipboard | Concise output |
+| `:aien` | Translate to English | Clipboard | Any language in |
+| `:aishort` | Make text concise | Clipboard | Length reduction |
+| `:aicommit` | Git commit message | Clipboard (diff) | Conventional format |
+| `:aic` | Code review | Clipboard | Persona fallback |
+| `:aiimg` | Generate image | Form dialog | Clipboard paste |
+| **Power Triggers** | | | |
+| `:aiexpand` | Expand / elaborate on text | Clipboard | Add depth + detail |
+| `:aiweb ` | Web-augmented AI prompt | Form dialog | Agent + web_fetch |
+| `:aitone` | Rewrite in chosen tone | Clipboard + form | Tone picker dropdown |
+| `:aibullets` | Convert to bullet points | Clipboard | Structured output |
+| `:aidata` | Extract key facts + data | Clipboard | Structured extraction |
+| `:aiflip` | Devil's advocate analysis | Clipboard | Counter-arguments |
+| `Ctrl+Shift+A` | Free-form prompt (AHK) | Dialog box | |
+| `Ctrl+Shift+F` | Grammar fix (AHK) | Selected text | |
+| `Ctrl+Shift+E` | Explain code (AHK) | Selected text | |
+| `Ctrl+Shift+R` | Email rewrite (AHK) | Selected text | |
+| `Ctrl+Shift+S` | Summarize (AHK) | Selected text | |

@@ -196,3 +196,224 @@ matches:
             xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
             sleep 0.05
             printf '%s' "$response"
+
+  # -- Generate image (form prompt, copies to clipboard) ---------------
+  - trigger: ":aiimg"
+    replace: "{{output}}"
+    vars:
+      - name: form1
+        type: form
+        params:
+          layout: "Image prompt:\n\n[[prompt]]"
+          fields:
+            prompt:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            tl=6; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$ph"
+            b64=$( printf '%s' '{{form1.prompt}}' \
+              | az-ai --image --raw 2>/dev/null )
+            if [ -n "$b64" ]; then
+              tmp="/tmp/az-ai-espanso-$$.png"
+              printf '%s' "$b64" | base64 -d > "$tmp"
+              xclip -selection clipboard -t image/png -i "$tmp" 2>/dev/null \
+                || wl-copy --type image/png < "$tmp" 2>/dev/null
+              result='[image copied to clipboard]'
+            else
+              result='[image generation failed]'
+            fi
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
+            sleep 0.05
+            printf '%s' "$result"
+
+  # POWER TRIGGERS -- complex text expansion, web search, structured output
+
+  # -- :aiexpand -- expand/elaborate on clipboard content ---------------
+  - trigger: ":aiexpand"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            tl=10; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$ph"
+            CLIP="$( { wl-paste 2>/dev/null \
+                       || xclip -selection clipboard -o 2>/dev/null \
+                       || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
+                     | tr -d '\r' )"
+            response=$( printf '%s' "$CLIP" \
+              | az-ai --raw --max-tokens 2000 --temperature 0.6 \
+                  --system 'Take the following text and expand on it. Add relevant detail, context, and supporting points. Keep the same voice and intent but make it richer and more thorough. Do NOT pad with filler -- every sentence should add substance. Output ONLY the expanded text.' \
+                  2>/dev/null )
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
+            sleep 0.05
+            printf '%s' "$response"
+
+  # -- :aiweb -- web-augmented AI prompt with form ---------------------
+  - trigger: ":aiweb "
+    replace: "{{output}}"
+    vars:
+      - name: form1
+        type: form
+        params:
+          layout: "Web-augmented AI prompt:\n\n[[prompt]]"
+          fields:
+            prompt:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            tl=6; ph='searching the web...'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$ph"
+            response=$( printf '%s' '{{form1.prompt}}' \
+              | az-ai --raw --agent --tools web --max-tokens 2000 --max-rounds 5 \
+                  --system 'You have access to a web_fetch tool. Use it to search for current, accurate information relevant to the user prompt. Fetch 1-3 URLs as needed. Synthesize findings into a clear, well-structured answer. Cite sources inline with [Source Title](URL) format. Output ONLY the final answer -- no tool-call narration.' \
+                  2>/dev/null )
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
+            sleep 0.05
+            printf '%s' "$response"
+
+  # -- :aitone -- rewrite clipboard in chosen tone (form) --------------
+  - trigger: ":aitone"
+    replace: "{{output}}"
+    vars:
+      - name: form1
+        type: form
+        params:
+          layout: "Rewrite clipboard text in this tone:\n\n[[tone]]"
+          fields:
+            tone:
+              type: choice
+              values:
+                - Professional
+                - Casual / Friendly
+                - Academic / Formal
+                - Concise / Direct
+                - Enthusiastic
+                - Diplomatic / Careful
+                - Sarcastic
+                - ELI5 (Explain Like I'm 5)
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            tl=7; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$ph"
+            TONE='{{form1.tone}}'
+            CLIP="$( { wl-paste 2>/dev/null \
+                       || xclip -selection clipboard -o 2>/dev/null \
+                       || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
+                     | tr -d '\r' )"
+            response=$( printf '%s' "$CLIP" \
+              | az-ai --raw --max-tokens 1000 \
+                  --system "Rewrite the following text in a ${TONE} tone. Preserve the core meaning and all key facts. Adjust vocabulary, sentence structure, and register to match the requested tone. Output ONLY the rewritten text." \
+                  2>/dev/null )
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
+            sleep 0.05
+            printf '%s' "$response"
+
+  # -- :aibullets -- convert clipboard to bullet points ----------------
+  - trigger: ":aibullets"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            tl=10; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$ph"
+            CLIP="$( { wl-paste 2>/dev/null \
+                       || xclip -selection clipboard -o 2>/dev/null \
+                       || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
+                     | tr -d '\r' )"
+            response=$( printf '%s' "$CLIP" \
+              | az-ai --raw --max-tokens 1000 --temperature 0.3 \
+                  --system 'Convert the following text into a clean bullet-point list. Group related points under short bold headings if the content spans multiple topics. Each bullet should be one clear, complete thought. Use - for bullets. Output ONLY the bullet list.' \
+                  2>/dev/null )
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
+            sleep 0.05
+            printf '%s' "$response"
+
+  # -- :aidata -- extract structured data / key facts ------------------
+  - trigger: ":aidata"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            tl=7; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$ph"
+            CLIP="$( { wl-paste 2>/dev/null \
+                       || xclip -selection clipboard -o 2>/dev/null \
+                       || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
+                     | tr -d '\r' )"
+            response=$( printf '%s' "$CLIP" \
+              | az-ai --raw --max-tokens 1000 --temperature 0.2 \
+                  --system 'Extract all key facts, data points, names, dates, numbers, decisions, and action items from the following text. Present them as a structured list grouped by category (e.g. People, Dates, Decisions, Action Items, Numbers/Metrics). Use - for bullets. If a category has no entries, omit it. Output ONLY the extracted data.' \
+                  2>/dev/null )
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
+            sleep 0.05
+            printf '%s' "$response"
+
+  # -- :aiflip -- devil's advocate analysis ----------------------------
+  - trigger: ":aiflip"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            tl=7; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$ph"
+            CLIP="$( { wl-paste 2>/dev/null \
+                       || xclip -selection clipboard -o 2>/dev/null \
+                       || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
+                     | tr -d '\r' )"
+            response=$( printf '%s' "$CLIP" \
+              | az-ai --raw --max-tokens 1000 --temperature 0.7 \
+                  --system 'Play devils advocate on the following text. Identify the strongest counter-arguments, unstated assumptions, potential weaknesses, and alternative perspectives. Be intellectually honest -- not contrarian for its own sake. Structure as: Assumptions, Counter-arguments, Risks/Blind spots. Output ONLY the analysis.' \
+                  2>/dev/null )
+            xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
+            sleep 0.05
+            printf '%s' "$response"

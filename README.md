@@ -12,7 +12,7 @@
 ## Why
 
 - 🚀 **10.7 ms p50 cold start** — Native AOT single-file binary (12.97 MiB, linux-x64), fast enough to feel synchronous inside text expanders. Measured on v2.0.6, laptop reference rig — see [docs/perf/v2.0.5-baseline.md](docs/perf/v2.0.5-baseline.md).
-- 🧰 **5 execution modes** — one-shot prompts, tool-calling agent, autonomous self-correcting loops, named personas with persistent memory, raw-pipe mode for Espanso/AHK.
+- 🧰 **6 execution modes** — one-shot prompts, tool-calling agent, autonomous self-correcting loops, named personas with persistent memory, image generation, raw-pipe mode for Espanso/AHK.
 - 🔒 **Security hardened** — shell-injection blocklist, SSRF protection on `web_fetch`, file-read denylist, bounded sub-agent recursion. See [SECURITY.md](SECURITY.md).
 - 🖥️ **Cross-platform** — Pre-built AOT binaries for Linux (glibc/musl/arm64), macOS (x64/arm64), and Windows (x64/arm64).
 - 🧪 **1,510+ passing tests** (1,025 v1 + 485 v2 xUnit, plus ~174 bash integration assertions), .NET 10, `Azure.AI.OpenAI 2.1.0` stable.
@@ -91,6 +91,7 @@ You need an Azure OpenAI resource — grab the [endpoint](https://learn.microsof
 | **Agent** | `--agent` | Model can call tools: `shell`, `file`, `web`, `clipboard`, `datetime`, `delegate`. |
 | **Ralph** | `--ralph` | Autonomous loop — agent retries against a validator (`--validate "dotnet test"`) until it passes. |
 | **Persona / Squad** | `--persona <name>` | Named AI team members with per-persona system prompts, tools, and persistent memory in `.squad/`. |
+| **Image** | `--image` | Generate an image from a text prompt (DALL-E / FLUX.2-pro via the same provider dispatch). |
 
 Full flag reference: `az-ai --help`.
 
@@ -176,6 +177,7 @@ Or drop them in a `.env` file (`cp azureopenai-cli/.env.example .env`) and sourc
 | `AZURE_FOUNDRY_ENDPOINT` |  | — | Azure AI Foundry / GitHub Models endpoint URL (enables multi-provider routing) |
 | `AZURE_FOUNDRY_KEY` |  | — | API key for the Foundry endpoint |
 | `AZURE_FOUNDRY_MODELS` |  | — | Comma-separated model names routed to Foundry instead of Azure OpenAI |
+| `AZURE_IMAGE_MODEL` |  | — | Image model deployment name. Resolution: `AZURE_IMAGE_MODEL` > first model in `AZURE_FOUNDRY_MODELS` > chat model fallback |
 
 Switch models on the fly: `az-ai --models`, `az-ai --set-model gpt-4o` (persisted to `~/.azureopenai-cli.json`).
 
@@ -200,6 +202,38 @@ The core targets (`make setup`, `make install`, `make test`, `make preflight`) a
 | `make run-native ARGS="..."` | Run the native binary with env auto-loaded |
 | `make espanso-install` | Install hardened Espanso config for WSL Path B |
 | `make espanso-test` | Verify Espanso can reach az-ai through WSL |
+| `make set-image-model MODEL=<name>` | Set the default image model deployment name |
+
+## Image Generation
+
+`--image` switches from chat completion to image generation. Works with both Azure OpenAI (DALL-E) and Foundry (FLUX.2-pro) via the same provider dispatch.
+
+```bash
+# Generate an image (saves PNG to temp file, copies to clipboard)
+az-ai --image "a cat in a top hat, oil painting"
+
+# Specify dimensions and output path
+az-ai --image --size 512x512 --output cat.png "a cat in space"
+
+# Pipe-friendly: base64 on stdout, no file saved
+echo "sunset" | az-ai --image --raw | base64 -d > sunset.png
+```
+
+| Flag | Purpose |
+|------|---------|
+| `--image` | Enable image generation mode |
+| `--output <path>` | Save PNG to an explicit file (default: temp file with timestamp) |
+| `--size <WxH>` | Image dimensions, e.g. `1024x1024`, `512x512` |
+
+Output behavior:
+
+- **Default:** saves PNG to a temp file, copies to clipboard, prints the file path to stdout.
+- **`--raw`:** writes base64 to stdout (pipe-friendly, no file saved).
+- **`--json`:** emits `{"image":"/path","clipboard":true,"bytes":12345}`.
+
+`--image` cannot be combined with `--agent`, `--ralph`, `--persona`, or `--schema`.
+
+Set the image model deployment with `AZURE_IMAGE_MODEL` or `make set-image-model MODEL=<name>`.
 
 ## Security
 

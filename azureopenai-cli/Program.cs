@@ -102,7 +102,11 @@ internal class Program
                                      // ── Parse-error detail (Scope 3 — reject unknown flags) ─────────────
         int ParseErrorExitCode,      // Exit code for parse errors (default 1; unknown flag = 2)
         string? UnknownFlag,         // Populated when the parse error was an unknown flag
-        bool Setup                   // --setup: launch interactive configuration wizard
+        bool Setup,                  // --setup: launch interactive configuration wizard
+                                     // ── Image generation (FLUX.2-pro / DALL-E) ─────────────
+        bool ImageMode,              // --image: generate image instead of chat
+        string? OutputPath,          // --output <path>: save image to explicit file path
+        string? ImageSize            // --size <WxH>: image dimensions (e.g. 1024x1024)
     );
 
     private static async Task<int> Main(string[] args)
@@ -129,7 +133,7 @@ internal class Program
         // Placed after --help/--version so those zero-dependency paths stay fast
         // and never touch encoding state (important for test isolation).
         Console.OutputEncoding = Encoding.UTF8;
-        Console.InputEncoding  = Encoding.UTF8;
+        Console.InputEncoding = Encoding.UTF8;
 
         try
         {
@@ -377,6 +381,18 @@ internal class Program
         if (string.IsNullOrWhiteSpace(prompt))
         {
             return ErrorAndExit("No prompt provided (provide as argument or via stdin)", 1, jsonMode: opts.Json);
+        }
+
+        // ── Image generation mode ─────────────────────────────────────────
+        // Intercepts before chat/agent/persona flow. --image is incompatible
+        // with --agent, --ralph, --persona, --schema.
+        if (opts.ImageMode)
+        {
+            if (opts.AgentMode || opts.RalphMode || !string.IsNullOrEmpty(opts.Persona) || !string.IsNullOrEmpty(opts.Schema))
+            {
+                return ErrorAndExit("--image cannot be combined with --agent, --ralph, --persona, or --schema.", 1, jsonMode: opts.Json);
+            }
+            return await RunImageGeneration(endpoint, apiKey, model, prompt, opts);
         }
 
         // ── Kramer H3+H4: persona wiring. Resolve persona BEFORE building the
@@ -763,7 +779,10 @@ internal class Program
         CacheTtlHours: PromptCache.DefaultTtlHours,
         ParseErrorExitCode: 1,
         UnknownFlag: null,
-        Setup: false
+        Setup: false,
+        ImageMode: false,
+        OutputPath: null,
+        ImageSize: null
     );
 
     /// <summary>Default agent tool-call round cap, matching v1 (<c>--max-rounds</c>).</summary>
@@ -815,6 +834,9 @@ internal class Program
         bool cacheEnabled = false;
         int? cacheTtlHours = null;
         bool setup = false;
+        bool imageMode = false;
+        string? outputPath = null;
+        string? imageSize = null;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -1064,6 +1086,24 @@ internal class Program
                 case "--setup":
                     setup = true;
                     break;
+                case "--image":
+                    imageMode = true;
+                    break;
+                case "--output":
+                    if (i + 1 < args.Length) { outputPath = args[++i]; }
+                    else { Fail("--output requires a file path"); }
+                    break;
+                case "--size":
+                    if (i + 1 < args.Length)
+                    {
+                        var sizeVal = args[++i];
+                        // Validate WxH format (e.g. 1024x1024, 512x512)
+                        if (System.Text.RegularExpressions.Regex.IsMatch(sizeVal, @"^\d+x\d+$"))
+                        { imageSize = sizeVal; }
+                        else { Fail("--size must be in WxH format (e.g. 1024x1024)"); }
+                    }
+                    else { Fail("--size requires a value (e.g. 1024x1024)"); }
+                    break;
                 default:
                     // Scope 3: reject unknown flags. Anything that looks like a
                     // flag (starts with '-' but isn't bare '-', which some CLIs
@@ -1301,6 +1341,9 @@ internal class Program
             CacheEnabled = cacheEnabled,
             CacheTtlHours = cacheTtlHours ?? PromptCache.DefaultTtlHours,
             Setup = setup,
+            ImageMode = imageMode,
+            OutputPath = outputPath,
+            ImageSize = imageSize,
         };
     }
 
@@ -1679,6 +1722,231 @@ internal class Program
         return client.GetChatClient(model).AsIChatClient();
     }
 
+    /// <summary>
+    /// Resolves the image model deployment name. Priority: AZURE_IMAGE_MODEL env
+    /// var &gt; first model in AZURE_FOUNDRY_MODELS &gt; null (caller falls back to
+    /// the chat model, which may or may not support image generation).
+    /// </summary>
+    internal static string? ResolveImageModel()
+    {
+        var envImageModel = Environment.GetEnvironmentVariable("AZURE_IMAGE_MODEL");
+        if (!string.IsNullOrWhiteSpace(envImageModel))
+            return envImageModel.Trim();
+
+        // Fallback: if Foundry models are configured, use the first one
+        // (assumes user's Foundry endpoint hosts the image model)
+        var foundryModels = ParseFoundryModels();
+        return foundryModels?.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Runs the image generation pipeline: build client, call API, save file,
+    /// optionally copy to clipboard. Called when <c>--image</c> is set.
+    /// </summary>
+    private static async Task<int> RunImageGeneration(
+        string endpoint, string apiKey, string chatModel, string prompt, CliOptions opts)
+    {
+        // Resolve image model -- AZURE_IMAGE_MODEL > Foundry first model > chat model
+        var imageModel = ResolveImageModel() ?? chatModel;
+
+        OpenAI.Images.ImageClient? imageClient;
+        try
+        {
+            imageClient = BuildImageClient(endpoint, apiKey, imageModel, opts.Json);
+            if (imageClient == null)
+                return 1; // BuildImageClient already emitted error
+        }
+        catch (Exception ex)
+        {
+            return ErrorAndExit($"Failed to create image client: {ex.Message}", 1, jsonMode: opts.Json);
+        }
+
+        // Parse size (WxH format -> GeneratedImageSize)
+        OpenAI.Images.GeneratedImageSize? size = null;
+        if (!string.IsNullOrWhiteSpace(opts.ImageSize))
+        {
+            var parts = opts.ImageSize.Split('x');
+            if (parts.Length == 2
+                && int.TryParse(parts[0], out int w)
+                && int.TryParse(parts[1], out int h))
+            {
+                size = new OpenAI.Images.GeneratedImageSize(w, h);
+            }
+        }
+
+        var genOptions = new OpenAI.Images.ImageGenerationOptions
+        {
+            ResponseFormat = OpenAI.Images.GeneratedImageFormat.Bytes,
+            Quality = OpenAI.Images.GeneratedImageQuality.Standard,
+        };
+        if (size.HasValue) genOptions.Size = size.Value;
+
+        if (!opts.Raw && !opts.Json)
+        {
+            Console.Error.Write("[image] Generating... ");
+        }
+
+        OpenAI.Images.GeneratedImage result;
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(opts.TimeoutSeconds));
+            var response = await imageClient.GenerateImageAsync(prompt, genOptions, cts.Token);
+            result = response.Value;
+        }
+        catch (OperationCanceledException)
+        {
+            if (!opts.Raw) Console.Error.WriteLine();
+            return ErrorAndExit("Image generation timed out.", 1, jsonMode: opts.Json);
+        }
+        catch (Exception ex)
+        {
+            if (!opts.Raw) Console.Error.WriteLine();
+            return ErrorAndExit($"Image generation failed: {ex.Message}", 1, jsonMode: opts.Json);
+        }
+
+        if (!opts.Raw && !opts.Json)
+        {
+            Console.Error.WriteLine("done.");
+        }
+
+        // Get image bytes (prefer bytes, fall back to URL download)
+        byte[] imageBytes;
+        if (result.ImageBytes != null && result.ImageBytes.ToMemory().Length > 0)
+        {
+            imageBytes = result.ImageBytes.ToArray();
+        }
+        else if (result.ImageUri != null)
+        {
+            try
+            {
+                using var http = new System.Net.Http.HttpClient();
+                imageBytes = await http.GetByteArrayAsync(result.ImageUri);
+            }
+            catch (Exception ex)
+            {
+                return ErrorAndExit($"Failed to download image from URL: {ex.Message}", 1, jsonMode: opts.Json);
+            }
+        }
+        else
+        {
+            return ErrorAndExit("Image generation returned no image data.", 1, jsonMode: opts.Json);
+        }
+
+        // --raw mode: write base64 to stdout (pipe-friendly)
+        if (opts.Raw)
+        {
+            Console.Write(Convert.ToBase64String(imageBytes));
+            return 0;
+        }
+
+        // Determine output path
+        var outputPath = opts.OutputPath;
+        if (string.IsNullOrWhiteSpace(outputPath))
+        {
+            var tempDir = Path.GetTempPath();
+            outputPath = Path.Combine(tempDir, $"az-ai-{DateTime.UtcNow:yyyyMMdd-HHmmss}.png");
+        }
+
+        // Ensure directory exists
+        var dir = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        try
+        {
+            await File.WriteAllBytesAsync(outputPath, imageBytes);
+        }
+        catch (Exception ex)
+        {
+            return ErrorAndExit($"Failed to save image: {ex.Message}", 1, jsonMode: opts.Json);
+        }
+
+        // Copy to clipboard
+        var clipboardOk = AzureOpenAI_CLI.Tools.ClipboardImageWriter.CopyToClipboard(outputPath);
+
+        // JSON output mode
+        if (opts.Json)
+        {
+            Console.WriteLine($"{{\"image\":\"{outputPath.Replace("\\", "\\\\")}\",\"clipboard\":{(clipboardOk ? "true" : "false")},\"bytes\":{imageBytes.Length}}}");
+            return 0;
+        }
+
+        // Standard output
+        Console.Error.WriteLine($"[image] Saved: {outputPath} ({imageBytes.Length:N0} bytes)");
+        if (clipboardOk)
+        {
+            Console.Error.WriteLine("[image] Copied to clipboard.");
+        }
+
+        // Revised prompt (some models return it)
+        if (!string.IsNullOrWhiteSpace(result.RevisedPrompt))
+        {
+            Console.Error.WriteLine($"[image] Revised prompt: {result.RevisedPrompt}");
+        }
+
+        // Print the file path to stdout so it's pipe-friendly
+        Console.WriteLine(outputPath);
+        return 0;
+    }
+
+    /// <summary>
+    /// Builds an <see cref="OpenAI.Images.ImageClient"/> for image generation.
+    /// Routes to Foundry or Azure OpenAI using the same logic as
+    /// <see cref="BuildChatClient"/>. Returns null on configuration error
+    /// (error already emitted to stderr).
+    /// </summary>
+    internal static OpenAI.Images.ImageClient? BuildImageClient(string endpoint, string apiKey, string model, bool jsonMode)
+    {
+        var foundryEndpoint = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_ENDPOINT");
+        var foundryKey = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_KEY");
+        var foundryModels = ParseFoundryModels();
+
+        bool useFoundry = !string.IsNullOrWhiteSpace(foundryEndpoint)
+            && foundryModels != null
+            && foundryModels.Contains(model, StringComparer.OrdinalIgnoreCase);
+
+        if (useFoundry)
+        {
+            if (!Uri.TryCreate(foundryEndpoint, UriKind.Absolute, out var foundryUri)
+                || (foundryUri.Scheme != "https" && foundryUri.Scheme != "http"))
+            {
+                ErrorAndExit(
+                    $"Invalid Foundry endpoint URL: '{foundryEndpoint}'. Must be a valid HTTPS URL.",
+                    1, jsonMode: jsonMode);
+                return null;
+            }
+
+            if (foundryUri.Scheme == "http" && !IsLoopback(foundryUri))
+            {
+                ErrorAndExit(
+                    $"HTTP endpoint '{foundryEndpoint}' is only allowed for localhost. Use HTTPS for remote endpoints.",
+                    1, jsonMode: jsonMode);
+                return null;
+            }
+
+            var effectiveKey = !string.IsNullOrWhiteSpace(foundryKey) ? foundryKey : apiKey;
+            var options = new OpenAI.OpenAIClientOptions { Endpoint = foundryUri };
+            options.AddPolicy(new FoundryAuthPolicy(effectiveKey, "2024-05-01-preview"),
+                System.ClientModel.Primitives.PipelinePosition.PerCall);
+            return new OpenAI.Images.ImageClient(model, new ApiKeyCredential(effectiveKey), options);
+        }
+
+        // Default: Azure OpenAI path
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var azEndpointUri)
+            || azEndpointUri.Scheme != "https")
+        {
+            ErrorAndExit(
+                $"Invalid endpoint URL: '{endpoint}'. Must be a valid HTTPS URL.",
+                1, jsonMode: jsonMode);
+            return null;
+        }
+
+        var azClient = new AzureOpenAIClient(azEndpointUri, new ApiKeyCredential(apiKey));
+        return azClient.GetImageClient(model);
+    }
+
     /// <summary>Returns true if the URI points to a loopback address.</summary>
     private static bool IsLoopback(Uri uri)
     {
@@ -1885,6 +2153,19 @@ Cost Estimator (FR-015, no API call):
   --estimate                Print estimated USD cost for the prompt and exit
   --estimate-with-output <n>  Include worst-case output cost for n completion tokens
 
+Image Generation:
+  --image                   Generate an image instead of chat completion
+  --output <path>           Save image to explicit file path (default: temp file)
+  --size <WxH>              Image dimensions, e.g. 1024x1024 (default: model default)
+
+  Outputs: file path to stdout, status to stderr. With --raw, writes base64
+  to stdout (pipe-friendly). With --json, emits {image, clipboard, bytes}.
+  Copies image to clipboard when possible (requires xclip/wl-copy/powershell).
+
+  Model resolution: AZURE_IMAGE_MODEL env var > first AZURE_FOUNDRY_MODELS
+  entry > default chat model. For DALL-E use Azure OpenAI; for FLUX.2-pro
+  use Foundry endpoint.
+
 Environment Variables (required):
   AZUREOPENAIENDPOINT       Azure OpenAI endpoint URL
   AZUREOPENAIAPI            API key
@@ -1904,6 +2185,9 @@ Examples:
   az-ai --agent --tools shell,file ""Summarize this directory""
   az-ai --persona coder ""Review this function""
   az-ai --ralph --task-file task.md --validate ""dotnet test"" --max-iterations 5
+  az-ai --image ""A cat wearing a top hat, oil painting""
+  az-ai --image --size 512x512 --output cat.png ""A cat in space""
+  echo ""sunset over mountains"" | az-ai --image --raw | base64 -d > sunset.png
   source <(az-ai --completions bash)
 ");
     }

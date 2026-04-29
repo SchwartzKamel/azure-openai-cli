@@ -115,6 +115,12 @@ Azure OpenAI.
 | `AZURE_FOUNDRY_KEY` | no | API key for the Foundry endpoint. Falls back to `AZUREOPENAIAPI` if unset. |
 | `AZURE_FOUNDRY_MODELS` | no | Comma-separated list of model names to route through Foundry instead of Azure OpenAI. Only models in this list are sent to the Foundry endpoint; all others use Azure OpenAI. |
 
+### Image generation
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `AZURE_IMAGE_MODEL` | no | Image model deployment name for `--image` mode. Resolution order: `AZURE_IMAGE_MODEL` > first model in `AZURE_FOUNDRY_MODELS` > chat model fallback. Set via `make set-image-model MODEL=<name>` or export directly. |
+
 ### Auto-loaded env file (`~/.config/az-ai/env`)
 
 At startup the CLI automatically loads `~/.config/az-ai/env` if it
@@ -319,11 +325,12 @@ this config file consistently across both hosts.
   manually, run `chmod 600 ~/.config/az-ai/env` to keep credentials
   owner-only.
 - **`shell_exec` scrubs sensitive env vars** from child processes.
-  All six credential variables (`AZUREOPENAIAPI`, `AZUREOPENAIENDPOINT`,
+  All credential variables (`AZUREOPENAIAPI`, `AZUREOPENAIENDPOINT`,
   `AZUREOPENAIMODEL`, `AZURE_FOUNDRY_ENDPOINT`, `AZURE_FOUNDRY_KEY`,
-  `AZURE_FOUNDRY_MODELS`) plus `GITHUB_TOKEN`, `GH_TOKEN`,
-  `OPENAI_API_KEY`, and `ANTHROPIC_API_KEY` are removed from the
-  child environment so an LLM-crafted `printenv` cannot leak them.
+  `AZURE_FOUNDRY_MODELS`, `AZURE_IMAGE_MODEL`) plus `GITHUB_TOKEN`,
+  `GH_TOKEN`, `OPENAI_API_KEY`, and `ANTHROPIC_API_KEY` are removed
+  from the child environment so an LLM-crafted `printenv` cannot
+  leak them.
 - **`system_prompt` is not secret.** It's echoed by `--config show`
   and included in request bodies that can be captured by Fiddler /
   Wireshark / network telemetry. Treat it as public.

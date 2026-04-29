@@ -185,9 +185,9 @@ public class UnicodeEncodingTests : IDisposable
     // ── LoadConfigEnvFrom: mixed quoting styles with Unicode ───────────
 
     [Theory]
-    [InlineData("export TEST_UNI_MQ=\"\u4F60\u597D\"",  "\u4F60\u597D")]   // double-quoted: 你好
-    [InlineData("export TEST_UNI_MQ='\u4F60\u597D'",    "\u4F60\u597D")]   // single-quoted: 你好
-    [InlineData("export TEST_UNI_MQ=\u4F60\u597D",      "\u4F60\u597D")]   // bare (unquoted): 你好
+    [InlineData("export TEST_UNI_MQ=\"\u4F60\u597D\"", "\u4F60\u597D")]   // double-quoted: 你好
+    [InlineData("export TEST_UNI_MQ='\u4F60\u597D'", "\u4F60\u597D")]   // single-quoted: 你好
+    [InlineData("export TEST_UNI_MQ=\u4F60\u597D", "\u4F60\u597D")]   // bare (unquoted): 你好
     public void LoadConfigEnvFrom_MixedQuotingUnicode_PreservesValue(
         string line, string expected)
     {

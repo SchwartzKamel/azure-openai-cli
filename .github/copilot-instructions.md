@@ -55,6 +55,8 @@ make preflight
 
 **Squad persona system:** `azureopenai-cli/Squad/` -- config in `.squad.json`, per-persona memory in `.squad/history/<name>.md` (32 KB cap), keyword-based routing via `SquadCoordinator`.
 
+**Image generation mode:** `--image` switches from chat to image generation. `BuildImageClient()` constructs the image client (same dual-provider dispatch as chat). `RunImageGeneration()` handles the generation flow. `ClipboardImageWriter` copies PNG to the system clipboard (xclip/wl-copy/osascript/powershell). `--image` cannot be combined with `--agent`, `--ralph`, `--persona`, or `--schema`.
+
 ## Key Conventions
 
 **Error handling:** Use `ErrorAndExit()` for all fatal exits -- consistent `[ERROR]` prefix on stderr + JSON-aware output. Never duplicate inline error/exit patterns.
@@ -67,7 +69,7 @@ make preflight
 - `ShellExecTool`: rejects `$()`, backticks, `<()`, `>()`, `eval`, `exec`. Uses `ArgumentList` (not `Arguments`). New blocked patterns need tests in `ToolHardeningTests`.
 - `ReadFileTool`: NFKC-normalizes paths (Unicode homoglyph defense), blocks sensitive paths.
 - `WebFetchTool`: HTTPS-only, SSRF filtering against private/link-local ranges, validates post-redirect URL.
-- `ShellExecTool` scrubs 13 sensitive env vars from child processes.
+- `ShellExecTool` scrubs sensitive env vars (including `AZURE_IMAGE_MODEL`) from child processes.
 
 **Encoding:** UTF-8 is enforced end-to-end. `Console.OutputEncoding`/`InputEncoding` set at startup. `ProcessStartInfo` in tools uses `StandardOutputEncoding = Encoding.UTF8`. Espanso configs require `$OutputEncoding` for PowerShell 5.1.
 
@@ -99,13 +101,14 @@ Docs-only changes (`*.md`) can skip preflight per the `docs-only-commit` skill.
 | `AZURE_FOUNDRY_ENDPOINT` | No | Enables multi-provider routing to Azure AI Foundry |
 | `AZURE_FOUNDRY_KEY` | No | API key for Foundry endpoint |
 | `AZURE_FOUNDRY_MODELS` | No | Comma-separated model names routed to Foundry |
+| `AZURE_IMAGE_MODEL` | No | Image model deployment name for `--image` mode |
 
 Credentials live in `~/.config/az-ai/env` (chmod 600), auto-loaded by `LoadConfigEnvFrom()`.
 
 ## File Structure
 
 - `azureopenai-cli/Program.cs` -- CLI entry point, all modes, provider dispatch
-- `azureopenai-cli/Tools/*.cs` -- Built-in tools (register new ones in `ToolRegistry.CreateMafTools()`)
+- `azureopenai-cli/Tools/*.cs` -- Built-in tools (register new ones in `ToolRegistry.CreateMafTools()`); includes `ClipboardImageWriter.cs` for `--image` clipboard support
 - `azureopenai-cli/Squad/` -- Persona config, routing, memory, initialization
 - `azureopenai-cli/UserConfig.cs` -- Persists to `~/.azureopenai-cli.json` (`public class` for test access)
 - `azureopenai-cli/JsonGenerationContext.cs` -- `AppJsonContext` AOT-compatible serialization

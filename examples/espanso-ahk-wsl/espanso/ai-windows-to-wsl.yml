@@ -136,3 +136,159 @@ matches:
             printf %s \"$CLIP\" | az-ai-wrap --raw --max-tokens 500 --temperature 0.3
             --system ''You are a senior code reviewer. Identify bugs, security issues, and design problems in the following code. Be concise, specific, and actionable. Use bullet points. Output ONLY the review.''
             2>/dev/null'" 2>NUL
+
+  # ── :aiimg — generate image (form prompt, copies to clipboard) ─────────
+  # Uses --image --raw to get base64, decodes to temp PNG, copies to clipboard.
+  # Returns "[image copied to clipboard]" as replacement text.
+  - trigger: ":aiimg"
+    replace: "{{output}}"
+    vars:
+      - name: form1
+        type: form
+        params:
+          layout: "Image prompt:\n\n[[prompt]]"
+          fields:
+            prompt:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            $b64 = '{{form1.prompt}}' | wsl.exe -e bash -c 'az-ai-wrap --image --raw 2>/dev/null';
+            if ($b64) {
+            $tmp=[System.IO.Path]::Combine([System.IO.Path]::GetTempPath(),'az-ai-espanso.png');
+            [System.IO.File]::WriteAllBytes($tmp,[System.Convert]::FromBase64String($b64));
+            Add-Type -AssemblyName System.Drawing;
+            Add-Type -AssemblyName System.Windows.Forms;
+            $img=[System.Drawing.Image]::FromFile($tmp);
+            [System.Windows.Forms.Clipboard]::SetImage($img);
+            $img.Dispose();
+            Write-Output '[image copied to clipboard]'
+            } else { Write-Output '[image generation failed]' }" 2>NUL
+
+  # POWER TRIGGERS -- complex text expansion, web search, structured output
+
+  # -- :aiexpand -- expand/elaborate on clipboard content ---------------
+  - trigger: ":aiexpand"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            Get-Clipboard -Raw |
+            wsl.exe -e bash -c 'tr -d \"\\r\" |
+            az-ai-wrap --raw --max-tokens 2000 --temperature 0.6
+            --system ''Take the following text and expand on it. Add relevant detail, context, and supporting points. Keep the same voice and intent but make it richer and more thorough. Do NOT pad with filler -- every sentence should add substance. Output ONLY the expanded text.''
+            2>/dev/null'" 2>NUL
+
+  # -- :aiweb -- web-augmented AI prompt with form ---------------------
+  - trigger: ":aiweb "
+    replace: "{{output}}"
+    vars:
+      - name: form1
+        type: form
+        params:
+          layout: "Web-augmented AI prompt:\n\n[[prompt]]"
+          fields:
+            prompt:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: |
+            powershell -NoProfile -Command "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new(); wsl.exe -e bash -c 'az-ai-wrap --raw --agent --tools web --max-tokens 2000 --max-rounds 5 --system ''You have access to a web_fetch tool. Use it to search for current, accurate information relevant to the user prompt. Fetch 1-3 URLs as needed. Synthesize findings into a clear, well-structured answer. Cite sources inline with [Source Title](URL) format. Output ONLY the final answer -- no tool-call narration.'' 2>/dev/null <<''__AZ_AI_EOF__''
+            {{form1.prompt}}
+            __AZ_AI_EOF__
+            '" 2>NUL
+
+  # -- :aitone -- rewrite clipboard in chosen tone (form) --------------
+  - trigger: ":aitone"
+    replace: "{{output}}"
+    vars:
+      - name: form1
+        type: form
+        params:
+          layout: "Rewrite clipboard text in this tone:\n\n[[tone]]"
+          fields:
+            tone:
+              type: choice
+              values:
+                - Professional
+                - Casual / Friendly
+                - Academic / Formal
+                - Concise / Direct
+                - Enthusiastic
+                - Diplomatic / Careful
+                - Sarcastic
+                - ELI5 (Explain Like I'm 5)
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            Get-Clipboard -Raw |
+            wsl.exe -e bash -c 'tr -d \"\\r\" |
+            az-ai-wrap --raw --max-tokens 1000
+            --system ''Rewrite the following text in a {{form1.tone}} tone. Preserve the core meaning and all key facts. Adjust vocabulary, sentence structure, and register to match the requested tone. Output ONLY the rewritten text.''
+            2>/dev/null'" 2>NUL
+
+  # -- :aibullets -- convert clipboard to bullet points ----------------
+  - trigger: ":aibullets"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            Get-Clipboard -Raw |
+            wsl.exe -e bash -c 'tr -d \"\\r\" |
+            az-ai-wrap --raw --max-tokens 1000 --temperature 0.3
+            --system ''Convert the following text into a clean bullet-point list. Group related points under short bold headings if the content spans multiple topics. Each bullet should be one clear, complete thought. Use - for bullets. Output ONLY the bullet list.''
+            2>/dev/null'" 2>NUL
+
+  # -- :aidata -- extract structured data / key facts ------------------
+  - trigger: ":aidata"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            Get-Clipboard -Raw |
+            wsl.exe -e bash -c 'tr -d \"\\r\" |
+            az-ai-wrap --raw --max-tokens 1000 --temperature 0.2
+            --system ''Extract all key facts, data points, names, dates, numbers, decisions, and action items from the following text. Present them as a structured list grouped by category (e.g. People, Dates, Decisions, Action Items, Numbers/Metrics). Use - for bullets. If a category has no entries, omit it. Output ONLY the extracted data.''
+            2>/dev/null'" 2>NUL
+
+  # -- :aiflip -- devil's advocate analysis ----------------------------
+  - trigger: ":aiflip"
+    replace: "{{output}}"
+    vars:
+      - name: output
+        type: shell
+        params:
+          shell: cmd
+          cmd: >
+            powershell -NoProfile -Command
+            "$OutputEncoding=[Text.UTF8Encoding]::new();[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();
+            Get-Clipboard -Raw |
+            wsl.exe -e bash -c 'tr -d \"\\r\" |
+            az-ai-wrap --raw --max-tokens 1000 --temperature 0.7
+            --system ''Play devils advocate on the following text. Identify the strongest counter-arguments, unstated assumptions, potential weaknesses, and alternative perspectives. Be intellectually honest -- not contrarian for its own sake. Structure as: Assumptions, Counter-arguments, Risks/Blind spots. Output ONLY the analysis.''
+            2>/dev/null'" 2>NUL

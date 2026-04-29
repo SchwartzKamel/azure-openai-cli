@@ -46,6 +46,13 @@ several focused files rather than a single monolith. Start here:
   `AZURE_FOUNDRY_ENDPOINT` + `AZURE_FOUNDRY_MODELS` opt a model into the
   Foundry path; everything else stays on Azure OpenAI. See
   [ADR-005](docs/adr/ADR-005-foundry-routing.md).
+- **Image generation:** `BuildImageClient()` constructs an image client
+  using the same dual-provider dispatch. `RunImageGeneration()` sends the
+  prompt, saves the PNG (or emits base64 in `--raw` mode), and invokes
+  `ClipboardImageWriter` to copy the result to the system clipboard.
+  Model resolution: `AZURE_IMAGE_MODEL` > first model in
+  `AZURE_FOUNDRY_MODELS` > chat model fallback. Works with Azure OpenAI
+  (DALL-E) and Foundry (FLUX.2-pro).
 - **Model resolution:** CLI flag → `AZUREOPENAIMODEL` (comma-separated;
   first = default, all = allowlist) → `UserConfig.ResolveSmartDefault()` →
   hardcoded fallback (`gpt-4o-mini`). Allowlist is enforced when multiple
