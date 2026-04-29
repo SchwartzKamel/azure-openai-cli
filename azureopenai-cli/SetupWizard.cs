@@ -139,20 +139,51 @@ internal static class SetupWizard
                 continue;
             }
 
-            if (!input.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            if (!TryParseEndpointUrl(input, out var rejection))
             {
-                Console.WriteLine("  Endpoint must start with https://");
-                continue;
-            }
-
-            if (!Uri.TryCreate(input, UriKind.Absolute, out _))
-            {
-                Console.WriteLine("  That doesn't look like a valid URL. Try again.");
+                Console.WriteLine($"  {rejection}");
                 continue;
             }
 
             return input.TrimEnd('/');
         }
+    }
+
+    /// <summary>
+    /// Validates that <paramref name="url"/> is a well-formed Azure OpenAI resource root URL:
+    /// must start with <c>https://</c>, parse as an absolute URI, and have no path, query, or fragment.
+    /// Returns <see langword="true"/> when valid; otherwise <see langword="false"/> with a
+    /// human-readable rejection reason in <paramref name="rejection"/>.
+    /// </summary>
+    internal static bool TryParseEndpointUrl(string url, out string? rejection)
+    {
+        if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            rejection = "Endpoint must start with https://";
+            return false;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            rejection = "That doesn't look like a valid URL. Try again.";
+            return false;
+        }
+
+        // Reject deep paths, query strings, and fragments — the endpoint
+        // must be the Azure OpenAI resource root. Anything deeper will
+        // silently break the client SDK's URL construction at runtime.
+        if ((uri.AbsolutePath is not ("" or "/")) ||
+            !string.IsNullOrEmpty(uri.Query) ||
+            !string.IsNullOrEmpty(uri.Fragment))
+        {
+            rejection =
+                "Endpoint must be a root URL with no path, query, or fragment "
+                + "(e.g. https://my-resource.openai.azure.com).";
+            return false;
+        }
+
+        rejection = null;
+        return true;
     }
 
     private static string? PromptApiKey(bool hasExisting)

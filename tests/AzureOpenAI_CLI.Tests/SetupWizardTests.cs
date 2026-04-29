@@ -277,6 +277,37 @@ public class SetupWizardTests
         Assert.Contains("https://example.openai.azure.com", stdout.ToString());
     }
 
+    // ── PromptEndpoint URL validation ────────────────────────────────────
+    //
+    // TryParseEndpointUrl is internal so it can be exercised directly.
+    // These tests guard against a persisted misconfiguration that silently
+    // breaks the client SDK's URL construction at runtime.
+
+    [Theory]
+    [InlineData("https://my-resource.openai.azure.com")]
+    [InlineData("https://my-resource.openai.azure.com/")]
+    public void TryParseEndpointUrl_ValidRootUrl_ReturnsTrue(string url)
+    {
+        Assert.True(SetupWizard.TryParseEndpointUrl(url, out var rejection));
+        Assert.Null(rejection);
+    }
+
+    [Theory]
+    [InlineData("http://my-resource.openai.azure.com", "must start with https")]
+    [InlineData("my-resource.openai.azure.com", "must start with https")]
+    [InlineData("https://my-resource.openai.azure.com/openai/deployments", "no path")]
+    [InlineData("https://my-resource.openai.azure.com/openai", "no path")]
+    [InlineData("https://my-resource.openai.azure.com?api-version=2024-05-01", "no path, query, or fragment")]
+    [InlineData("https://my-resource.openai.azure.com/#section", "no path, query, or fragment")]
+    public void TryParseEndpointUrl_InvalidUrl_ReturnsFalseWithMessage(string url, string expectedFragment)
+    {
+        var ok = SetupWizard.TryParseEndpointUrl(url, out var rejection);
+
+        Assert.False(ok);
+        Assert.NotNull(rejection);
+        Assert.Contains(expectedFragment, rejection, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string FindSourceFile(string leaf)
     {
         // Walk up from the test assembly location until we find the repo's
