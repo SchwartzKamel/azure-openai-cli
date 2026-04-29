@@ -16,17 +16,19 @@
 # Expected latency: 2–3 s per trigger in steady state (Azure round-trip).
 #
 # Placeholder while processing ("yada yada yada"):
-#   Each trigger types a visible placeholder into the active text field via
-#   xdotool while az-ai processes the request, then backspaces over it before
-#   Espanso pastes the real response. This gives the user immediate feedback
-#   that the trigger fired. The backspace count uses ${#ph} so changing the
-#   placeholder string only requires editing one line.
+#   Each trigger first backspaces over the trigger text itself, then types a
+#   visible placeholder into the active text field via xdotool. When the
+#   response arrives, the placeholder is backspaced away and filler spaces
+#   (equal to trigger length) are typed so Espanso's own trigger-deletion
+#   backspaces land on padding instead of real content.
+#
+#   The backspace count uses ${#ph} so changing the placeholder string only
+#   requires editing one line. $tl (trigger length) is set per-trigger.
 #
 #   Wayland note: xdotool does not work under Wayland compositors. Install
 #   `wtype` (https://github.com/atx/wtype) and replace the two xdotool lines:
-#     xdotool type --clearmodifiers "$ph"  →  wtype "$ph"
-#     xdotool key --repeat ${#ph} BackSpace  →  wtype -k BackSpace -s 50 (×${#ph})
-#   A loop works: for i in $(seq 1 ${#ph}); do wtype -k BackSpace; done
+#     xdotool type --clearmodifiers "$ph"  -->  wtype "$ph"
+#     xdotool key --repeat N BackSpace     -->  for i in $(seq 1 N); do wtype -k BackSpace; done
 
 matches:
 
@@ -49,13 +51,17 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=4; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
             xdotool type --clearmodifiers "$ph"
             response=$(az-ai --raw 2>/dev/null <<'__AZ_AI_EOF__'
             {{form1.prompt}}
             __AZ_AI_EOF__
             )
             xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
             sleep 0.05
             printf '%s' "$response"
 
@@ -68,7 +74,9 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=6; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
             xdotool type --clearmodifiers "$ph"
             response=$({ wl-paste 2>/dev/null \
               || xclip -selection clipboard -o 2>/dev/null \
@@ -79,9 +87,9 @@ matches:
                 2>/dev/null)
             xdotool key --repeat ${#ph} BackSpace
             sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
+            sleep 0.05
             printf '%s' "$response"
-
-  # ── :aiexp — explain clipboard contents (code or prose) ────────────────
   - trigger: ":aiexp"
     replace: "{{output}}"
     vars:
@@ -90,7 +98,9 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=6; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
             xdotool type --clearmodifiers "$ph"
             response=$({ wl-paste 2>/dev/null \
               || xclip -selection clipboard -o 2>/dev/null \
@@ -100,6 +110,8 @@ matches:
                 --system 'Explain the following clearly in 2-3 sentences. If it is code, be precise and technical. Output ONLY the explanation, no preamble.' \
                 2>/dev/null)
             xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
             sleep 0.05
             printf '%s' "$response"
 
@@ -112,7 +124,9 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=7; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
             xdotool type --clearmodifiers "$ph"
             response=$({ wl-paste 2>/dev/null \
               || xclip -selection clipboard -o 2>/dev/null \
@@ -123,9 +137,9 @@ matches:
                 2>/dev/null)
             xdotool key --repeat ${#ph} BackSpace
             sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
+            sleep 0.05
             printf '%s' "$response"
-
-  # ── :airw — rewrite clipboard more professionally ──────────────────────
   - trigger: ":airw"
     replace: "{{output}}"
     vars:
@@ -134,7 +148,9 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=5; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
             xdotool type --clearmodifiers "$ph"
             response=$({ wl-paste 2>/dev/null \
               || xclip -selection clipboard -o 2>/dev/null \
@@ -144,6 +160,8 @@ matches:
                 --system 'Rewrite the following in a more professional, polished tone. Preserve meaning and key facts. Do not add information. Output ONLY the rewritten text.' \
                 2>/dev/null)
             xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
             sleep 0.05
             printf '%s' "$response"
 
@@ -159,7 +177,9 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=4; ph='yada yada yada'
+            xdotool key --repeat $tl BackSpace
+            sleep 0.05
             xdotool type --clearmodifiers "$ph"
             CLIP="$( { wl-paste 2>/dev/null \
                        || xclip -selection clipboard -o 2>/dev/null \
@@ -172,5 +192,7 @@ matches:
                      --system 'You are a senior code reviewer. Identify bugs, security issues, and design problems in the following code. Be concise, specific, and actionable. Use bullet points. Output ONLY the review.' \
                      2>/dev/null )
             xdotool key --repeat ${#ph} BackSpace
+            sleep 0.05
+            xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
             sleep 0.05
             printf '%s' "$response"

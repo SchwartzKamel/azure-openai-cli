@@ -2,16 +2,18 @@
 # az-ai Espanso matches — macOS native.
 #
 # "Yada yada yada" placeholder UX:
-#   While az-ai processes, the text "yada yada yada" appears at the cursor
-#   so the user knows something is happening. Once the response arrives,
-#   the placeholder is deleted (via backspaces) and the response is printed
-#   for Espanso to paste. The placeholder length is derived from ${#ph} so
-#   adding/changing the text automatically adjusts the backspace count.
+#   While az-ai processes, the trigger text is first backspaced away, then
+#   "yada yada yada" appears at the cursor so the user knows something is
+#   happening. Once the response arrives, the placeholder is backspaced and
+#   filler spaces (equal to trigger length) are typed so Espanso's own
+#   trigger-deletion backspaces land on padding instead of real content.
+#   The placeholder length is derived from ${#ph} so changing the text
+#   only requires editing one line. $tl (trigger length) is set per-trigger.
 #
 # macOS keystroke simulation uses osascript (AppleScript) which ships with
 # every macOS install. Key code 51 = Delete (backspace).
 #
-# ⚠️  Accessibility permission required:
+# NOTE -- Accessibility permission required:
 #   The first time osascript sends keystrokes, macOS will prompt you to
 #   grant Accessibility access. Go to:
 #     System Settings → Privacy & Security → Accessibility → enable Espanso
@@ -53,13 +55,17 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=4; ph='yada yada yada'
+            osascript -e 'tell application "System Events"' -e "repeat $tl times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             response=$(az-ai --raw 2>/dev/null <<'__AZ_AI_EOF__'
             {{form1.prompt}}
             __AZ_AI_EOF__
             )
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            osascript -e "tell application \"System Events\" to keystroke \"$(printf '%*s' $tl '')\""
             sleep 0.05
             printf '%s' "$response"
 
@@ -72,7 +78,9 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=6; ph='yada yada yada'
+            osascript -e 'tell application "System Events"' -e "repeat $tl times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             response=$(pbpaste \
               | az-ai --raw --max-tokens 500 --temperature 0.3 \
@@ -80,9 +88,9 @@ matches:
                   2>/dev/null)
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
             sleep 0.05
+            osascript -e "tell application \"System Events\" to keystroke \"$(printf '%*s' $tl '')\""
+            sleep 0.05
             printf '%s' "$response"
-
-  # ── :aiexp — explain clipboard contents (code or prose) ────────────────
   - trigger: ":aiexp"
     replace: "{{output}}"
     vars:
@@ -91,13 +99,17 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=6; ph='yada yada yada'
+            osascript -e 'tell application "System Events"' -e "repeat $tl times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             response=$(pbpaste \
               | az-ai --raw --max-tokens 300 --temperature 0.4 \
                   --system 'Explain the following clearly in 2-3 sentences. If it is code, be precise and technical. Output ONLY the explanation, no preamble.' \
                   2>/dev/null)
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            osascript -e "tell application \"System Events\" to keystroke \"$(printf '%*s' $tl '')\""
             sleep 0.05
             printf '%s' "$response"
 
@@ -110,13 +122,17 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=7; ph='yada yada yada'
+            osascript -e 'tell application "System Events"' -e "repeat $tl times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             response=$(pbpaste \
               | az-ai --raw --max-tokens 150 --temperature 0.4 \
                   --system 'Summarize in exactly 2 sentences. Be concise. Output ONLY the summary.' \
                   2>/dev/null)
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            osascript -e "tell application \"System Events\" to keystroke \"$(printf '%*s' $tl '')\""
             sleep 0.05
             printf '%s' "$response"
 
@@ -129,13 +145,17 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=5; ph='yada yada yada'
+            osascript -e 'tell application "System Events"' -e "repeat $tl times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             response=$(pbpaste \
               | az-ai --raw --max-tokens 600 --temperature 0.5 \
                   --system 'Rewrite the following in a more professional, polished tone. Preserve meaning and key facts. Do not add information. Output ONLY the rewritten text.' \
                   2>/dev/null)
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            osascript -e "tell application \"System Events\" to keystroke \"$(printf '%*s' $tl '')\""
             sleep 0.05
             printf '%s' "$response"
 
@@ -151,7 +171,9 @@ matches:
         params:
           shell: bash
           cmd: |
-            ph='yada yada yada'
+            tl=4; ph='yada yada yada'
+            osascript -e 'tell application "System Events"' -e "repeat $tl times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             CLIP="$(pbpaste)"
             response=$(printf '%s' "$CLIP" \
@@ -161,5 +183,7 @@ matches:
                      --system 'You are a senior code reviewer. Identify bugs, security issues, and design problems in the following code. Be concise, specific, and actionable. Use bullet points. Output ONLY the review.' \
                      2>/dev/null)
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
+            sleep 0.05
+            osascript -e "tell application \"System Events\" to keystroke \"$(printf '%*s' $tl '')\""
             sleep 0.05
             printf '%s' "$response"
