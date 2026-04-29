@@ -34,6 +34,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Fixed
+- **fix(examples):** Espanso WSL config (`examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml`)
+  no longer fails with PowerShell `TerminatorExpectedAtEndOfString` on
+  the `:ai ` and `:aiweb ` form triggers. Three bugs fixed: (1) the
+  multiline `cmd: |` heredoc under `shell: cmd` was silently truncated
+  by `cmd.exe` to a single line, leaving an unterminated `"`; rewritten
+  with `shell: powershell` and a `@'…'@` here-string so multiline works
+  natively and the prompt is metachar-safe; (2) `az-ai-wrap` invocations
+  replaced with `az-ai` -- the wrapper became unnecessary in v2.1.1 once
+  `az-ai` started auto-loading `~/.azureopenai-cli.json` and
+  `~/.config/az-ai/env` at startup; (3) `wsl.exe -e bash -c` (non-login,
+  no PATH) replaced with `bash -lc` so `~/.local/bin/az-ai` resolves
+  without a system install. `make espanso-install` now ships a config
+  that works first-try on a stock `make install` setup.
 
 ### Security
 - Fail closed when masked input is unavailable: `SetupWizard.ReadMaskedLine`
