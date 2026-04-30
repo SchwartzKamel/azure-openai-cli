@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [2.2.0] -- 2026-04-30
+
+### Added
 - **chore(tooling):** Mechanical enforcement of the exec-report
   convention. New `scripts/exec-report-check.sh` detector fails when a
   push range touches files outside `docs/exec-reports/` and adds no new
@@ -44,12 +58,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the moment the response arrives -- closing the 2-3 second feedback gap
   during the Azure round-trip. Wrapped in `try { ... } finally { ... }`
   so the placeholder always clears, even if the WSL pipeline errors.
+- **feat(espanso):** New `:aishort ` snap-tier trigger (60 max-tokens,
+  ~150 char target). Faster than `:ai ` for chat-app replies where you
+  do not need a paragraph -- one short sentence, no preamble, no
+  markdown. Hard token cap means generation latency is ~1.8 s less than
+  an unbounded reply at GPT-4o-mini. ([s03e02-the-library-cops-word-limit])
+- **feat(espanso):** New `:aiyml ` self-extension trigger. Type a
+  natural-language description of a new Espanso AI trigger; the AI
+  generates a YAML block conforming to the unified S03 pattern (trigger
+  name match, SendKeys-safe `$ph`, BACKSPACE ordering, try/finally
+  retype, here-string bash) and places it on the clipboard for you to
+  paste under `matches:` in `ai-wsl.yml`. Espanso reloads on save.
+  Maintains user config ownership -- no file write, no privilege
+  surface. ([s03e02-the-library-cops-word-limit])
+- **feat(governance):** New cast member **Lt. Bookman** (output economy
+  / brevity discipline) at `.github/agents/bookman.agent.md`. Owns the
+  response-length tier doctrine (S=Snap/M=Chat/L=Document/U=Mirror/
+  F=Free), `--max-tokens` budgets per tier, and the system-prompt
+  brevity language. Supporting players: 21 -> 22; total fleet: 27 -> 28.
+  ([s03e02-the-library-cops-word-limit])
+- **feat(examples):** Espanso WSL config gains 7 new triggers from the
+  S02E37/S03E01 unification: `:aitr` (translate to chosen language,
+  12-language picker), `:aishrink` (compress to ~50% length), `:aireply`
+  (draft email/message reply, intent + tone form), `:aicommit`
+  (Conventional Commit message from clipboard diff), `:airegex`
+  (explain-or-generate regex), `:aianon` (PII redaction), `:aiq ` (one-
+  line quick question). Total triggers: 13 -> 22.
+  ([s02e37-the-yada-yada-yada], [s03e01-the-yada-yada-strikes-back],
+  [s03e02-the-library-cops-word-limit])
+- **chore(quality):** New `scripts/lint-espanso-yml.sh` enforces
+  structural invariants on `ai-windows-to-wsl.yml` (parse, unique
+  triggers, `$trigger`/`trigger:` value match, `$ph` SendKeys-safe
+  charset, exactly two BACKSPACE refs in correct order, try+finally+
+  SendWait($trigger) restoration). Also rejects `--system '...{{form1.X}}...'`
+  patterns (the S03E01 root-cause bug class) and `Invoke-Expression`
+  composed with form values. Wired into `tests/integration_tests.sh` so
+  the CI `integration-test` job fails fast on structural drift.
+  ([s03e01-the-yada-yada-strikes-back])
 
 ### Changed
-
-### Deprecated
-
-### Removed
+- **espanso(brevity):** Tightened three triggers per Lt. Bookman's tier
+  doctrine: `:aiq` 200 -> 60 max-tokens with stricter `<=150 char, 1
+  sentence` system prompt; `:aireply` 800 -> 400 max-tokens with
+  `<=4 short sentences` language; `:aitldr` 150 -> 120 max-tokens with
+  explicit `<=300 chars total` cap. Mirror-tier triggers (`:aifix`,
+  `:airw`, `:aitone`, `:aitr`, `:aishrink`, `:aiflip`, `:aianon`)
+  intentionally NOT capped -- their output length must track input. Free-
+  tier triggers (`:ai `, `:aiweb `, `:aiimg`) untouched per design.
+  ([s03e02-the-library-cops-word-limit])
+- **espanso(unification):** All 22 Espanso WSL triggers now use the same
+  `shell: powershell` + `cmd: |` + `$bash = @'...'@` here-string +
+  `wsl.exe -e bash -lc` pattern. The prior mix of `shell: cmd` + folded
+  `cmd: >` scalars (which required hand-counted backslash escaping
+  through three layers and exploded with `TerminatorExpectedAtEndOfString`
+  on edit) is retired. Header comments document the unified pattern and
+  the rationale for retirement. ([s03e01-the-yada-yada-strikes-back])
+- **espanso(ux):** Loading-placeholder dance now backspaces the trigger
+  text *before* typing the placeholder, then re-types the trigger in
+  `finally` so Espanso's own delete-trigger step still lines up with
+  what is on screen. Closes the prior visual glitch where the trigger
+  appeared next to the placeholder (`:aifixyada yada yada`).
+  ([s03e01-the-yada-yada-strikes-back])
+- **espanso(ux):** All 19 WSL pipelines wrap output in an empty-stdout
+  fallback banner (`if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai:
+  no response -- check connectivity, az-ai install, or env]' }`) so
+  silent-failure paths now surface a diagnostic instead of injecting
+  empty text into the user's document.
+  ([s03e01-the-yada-yada-strikes-back])
 
 ### Fixed
 - **fix(examples):** Espanso WSL config (`examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml`)
@@ -57,7 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the `:ai ` and `:aiweb ` form triggers. Three bugs fixed: (1) the
   multiline `cmd: |` heredoc under `shell: cmd` was silently truncated
   by `cmd.exe` to a single line, leaving an unterminated `"`; rewritten
-  with `shell: powershell` and a `@'…'@` here-string so multiline works
+  with `shell: powershell` and a `@'...'@` here-string so multiline works
   natively and the prompt is metachar-safe; (2) `az-ai-wrap` invocations
   replaced with `az-ai` -- the wrapper became unnecessary in v2.1.1 once
   `az-ai` started auto-loading `~/.azureopenai-cli.json` and
@@ -65,8 +140,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no PATH) replaced with `bash -lc` so `~/.local/bin/az-ai` resolves
   without a system install. `make espanso-install` now ships a config
   that works first-try on a stock `make install` setup.
+- **fix(examples):** `:aiimg` temp filename now uses
+  `[System.IO.Path]::GetRandomFileName()` instead of a fixed predictable
+  name, and the file write is wrapped in try/finally that deletes the
+  artifact regardless of outcome (was leaving stale PNGs in `%TEMP%`
+  on errors). ([s03e01-the-yada-yada-strikes-back])
+- **fix(tests):** Cross-class env-var race in xUnit caused `ExportEnvTests`,
+  `ModelAllowlistTests`, and `UnicodeEncodingTests` to flake under
+  parallel execution -- one class would clear `AZUREOPENAIMODEL` between
+  another's set and read. Tagged all three (plus four others identified
+  in the round-2 audit: `ImageGenerationTests`, `ToolHardeningTests`,
+  `CliParserTests`, `ValidationTemperatureTests`) with
+  `[Collection("ConsoleCapture")]` to serialize. Deleted the redundant
+  `SafetyPatchCollection` and migrated its members into `ConsoleCapture`
+  to close a related cross-collection `AZUREOPENAIAPI` race between
+  `PromptCacheTests` and `V201ProgramPatchTests`.
+  ([s03e01-the-yada-yada-strikes-back])
 
 ### Security
+- **security(espanso):** Closed a HIGH bash-quote injection on
+  `:aitone`, `:aitr`, and `:aireply.tone` form triggers. Espanso
+  substitutes `{{form1.X}}` into the `cmd:` block as raw text BEFORE
+  PowerShell parses it, and a choice value containing an apostrophe
+  (e.g. `ELI5 / Explain Like a 5-year-old`) broke the bash single-quoted
+  `--system '...'` argument. Now uses a `switch` whitelist mapping:
+  user input is bounded by the choice list; choice value maps to a
+  hardcoded safe phrase; the bash command line never sees user-controlled
+  text. The ELI5 choice was renamed (no apostrophe) as a belt-and-
+  suspenders measure. ([s03e01-the-yada-yada-strikes-back])
+- **security(espanso):** Closed the `:aireply.intent` (single-line free-
+  form field) bash injection. Captured via PowerShell here-string,
+  sanitized (strip `"`, CR, LF), passed to bash via `WSLENV` + an
+  `AZ_AI_INTENT` environment variable, referenced as `"$AZ_AI_INTENT"`
+  inside the bash `--system` arg. Espanso's `multiline:false` makes the
+  PS here-string `'@` boundary attack unreachable.
+  ([s03e01-the-yada-yada-strikes-back])
+- **security(espanso):** Trust-model header documents per-trigger
+  privacy implications (`:aianon` egresses raw PII before redaction;
+  `:aicommit` ships full diff incl. any staged secrets; `:aic` ships
+  clipboard verbatim same secret-egress class as `:aicommit`; `:aireply`
+  ships email bodies; `:aitr` ships source text; `:aiyml` writes
+  generated YAML to the clipboard, design prompt egresses to Azure).
+  Multi-line free-form prompt fields (`:ai `, `:aiweb `, `:aiimg`)
+  carry a residual PS here-string `'@` boundary risk that cannot be
+  closed without abandoning Espanso template substitution -- the
+  threat model is essentially self-inflicted but documented honestly.
+  ([s03e01-the-yada-yada-strikes-back])
+- **security(espanso):** New `FOCUS HAZARD` callout in the trust-model
+  header: SendKeys writes to whichever window has foreground focus when
+  each call fires, including the placeholder-restore keystrokes that
+  fire in the `finally` block. Users are warned to NOT switch windows
+  while a trigger is in flight. ([s03e01-the-yada-yada-strikes-back])
+- **chore(security):** `ShellExecTool` env-var scrubbing list audited;
+  confirmed coverage for all Azure/Foundry/GH/OpenAI/Anthropic keys plus
+  `AZURE_IMAGE_MODEL`. ([s03e01-the-yada-yada-strikes-back])
 - Fail closed when masked input is unavailable: `SetupWizard.ReadMaskedLine`
   no longer falls back to unmasked `Console.ReadLine` when `Console.ReadKey`
   throws on pseudo-TTYs (some container runtimes, `dotnet test` capture, CI
@@ -570,13 +697,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Packaging (post-publish, hash-sync)
 - Homebrew, Nix, and Scoop manifests hash-synced against the v2.0.4
   GitHub Release (run `24789065975`, published 2026-04-22). Digests:
-  - `linux-x64.tar.gz` — `sha256:9592a962…8e6` (SRI
+  - `linux-x64.tar.gz` — `sha256:9592a962...8e6` (SRI
     `sha256-lZKpYgsN3jdF2wtXFwja0i1qYABobnwPB2E6lq6nmOY=`)
-  - `linux-musl-x64.tar.gz` — `sha256:48b0a81a…ceb` (Nix-only; Homebrew
+  - `linux-musl-x64.tar.gz` — `sha256:48b0a81a...ceb` (Nix-only; Homebrew
     does not model musl)
-  - `osx-arm64.tar.gz` — `sha256:6c3051a4…874` (SRI
+  - `osx-arm64.tar.gz` — `sha256:6c3051a4...874` (SRI
     `sha256-bDBRpKV0wJ9R95WbYZ4YeszjeykY2t2HmnnmfOfrmHQ=`)
-  - `win-x64.zip` — `sha256:2d3f8c67…943`
+  - `win-x64.zip` — `sha256:2d3f8c67...943`
 - New frozen pin siblings: `packaging/homebrew/Formula/az-ai-v2@2.0.4.rb`,
   `packaging/scoop/versions/az-ai-v2@2.0.4.json`, and a `"2.0.4"` entry
   in `packaging/nix/flake.nix` `pinnedHashes`. Unversioned manifests
