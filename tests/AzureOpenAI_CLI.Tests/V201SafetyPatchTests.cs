@@ -14,7 +14,11 @@ namespace AzureOpenAI_CLI.Tests;
 /// which task a test belongs to. Every task asserts both the positive path
 /// AND the negative path (pass-the-pass, fail-the-fail).
 /// </summary>
-[Collection(SafetyPatchCollection.Name)]
+// Option C migration (S03E01 audit, Puddy P0 #11): SafetyPatchCollection
+// merged into ConsoleCapture to close cross-collection AZUREOPENAIAPI race
+// with PromptCacheTests. SafetyPatchCollection had no shared fixture — only
+// a serialization name — so deleting it and re-tagging members is safe.
+[Collection("ConsoleCapture")]
 public class V201SafetyPatchTests : IDisposable
 {
     private readonly string _tempDir;

@@ -15,6 +15,7 @@ scripts/*
 !scripts/check-color-contract.sh
 !scripts/test-i18n.sh
 !scripts/exec-report-check.sh
+!scripts/lint-espanso-yml.sh
 
 # env
 azureopenai-cli/.env

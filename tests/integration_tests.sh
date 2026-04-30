@@ -115,6 +115,23 @@ echo " Azure OpenAI CLI — Integration Tests"
 echo "═══════════════════════════════════════════"
 echo ""
 
+# ── Espanso YAML structural lint (fast fail-fast — runs before binary tests) ─
+if [ -x scripts/lint-espanso-yml.sh ] || [ -f scripts/lint-espanso-yml.sh ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo " Espanso YAML lint"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    set +e
+    bash scripts/lint-espanso-yml.sh examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml
+    lint_rc=$?
+    set -e
+    if [ "$lint_rc" -eq 0 ]; then
+        pass "espanso-yml-lint: ai-windows-to-wsl.yml"
+    else
+        fail "espanso-yml-lint: ai-windows-to-wsl.yml" "lint exited $lint_rc"
+        exit 1
+    fi
+fi
+
 # ═══════════════════════════════════════════════════════════════════════════
 # run_bin_tests — integration tests against the compiled az-ai binary.
 # ═══════════════════════════════════════════════════════════════════════════

@@ -50,6 +50,41 @@
 #   This dance is the cost of using SendKeys for visual feedback before
 #   Espanso's own injection sequence has run.
 #
+# TRUST MODEL -- read this before adding new triggers:
+#   Every trigger ships either your CLIPBOARD CONTENTS or your FORM INPUT
+#   to Azure OpenAI for processing. Specifically:
+#     * Clipboard triggers (:aifix, :aiexp, :aitldr, :airw, :aic,
+#       :aiexpand, :aitone, :aibullets, :aidata, :aiflip, :aishrink,
+#       :aireply, :aicommit, :airegex, :aianon) read whatever is on the
+#       clipboard at trigger time and POST it to Azure.
+#     * Form triggers (:ai, :aiweb, :aiimg, :aiq, :aitr, :aireply,
+#       :aitone) post the contents of the prompt form field.
+#   Specific privacy callouts:
+#     * :aianon -- redacts PII; the *unredacted* original transits Azure
+#       OpenAI before redaction. Not appropriate for HIPAA/GDPR-restricted
+#       data unless your Azure tenant's retention/data-residency policy
+#       covers it.
+#     * :aicommit -- ships the entire `git diff` you have on the clipboard
+#       to Azure. If the diff stages a credential, .env value, kubeconfig,
+#       or hardcoded test secret, that secret leaves your machine. Inspect
+#       `git diff --cached` BEFORE triggering. Consider running `gitleaks`
+#       on staged changes first.
+#     * :aireply -- email/message bodies are correspondence; treat them
+#       like any other communication you send to a third party.
+#     * :aitr -- the source text being translated is also egressed.
+#   Verify your Azure tenant's data-handling and retention agreement
+#   before enabling any of these in regulated environments.
+#
+# FOCUS HAZARD:
+#   SendKeys writes to whichever window has foreground focus at the moment
+#   each call fires. The placeholder dance (see below) keeps SendKeys
+#   active for ~3 s on clipboard triggers and unbounded on form triggers
+#   (form-fill is user-paced). DO NOT switch windows while a trigger is in
+#   flight -- the placeholder, backspaces, or trigger-restore keystrokes
+#   will land in whatever window stole focus (chat app, password dialog,
+#   terminal, RDP session). If a crash leaves a placeholder visible,
+#   manually delete it before triggering again.
+#
 # ENCODING -- CRITICAL for non-ASCII text (CJK, Arabic, accented chars):
 #   PowerShell 5.1 defaults $OutputEncoding to ASCII. When Get-Clipboard
 #   pipes non-ASCII content to wsl.exe, those bytes become '???' unless
@@ -94,7 +129,8 @@ matches:
               $bash = @'
             az-ai --raw 2>/dev/null
             '@
-              $prompt | wsl.exe -e bash -lc $bash
+              $out = $prompt | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -130,7 +166,8 @@ matches:
               $bash = @'
             az-ai --raw --agent --tools web --max-tokens 2000 --max-rounds 5 --system 'You have access to a web_fetch tool. Use it to search for current, accurate information relevant to the user prompt. Fetch 1-3 URLs as needed. Synthesize findings into a clear, well-structured answer. Cite sources inline with [Source Title](URL) format. Output ONLY the final answer -- no tool-call narration.' 2>/dev/null
             '@
-              $prompt | wsl.exe -e bash -lc $bash
+              $out = $prompt | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -158,7 +195,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 500 --temperature 0.3 --system 'Fix grammar and spelling. Preserve meaning, tone, and formatting. Output ONLY the corrected text, nothing else.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -184,7 +222,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 300 --temperature 0.4 --system 'Explain the following clearly in 2-3 sentences. If it is code, be precise and technical. Output ONLY the explanation, no preamble.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -210,7 +249,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 150 --temperature 0.4 --system 'Summarize in exactly 2 sentences. Be concise. Output ONLY the summary.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -236,7 +276,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 600 --temperature 0.5 --system 'Rewrite the following in a more professional, polished tone. Preserve meaning and key facts. Do not add information. Output ONLY the rewritten text.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -263,7 +304,8 @@ matches:
             CLIP=$(cat | tr -d '\r')
             printf %s "$CLIP" | az-ai --raw --persona reviewer --max-tokens 500 2>/dev/null || printf %s "$CLIP" | az-ai --raw --max-tokens 500 --temperature 0.3 --system 'You are a senior code reviewer. Identify bugs, security issues, and design problems in the following code. Be concise, specific, and actionable. Use bullet points. Output ONLY the review.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -304,13 +346,17 @@ matches:
             '@
               $b64 = $prompt | wsl.exe -e bash -lc $bash
               if ($b64) {
-                $tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'az-ai-espanso.png')
-                [System.IO.File]::WriteAllBytes($tmp, [System.Convert]::FromBase64String($b64))
-                Add-Type -AssemblyName System.Drawing
-                $img = [System.Drawing.Image]::FromFile($tmp)
-                [System.Windows.Forms.Clipboard]::SetImage($img)
-                $img.Dispose()
-                Write-Output '[image copied to clipboard]'
+                $tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName() + '.png')
+                try {
+                  [System.IO.File]::WriteAllBytes($tmp, [System.Convert]::FromBase64String($b64))
+                  Add-Type -AssemblyName System.Drawing
+                  $img = [System.Drawing.Image]::FromFile($tmp)
+                  [System.Windows.Forms.Clipboard]::SetImage($img)
+                  $img.Dispose()
+                  Write-Output '[image copied to clipboard]'
+                } finally {
+                  if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+                }
               } else {
                 Write-Output '[image generation failed]'
               }
@@ -341,7 +387,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 2000 --temperature 0.6 --system 'Take the following text and expand on it. Add relevant detail, context, and supporting points. Keep the same voice and intent but make it richer and more thorough. Do NOT pad with filler -- every sentence should add substance. Output ONLY the expanded text.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -366,7 +413,7 @@ matches:
                 - Enthusiastic
                 - Diplomatic / Careful
                 - Sarcastic
-                - ELI5 (Explain Like I'm 5)
+                - ELI5 / Explain Like a 5-year-old
       - name: output
         type: shell
         params:
@@ -383,7 +430,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 1000 --system 'Rewrite the following text in a {{form1.tone}} tone. Preserve the core meaning and all key facts. Adjust vocabulary, sentence structure, and register to match the requested tone. Output ONLY the rewritten text.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -409,7 +457,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 1000 --temperature 0.3 --system 'Convert the following text into a clean bullet-point list. Group related points under short bold headings if the content spans multiple topics. Each bullet should be one clear, complete thought. Use - for bullets. Output ONLY the bullet list.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -435,7 +484,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 1000 --temperature 0.2 --system 'Extract all key facts, data points, names, dates, numbers, decisions, and action items from the following text. Present them as a structured list grouped by category (e.g. People, Dates, Decisions, Action Items, Numbers/Metrics). Use - for bullets. If a category has no entries, omit it. Output ONLY the extracted data.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -461,7 +511,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 1000 --temperature 0.7 --system 'Play devils advocate on the following text. Identify the strongest counter-arguments, unstated assumptions, potential weaknesses, and alternative perspectives. Be intellectually honest -- not contrarian for its own sake. Structure as: Assumptions, Counter-arguments, Risks/Blind spots. Output ONLY the analysis.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -509,7 +560,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 1500 --temperature 0.2 --system 'Translate the following text into {{form1.lang}}. Preserve meaning, tone, and formatting. Use natural, idiomatic phrasing rather than word-for-word translation. Output ONLY the translation, no preamble or notes.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -535,7 +587,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 1000 --temperature 0.3 --system 'Compress the following text to roughly half its length while preserving every key fact, decision, and action item. Cut filler, redundancy, and throat-clearing. Keep voice consistent. Output ONLY the compressed text.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -577,7 +630,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 800 --temperature 0.5 --system 'The clipboard contains an email or message. Draft a reply with this intent: "{{form1.intent}}". Use a {{form1.tone}} tone. Match the recipients greeting/sign-off style. Be specific -- do not hedge or pad. Output ONLY the reply body, no subject line.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -604,7 +658,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 400 --temperature 0.2 --system 'The clipboard contains a git diff. Write a Conventional Commits message for it. Format: type(scope): subject (under 72 chars, imperative mood), blank line, body explaining the WHY (wrap at 72). Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, security. Output ONLY the commit message, no fences or preamble.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -632,7 +687,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 600 --temperature 0.2 --system 'The clipboard is either a regex pattern OR a natural-language description of what to match. If it looks like a regex, explain it line-by-line and give 2-3 example matches and 1-2 non-matches. If it is a description, output a PCRE-compatible regex on one line, then a one-sentence explanation, then 2-3 example matches. Output ONLY the analysis or the regex + explanation.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -658,7 +714,8 @@ matches:
               $bash = @'
             tr -d '\r' | az-ai --raw --max-tokens 1500 --temperature 0.1 --system 'Redact personally identifiable information in the following text. Replace with role-based placeholders: [PERSON_1], [PERSON_2], [EMAIL_1], [PHONE_1], [SSN], [DOB], [ADDRESS_1], [COMPANY_1], [URL_1], [IP_1]. Preserve all other content, structure, and formatting exactly. Be thorough -- catch names referenced indirectly (his, hers, etc) only when they would let a reader re-identify. Output ONLY the redacted text.' 2>/dev/null
             '@
-              Get-Clipboard -Raw | wsl.exe -e bash -lc $bash
+              $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
@@ -698,7 +755,8 @@ matches:
               $bash = @'
             az-ai --raw --max-tokens 200 --temperature 0.4 --system 'Answer in 1-2 short sentences. Be precise. No preamble.' 2>/dev/null
             '@
-              $prompt | wsl.exe -e bash -lc $bash
+              $out = $prompt | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)

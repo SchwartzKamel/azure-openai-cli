@@ -34,6 +34,8 @@ The right move was already proven by <code>:ai </code> and <code>:aiweb </code>:
 | **3** | Soup Nazi (inline) | Cleaned up the 18 markdownlint failures from the prior `docs-lint` CI run: MD032 (blanks around lists in `.github/copilot-instructions.md`), MD040 (missing language on three fenced blocks), MD028 (blank lines inside blockquotes in `docs/espanso-ahk-integration.md` -- merged with `>`-prefixed blank line), MD038 (8x `` <code>:ai </code> `` and `` <code>:aiweb </code> `` code spans with trailing space -- replaced with HTML `<code>:ai </code>` which is allowed by the cli2 config since MD033 is disabled). The s02e37 exec-report had eight of those instances on its own. |
 | **4** | Puddy (inline) | Diagnosed and fixed a flaky test-suite race. `ExportEnvTests.ExportEnv_emits_three_kv_lines_on_success` was failing in CI (passed locally) with `Expected "AZUREOPENAIMODEL=gpt-4o-mini", Actual "AZUREOPENAIMODEL="`. Three test classes (`ExportEnvTests`, `ModelAllowlistTests`, `UnicodeEncodingTests`) all `SetEnvironmentVariable("AZUREOPENAIMODEL", ...)` and xUnit ran them in parallel -- one class would clear the var between another's set and read. Tagged all three with `[Collection("ConsoleCapture")]` (existing collection with `DisableParallelization = true`), serializing them. No production code change needed. |
 | **5** | exec-report-check (S02E38) | Pre-push gate fired during dogfood, forced this report to be written before the push could complete. Working as designed. |
+| **6** | Newman + FDR + Puddy + code-review (parallel audit) | After ship, ran a full-fleet audit on S03E01. Newman found two HIGH security issues (form-input PowerShell here-string breakout via `\n'@\n` injection; `:aireply.intent` bash single-quote breakout via apostrophe), one MED functional bug (`:aitone` ELI5 choice contains `I'm` apostrophe -- breaks bash quoting on every selection), and a missing trust-model header. FDR red-teamed the SendKeys dance and surfaced focus-theft, crash-before-finally, and a latent Espanso re-fire risk. Puddy traced two P0 env-var races still live in the test suite. Code-review came back clean. |
+| **7** | Kramer (inline) | Hotfixed the bugs the audit caught. **YAML:** renamed `:aitone` ELI5 choice to drop the apostrophe; added a TRUST MODEL + FOCUS HAZARD section to the header documenting per-trigger privacy implications (`:aianon` egresses raw PII, `:aicommit` ships full diff incl. secrets, `:aireply` ships email bodies, `:aitr` ships source text); randomized the `:aiimg` temp filename via `[IO.Path]::GetRandomFileName()` and wrapped the file write in a try/finally that deletes the artifact regardless of outcome; added an empty-stdout fallback banner to all 19 wsl pipelines (`$out = ... \| Out-String; if (IsNullOrWhiteSpace) { '[az-ai: no response...]' } else { ... }`) so silent-failure paths now surface a diagnostic. Re-mirrored to user's installed config. **Tests:** added `[Collection("ConsoleCapture")]` to four un-tagged env-mutating classes (`ImageGenerationTests`, `ToolHardeningTests`, `CliParserTests`, `ValidationTemperatureTests`); deleted the redundant `SafetyPatchCollection` and migrated its members into `ConsoleCapture` to close the cross-collection `AZUREOPENAIAPI` race between `PromptCacheTests` and `V201ProgramPatchTests`. Full suite: 657/657 in 6m9s. **Lint:** new `scripts/lint-espanso-yml.sh` enforces structural invariants on `ai-windows-to-wsl.yml` (parse, unique triggers, `$trigger`/`trigger:` match, `$ph` SendKeys-safe charset, exactly two BACKSPACE refs in correct order, try+finally+SendWait($trigger) restoration). Wired into `tests/integration_tests.sh` so CI's `integration-test` job fails fast on structural drift. **Deferred:** the form-input env-var indirection that would close Newman's two HIGH findings architecturally needs its own design pass and ships in a follow-up episode; today's scope was "land the no-brainer fixes and prevent the regression class." |
 
 ## Lessons
 
@@ -81,6 +83,19 @@ The right move was already proven by <code>:ai </code> and <code>:aiweb </code>:
 - Lint errors cleared: 18 -> 0
 - Latent bugs eliminated: same TerminatorExpectedAtEndOfString failure
   mode across 11 trigger surfaces
+
+## Audit-fix metrics (wave 7)
+
+- Audit reports: 4 (Newman, FDR, Puddy, code-review)
+- Findings surfaced: 13 (2 HIGH, 1 latent CRIT, 4 MED, 6 LOW + P0/P1)
+- Findings fixed in-episode: 7 (ELI5 choice, trust-model header,
+  `:aiimg` tempfile, empty-stdout banner, 4 test classes tagged,
+  `SafetyPatchCollection` consolidated, espanso-yml lint script)
+- Findings deferred: 6 (form-input env-var indirection, focus theft,
+  crash-before-finally state file, Espanso re-fire mitigation,
+  `ProcessEnvScope` helper, collection-contract README)
+- Test runtime: 6m9s, 657/657 passing
+- New CI gate: `scripts/lint-espanso-yml.sh` in `integration-test` job
 
 ## Next steps
 

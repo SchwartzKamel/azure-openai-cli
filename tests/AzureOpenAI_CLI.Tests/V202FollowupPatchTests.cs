@@ -17,7 +17,7 @@ namespace AzureOpenAI_CLI.Tests;
 ///   • K-1 sibling — ShellExec firstToken split tolerates leading tab/newline
 ///                   on the fast path (defense-in-depth over the segment rescan)
 /// </summary>
-[Collection(SafetyPatchCollection.Name)]
+[Collection("ConsoleCapture")]
 public class V202FollowupPatchTests : IDisposable
 {
     private readonly string _tempDir;

@@ -3,6 +3,7 @@ namespace AzureOpenAI_CLI.V2.Tests;
 /// <summary>
 /// Tests for CLI argument parsing (flags, env vars, defaults, positional prompt).
 /// </summary>
+[Collection("ConsoleCapture")]
 public class CliParserTests
 {
     [Fact]

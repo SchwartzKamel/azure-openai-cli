@@ -7,6 +7,7 @@ namespace AzureOpenAI_CLI.V2.Tests;
 /// Tests for v2 tool hardening: security validations for all MAF-based tools.
 /// Ported from v1 ToolHardeningTests.cs with adaptations for the MAF surface.
 /// </summary>
+[Collection("ConsoleCapture")]
 public class ToolHardeningTests
 {
     // ═══════════════════════════════════════════════════════════════════

@@ -8,6 +8,7 @@ namespace AzureOpenAI_CLI.Tests;
 /// validation. These are unit tests for parsing and resolution only -- no
 /// actual API calls are made.
 /// </summary>
+[Collection("ConsoleCapture")]
 public class ImageGenerationTests : IDisposable
 {
     private readonly string? _origImageModel;

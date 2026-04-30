@@ -13,7 +13,13 @@ namespace AzureOpenAI_CLI.V2.Tests;
 /// positive path AND a negative path. Subprocess-driven K-7 exercises the
 /// real entry point, not a mocked ErrorAndExit surface.
 /// </summary>
-[Collection(SafetyPatchCollection.Name)]
+// Option C migration (S03E01 audit): SafetyPatchCollection folded into
+// ConsoleCapture — both serialize env-var + Console mutations, and
+// PromptCacheTests (in ConsoleCapture) writes AZUREOPENAIAPI which this
+// suite also writes (~lines 279/299/322). Cross-collection parallelism
+// raced. SafetyPatchCollection had no shared fixture, so consolidation
+// is the cleanest fix.
+[Collection("ConsoleCapture")]
 public class V201ProgramPatchTests
 {
     // ═══════════════════════════════════════════════════════════════════
