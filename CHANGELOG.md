@@ -26,6 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai --config list` output. The wizard is suppressed under `--raw`,
   `--json`, or when stdin/stdout is redirected so scripted and piped
   callers continue to see the existing env-var error.
+- **feat(examples):** Espanso WSL config (`examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml`)
+  now ships with the "yada yada yada" loading placeholder that the docs
+  have been advertising. While `az-ai` runs, the trigger types
+  `yada yada yada` (or `searching the web...` for `:aiweb `) at the
+  cursor via `[System.Windows.Forms.SendKeys]`, then backspaces it away
+  the moment the response arrives -- closing the 2-3 second feedback gap
+  during the Azure round-trip. Wrapped in `try { ... } finally { ... }`
+  so the placeholder always clears, even if the WSL pipeline errors.
 
 ### Changed
 
