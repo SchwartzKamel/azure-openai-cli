@@ -8,6 +8,7 @@ namespace AzureOpenAI_CLI.Tests;
 /// ParseModelEnv reads the env var and returns (default, allowed set).
 /// When multiple models are listed, the resolved model must be in the set.
 /// </summary>
+[Collection("ConsoleCapture")]
 public class ModelAllowlistTests : IDisposable
 {
     private readonly string? _originalEnv;

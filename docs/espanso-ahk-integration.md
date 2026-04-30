@@ -368,7 +368,7 @@ matches:
 ```
 
 > **⚠️ Quote-safety warning for the `:ai` form trigger.** The basic config above passes `{{form1.prompt}}` as a shell argument inside single quotes. If the user types a prompt containing a literal single quote (e.g. `don't`), the shell command breaks. The clipboard-based triggers (`:aifix`, `:aiemail`, etc.) are safe because input arrives via stdin pipe. For a hardened `:ai` trigger that pipes form input via a heredoc (immune to metacharacters), see the reference config in [`examples/espanso-ahk-wsl/espanso/ai.yml`](../examples/espanso-ahk-wsl/espanso/ai.yml).
-
+>
 > **Loading placeholder available.** The example configs in `examples/` include a "yada yada yada" loading placeholder that shows visual feedback while `az-ai` processes. See the [Loading Placeholder](#loading-placeholder) section for details.
 
 ### macOS Variants
@@ -860,7 +860,7 @@ Use this as the `cmd:` in your Espanso trigger, or call it from a wrapper script
 - **Disable the placeholder entirely:** remove the `xdotool` / `osascript` / `SendKeys` lines. The trigger works the same, just without visual feedback.
 
 > **Wayland note:** `xdotool` does not work under Wayland compositors. Use [`wtype`](https://github.com/atx/wtype) instead: `wtype "$ph"` to type, `wtype -k BackSpace` repeated N times to clear. Most distros package it as `wtype`.
-
+>
 > **macOS note:** The `osascript` keystroke injection requires **Accessibility permission** for your terminal (or Espanso itself) in System Settings > Privacy & Security > Accessibility. Without it, the placeholder won't appear.
 
 ---
@@ -987,7 +987,7 @@ the reasoning behind them.
 A Windows user copies Japanese text to the clipboard and triggers
 `:aifix`. The pipeline is:
 
-```
+```text
 Clipboard ("いい子") -> Get-Clipboard -> pipe to wsl.exe -> az-ai -> stdout -> Espanso
 ```
 
@@ -1204,9 +1204,9 @@ Copy text to clipboard, type `:aiexpand`. The AI takes your brief notes and adds
 
 **Use case:** You jotted down three bullet points in a meeting. Expand them into a full paragraph for the follow-up email.
 
-### `:aiweb ` -- Web-Augmented Prompt
+### <code>:aiweb </code> -- Web-Augmented Prompt
 
-Type `:aiweb ` (with trailing space) and a form pops up. The AI uses **agent mode with the `web_fetch` tool** to actually search the web for current information before answering.
+Type <code>:aiweb </code> (with trailing space) and a form pops up. The AI uses **agent mode with the `web_fetch` tool** to actually search the web for current information before answering.
 
 **Use case:** "What are the latest changes in .NET 10 Preview 4?" -- the AI fetches the actual blog post and synthesizes the answer with source links.
 
@@ -1335,7 +1335,7 @@ cmd: "... | az-ai --raw --persona writer --temperature 0.8"
 
 | Trigger | Action | Input Source | Key Feature |
 |---------|--------|-------------|-------------|
-| `:ai ` | Free-form prompt | Form dialog | General-purpose |
+| <code>:ai </code> | Free-form prompt | Form dialog | General-purpose |
 | `:aifix` | Grammar/spelling fix | Clipboard | Low temp (0.3) |
 | `:aiemail` | Professional email rewrite | Clipboard | Tone adjustment |
 | `:aiexplain` | Code explanation | Clipboard | 200 token cap |
@@ -1347,7 +1347,7 @@ cmd: "... | az-ai --raw --persona writer --temperature 0.8"
 | `:aiimg` | Generate image | Form dialog | Clipboard paste |
 | **Power Triggers** | | | |
 | `:aiexpand` | Expand / elaborate on text | Clipboard | Add depth + detail |
-| `:aiweb ` | Web-augmented AI prompt | Form dialog | Agent + web_fetch |
+| <code>:aiweb </code> | Web-augmented AI prompt | Form dialog | Agent + web_fetch |
 | `:aitone` | Rewrite in chosen tone | Clipboard + form | Tone picker dropdown |
 | `:aibullets` | Convert to bullet points | Clipboard | Structured output |
 | `:aidata` | Extract key facts + data | Clipboard | Structured extraction |

@@ -50,6 +50,7 @@ The episode is one report per push, not one per commit. A two-commit field-debug
 **Single-file entry point:** `azureopenai-cli/Program.cs` (~2200 lines). Contains CLI parsing, all execution modes, model resolution, provider dispatch, and client construction. Large but deliberate -- keeps the hot path in one file for AOT friendliness.
 
 **Four execution modes:**
+
 - Standard (single LLM response)
 - Agent (tool-calling loop with built-in tools)
 - Ralph (autonomous self-correcting loop with `--validate`)
@@ -76,6 +77,7 @@ The episode is one report per push, not one per commit. A two-commit field-debug
 **JSON serialization:** Use `AppJsonContext` (in `JsonGenerationContext.cs`) for all new types -- required for Native AOT. The csproj also sets `JsonSerializerIsReflectionEnabledByDefault=true` for MAF compatibility.
 
 **Security patterns in tools:**
+
 - `ShellExecTool`: rejects `$()`, backticks, `<()`, `>()`, `eval`, `exec`. Uses `ArgumentList` (not `Arguments`). New blocked patterns need tests in `ToolHardeningTests`.
 - `ReadFileTool`: NFKC-normalizes paths (Unicode homoglyph defense), blocks sensitive paths.
 - `WebFetchTool`: HTTPS-only, SSRF filtering against private/link-local ranges, validates post-redirect URL.
@@ -89,7 +91,7 @@ The episode is one report per push, not one per commit. A two-commit field-debug
 
 Conventional Commits with Copilot co-author trailer:
 
-```
+```text
 <type>(<scope>): <imperative subject>
 
 <body>

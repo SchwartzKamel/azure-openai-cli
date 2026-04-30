@@ -10,6 +10,7 @@ namespace AzureOpenAI_CLI.Tests;
 /// the contract: confirmation flag required, no partial output on failure,
 /// exactly three KV lines on success, --raw suppresses the warning.
 /// </summary>
+[Collection("ConsoleCapture")]
 public class ExportEnvTests : IDisposable
 {
     private readonly string? _origEndpoint;

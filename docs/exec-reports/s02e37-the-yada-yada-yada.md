@@ -1,6 +1,6 @@
 # S02E37 -- *The Yada Yada Yada*
 
-> *Real user reports the Espanso WSL example crashes on `:ai `. Three bugs and a missing feature later, the loading placeholder finally arrives.*
+> *Real user reports the Espanso WSL example crashes on <code>:ai </code>. Three bugs and a missing feature later, the loading placeholder finally arrives.*
 
 **Commit:** `026a7ec` (fix), `f660bb2` (feat)
 **Branch:** `main` (direct push)
@@ -10,7 +10,7 @@
 
 ## The pitch
 
-A real user installed the hardened WSL Espanso config, typed `:ai `, and
+A real user installed the hardened WSL Espanso config, typed <code>:ai </code>, and
 got back the worst possible Espanso failure mode: the form pops up, the
 user types a prompt, and then a popup says *"An error occurred during
 rendering, please examine the logs."* No replacement. No clue what broke.
@@ -33,14 +33,14 @@ season.
 
 ### Act I -- Triage
 
-User report: `:ai ` produces "error during rendering". Not a render error
+User report: <code>:ai </code> produces "error during rendering". Not a render error
 in the Espanso sense -- a shell-extension non-zero exit. We tailed
 `%APPDATA%\espanso\logs\espanso.log` (via WSL's `/mnt/c` mount) and read
 the smoking gun: PowerShell `ParserError: TerminatorExpectedAtEndOfString`.
 
 Three bugs surfaced once we pulled the thread:
 
-1. **Multiline `cmd: |` under `shell: cmd`.** The `:ai ` and `:aiweb `
+1. **Multiline `cmd: |` under `shell: cmd`.** The <code>:ai </code> and <code>:aiweb </code>
    blocks used the literal-block YAML scalar (`|`, preserves newlines)
    under `shell: cmd`. `cmd.exe` is a single-line shell -- it consumed
    only the first line of the command, leaving an unterminated `"` that
@@ -59,7 +59,7 @@ Three bugs surfaced once we pulled the thread:
 
 | Wave | Agents (parallel) | Outcome |
 |------|-------------------|---------|
-| **1** | Kramer (inline) | Diagnosed the three bugs from the espanso log. Rewrote `:ai ` and `:aiweb ` to `shell: powershell` + `@'...'@` here-string (multiline-safe + metachar-immune). Globally `sed`'d `az-ai-wrap` → `az-ai` and `bash -c` → `bash -lc`. Smoke-tested through the actual pipeline. Shipped as `026a7ec`. |
+| **1** | Kramer (inline) | Diagnosed the three bugs from the espanso log. Rewrote <code>:ai </code> and <code>:aiweb </code> to `shell: powershell` + `@'...'@` here-string (multiline-safe + metachar-immune). Globally `sed`'d `az-ai-wrap` → `az-ai` and `bash -c` → `bash -lc`. Smoke-tested through the actual pipeline. Shipped as `026a7ec`. |
 | **2** | Kramer + Russell (inline) | User came back: "it works, but the yada yada yada doesn't appear." Investigation: the docs have advertised a loading placeholder pattern in `examples/` since the *Loading Placeholder* section landed, but the actual yml never had one. Wrote a Python pass to inject `[System.Windows.Forms.SendKeys]` + `try { <pipeline> } finally { backspace }` into every trigger. Form triggers handled in their `cmd: \|` blocks; clipboard triggers in their `cmd: >` blocks; `:aiimg` got a hand-fix because its closing brace shape is unique. Shipped as `f660bb2`. |
 
 ### Act III -- Push, preflight, push again
@@ -86,7 +86,7 @@ with Copilot trailer on both pushes.
   *folded vs literal* / *cmd vs powershell* rule so the trap stays
   clearly marked.
 - **Tests:** n/a -- no behavior change in the binary. The fix is
-  user-facing config; the right test is the user's next `:ai ` trigger.
+  user-facing config; the right test is the user's next <code>:ai </code> trigger.
 - **Docs:** CHANGELOG `[Unreleased] / Fixed` got the three-bug breakdown,
   `[Unreleased] / Added` got the placeholder feature note. The
   *Loading Placeholder* doc section is now finally truthful.

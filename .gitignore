@@ -96,3 +96,4 @@ UpgradeLog*.htm
 .smith/heartbeat.json
 .smith/config.yaml
 .smith/config.yml
+node_modules/

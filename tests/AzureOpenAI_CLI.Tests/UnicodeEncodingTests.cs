@@ -9,6 +9,7 @@ namespace AzureOpenAI_CLI.Tests;
 /// quoting styles. Triggered by a real bug where Japanese text became
 /// "???" under InvariantGlobalization.
 /// </summary>
+[Collection("ConsoleCapture")]
 public class UnicodeEncodingTests : IDisposable
 {
     // Track every env var we touch so Dispose can restore them.
