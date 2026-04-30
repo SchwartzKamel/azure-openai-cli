@@ -10,9 +10,9 @@
 
 Docs-only changes (`*.md`) can skip preflight, but running it is free and catches nothing.
 
-## The four checks
+## The five checks
 
-All four must be green. Exit code 0 or the soup is closed.
+All five must be green. Exit code 0 or the soup is closed.
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
@@ -29,6 +29,9 @@ dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity
 
 # 4. Integration gate (only if you changed CLI surface or Program.cs)
 bash tests/integration_tests.sh
+
+# 5. Exec-report gate -- enforces docs/exec-reports/sNNeMM-*.md per push
+bash scripts/exec-report-check.sh
 ```
 
 ## If format check fails
@@ -47,7 +50,11 @@ Do not push. Fix the test or fix the code. If the test is flaky, file the flake 
 
 ## Shortcut
 
-`make preflight` runs all four steps (see `Makefile`). If the Makefile target is missing or stale, add it in the same PR as whatever you're shipping.
+`make preflight` runs all five steps (see `Makefile`). If the Makefile target is missing or stale, add it in the same PR as whatever you're shipping.
+
+## Why exec-report-check is here
+
+The skill text alone wasn't catching the miss -- agents (and humans) would push code, CHANGELOG, and CHANGELOG-only docs without an episode write-up, then a reviewer would have to flag it after the fact. As of S02E37 the gate is mechanical: `scripts/exec-report-check.sh` fails preflight and the pre-push hook (install via `make install-hooks`) when the push range touches anything outside `docs/exec-reports/` and adds no new `sNNeMM-*.md`. Opt out per-commit by adding a `Skip-Exec-Report: <reason>` trailer (start-of-line, like `Co-authored-by:`) to the commit body for genuinely trivial changes (typo fixes, dependency bumps, hotfix rollbacks). See [`.github/skills/exec-report-format.md`](exec-report-format.md) for the report shape.
 
 ## Escape hatches
 

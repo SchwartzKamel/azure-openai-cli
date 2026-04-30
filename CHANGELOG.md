@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **chore(tooling):** Mechanical enforcement of the exec-report
+  convention. New `scripts/exec-report-check.sh` detector fails when a
+  push range touches files outside `docs/exec-reports/` and adds no new
+  `sNNeMM-*.md` episode write-up. Wired into `make preflight` (now five
+  gates, not four) and into a `pre-push` git hook installable via
+  `make install-hooks`. Opt out per-commit with a `Skip-Exec-Report:`
+  trailer (start-of-line, like `Co-authored-by:`) for genuinely trivial
+  changes (typo fixes, dependency bumps, hotfix rollbacks). Replaces
+  the prior advisory-only skill text that S02E37 demonstrated was
+  insufficient. See S02E38 -- *The Soup Nazi Gets a Lawyer*.
 - **feat(config):** New `--config export-env` subcommand resolves Azure
   OpenAI credentials (env > config) and prints them as
   `AZUREOPENAIENDPOINT=`/`AZUREOPENAIAPI=`/`AZUREOPENAIMODEL=` lines (or

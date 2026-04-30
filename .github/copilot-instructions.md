@@ -31,7 +31,17 @@ bash tests/integration_tests.sh
 make preflight
 ```
 
-`make preflight` runs: format-check, build, unit tests, integration tests. Skipping it is how commit `180d64f` turned `main` red for five runs.
+`make preflight` runs: format-check, build, unit tests, integration tests, **exec-report-check**. Skipping it is how commit `180d64f` turned `main` red for five runs.
+
+## Exec-Report Protocol (mandatory before push)
+
+**Every push that touches code, examples, configs, or docs outside `docs/exec-reports/` MUST add a new exec-report file** at `docs/exec-reports/sNNeMM-kebab-title.md` per the [`exec-report-format` skill](../.github/skills/exec-report-format.md). Mechanically enforced by `make exec-report-check` (wired into `make preflight`) and the `pre-push` git hook (install via `make install-hooks`).
+
+If you push without one, the gate fails with the next sNNeMM number you should use and a list of the commits in the range.
+
+**Opt out** (use sparingly) by adding a `Skip-Exec-Report: <reason>` trailer (start-of-line, colon-separated, like `Co-authored-by:`) to any commit body in the push range. Legitimate cases: docs typo fixes, dependency bumps, hotfix rollbacks. If in doubt, write the report -- they are short and the season finale retrospective relies on them.
+
+The episode is one report per push, not one per commit. A two-commit field-debug session is one episode. Update CHANGELOG `[Unreleased]` and write the exec-report **before** the final `git push`, not after a reviewer notices.
 
 **Native AOT binary:** `make publish-aot` builds to `dist/aot/`, `make install` copies to `~/.local/bin/az-ai`.
 

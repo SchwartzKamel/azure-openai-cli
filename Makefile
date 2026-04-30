@@ -46,7 +46,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight publish publish-fast publish-aot publish-r2r setup setup-secrets \
+.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight exec-report-check install-hooks publish publish-fast publish-aot publish-r2r setup setup-secrets \
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
@@ -252,8 +252,23 @@ format-check:
 
 ## Preflight: format-check + dotnet-build + test + integration (skill: .github/skills/preflight.md)
 ## Uses `dotnet-build` (not `build`) — Docker rebuilds are too slow for a pre-commit gate.
-preflight: format-check color-contract-lint dotnet-build test integration-test
+preflight: format-check color-contract-lint dotnet-build test integration-test exec-report-check
 	@echo "[preflight] all gates green — safe to commit"
+
+## Exec-report-check: enforce that every push range adds a new
+## docs/exec-reports/sNNeMM-*.md (skill: .github/skills/exec-report-format.md).
+## Opt out per-commit with a 'Skip-Exec-Report:' trailer in the body. See
+## scripts/exec-report-check.sh for the full rules.
+exec-report-check:
+	@bash scripts/exec-report-check.sh
+
+## Install the project's git hooks (pre-push runs exec-report-check).
+## Idempotent. Re-run after cloning or when the hook script is updated.
+install-hooks:
+	@mkdir -p .git/hooks
+	@printf '#!/usr/bin/env bash\n# Auto-installed by `make install-hooks`. Runs exec-report-check.\n# Override per-push with: git push --no-verify\nexec bash scripts/exec-report-check.sh\n' > .git/hooks/pre-push
+	@chmod +x .git/hooks/pre-push
+	@echo "✓ Installed .git/hooks/pre-push (runs scripts/exec-report-check.sh)"
 
 ## Audit: check for vulnerable NuGet packages
 audit:
