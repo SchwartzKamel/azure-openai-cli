@@ -6,7 +6,7 @@ This project uses [GitHub Copilot custom agents](https://gh.io/customagents/conf
 
 Agent archetypes are markdown files that configure Copilot with a **name**, **description**, and **system instructions** scoped to a particular role. When invoked, each agent applies its expertise to the task -- a product manager thinks about UX and roadmaps, an engineer thinks about correctness and tests.
 
-This project uses a **fleet dispatch pattern**: a showrunner-tier director orchestrates everything, a **main cast** of 5 drives the core build-ship loop, and a bench of 21 **supporting players** -- NBC-producer style -- fills in the executive, release, marketing, QA, legal, ethics, a11y, i18n, competitive, perf, chaos, style, advocacy, and onboarding beats that keep the show on the air. **27 agents total** (1 showrunner + 5 main + 21 supporting).
+This project uses a **fleet dispatch pattern**: a showrunner-tier director orchestrates everything, a **main cast** of 5 drives the core build-ship loop, and a bench of 22 **supporting players** -- NBC-producer style -- fills in the executive, release, marketing, QA, legal, ethics, a11y, i18n, competitive, perf, chaos, style, advocacy, brevity, and onboarding beats that keep the show on the air. **28 agents total** (1 showrunner + 5 main + 22 supporting).
 
 ## Agent Fleet
 
@@ -52,6 +52,7 @@ The supporting players are the executive suite and service bench behind the main
 | **Babu Bhatt** | i18n / Localization | Translations, locale handling, Unicode correctness, RTL support | [`babu.agent.md`](.github/agents/babu.agent.md) |
 | **Russell Dalrymple** | UX / Presentation Standards | Visual polish, output formatting, presentation consistency | [`russell.agent.md`](.github/agents/russell.agent.md) |
 | **Mr. Wilhelm** | Process & Change Management | Change control, process adherence, merge protocol, handoffs | [`wilhelm.agent.md`](.github/agents/wilhelm.agent.md) |
+| **Lt. Bookman** | Output Economy / Brevity Discipline | Response-length tier doctrine, max-tokens budgets, system-prompt brevity language. *You think this is funny, Seinfeld?* | [`bookman.agent.md`](.github/agents/bookman.agent.md) |
 | **The Soup Nazi** | Code Style & Merge Gatekeeping | Formatting, style enforcement, strict merge gates -- no soup for you | [`soup-nazi.agent.md`](.github/agents/soup-nazi.agent.md) |
 | **FDR (Franklin Delano Romanowski)** | Adversarial Red Team / Chaos Engineering | Red-team exercises, fault injection, chaos scenarios, attack paths | [`fdr.agent.md`](.github/agents/fdr.agent.md) |
 | **Lloyd Braun** | Junior Developer / Onboarding Lens | Asks the obvious question; surfaces undocumented assumptions; owns onboarding docs and glossary; learner-grade prose review | [`lloyd-braun.agent.md`](.github/agents/lloyd-braun.agent.md) |

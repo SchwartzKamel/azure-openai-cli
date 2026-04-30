@@ -57,8 +57,8 @@
 #       :aiexpand, :aitone, :aibullets, :aidata, :aiflip, :aishrink,
 #       :aireply, :aicommit, :airegex, :aianon) read whatever is on the
 #       clipboard at trigger time and POST it to Azure.
-#     * Form triggers (:ai, :aiweb, :aiimg, :aiq, :aitr, :aireply,
-#       :aitone) post the contents of the prompt form field.
+#     * Form triggers (:ai, :aiweb, :aiimg, :aiq, :aishort, :aiyml, :aitr,
+#       :aireply, :aitone) post the contents of the prompt form field.
 #   Specific privacy callouts:
 #     * :aianon -- redacts PII; the *unredacted* original transits Azure
 #       OpenAI before redaction. Not appropriate for HIPAA/GDPR-restricted
@@ -76,8 +76,28 @@
 #     * :aireply -- email/message bodies are correspondence; treat them
 #       like any other communication you send to a third party.
 #     * :aitr -- the source text being translated is also egressed.
+#     * :aiyml -- writes the AI-generated YAML block to your CLIPBOARD,
+#       not to disk. Be aware: any clipboard-monitoring tool (password
+#       manager, snippet recorder, RDP session sharing clipboard) sees the
+#       generated block. The block itself is not sensitive, but the design
+#       prompt you typed (which describes the trigger you want) is sent to
+#       Azure.
 #   Verify your Azure tenant's data-handling and retention agreement
 #   before enabling any of these in regulated environments.
+#
+# OUTPUT-LENGTH TIERS (Lt. Bookman, S03E02):
+#   Every trigger declares a response-length tier. Lower tiers = faster
+#   generation (network round-trip is fixed; --max-tokens is the lever).
+#     * Tier S (Snap, 60 tok / ~150 chars): :aiq, :aishort
+#     * Tier M (Chat, 250 tok / ~700 chars): :aitldr, :aiexp, :aireply
+#     * Tier L (Document, 800 tok): :aibullets, :aidata, :aicommit,
+#       :airegex, :aifix, :aiexpand
+#     * Tier U (Mirror, 1500 tok / matches input): :airw, :aitone, :aitr,
+#       :aishrink, :aiflip, :aianon, :aiyml
+#     * Tier F (Free, 4096 tok / user-controlled): :ai, :aiweb, :aiimg
+#   Generation latency at GPT-4o-mini is roughly ~30 ms per token, so a
+#   Snap-tier reply lands ~1.8 s faster than an unbounded one. New
+#   triggers MUST declare a tier. See .github/agents/bookman.agent.md.
 #
 # FORM-INPUT INJECTION (S03E01 audit):
 #   Espanso substitutes `{{form1.X}}` into the cmd block as raw text BEFORE
@@ -274,7 +294,7 @@ matches:
             [System.Windows.Forms.SendKeys]::SendWait($ph)
             try {
               $bash = @'
-            tr -d '\r' | az-ai --raw --max-tokens 150 --temperature 0.4 --system 'Summarize in exactly 2 sentences. Be concise. Output ONLY the summary.' 2>/dev/null
+            tr -d '\r' | az-ai --raw --max-tokens 120 --temperature 0.4 --system 'Summarize in exactly 2 short sentences (<=300 chars total). No preamble. No markdown. Output ONLY the summary.' 2>/dev/null
             '@
               $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
               if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
@@ -724,7 +744,7 @@ matches:
               $env:AZ_AI_TONE = $tone
               $env:WSLENV = if ([string]::IsNullOrWhiteSpace($env:WSLENV)) { 'AZ_AI_INTENT/u:AZ_AI_TONE/u' } else { 'AZ_AI_INTENT/u:AZ_AI_TONE/u:' + $env:WSLENV }
               $bash = @'
-            tr -d '\r' | az-ai --raw --max-tokens 800 --temperature 0.5 --system "The clipboard contains an email or message. Draft a reply with this intent: \"$AZ_AI_INTENT\". Use a $AZ_AI_TONE tone. Match the recipients greeting/sign-off style. Be specific -- do not hedge or pad. Output ONLY the reply body, no subject line." 2>/dev/null
+            tr -d '\r' | az-ai --raw --max-tokens 400 --temperature 0.5 --system "The clipboard contains an email or message. Draft a reply with this intent: \"$AZ_AI_INTENT\". Use a $AZ_AI_TONE tone. Match the recipients greeting/sign-off style. Be specific. Keep it to <=4 short sentences -- no padding, no hedging. Output ONLY the reply body, no subject line." 2>/dev/null
             '@
               $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
               if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
@@ -851,10 +871,103 @@ matches:
             {{form1.q}}
             '@
               $bash = @'
-            az-ai --raw --max-tokens 200 --temperature 0.4 --system 'Answer in 1-2 short sentences. Be precise. No preamble.' 2>/dev/null
+            az-ai --raw --max-tokens 60 --temperature 0.4 --system 'Answer in 1 short sentence (<=150 chars). No preamble. No markdown. No quotes. Output ONLY the answer.' 2>/dev/null
             '@
               $out = $prompt | wsl.exe -e bash -lc $bash | Out-String
               if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
+            } finally {
+              [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
+              [System.Windows.Forms.SendKeys]::SendWait($trigger)
+            }
+
+  # === SNAP TIER (S03E02 -- Lt. Bookman's word limit) ===================
+
+  # -- :aishort<space> -- snap-tier free-form (<=150 chars, 1 sentence) --
+  # Faster than :ai for chat-app replies. Hard cap at 60 max-tokens so the
+  # network round-trip is the only meaningful latency.
+  - trigger: ":aishort "
+    replace: "{{output}}"
+    vars:
+      - name: form1
+        type: form
+        params:
+          layout: "Snap-tier prompt (1 sentence reply):\n\n[[prompt]]"
+          fields:
+            prompt:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: powershell
+          cmd: |
+            $OutputEncoding=[Text.UTF8Encoding]::new()
+            [Console]::OutputEncoding=[System.Text.UTF8Encoding]::new()
+            Add-Type -AssemblyName System.Windows.Forms
+            $trigger = ':aishort '
+            $ph = 'yada yada yada'
+            [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $trigger.Length + '}')
+            [System.Windows.Forms.SendKeys]::SendWait($ph)
+            try {
+              $prompt = @'
+            {{form1.prompt}}
+            '@
+              $bash = @'
+            az-ai --raw --max-tokens 60 --temperature 0.4 --system 'Answer in 1 short sentence (<=150 chars). No preamble. No markdown. Output ONLY the answer.' 2>/dev/null
+            '@
+              $out = $prompt | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
+            } finally {
+              [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
+              [System.Windows.Forms.SendKeys]::SendWait($trigger)
+            }
+
+  # === YAML AUTHORING TRIGGER (S03E02) ==================================
+
+  # -- :aiyml<space> -- generate a new Espanso trigger block, place on clipboard
+  # Free-tier (1500 tokens) because YAML blocks are long. Output is NOT typed:
+  # it is placed on the clipboard so you can paste into ai-wsl.yml under the
+  # `matches:` list. Espanso's file watcher reloads automatically on save.
+  #
+  # PRIVACY: ships your description prompt to Azure (same class as :ai).
+  # The generated YAML block lands in your clipboard, so be aware that any
+  # subsequent paste-monitoring tool sees it. The block is not written to
+  # disk by this trigger -- you decide where it goes.
+  - trigger: ":aiyml "
+    replace: "{{output}}"
+    vars:
+      - name: form1
+        type: form
+        params:
+          layout: "Describe the new Espanso AI trigger:\n\n[[desc]]"
+          fields:
+            desc:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: powershell
+          cmd: |
+            $OutputEncoding=[Text.UTF8Encoding]::new()
+            [Console]::OutputEncoding=[System.Text.UTF8Encoding]::new()
+            Add-Type -AssemblyName System.Windows.Forms
+            $trigger = ':aiyml '
+            $ph = 'drafting yml...'
+            [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $trigger.Length + '}')
+            [System.Windows.Forms.SendKeys]::SendWait($ph)
+            try {
+              $desc = @'
+            {{form1.desc}}
+            '@
+              $bash = @'
+            az-ai --raw --max-tokens 1500 --temperature 0.2 --system 'You generate Espanso YAML trigger blocks for ai-windows-to-wsl.yml. Output ONE valid YAML block matching the unified S03 pattern. Required structure: trigger key matches $trigger value (with leading colon); $ph value must be SendKeys-safe (alphanumerics + space + .,:;!?- only, NO apostrophes/braces/brackets/^/%/~/+); two BACKSPACE substitutions in order $trigger.Length then $ph.Length; try block runs the wsl pipeline; finally block backspaces $ph.Length and SendWait($trigger). Use shell: powershell, cmd: | (literal multiline), and pipe a single-quoted PS here-string @ ... @ of pure bash into wsl.exe -e bash -lc. UTF-8 setup at top. Empty-stdout banner check. Choose --max-tokens by tier: Snap=60 (1 short sentence), Chat=250 (2-3 sentences), Document=800 (lists/structured), Mirror=1500 (output length matches input), Free=4096 (user-controlled). Pick the lowest tier that fits the use case. Output ONLY the YAML block, no fences, no preamble, no commentary.' 2>/dev/null
+            '@
+              $yml = $desc | wsl.exe -e bash -lc $bash | Out-String
+              if ([string]::IsNullOrWhiteSpace($yml)) {
+                '[az-ai: no response -- check connectivity, az-ai install, or env]'
+              } else {
+                Set-Clipboard -Value ($yml.TrimEnd("`r","`n"))
+                '[YAML block on clipboard -- paste under matches: in ai-wsl.yml; espanso reloads on save]'
+              }
             } finally {
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
