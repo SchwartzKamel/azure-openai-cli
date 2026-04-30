@@ -14,7 +14,7 @@ Caused by:
     command reported error: 'The string is missing the terminator: ".'
 ```
 
-Same error. Different trigger. S02E37 fixed `:ai ` and `:aiweb ` by switching them from `shell: cmd` + `cmd: >` (folded, with stacked `\"` `\\r` `''` escapes) to `shell: powershell` + `cmd: |` + here-string. The other eleven triggers -- `:aifix`, `:aiexp`, `:aitldr`, `:airw`, `:aic`, `:aiimg`, `:aiexpand`, `:aitone`, `:aibullets`, `:aidata`, `:aiflip` -- were left on the old fragile pattern. The user typed `:aifix`, the powershell parser hit an unbalanced quote inside a folded multi-layer escape, and exploded.
+Same error. Different trigger. S02E37 fixed <code>:ai </code> and <code>:aiweb </code> by switching them from `shell: cmd` + `cmd: >` (folded, with stacked `\"` `\\r` `''` escapes) to `shell: powershell` + `cmd: |` + here-string. The other eleven triggers -- `:aifix`, `:aiexp`, `:aitldr`, `:airw`, `:aic`, `:aiimg`, `:aiexpand`, `:aitone`, `:aibullets`, `:aidata`, `:aiflip` -- were left on the old fragile pattern. The user typed `:aifix`, the powershell parser hit an unbalanced quote inside a folded multi-layer escape, and exploded.
 
 That's the kind of partial fix that becomes a graveyard of unreported bug reports. Every clipboard trigger had the same latent failure. They differed only in which prompt happened to provoke the parser.
 
@@ -22,16 +22,16 @@ That's the kind of partial fix that becomes a graveyard of unreported bug report
 
 The folded scalar `cmd: >` with `shell: cmd` requires every double quote, backslash, and single quote to be escaped through three layers (cmd.exe, powershell.exe, bash). One missed escape and the whole pipeline collapses. The prior pattern was load-bearing on hand-counted backslashes -- exactly the kind of code that AI agents and humans alike get wrong on edit.
 
-The right move was already proven by `:ai ` and `:aiweb `: a single-quoted PowerShell here-string `@'...'@` containing pure bash, piped to `wsl.exe -e bash -lc $bash`. PowerShell does no `$`-interpolation, no backtick escaping, no quote balancing inside a single-quoted heredoc. The bash command is delivered to WSL exactly as written. Zero escape-stacking.
+The right move was already proven by <code>:ai </code> and <code>:aiweb </code>: a single-quoted PowerShell here-string `@'...'@` containing pure bash, piped to `wsl.exe -e bash -lc $bash`. PowerShell does no `$`-interpolation, no backtick escaping, no quote balancing inside a single-quoted heredoc. The bash command is delivered to WSL exactly as written. Zero escape-stacking.
 
 ## Fix (this episode)
 
 | Wave | Cast | Output |
 |------|------|--------|
 | **1** | Kramer (inline) | Rewrote the entire `examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml` from scratch using one uniform pattern: every trigger uses `shell: powershell` + `cmd: \|` + `$bash = @'...'@` + `Get-Clipboard -Raw \| wsl.exe -e bash -lc $bash` (or `$prompt \| wsl.exe ...` for form triggers). Header comments rewritten to document the new pattern and explicitly retire the cmd+folded-scalar approach. Mirrored to the user's installed `%APPDATA%\espanso\match\ai-wsl.yml`. |
-| **2** | Kramer (inline) | Added 7 new triggers covering common workflow gaps: `:aitr` (translate to chosen language, 12-language form picker), `:aishrink` (compress to ~50% length), `:aireply` (draft email/message reply, intent + tone form), `:aicommit` (Conventional Commit message from clipboard diff), `:airegex` (explain-or-generate regex), `:aianon` (PII redaction), `:aiq ` (one-line quick question, faster than `:ai `). Total triggers: 13 -> 20. |
+| **2** | Kramer (inline) | Added 7 new triggers covering common workflow gaps: `:aitr` (translate to chosen language, 12-language form picker), `:aishrink` (compress to ~50% length), `:aireply` (draft email/message reply, intent + tone form), `:aicommit` (Conventional Commit message from clipboard diff), `:airegex` (explain-or-generate regex), `:aianon` (PII redaction), <code>:aiq </code> (one-line quick question, faster than <code>:ai </code>). Total triggers: 13 -> 20. |
 | **2.5** | Kramer (inline, follow-up) | Real user reported the placeholder appeared *next to* the trigger (`:aifixyada yada yada`) instead of replacing it. Espanso runs the cmd to compute the replacement *before* it deletes the trigger text. Patched all 20 triggers via Python script: at start, backspace `$trigger.Length` chars to remove the trigger before typing the placeholder; in `finally`, backspace `$ph.Length` chars then re-type the trigger so Espanso's own delete-trigger step still lines up with what is on screen. Header comment block updated to document the dance. Mirrored to user's installed file. |
-| **3** | Soup Nazi (inline) | Cleaned up the 18 markdownlint failures from the prior `docs-lint` CI run: MD032 (blanks around lists in `.github/copilot-instructions.md`), MD040 (missing language on three fenced blocks), MD028 (blank lines inside blockquotes in `docs/espanso-ahk-integration.md` -- merged with `>`-prefixed blank line), MD038 (8x `` `:ai ` `` and `` `:aiweb ` `` code spans with trailing space -- replaced with HTML `<code>:ai </code>` which is allowed by the cli2 config since MD033 is disabled). The s02e37 exec-report had eight of those instances on its own. |
+| **3** | Soup Nazi (inline) | Cleaned up the 18 markdownlint failures from the prior `docs-lint` CI run: MD032 (blanks around lists in `.github/copilot-instructions.md`), MD040 (missing language on three fenced blocks), MD028 (blank lines inside blockquotes in `docs/espanso-ahk-integration.md` -- merged with `>`-prefixed blank line), MD038 (8x `` <code>:ai </code> `` and `` <code>:aiweb </code> `` code spans with trailing space -- replaced with HTML `<code>:ai </code>` which is allowed by the cli2 config since MD033 is disabled). The s02e37 exec-report had eight of those instances on its own. |
 | **4** | Puddy (inline) | Diagnosed and fixed a flaky test-suite race. `ExportEnvTests.ExportEnv_emits_three_kv_lines_on_success` was failing in CI (passed locally) with `Expected "AZUREOPENAIMODEL=gpt-4o-mini", Actual "AZUREOPENAIMODEL="`. Three test classes (`ExportEnvTests`, `ModelAllowlistTests`, `UnicodeEncodingTests`) all `SetEnvironmentVariable("AZUREOPENAIMODEL", ...)` and xUnit ran them in parallel -- one class would clear the var between another's set and read. Tagged all three with `[Collection("ConsoleCapture")]` (existing collection with `DisableParallelization = true`), serializing them. No production code change needed. |
 | **5** | exec-report-check (S02E38) | Pre-push gate fired during dogfood, forced this report to be written before the push could complete. Working as designed. |
 
@@ -52,7 +52,7 @@ The right move was already proven by `:ai ` and `:aiweb `: a single-quoted Power
 
 3. **CI lint debt compounds.** The 18 markdownlint failures from
    `aa6d7bf` (S02E37) sat red in CI for a day before this episode. Two
-   were genuine (`:ai ` code spans I introduced); the rest were
+   were genuine (<code>:ai </code> code spans I introduced); the rest were
    pre-existing patterns that the new cross-cutting edits surfaced.
    Fixing them in the same PR as the YAML rewrite is cheaper than two
    separate cleanup episodes -- and keeps `docs-lint` green so the
@@ -68,7 +68,7 @@ The right move was already proven by `:ai ` and `:aiweb `: a single-quoted Power
 
 5. **The new triggers are a rough edge survey.** Each of the 7 new
    triggers (`:aitr`, `:aishrink`, `:aireply`, `:aicommit`, `:airegex`,
-   `:aianon`, `:aiq `) was a real workflow I caught myself reaching for
+   `:aianon`, <code>:aiq </code>) was a real workflow I caught myself reaching for
    in the past week and falling back to opening a terminal. Real-use
    triage beats wishlist-driven feature design every time.
 
