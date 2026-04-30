@@ -73,6 +73,13 @@ TRIGGER_ASSIGN_RE = re.compile(r"^\s*\$trigger\s*=\s*'([^']*)'\s*$", re.MULTILIN
 PH_ASSIGN_RE      = re.compile(r"^\s*\$ph\s*=\s*'([^']*)'\s*$",      re.MULTILINE)
 BACKSPACE_RE      = re.compile(r"\{BACKSPACE\s*'\s*\+\s*\$(trigger|ph)\.Length\s*\+\s*'\}")
 SENDWAIT_TRIG_RE  = re.compile(r"SendWait\(\s*\$trigger\s*\)")
+# Form-input injection guards (S03E01 audit, round 2):
+#   * forbid {{form1.X}} substituted directly into a single-quoted bash argument
+#     value inside the @'...'@ here-string -- this was the bash-apostrophe bug
+#     that broke :aitone/:aitr/:aireply when users picked a choice with `'`.
+#   * forbid Invoke-Expression / iex composition with form values.
+SYS_INLINE_FORM_RE = re.compile(r"--system\s+'[^']*\{\{\s*form1\.")
+IEX_FORM_RE        = re.compile(r"(Invoke-Expression|iex)\s*[^\n]*\{\{\s*form1\.", re.IGNORECASE)
 
 def find_cmd(match):
     """Return the cmd string from a shell-type var, or None."""
@@ -141,6 +148,16 @@ for m in matches:
         if retype is None:
             fail("error", where,
                  "missing SendWait($trigger) retype after second BACKSPACE in finally block")
+
+    # Form-input injection guards.
+    if SYS_INLINE_FORM_RE.search(cmd):
+        fail("error", where,
+             "{{form1.X}} appears inside a single-quoted --system argument; "
+             "use a PS switch-mapped variable (choice fields) or env var via WSLENV "
+             "(free-form fields) instead -- raw substitution is the S03E01 bug class")
+    if IEX_FORM_RE.search(cmd):
+        fail("error", where,
+             "Invoke-Expression / iex composed with {{form1.X}} -- forbidden")
 
 if failures:
     for line in failures:

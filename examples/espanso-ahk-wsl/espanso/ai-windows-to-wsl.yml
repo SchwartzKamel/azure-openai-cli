@@ -69,11 +69,38 @@
 #       or hardcoded test secret, that secret leaves your machine. Inspect
 #       `git diff --cached` BEFORE triggering. Consider running `gitleaks`
 #       on staged changes first.
+#     * :aic -- ships the clipboard verbatim to Azure for code review.
+#       Same secret-egress class as :aicommit: if you've copied a config
+#       file, .env line, or stack trace with embedded keys, that lands in
+#       Azure. Scrub before triggering.
 #     * :aireply -- email/message bodies are correspondence; treat them
 #       like any other communication you send to a third party.
 #     * :aitr -- the source text being translated is also egressed.
 #   Verify your Azure tenant's data-handling and retention agreement
 #   before enabling any of these in regulated environments.
+#
+# FORM-INPUT INJECTION (S03E01 audit):
+#   Espanso substitutes `{{form1.X}}` into the cmd block as raw text BEFORE
+#   PowerShell parses it. Form values therefore must be substituted only
+#   into safe positions:
+#     * Choice fields (:aitone, :aitr, :aireply.tone) use a `switch`
+#       statement to map the choice value to a hardcoded safe phrase.
+#       The user's input is bounded by the choice list, so no untrusted
+#       text reaches the bash command line.
+#     * Single-line free-form fields (:aireply.intent, :aiq.q) are captured
+#       via PS here-string (`@'...'@`) and passed to bash via WSLENV +
+#       environment variable -- never substituted into bash source. Espanso's
+#       `multiline: false` prevents newlines, so the `'@` boundary attack is
+#       not reachable.
+#     * Multi-line free-form fields (:ai.prompt, :aiweb.prompt, :aiimg.prompt)
+#       go to bash via STDIN, not into the command string. Their only
+#       residual surface is the PS here-string `'@` boundary itself: if you
+#       paste attacker-crafted text containing a line that is exactly `'@`,
+#       the rest could be parsed as PowerShell. Since you must voluntarily
+#       paste that text into your own form, the threat model is essentially
+#       self-inflicted -- but DO NOT paste prompts from untrusted sources
+#       (random web pages, unknown email attachments) into the multi-line
+#       AI form fields without inspecting them first.
 #
 # FOCUS HAZARD:
 #   SendKeys writes to whichever window has foreground focus at the moment
@@ -427,12 +454,33 @@ matches:
             [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $trigger.Length + '}')
             [System.Windows.Forms.SendKeys]::SendWait($ph)
             try {
+              # Whitelist mapping: choice value -> safe phrase. User input is bounded
+              # by the choice list, so injection via {{form1.tone}} is impossible.
+              # Here-string capture so future choices can contain apostrophes safely.
+              $rawTone = @'
+            {{form1.tone}}
+            '@
+              $rawTone = $rawTone.Trim()
+              switch ($rawTone) {
+                'Professional'                     { $tone = 'professional' }
+                'Casual / Friendly'                { $tone = 'casual and friendly' }
+                'Academic / Formal'                { $tone = 'academic and formal' }
+                'Concise / Direct'                 { $tone = 'concise and direct' }
+                'Enthusiastic'                     { $tone = 'enthusiastic' }
+                'Diplomatic / Careful'             { $tone = 'diplomatic and careful' }
+                'Sarcastic'                        { $tone = 'sarcastic' }
+                'ELI5 / Explain Like a 5-year-old' { $tone = 'plainspoken, like explaining to a 5-year-old' }
+                default                            { $tone = 'professional' }
+              }
+              $env:AZ_AI_SYSTEM = "Rewrite the following text in a $tone tone. Preserve the core meaning and all key facts. Adjust vocabulary, sentence structure, and register to match the requested tone. Output ONLY the rewritten text."
+              $env:WSLENV = if ([string]::IsNullOrWhiteSpace($env:WSLENV)) { 'AZ_AI_SYSTEM/u' } else { 'AZ_AI_SYSTEM/u:' + $env:WSLENV }
               $bash = @'
-            tr -d '\r' | az-ai --raw --max-tokens 1000 --system 'Rewrite the following text in a {{form1.tone}} tone. Preserve the core meaning and all key facts. Adjust vocabulary, sentence structure, and register to match the requested tone. Output ONLY the rewritten text.' 2>/dev/null
+            tr -d '\r' | az-ai --raw --max-tokens 1000 --system "$AZ_AI_SYSTEM" 2>/dev/null
             '@
               $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
               if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
+              Remove-Item Env:\AZ_AI_SYSTEM -ErrorAction SilentlyContinue
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
             }
@@ -557,12 +605,36 @@ matches:
             [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $trigger.Length + '}')
             [System.Windows.Forms.SendKeys]::SendWait($ph)
             try {
+              # Whitelist mapping: choice value -> safe phrase. User input is bounded
+              # by the choice list, so injection via {{form1.lang}} is impossible.
+              $rawLang = @'
+            {{form1.lang}}
+            '@
+              $rawLang = $rawLang.Trim()
+              switch ($rawLang) {
+                'English'                       { $lang = 'English' }
+                'Spanish'                       { $lang = 'Spanish' }
+                'French'                        { $lang = 'French' }
+                'German'                        { $lang = 'German' }
+                'Italian'                       { $lang = 'Italian' }
+                'Portuguese'                    { $lang = 'Portuguese' }
+                'Japanese'                      { $lang = 'Japanese' }
+                'Korean'                        { $lang = 'Korean' }
+                'Mandarin Chinese (Simplified)' { $lang = 'Mandarin Chinese (Simplified)' }
+                'Arabic'                        { $lang = 'Arabic' }
+                'Hindi'                         { $lang = 'Hindi' }
+                'Russian'                       { $lang = 'Russian' }
+                default                         { $lang = 'English' }
+              }
+              $env:AZ_AI_SYSTEM = "Translate the following text into $lang. Preserve meaning, tone, and formatting. Use natural, idiomatic phrasing rather than word-for-word translation. Output ONLY the translation, no preamble or notes."
+              $env:WSLENV = if ([string]::IsNullOrWhiteSpace($env:WSLENV)) { 'AZ_AI_SYSTEM/u' } else { 'AZ_AI_SYSTEM/u:' + $env:WSLENV }
               $bash = @'
-            tr -d '\r' | az-ai --raw --max-tokens 1500 --temperature 0.2 --system 'Translate the following text into {{form1.lang}}. Preserve meaning, tone, and formatting. Use natural, idiomatic phrasing rather than word-for-word translation. Output ONLY the translation, no preamble or notes.' 2>/dev/null
+            tr -d '\r' | az-ai --raw --max-tokens 1500 --temperature 0.2 --system "$AZ_AI_SYSTEM" 2>/dev/null
             '@
               $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
               if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
+              Remove-Item Env:\AZ_AI_SYSTEM -ErrorAction SilentlyContinue
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
             }
@@ -627,12 +699,38 @@ matches:
             [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $trigger.Length + '}')
             [System.Windows.Forms.SendKeys]::SendWait($ph)
             try {
+              # Tone is a choice field -> whitelist mapping eliminates injection surface.
+              $rawTone = @'
+            {{form1.tone}}
+            '@
+              $rawTone = $rawTone.Trim()
+              switch ($rawTone) {
+                'Professional'      { $tone = 'professional' }
+                'Casual / Friendly' { $tone = 'casual and friendly' }
+                'Direct / Concise'  { $tone = 'direct and concise' }
+                'Apologetic'        { $tone = 'apologetic' }
+                'Diplomatic'        { $tone = 'diplomatic' }
+                'Enthusiastic'      { $tone = 'enthusiastic' }
+                default             { $tone = 'professional' }
+              }
+              # Intent is single-line free form. Use here-string (safe because
+              # multiline:false prevents newlines, so '@ boundary cannot be reached).
+              # Then sanitize quotes/CR/LF defensively before passing via env var.
+              $rawIntent = @'
+            {{form1.intent}}
+            '@
+              $intent = ($rawIntent -replace '"', "'" -replace "[`r`n]", ' ').Trim()
+              $env:AZ_AI_INTENT = $intent
+              $env:AZ_AI_TONE = $tone
+              $env:WSLENV = if ([string]::IsNullOrWhiteSpace($env:WSLENV)) { 'AZ_AI_INTENT/u:AZ_AI_TONE/u' } else { 'AZ_AI_INTENT/u:AZ_AI_TONE/u:' + $env:WSLENV }
               $bash = @'
-            tr -d '\r' | az-ai --raw --max-tokens 800 --temperature 0.5 --system 'The clipboard contains an email or message. Draft a reply with this intent: "{{form1.intent}}". Use a {{form1.tone}} tone. Match the recipients greeting/sign-off style. Be specific -- do not hedge or pad. Output ONLY the reply body, no subject line.' 2>/dev/null
+            tr -d '\r' | az-ai --raw --max-tokens 800 --temperature 0.5 --system "The clipboard contains an email or message. Draft a reply with this intent: \"$AZ_AI_INTENT\". Use a $AZ_AI_TONE tone. Match the recipients greeting/sign-off style. Be specific -- do not hedge or pad. Output ONLY the reply body, no subject line." 2>/dev/null
             '@
               $out = Get-Clipboard -Raw | wsl.exe -e bash -lc $bash | Out-String
               if ([string]::IsNullOrWhiteSpace($out)) { '[az-ai: no response -- check connectivity, az-ai install, or env]' } else { $out.TrimEnd("`r","`n") }
             } finally {
+              Remove-Item Env:\AZ_AI_INTENT -ErrorAction SilentlyContinue
+              Remove-Item Env:\AZ_AI_TONE -ErrorAction SilentlyContinue
               [System.Windows.Forms.SendKeys]::SendWait('{BACKSPACE ' + $ph.Length + '}')
               [System.Windows.Forms.SendKeys]::SendWait($trigger)
             }
