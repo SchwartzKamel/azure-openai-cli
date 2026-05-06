@@ -22,6 +22,8 @@ End of S02, `azure-openai-cli` is an Azure-OpenAI-native single-shot binary -- e
 | S03E08 | *The Pick* | Costanza (ADR), Larry David (episode) | -- (decision episode) | 2026-05 |
 | S03E10 | *The Keychain* | Newman | GREEN (per-provider env sections + redactor patterns; 2 LOW + 1 INFO findings filed) | 2026-05 |
 | S03E09 | *The Compat* | Kramer | -- (clean episode; OpenAiCompatAdapter shipped) | 2026-05 |
+| S03E11 | *The Wizard, Reprise* | Jerry | GREEN (provider-aware wizard, env-file writer, 32 unit tests + 5 integration; closes K-1 chmod-600 README gap) | 2026-05 |
+| S03E12 | *The Receipt* | Kenny Bania | -- (bench harness + compat prewarm + compat cost rates; closes CR-09 F4 + F5) | 2026-05 |
 
 ## Active findings
 

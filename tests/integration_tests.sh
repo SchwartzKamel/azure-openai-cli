@@ -588,6 +588,81 @@ KCEOF2
 
     rm -rf "$keychain_home"
 
+    # ── S03E11 -- The Wizard, Reprise (provider-aware setup) ─────────────
+    echo ""
+    echo "▸ S03E11 -- provider-aware setup wizard"
+
+    # Non-TTY refusal: piping answers without a PTY must fail loudly,
+    # not loop on closed stdin. The wizard prints an [ERROR] and exits 1.
+    local wiz_rc wiz_out
+    set +e
+    wiz_out=$(echo "" | "$BIN" --setup 2>&1)
+    wiz_rc=$?
+    set -e
+    if [ "$wiz_rc" -eq 1 ] && printf '%s' "$wiz_out" | grep -qF '[ERROR]'; then
+        pass "S03E11 wizard: non-TTY refuses with [ERROR] (rc=1)"
+    else
+        fail "S03E11 wizard: non-TTY refuses with [ERROR]" "rc=$wiz_rc out=$wiz_out"
+    fi
+
+    # PTY-driven happy path: feed answers via `script` (util-linux). Skip
+    # gracefully if `script` isn't on the box -- macOS runners can have a
+    # different flavour.
+    if ! command -v script >/dev/null 2>&1; then
+        skip "S03E11 wizard: PTY-driven setup" "script(1) not available"
+    else
+        local wiz_home; wiz_home=$(mktemp -d)
+        local answers_file; answers_file=$(mktemp)
+        # Answer sequence: provider menu (Enter = openai default) -> api key
+        # (typed char-by-char into ReadKey) -> model list (Enter = default)
+        # -> "no more providers" (Enter = N).
+        printf '%s\n%s\n%s\nN\n' \
+            '' \
+            'sk-test-0123456789abcdef' \
+            'gpt-4o-mini' \
+            > "$answers_file"
+
+        local script_log; script_log=$(mktemp)
+        set +e
+        env -i HOME="$wiz_home" PATH="$PATH" TERM=dumb \
+            DOTNET_ROOT="${DOTNET_ROOT:-}" \
+            script -qec "$BIN --setup" "$script_log" < "$answers_file" >/dev/null 2>&1
+        local script_rc=$?
+        set -e
+
+        local env_out="$wiz_home/.config/az-ai/env"
+        if [ "$script_rc" -eq 0 ] && [ -f "$env_out" ]; then
+            pass "S03E11 wizard: PTY-driven --setup writes env file"
+        else
+            fail "S03E11 wizard: PTY-driven --setup writes env file" \
+                "rc=$script_rc env_out_present=$([ -f "$env_out" ] && echo y || echo n) log=$(cat "$script_log" 2>/dev/null | tr -d '\r' | tail -20)"
+        fi
+
+        if [ -f "$env_out" ]; then
+            if grep -qF '[provider:openai]' "$env_out"; then
+                pass "S03E11 wizard: env file has [provider:openai] section"
+            else
+                fail "S03E11 wizard: env file has [provider:openai] section" \
+                    "contents: $(cat "$env_out")"
+            fi
+            if grep -qF 'AZ_AI_COMPAT_MODELS' "$env_out"; then
+                pass "S03E11 wizard: env file exports AZ_AI_COMPAT_MODELS"
+            else
+                fail "S03E11 wizard: env file exports AZ_AI_COMPAT_MODELS" \
+                    "contents: $(cat "$env_out")"
+            fi
+            # chmod 600 -- the headline security invariant.
+            local perms; perms=$(stat -c '%a' "$env_out" 2>/dev/null || stat -f '%Lp' "$env_out" 2>/dev/null)
+            if [ "$perms" = "600" ]; then
+                pass "S03E11 wizard: env file is mode 0600"
+            else
+                fail "S03E11 wizard: env file is mode 0600" "actual: $perms"
+            fi
+        fi
+
+        rm -rf "$wiz_home" "$answers_file" "$script_log"
+    fi
+
     # ── API-gated smoke (skip unless creds present) ───────────────────────
     if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then
         skip "real API call" "AZUREOPENAIENDPOINT/AZUREOPENAIAPI not set"

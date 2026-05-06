@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(wizard):** S03E11 *The Wizard, Reprise* -- setup wizard now
+  provider-aware (azure, openai, groq, together, cloudflare); writes
+  `[provider:NAME]` sections to `~/.config/az-ai/env` (E10 format) plus
+  default-section back-compat exports (`AZUREOPENAIENDPOINT`,
+  `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`, `AZ_AI_COMPAT_MODELS`). Compat
+  model strings validated through `OpenAiCompatAdapter.ParseCompatModels`
+  before write; existing files are backed up to `env.bak.<timestamp>`;
+  identical re-runs are no-ops. chmod 600 on Unix. Refuses politely on
+  non-TTY / `--raw` / `--json` instead of looping on closed stdin.
+- **bench(perf):** S03E12 *The Receipt* lands the pre-merge bench harness
+  under `tests/AzureOpenAI_CLI.Tests/Benchmarks/`: `FakeChatClient`
+  (deterministic-latency `IChatClient` with configurable artificial delay
+  and token-count emission, no network) and `BenchmarkHarness`
+  (configurable warm-up + measured iterations; reports mean / p50 / p95 /
+  p99 / stdev with R-7 linear-interpolation percentiles). Self-consistency
+  tests assert the harness produces ordered statistics and tracks
+  `Task.Delay`-driven floors within tolerance. A gated
+  `Snapshot_EmitMarkdownTable` test (env: `AZ_AI_BENCH_FULL=1`) regenerates
+  the markdown rows quoted in the exec report. The fast path stays under
+  the preflight wall-clock budget.
 - **feat(provider):** `OpenAiCompatAdapter` (S03E09 *The Compat*):
   route models to OpenAI-compatible endpoints (OpenAI, Groq,
   Together, Cloudflare presets) via the `AZ_AI_COMPAT_MODELS`
@@ -33,6 +53,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `:aidata`, `:aicost` -- as `examples/espanso-ahk-wsl/espanso/ai-prompts.yml`,
   shipping a curated prompt library on top of the unified S03
   trigger pattern. Commit `905515e`.
+
+### Fixed
+- **fix(perf):** `PrewarmAsync` now also covers compat-routed providers
+  via the new `PrewarmCompatAsync` wrapper (S03E12 *The Receipt*, closes
+  Kramer Finding 4 from S03E09): when `AZ_AI_COMPAT_MODELS` is set the
+  prewarm path resolves each distinct preset and exercises
+  `OpenAiCompatAdapter.Build` (preset resolution, env-var read, SDK
+  option construction) so the first real chat call through the compat
+  seam no longer pays cold-start cost. Silent-by-contract; no network;
+  per-entry build failures (missing API key, missing
+  `CLOUDFLARE_ACCOUNT_ID`) are swallowed.
+- **fix(observability):** `CostEstimator` now ships placeholder rates for
+  the four OpenAI-compatible presets (`openai`, `groq`, `together`,
+  `cloudflare`) via the new `CompatCostRates` table and
+  `EstimateForCompatPreset` method (S03E12 *The Receipt*, closes Kramer
+  Finding 5 from S03E09). Known presets emit numeric estimates with the
+  approximation note flagging them as PLACEHOLDER values; unknown presets
+  fall through to a `[REDACTED:provider]` sentinel + an "unknown rate, $?
+  estimate" message rather than failing. Every entry carries an inline
+  TODO marker referencing the upstream pricing URL the next maintainer
+  should refresh from.
 
 ### Documentation
 - **docs(audits):** S03 sweeps-week audit triple lands in

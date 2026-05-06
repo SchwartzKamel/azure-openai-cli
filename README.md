@@ -19,31 +19,49 @@
 
 ## First run
 
-Run `az-ai` with no credentials configured and it drops you into a short interactive wizard:
+Run `az-ai` with no credentials configured and it drops you into a short interactive wizard. As of S03E11 *The Wizard, Reprise* the wizard is provider-aware: pick a default provider (azure, openai, groq, together, cloudflare), enter that provider's credentials, and optionally loop to add a second:
 
 ```text
 $ az-ai
-Welcome to az-ai! Let's get you set up. (takes ~30 seconds)
 
-Azure OpenAI endpoint URL
-  e.g. https://my-resource.openai.azure.com/
-> https://contoso.openai.azure.com/
+Welcome to az-ai setup!
+This wizard will configure your providers and save them to
+  /home/user/.config/az-ai/env
+(file mode 0600 on Unix; existing files are backed up first).
 
-API key (input hidden)
-> ••••••••••••••••
+Default provider:
+    1) azure
+  * 2) openai
+    3) groq
+    4) together
+    5) cloudflare
+Pick [openai]: 1
 
-Model deployment name (comma-separated for multiple)
-  e.g. gpt-4o,gpt-4o-mini
-> gpt-4o
+Azure OpenAI endpoint URL: https://contoso.openai.azure.com/
+Azure OpenAI API key (input hidden): ********************************
+Azure model deployment name(s), comma-separated [gpt-4o-mini]: gpt-4o,gpt-4o-mini
 
-Testing connection... ✓ authenticated (gpt-4o responded in 412ms)
-Saved to /home/user/.azureopenai-cli.json (mode 0600)
+Add another provider? [y/N] (remaining: openai, groq, together, cloudflare): y
+Which provider:
+  * 1) openai
+    2) groq
+    3) together
+    4) cloudflare
+Pick [openai]:
+Openai API key (input hidden): ****************************
+Openai model name(s), comma-separated [gpt-4o-mini]: gpt-4o-mini
 
-Run 'az-ai --config show' anytime to inspect settings.
+Add another provider? [y/N] (remaining: groq, together, cloudflare): n
+
+Configuration saved to /home/user/.config/az-ai/env
+Default provider: azure
+Providers configured: azure, openai
 ```
 
-- The wizard **auto-runs** when creds are missing *and* you're on an interactive terminal. Scripts, pipes, `--raw`, `--json`, and containers bypass it -- they fail loud like before, so nothing in your CI/Espanso/AHK setup breaks.
-- Re-run it anytime with `az-ai --init` (aliases: `--configure`, `--login`).
+The wizard writes `~/.config/az-ai/env` with E10-format `[provider:NAME]` sections plus a default unsectioned block carrying `AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`, and `AZ_AI_COMPAT_MODELS` for back-compat. Compat model strings are validated through `OpenAiCompatAdapter.ParseCompatModels` before the file is written, so a typo never makes it to disk. If a file already exists, the wizard prompts to back it up to `env.bak.<timestamp>` before overwriting; identical re-runs are no-ops (no spurious backup).
+
+- The wizard **auto-runs** when creds are missing *and* you're on an interactive terminal. Scripts, pipes, `--raw`, `--json`, and containers bypass it -- they fail loud with an `[ERROR]` and exit code 1, so nothing in your CI/Espanso/AHK setup loops on closed stdin.
+- Re-run it anytime with `az-ai --setup` (aliases: `--init-wizard`, bare `setup`).
 - **Environment variables still win.** `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` / `AZUREOPENAIMODEL` override stored config every time -- the wizard is for humans, env vars are for machines.
 
 ### Where is my key stored?
