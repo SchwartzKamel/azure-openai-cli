@@ -117,8 +117,10 @@ public class ResolutionPrecedenceTests
     [Fact]
     public void Provider_DefaultIsAzureWhenEndpointSet()
     {
+        // ADR-011 rung 1 requires both AZUREOPENAIENDPOINT and AZUREOPENAIAPI.
         var inputs = new ResolutionInputs(null, null, "gpt-4o",
-            Env(("AZUREOPENAIENDPOINT", "https://x.cognitiveservices.azure.com/")));
+            Env(("AZUREOPENAIENDPOINT", "https://x.cognitiveservices.azure.com/"),
+                ("AZUREOPENAIAPI", "k")));
 
         var r = PreferencesResolver.Resolve(new Preferences(), inputs);
 
@@ -141,8 +143,12 @@ public class ResolutionPrecedenceTests
     [Fact]
     public void Provider_DefaultFallsBackToFirstCompatPresetWithKey()
     {
+        // ADR-011 rung 2: exactly one AZ_AI_<PRESET>_ENDPOINT set -> default:<preset>.
+        // (Pre-ADR-011 this rung keyed off API-key envs; semantics now match
+        // the documented heuristic.)
         var inputs = new ResolutionInputs(null, null, "llama",
-            Env(("GROQ_API_KEY", "gsk_x")));
+            Env(("AZ_AI_GROQ_ENDPOINT", "https://api.groq.com/openai/v1"),
+                ("GROQ_API_KEY", "gsk_x")));
 
         var r = PreferencesResolver.Resolve(new Preferences(), inputs);
 
@@ -151,14 +157,17 @@ public class ResolutionPrecedenceTests
     }
 
     [Fact]
-    public void Provider_NoSignalsThrowsHelpfulError()
+    public void Provider_NoSignalsReturnsAzureFallback()
     {
+        // ADR-011 rung 6: no signals at all -> default:azure:fallback.
+        // BuildChatClient surfaces the actionable missing-creds error
+        // downstream; the resolver no longer throws.
         var inputs = new ResolutionInputs(null, null, null, Env());
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => PreferencesResolver.Resolve(new Preferences(), inputs));
-        Assert.Contains("AZUREOPENAIENDPOINT", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("OPENAI_API_KEY", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("Known providers", ex.Message, StringComparison.Ordinal);
+
+        var r = PreferencesResolver.Resolve(new Preferences(), inputs);
+
+        Assert.Equal("azure", r.Provider);
+        Assert.Equal("default:azure:fallback", r.ProviderSource);
     }
 
     // ── Model precedence ladder ───────────────────────────────────────────
@@ -351,7 +360,7 @@ public class ResolutionPrecedenceTests
         prefs.Profiles["work"] = new ProfileEntry { Provider = "", Model = "gpt-4o" };
         var inputs = new ResolutionInputs(
             null, "work", null,
-            Env(("AZUREOPENAIENDPOINT", "https://x")));
+            Env(("AZUREOPENAIENDPOINT", "https://x"), ("AZUREOPENAIAPI", "k")));
 
         var r = PreferencesResolver.Resolve(prefs, inputs);
 
@@ -474,6 +483,7 @@ public class ResolutionPrecedenceTests
         var inputs = new ResolutionInputs(
             null, null, null,
             Env(("AZUREOPENAIENDPOINT", "https://x"),
+                ("AZUREOPENAIAPI", "k"),
                 ("AZUREOPENAIMODEL", "gpt-4o")));
 
         var r = PreferencesResolver.Resolve(new Preferences(), inputs);
@@ -597,9 +607,12 @@ public class ResolutionPrecedenceTests
     [Fact]
     public void Defaults_AzureFirstWhenBothEndpointAndOpenAiKeySet()
     {
-        // Heuristic order: Azure before OpenAI when both signals are present.
+        // ADR-011: Azure (endpoint+key, rung 1) beats OpenAI (rung 4) when
+        // both are present. Without AZUREOPENAIAPI, OpenAI would win.
         var inputs = new ResolutionInputs(null, null, "gpt-4o",
-            Env(("AZUREOPENAIENDPOINT", "https://x"), ("OPENAI_API_KEY", "sk-x")));
+            Env(("AZUREOPENAIENDPOINT", "https://x"),
+                ("AZUREOPENAIAPI", "k"),
+                ("OPENAI_API_KEY", "sk-x")));
         var r = PreferencesResolver.Resolve(new Preferences(), inputs);
         Assert.Equal("azure", r.Provider);
     }
@@ -607,12 +620,17 @@ public class ResolutionPrecedenceTests
     [Fact]
     public void Defaults_CompatPresetOrderIsStable()
     {
-        // openai > groq > together > cloudflare. Groq + cloudflare both set
-        // resolves to groq.
+        // ADR-011 rung 5 (tie-break): two preset endpoints, no other signal,
+        // alphabetically first preset wins. cloudflare < groq lexically.
         var inputs = new ResolutionInputs(null, null, "anything",
-            Env(("GROQ_API_KEY", "k1"), ("CLOUDFLARE_API_TOKEN", "k2")));
+            Env(("AZ_AI_GROQ_ENDPOINT", "https://api.groq.com/openai/v1"),
+                ("AZ_AI_CLOUDFLARE_ENDPOINT", "https://api.cloudflare.com/v1"),
+                ("GROQ_API_KEY", "k1"),
+                ("CLOUDFLARE_API_TOKEN", "k2")));
         var r = PreferencesResolver.Resolve(new Preferences(), inputs);
-        Assert.Equal("groq", r.Provider);
+        Assert.Equal("cloudflare", r.Provider);
+        Assert.NotEmpty(r.Warnings);
+        Assert.Contains("multiple-presets-no-cli-no-profile-no-env-pin", r.Warnings[0], StringComparison.Ordinal);
     }
 
     [Fact]
