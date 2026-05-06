@@ -39,9 +39,13 @@ except ImportError:
 PREFIX = "[espanso-yml-lint]"
 paths = sys.argv[1:]
 failures = []
+warnings = []
 
 def fail(severity, where, msg):
     failures.append(f"{PREFIX} {severity}: {where}: {msg}")
+
+def warn(where, msg):
+    warnings.append(f"{PREFIX} warning: {where}: {msg}")
 
 # Platform-variant group: these files ship the same trigger set per OS
 # and are mutually exclusive at install time -- a user loads exactly
@@ -71,9 +75,22 @@ SENDWAIT_TRIG_RE  = re.compile(r"SendWait\(\s*\$trigger\s*\)")
 SYS_INLINE_FORM_RE = re.compile(r"--system\s+'[^']*\{\{\s*form1\.")
 IEX_FORM_RE        = re.compile(r"(Invoke-Expression|iex)\s*[^\n]*\{\{\s*form1\.", re.IGNORECASE)
 
-# Heredoc-body extractor for bash triggers (S03E04 / v2.1 audit F-1, F-2).
-HEREDOC_OPEN_RE = re.compile(r"<<\s*'([A-Za-z_][A-Za-z0-9_]*)'")
+# Heredoc-body extractor for bash-class triggers (S03E04 / v2.1 audit F-1, F-2;
+# F-15 2026-05 extended for the indented `<<-` form and double-quoted tags).
+#
+# Bash quoted-tag rule: ANY quoting of the delimiter (single or double quotes,
+# or a backslash on the tag) disables interpolation in the body. The `-`
+# variant (`<<-TAG`) is identical except leading TABs are stripped from
+# body lines and the closing tag may be tab-indented. Both behaviors
+# combine: `<<-'TAG'` is "indented + interpolation-disabled".
+#
+# We strip both single- and double-quoted forms (with or without `-`).
+# A bare unquoted heredoc (`<<TAG` / `<<-TAG`) still interpolates and is
+# deliberately NOT masked, so any `{{form.*}}` inside its body will be
+# flagged by the placeholder check downstream.
+HEREDOC_OPEN_RE = re.compile(r"<<-?\s*(['\"])([A-Za-z_][A-Za-z0-9_]*)\1")
 PLACEHOLDER_RE  = re.compile(r"\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\.")
+COMMENT_LINE_RE = re.compile(r"^\s*#")
 
 
 def find_cmd(match):
@@ -92,11 +109,15 @@ def find_cmd(match):
 
 
 def strip_quoted_heredocs(cmd_text):
-    """Remove the body of every <<'TAG'...TAG block from cmd_text.
+    """Remove the body of every <<[-]['|"]TAG['|"]...TAG block from cmd_text.
 
-    Only single-quoted terminators count -- those are the ones that
-    disable bash interpolation. Unquoted heredocs (<<TAG) still
-    interpolate $(...) and ${VAR}, so we deliberately do NOT mask them.
+    Quoted terminators (single OR double quotes, optionally with the `-`
+    indented-heredoc modifier) disable bash interpolation, so the body is
+    safe to mask. Unquoted heredocs (<<TAG / <<-TAG) still interpolate
+    $(...) and ${VAR}, so we deliberately do NOT mask them. For the `<<-`
+    variant, bash strips leading TABs from body lines AND allows the
+    closing tag itself to be tab-indented, so the terminator match is
+    `line.strip() == TAG`, which already covers both cases.
     """
     out_lines = []
     in_heredoc = None
@@ -105,13 +126,34 @@ def strip_quoted_heredocs(cmd_text):
             m = HEREDOC_OPEN_RE.search(line)
             if m:
                 out_lines.append(line)
-                in_heredoc = m.group(1)
+                in_heredoc = m.group(2)
             else:
                 out_lines.append(line)
         else:
             if line.strip() == in_heredoc:
                 in_heredoc = None
     return "\n".join(out_lines)
+
+
+def strip_comment_lines(cmd_text):
+    """Drop lines whose first non-whitespace character is '#'.
+
+    Bash treats a `#` at the start of a token (or whole line) as a comment,
+    so a `{{form.*}}` inside such a line is never expanded by the shell
+    and must not trigger the placeholder guard (F-16, 2026-05).
+
+    NOTE: this is intentionally conservative -- mid-line `# ...` comments
+    are NOT stripped. Detecting those correctly requires real shell
+    tokenization (a `#` only starts a comment when preceded by whitespace
+    AND not inside quotes / parameter expansions). The whole-line form is
+    the only pattern observed in our kits and is enough to close F-16.
+    Heredoc bodies are masked BEFORE this step, so a literal `# {{...}}`
+    inside a heredoc is not at risk of being mis-stripped.
+    """
+    return "\n".join(
+        line for line in cmd_text.splitlines()
+        if not COMMENT_LINE_RE.match(line)
+    )
 
 
 def collect_triggers(match):
@@ -180,16 +222,36 @@ def lint_one(path):
         if cmd is None:
             continue
 
-        if shell == "bash":
+        if shell in ("bash", "sh", "wsl"):
+            # Bash-class POSIX shells: bash + sh (typically dash/ash) + wsl
+            # (espanso's `wsl` shell pipes through wsl.exe -> bash by default).
+            # All three honor the same `<<[-]'TAG'` quoting rule and the same
+            # `# ...` comment convention, so they share one guard. (F-15
+            # 2026-05 widened the previously bash-only group.)
             outside = strip_quoted_heredocs(cmd)
+            outside = strip_comment_lines(outside)
             for ph_match in PLACEHOLDER_RE.finditer(outside):
                 line_no = outside[:ph_match.start()].count("\n") + 1
                 fail("error", where,
                      f"line {line_no}: form placeholder {{{{...}}}} appears "
-                     "outside a single-quoted heredoc body in a bash cmd; "
-                     "user input must reach az-ai via stdin (see "
+                     f"outside a single-quoted heredoc body in a {shell} cmd "
+                     "(bash-class guard); user input must reach az-ai via "
+                     "stdin (see "
                      "docs/exec-reports/s03e01-the-yada-yada-strikes-back.md "
                      "and the v2.1 audit F-1/F-2)")
+            continue
+
+        if shell == "cmd":
+            # Windows cmd.exe: no current trigger uses this legitimately for
+            # form-input handling, but we don't want a silent fall-through to
+            # the PowerShell structural checks (which would mis-fire). Emit
+            # a stderr warning and skip further checks. F-15 2026-05 -- if a
+            # real `shell: cmd` use case lands later, Bookman + Newman can
+            # decide whether to escalate this to a hard failure.
+            if PLACEHOLDER_RE.search(cmd):
+                warn(where,
+                     "shell: cmd + {{form.*}} interpolation -- review for "
+                     "cmd.exe metacharacter exposure")
             continue
 
         # PowerShell-side checks (S02E37 trigger drift, BACKSPACE counts).
@@ -274,6 +336,10 @@ if len(all_triggers_by_file) >= 2:
             fail("error", f"<cross-file>: {trig!r}",
                  "trigger collides across kits that load together: "
                  + ", ".join(files))
+
+if warnings:
+    for line in warnings:
+        print(line, file=sys.stderr)
 
 if failures:
     for line in failures:

@@ -1,0 +1,26 @@
+matches:
+
+  - trigger: ":aicomment"
+    replace: "{{output}}"
+    vars:
+      - name: question
+        type: form
+        params:
+          layout: "Q:\n[[query]]"
+          fields:
+            query:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            # The form value {{question.query}} is consumed via stdin below.
+            # Mentioning it in this comment must NOT trip the lint (F-16).
+            response=$(az-ai --raw \
+                --system 'You are az-ai. Answer concisely.' \
+                2>/dev/null <<'__AZ_AI_EOF__'
+            {{question.query}}
+            __AZ_AI_EOF__
+            )
+            printf '%s' "$response"

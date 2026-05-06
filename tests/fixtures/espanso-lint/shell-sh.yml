@@ -1,0 +1,22 @@
+matches:
+
+  - trigger: ":aish"
+    replace: "{{output}}"
+    vars:
+      - name: question
+        type: form
+        params:
+          layout: "Q:\n[[query]]"
+          fields:
+            query:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: sh
+          cmd: |
+            response=$(printf '%s' "{{question.query}}" \
+              | az-ai --raw \
+                  --system 'You are az-ai. Answer.' \
+                  2>/dev/null)
+            printf '%s' "$response"

@@ -105,6 +105,7 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | elaine-2026-04-H5 | [docs-audit-2026-04-22-elaine.md](audits/docs-audit-2026-04-22-elaine.md) | HIGH | open | Elaine + Uncle Leo | CODE_OF_CONDUCT vs CONTRIBUTING reporting channels conflict | 2026-04-22 |
 | fdr-2026-04-F-1 | [fdr-v2-dogfood-2026-04-22.md](audits/fdr-v2-dogfood-2026-04-22.md) | HIGH | open | FDR + Kramer | Cryptic type-initializer error on Azure HTTP errors | 2026-04-22 |
 | fdr-2026-04-F-3 | [fdr-v2-dogfood-2026-04-22.md](audits/fdr-v2-dogfood-2026-04-22.md) | HIGH | open | FDR + Kramer | Ralph agent error swallows exit code (exits 0 on failure) | 2026-04-22 |
+| newman-2026-05-F-17 | [security-v2.1.1-reaudit.md](audits/security-v2.1.1-reaudit.md) | INFO | open | Elaine + Kramer | Lint does not analyze data-flow out of heredoc-fed variables (doc/data-flow concern, future episode) | 2026-05-06 |
 
 ## Resolved (last 90 days)
 
@@ -115,6 +116,8 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | elaine-2026-05-C2 | [docs-audit-2026-05-elaine.md](audits/docs-audit-2026-05-elaine.md) | CRITICAL | resolved | Elaine + Kramer | `:aidata` trigger collides across two espanso match files (resolved 2026-05: prompt-templates entry renamed to `:aidataworkflow`; cross-file collision lint added to `scripts/lint-espanso-yml.sh`) | 2026-05-06 |
 | newman-2026-05-F-2 | [security-v2.1-post-prompts.md](audits/security-v2.1-post-prompts.md) | HIGH | resolved | Kramer | Four prompt triggers shell-interpolated form fields (fixed in commit c25ca38) | 2026-05-06 |
 | wilhelm-2026-05-W-03 | [audit-process-meta-2026-05.md](audits/audit-process-meta-2026-05.md) | MEDIUM | resolved | Wilhelm | Per-agent audits had no template (shipped `docs/audits/_template.md` in sweeps week) | 2026-05-06 |
+| newman-2026-05-F-15 | [security-v2.1.1-reaudit.md](audits/security-v2.1.1-reaudit.md) | LOW | resolved | Kramer | Lint coverage gaps for non-`bash` POSIX shells and `<<-'TAG'` -- extended heredoc regex to match `<<-'TAG'` indented variant and added bash-class group (sh, wsl); commit pending | 2026-05-06 |
+| newman-2026-05-F-16 | [security-v2.1.1-reaudit.md](audits/security-v2.1.1-reaudit.md) | LOW | resolved | Kramer | Lint false-positive on bash comment lines containing `{{ns.field}}` -- skip comment-only lines in bash cmd bodies before form-substitution check; commit pending | 2026-05-06 |
 
 ## Deferred / wontfix
 
