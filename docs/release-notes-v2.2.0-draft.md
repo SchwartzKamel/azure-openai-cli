@@ -53,7 +53,7 @@ codes or `--raw` / `--json` output bytes.
   templates (`docs/prompts/task-templates.md`) cover the most common
   knowledge-worker shapes: Knowledge Q&A, Architecture review, Code
   Generation, Data Workflow, and Cost / ROI analysis. Espanso triggers
-  (`:aiquestion`, `:aiarch`, `:aicode`, `:aidata`, `:aicost`,
+  (`:aiquestion`, `:aiarch`, `:aicode`, `:aidataworkflow`, `:aicost`,
   `:aiprompts`) and AutoHotkey hotkeys (Ctrl+Shift+Q/R/C/D/L plus
   Ctrl+Shift+T for the reference card) wire the templates into the
   same flows.
@@ -179,7 +179,7 @@ Full machine-readable list lives in
     callouts and sensitivity ranges.
 - **Espanso integration** at
   `examples/espanso-ahk-wsl/espanso/ai-prompts.yml`. Six new triggers:
-  `:aiquestion`, `:aiarch`, `:aicode`, `:aidata`, `:aicost`,
+  `:aiquestion`, `:aiarch`, `:aicode`, `:aidataworkflow`, `:aicost`,
   `:aiprompts` (reference card). Each pairs the master system prompt
   with the task-specific guidance and routes to `az-ai` with
   appropriate `--max-tokens` and `--temperature`.

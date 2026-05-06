@@ -105,7 +105,7 @@ header table. Bookman flagged it. It lives here by token-count gravity.
 | `:aiarch` `[905515e]`          | 1500 | Template B: end-to-end Azure AI architecture / solution plan. | form: project goals + constraints | Architecture proposal with components, data flow, risks. |
 | `:aicode` `[905515e]`          | 1200 | Template C: minimal reproducible code/template with setup, tests, troubleshooting. | form: language + runtime + task | Working code block + install + smoke test. |
 | `:aicost` `[905515e]`          | 1200 | Template E: cost / ROI / break-even analysis with optimization recommendations. | form: workload assumptions | Cost model + recommendations. |
-| `:aidata` `[905515e]`          | 1500 | Template D: data pipeline / ETL / MLOps workflow design. **NAME COLLISION** with `:aidata` in `ai-windows-to-wsl.yml` -- only one wins per espanso load order. | form: source + sink + cadence | Pipeline plan with stages, governance, observability hooks. |
+| `:aidataworkflow` `[905515e]`  | 1500 | Template D: data pipeline / ETL / MLOps workflow design. Renamed from `:aidata` in 2026-05 to resolve the collision with the original `:aidata` in `ai-windows-to-wsl.yml` -- the original wins, the prompt-templates entry got the more specific name. | form: source + sink + cadence | Pipeline plan with stages, governance, observability hooks. |
 | `:aiflip` `[S03E01]`           | 1000 | Devil's-advocate analysis of clipboard. Assumptions, counter-arguments, risks. | clipboard: a proposal | 3-section critique. |
 | `:airw` `[S03E01]`             |  600 | Rewrite clipboard in a more professional, polished tone. Preserve meaning. | clipboard: blunt Slack message | Polished email-grade rewrite. |
 | `:aishrink` `[S03E01]`         | 1000 | Compress clipboard to ~half length, preserve every key fact. | clipboard: 4-paragraph note | 2-paragraph version. |
@@ -137,7 +137,7 @@ but fit by token budget. Slated for re-tier review.
 
 | Trigger | Max-tokens | Description |
 |---------|-----------:|-------------|
-| `:aiprompts` `[905515e]` | n/a | Static replace -- prints the prompt-template index (`:aiquestion`, `:aiarch`, `:aicode`, `:aidata`, `:aicost`). No az-ai invocation, no token cost. |
+| `:aiprompts` `[905515e]` | n/a | Static replace -- prints the prompt-template index (`:aiquestion`, `:aiarch`, `:aicode`, `:aidataworkflow`, `:aicost`). No az-ai invocation, no token cost. |
 
 **Total: 1 trigger.**
 
@@ -149,7 +149,10 @@ but fit by token budget. Slated for re-tier review.
 - Snap: 2 | Chat: 3 | Document: 8 | Mirror: 11 | Free: 3 | Reference: 1.
 - Untiered-at-time-of-ship: `:aic` (Document by token gravity) and the four
   `905515e` template triggers (Mirror by budget, pending audit).
-- Name collision to resolve: `:aidata` is defined in BOTH yaml files. Pick one.
+- Name collision resolved 2026-05: the second `:aidata` (in `ai-prompts.yml`)
+  was renamed to `:aidataworkflow`. The original `:aidata` in
+  `ai-windows-to-wsl.yml` keeps its slot. Cross-file collision detection now
+  enforced by `scripts/lint-espanso-yml.sh`.
 
 ## Authoring new triggers
 
@@ -200,16 +203,19 @@ Read them before the next PR.
   Document-tier trigger by token gravity. Documented now so it is not
   forgotten in the next quarterly audit.
 - **The four `905515e` template triggers (`:aiarch`, `:aicode`, `:aicost`,
-  `:aidata` from prompts) were authored under Maestro's prompt-library
+  `:aidataworkflow` from prompts) were authored under Maestro's prompt-library
   doctrine, not the tier doctrine.** They sit at 1200-1500 tokens and do
   not strictly mirror input length. They are tagged Mirror by budget,
   flagged for re-tier review, and may end up split: a Document-tier
   short-form for chat, a Mirror-tier long-form for the form variants.
-- **`:aidata` is defined twice.** Once in `ai-windows-to-wsl.yml` (extract
-  facts from clipboard), once in `ai-prompts.yml` (data-pipeline design
-  template). Espanso resolves this by load order. The collision is on the
-  S04 backlog. Until then: do not load both files in the same Espanso
-  config without renaming one.
+- **`:aidata` collision -- resolved 2026-05.** Originally `:aidata` was
+  defined in both `ai-windows-to-wsl.yml` (extract facts from clipboard)
+  and `ai-prompts.yml` (data-pipeline design template). The prompt-templates
+  entry was renamed to `:aidataworkflow` -- a more specific name that
+  reflects its end-to-end data workflow scope. The original `:aidata` in
+  `ai-windows-to-wsl.yml` is unchanged. `scripts/lint-espanso-yml.sh` now
+  fails on cross-file trigger collisions between the prompt-templates kit
+  and any platform-variant kit, so this class of bug cannot land again.
 
 ## How to use this card
 

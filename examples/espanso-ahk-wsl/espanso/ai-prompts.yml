@@ -153,9 +153,12 @@ matches:
             sleep 0.05
             printf '%s' "$response"
 
-  # -- :aidata -- Data Workflow template -----------------------------------
+  # -- :aidataworkflow -- Data Workflow template ---------------------------
   # Master prompt + Template D: Design ETL / MLOps / data pipeline.
-  - trigger: ":aidata"
+  # Renamed from :aidata in 2026-05 to resolve a collision with the
+  # original :aidata in ai-windows-to-wsl.yml (extract facts from clipboard).
+  # Original wins; this one renamed to a more specific scope.
+  - trigger: ":aidataworkflow"
     replace: "{{output}}"
     vars:
       - name: workflow
@@ -268,7 +271,7 @@ matches:
       Use: Generate minimal, reproducible code examples, infrastructure templates, configs.
 
       Template D: Data Processing / ETL / MLOps Workflow
-      Trigger: :aidata
+      Trigger: :aidataworkflow
       Use: Design end-to-end data pipelines, MLOps workflows, data governance solutions.
 
       Template E: Cost, ROI, and Optimization

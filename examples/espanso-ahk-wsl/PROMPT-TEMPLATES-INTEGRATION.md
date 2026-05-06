@@ -42,7 +42,7 @@ Now in any text field, type one of these triggers:
 | `:aiquestion` | Knowledge Q&A | Template A: Ask Azure question → get answer + checklist |
 | `:aiarch` | Architecture Design | Template B: Design solution → get architecture + cost + milestones |
 | `:aicode` | Code Generation | Template C: Describe task → get minimal reproducible example |
-| `:aidata` | Data Workflow | Template D: Describe pipeline → get ETL/MLOps design |
+| `:aidataworkflow` | Data Workflow | Template D: Describe pipeline → get ETL/MLOps design |
 | `:aicost` | Cost & ROI | Template E: Describe solution → get financial model + optimization |
 | `:aiprompts` | Reference Card | Show all available templates and triggers |
 

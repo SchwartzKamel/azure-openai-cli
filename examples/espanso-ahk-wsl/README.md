@@ -27,7 +27,7 @@ shell-interpolated args).
 
 | File | Purpose |
 |------|---------|
-| `espanso/ai-prompts.yml`       | **Espanso triggers** for five canonical prompting templates (`:aiquestion`, `:aiarch`, `:aicode`, `:aidata`, `:aicost`). |
+| `espanso/ai-prompts.yml`       | **Espanso triggers** for five canonical prompting templates (`:aiquestion`, `:aiarch`, `:aicode`, `:aidataworkflow`, `:aicost`). |
 | `ahk/az-ai-prompts.ahk`        | **AutoHotkey v2 hotkeys** for five canonical templates (Ctrl+Shift+Q, Ctrl+Shift+R, etc.). |
 | `PROMPT-TEMPLATES-INTEGRATION.md` | **Setup guide** and reference for using the five prompting templates. |
 

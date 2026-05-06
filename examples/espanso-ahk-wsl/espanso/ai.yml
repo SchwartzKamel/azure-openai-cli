@@ -1,5 +1,5 @@
 # ~/.config/espanso/match/ai.yml
-# az-ai Espanso matches — Option A (Espanso running inside WSL).
+# az-ai Espanso matches -- Option A (Espanso running inside WSL).
 #
 # Design rules (do not weaken without reading the kit README §5.6):
 #   * --raw on every invocation (no spinner, no stats, no trailing newline).
@@ -13,7 +13,7 @@
 # that aren't already set). This means non-login-shell contexts (Espanso,
 # cron, systemd) find credentials without a wrapper or profile hook.
 #
-# Expected latency: 2–3 s per trigger in steady state (Azure round-trip).
+# Expected latency: 2-3 s per trigger in steady state (Azure round-trip).
 #
 # Placeholder while processing ("yada yada yada"):
 #   Each trigger first backspaces over the trigger text itself, then types a
@@ -32,7 +32,7 @@
 
 matches:
 
-  # ── :ai <space> — free-form prompt via form, stdin-piped ───────────────
+  # ── :ai <space> -- free-form prompt via form, stdin-piped ───────────────
   # User types ":ai " → form pops → prompt → response replaces trigger.
   # The form body goes through a *quoted* heredoc (__AZ_AI_EOF__), so shell
   # metachars in the user's prompt are inert.
@@ -65,7 +65,7 @@ matches:
             sleep 0.05
             printf '%s' "$response"
 
-  # ── :aifix — grammar/spelling fix on clipboard ─────────────────────────
+  # ── :aifix -- grammar/spelling fix on clipboard ─────────────────────────
   - trigger: ":aifix"
     replace: "{{output}}"
     vars:
@@ -115,7 +115,7 @@ matches:
             sleep 0.05
             printf '%s' "$response"
 
-  # ── :aitldr — 2-sentence summary of clipboard ──────────────────────────
+  # ── :aitldr -- 2-sentence summary of clipboard ──────────────────────────
   - trigger: ":aitldr"
     replace: "{{output}}"
     vars:
@@ -165,9 +165,9 @@ matches:
             sleep 0.05
             printf '%s' "$response"
 
-  # ── :aic — code review on clipboard ────────────────────────────────────
+  # ── :aic -- code review on clipboard ────────────────────────────────────
   # Uses the 'reviewer' persona if squad is configured (see `az-ai --squad-init`).
-  # Falls back to a plain --system prompt if persona isn't available —
+  # Falls back to a plain --system prompt if persona isn't available --
   # az-ai exits non-zero for unknown personas, and the `||` branch kicks in.
   - trigger: ":aic"
     replace: "{{output}}"
@@ -217,8 +217,13 @@ matches:
             xdotool key --repeat $tl BackSpace
             sleep 0.05
             xdotool type --clearmodifiers "$ph"
-            b64=$( printf '%s' '{{form1.prompt}}' \
-              | az-ai --image --raw 2>/dev/null )
+            # User input flows in via a single-quoted heredoc so Espanso's
+            # template substitution lands inside a body that bash treats as
+            # literal text -- closes the F-1/F-2 injection class (S03E04).
+            b64=$(az-ai --image --raw 2>/dev/null <<'__AZ_AI_EOF__'
+            {{form1.prompt}}
+            __AZ_AI_EOF__
+            )
             if [ -n "$b64" ]; then
               tmp="/tmp/az-ai-espanso-$$.png"
               printf '%s' "$b64" | base64 -d > "$tmp"
@@ -283,10 +288,14 @@ matches:
             xdotool key --repeat $tl BackSpace
             sleep 0.05
             xdotool type --clearmodifiers "$ph"
-            response=$( printf '%s' '{{form1.prompt}}' \
-              | az-ai --raw --agent --tools web --max-tokens 2000 --max-rounds 5 \
-                  --system 'You have access to a web_fetch tool. Use it to search for current, accurate information relevant to the user prompt. Fetch 1-3 URLs as needed. Synthesize findings into a clear, well-structured answer. Cite sources inline with [Source Title](URL) format. Output ONLY the final answer -- no tool-call narration.' \
-                  2>/dev/null )
+            # User prompt flows in via a single-quoted heredoc -- the form
+            # placeholder expands to literal text bash never re-parses.
+            response=$(az-ai --raw --agent --tools web --max-tokens 2000 --max-rounds 5 \
+                --system 'You have access to a web_fetch tool. Use it to search for current, accurate information relevant to the user prompt. Fetch 1-3 URLs as needed. Synthesize findings into a clear, well-structured answer. Cite sources inline with [Source Title](URL) format. Output ONLY the final answer -- no tool-call narration.' \
+                2>/dev/null <<'__AZ_AI_EOF__'
+            {{form1.prompt}}
+            __AZ_AI_EOF__
+            )
             xdotool key --repeat ${#ph} BackSpace
             sleep 0.05
             xdotool type --clearmodifiers "$(printf '%*s' $tl '')"
@@ -322,14 +331,32 @@ matches:
             xdotool key --repeat $tl BackSpace
             sleep 0.05
             xdotool type --clearmodifiers "$ph"
-            TONE='{{form1.tone}}'
+            # Choice-bounded form value reaches bash through a single-quoted
+            # heredoc, then maps to a fixed phrase via case (whitelist). No
+            # raw substitution into the --system argument -- closes F-1/F-2.
+            RAW_TONE=$(cat <<'__AZ_AI_TONE_EOF__'
+            {{form1.tone}}
+            __AZ_AI_TONE_EOF__
+            )
+            RAW_TONE=$(printf '%s' "$RAW_TONE" | tr -d '\r\n' | sed -e 's/^ *//' -e 's/ *$//')
+            case "$RAW_TONE" in
+              'Professional')                     tone='professional' ;;
+              'Casual / Friendly')                tone='casual and friendly' ;;
+              'Academic / Formal')                tone='academic and formal' ;;
+              'Concise / Direct')                 tone='concise and direct' ;;
+              'Enthusiastic')                     tone='enthusiastic' ;;
+              'Diplomatic / Careful')             tone='diplomatic and careful' ;;
+              'Sarcastic')                        tone='sarcastic' ;;
+              "ELI5 (Explain Like I'm 5)")        tone='plainspoken, like explaining to a 5-year-old' ;;
+              *)                                  tone='professional' ;;
+            esac
             CLIP="$( { wl-paste 2>/dev/null \
                        || xclip -selection clipboard -o 2>/dev/null \
                        || powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null; } \
                      | tr -d '\r' )"
             response=$( printf '%s' "$CLIP" \
               | az-ai --raw --max-tokens 1000 \
-                  --system "Rewrite the following text in a ${TONE} tone. Preserve the core meaning and all key facts. Adjust vocabulary, sentence structure, and register to match the requested tone. Output ONLY the rewritten text." \
+                  --system "Rewrite the following text in a $tone tone. Preserve the core meaning and all key facts. Adjust vocabulary, sentence structure, and register to match the requested tone. Output ONLY the rewritten text." \
                   2>/dev/null )
             xdotool key --repeat ${#ph} BackSpace
             sleep 0.05
