@@ -237,4 +237,119 @@ internal static class TelemetryEmitter
             WriteLine(Serialize(ev));
         }
     }
+
+    // -- S03E22 *The Fallback* additive surface ----------------------------
+    // Two new event shapes, both emit-only (no scope objects). Stable key
+    // order matches S03E13 pattern. Strict-equality opt-in (AZ_AI_TELEMETRY=1).
+    // No prompts, no completions, no endpoints -- only preset names, indexes,
+    // outcome codes, and a redaction-bounded error_class string.
+    //
+    // Frank: "Two events. Attempt and outcome. That's the spreadsheet."
+
+    /// <summary>One row per attempt in a fallback chain (primary or alternate).</summary>
+    public sealed record FallbackAttemptEvent(
+        [property: JsonPropertyName("event_type")] string EventType,
+        [property: JsonPropertyName("event_id")] string EventId,
+        [property: JsonPropertyName("ts")] string Ts,
+        [property: JsonPropertyName("primary_preset")] string PrimaryPreset,
+        [property: JsonPropertyName("attempt_index")] int AttemptIndex,
+        [property: JsonPropertyName("source_preset")] string SourcePreset,
+        [property: JsonPropertyName("outcome")] string Outcome,
+        [property: JsonPropertyName("error_class")] string? ErrorClass);
+
+    /// <summary>One row per chain (the verdict). winner=null on exhausted/short_circuit/stream_truncated.</summary>
+    public sealed record FallbackOutcomeEvent(
+        [property: JsonPropertyName("event_type")] string EventType,
+        [property: JsonPropertyName("event_id")] string EventId,
+        [property: JsonPropertyName("ts")] string Ts,
+        [property: JsonPropertyName("primary_preset")] string PrimaryPreset,
+        [property: JsonPropertyName("policy_source")] string PolicySource,
+        [property: JsonPropertyName("chain")] string Chain,
+        [property: JsonPropertyName("outcome")] string Outcome,
+        [property: JsonPropertyName("winner")] string? Winner,
+        [property: JsonPropertyName("attempts")] int Attempts,
+        [property: JsonPropertyName("error_class")] string? ErrorClass);
+
+    /// <summary>Emit a fallback_attempt row. No-op when telemetry disabled.</summary>
+    public static void EmitFallbackAttempt(
+        string primaryPreset, int attemptIndex, string sourcePreset,
+        string outcome, string? errorClass, string? message)
+    {
+        if (!IsEnabled()) return;
+        var ev = new FallbackAttemptEvent(
+            EventType: "fallback_attempt",
+            EventId: Guid.NewGuid().ToString("D"),
+            Ts: DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            PrimaryPreset: primaryPreset,
+            AttemptIndex: attemptIndex,
+            SourcePreset: sourcePreset,
+            Outcome: outcome,
+            ErrorClass: FormatErrorClass(errorClass ?? message));
+        WriteLine(SerializeFallbackAttempt(ev));
+    }
+
+    /// <summary>Emit a fallback_outcome row. No-op when telemetry disabled.</summary>
+    public static void EmitFallbackOutcome(
+        string primaryPreset, string policySource, System.Collections.Generic.IReadOnlyList<string> chain,
+        string outcome, string? winner, int attempts, string? errorClass)
+    {
+        if (!IsEnabled()) return;
+        var ev = new FallbackOutcomeEvent(
+            EventType: "fallback_outcome",
+            EventId: Guid.NewGuid().ToString("D"),
+            Ts: DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            PrimaryPreset: primaryPreset,
+            PolicySource: policySource,
+            Chain: string.Join(",", chain),
+            Outcome: outcome,
+            Winner: winner,
+            Attempts: attempts,
+            ErrorClass: FormatErrorClass(errorClass));
+        WriteLine(SerializeFallbackOutcome(ev));
+    }
+
+    /// <summary>Stable-key-order serialization for fallback_attempt (test contract).</summary>
+    public static string SerializeFallbackAttempt(FallbackAttemptEvent ev)
+    {
+        using var ms = new MemoryStream(256);
+        using (var w = new Utf8JsonWriter(ms, new JsonWriterOptions { Indented = false }))
+        {
+            w.WriteStartObject();
+            w.WriteString("event_type", ev.EventType);
+            w.WriteString("event_id", ev.EventId);
+            w.WriteString("ts", ev.Ts);
+            w.WriteString("primary_preset", ev.PrimaryPreset);
+            w.WriteNumber("attempt_index", ev.AttemptIndex);
+            w.WriteString("source_preset", ev.SourcePreset);
+            w.WriteString("outcome", ev.Outcome);
+            if (ev.ErrorClass is null) w.WriteNull("error_class");
+            else w.WriteString("error_class", ev.ErrorClass);
+            w.WriteEndObject();
+        }
+        return Encoding.UTF8.GetString(ms.ToArray());
+    }
+
+    /// <summary>Stable-key-order serialization for fallback_outcome (test contract).</summary>
+    public static string SerializeFallbackOutcome(FallbackOutcomeEvent ev)
+    {
+        using var ms = new MemoryStream(256);
+        using (var w = new Utf8JsonWriter(ms, new JsonWriterOptions { Indented = false }))
+        {
+            w.WriteStartObject();
+            w.WriteString("event_type", ev.EventType);
+            w.WriteString("event_id", ev.EventId);
+            w.WriteString("ts", ev.Ts);
+            w.WriteString("primary_preset", ev.PrimaryPreset);
+            w.WriteString("policy_source", ev.PolicySource);
+            w.WriteString("chain", ev.Chain);
+            w.WriteString("outcome", ev.Outcome);
+            if (ev.Winner is null) w.WriteNull("winner");
+            else w.WriteString("winner", ev.Winner);
+            w.WriteNumber("attempts", ev.Attempts);
+            if (ev.ErrorClass is null) w.WriteNull("error_class");
+            else w.WriteString("error_class", ev.ErrorClass);
+            w.WriteEndObject();
+        }
+        return Encoding.UTF8.GetString(ms.ToArray());
+    }
 }

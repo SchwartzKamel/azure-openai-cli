@@ -54,4 +54,9 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- S03E22 The Fallback: tests reach into Resilience.* internals. -->
+    <InternalsVisibleTo Include="AzureOpenAI_CLI.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -36,6 +36,10 @@ stderr by `TelemetryEmitter` when `AZ_AI_TELEMETRY=1`.
 | dispatch.latency.p95 | p95 of `latency_ms_bucket` -- bucket midpoint approximation          | Bucketed on emission; aggregator chooses summary    |
 | dispatch.error_rate  | events with `outcome in {client_error, server_error, unknown_error}` | Cancelled is a separate bucket -- not user error    |
 | dispatch.cancel_rate | events with `outcome == "cancelled"`                                 | Distinct from errors; user-driven or timeout        |
+| fallback.rate (S03E22) | `fallback_outcome` events / total `dispatch` events                | Healthy when ≪ dispatch.error_rate. Spike = primary upstream is degraded |
+| fallback.recovery_rate (S03E22) | `fallback_outcome` events with `outcome == "recovered"` / all `fallback_outcome` | The "did the chain actually save us" number |
+| fallback.exhaustion_rate (S03E22) | `fallback_outcome` events with `outcome == "exhausted"` / all `fallback_outcome` | The "chain was a placebo" number; >50% sustained = factory misconfigured |
+| fallback.stream_truncated_rate (S03E22) | `fallback_outcome` events with `outcome == "stream_truncated"` / all `fallback_outcome` | Mid-stream primary deaths; never zero, but should be small |
 
 Bucket midpoints (for p95 reconstruction): bucket "10" -> 5ms, "50" ->
 30ms, "100" -> 75ms, "250" -> 175ms, "500" -> 375ms, "1000" -> 750ms,
@@ -56,6 +60,8 @@ production telemetry, because there is no production telemetry yet.
 | dispatch.latency.p95 (azure)   | <= 1000ms bucket  | 28 days | -- (perf, not SLO budgetary) | PROPOSED |
 | dispatch.latency.p95 (compat)  | <= 2500ms bucket  | 28 days | -- (perf, not SLO budgetary) | PROPOSED |
 | binary startup latency p95     | <= 10ms           | 28 days | per Bania harness | PROPOSED |
+| fallback.rate (S03E22)         | <= 5%             | 28 days | 5% of dispatches  | PROPOSED |
+| fallback.recovery_rate (S03E22)| >= 80% (when fallback fires) | 28 days | -- (composition SLI) | PROPOSED |
 
 Notes:
 
@@ -92,6 +98,15 @@ For the future alert pipeline. Not wired today.
   signal.
 - **info** -- p95 latency bucket worsens by two buckets vs the prior
   7-day median. This is a regression notice, not a page.
+- **info** -- (S03E22) `fallback.rate > 5%` over a rolling 1-hour window.
+  Primary upstream is degraded; Newman's gates still hold but Costanza
+  should know.
+- **page** -- (S03E22) `fallback.rate > 20%` over a rolling 15-minute
+  window. The primary preset is effectively down; chain is doing the
+  carrying. Verify the chain's alternates are not also burning.
+- **info** -- (S03E22) `fallback.exhaustion_rate > 50%` sustained 1h.
+  The chain is a placebo -- factory is mis-configured (probably
+  finding `frank-2026-05-FB-1`: no per-preset cred plumbing).
 
 The two-bucket-step rule is deliberately coarse so a single anomalous
 500-event run does not page anyone at 3am. Frank's on-call rule:
@@ -231,6 +246,12 @@ the diff and opens the finding if the table moves.
   `error_class`
 - `tests/AzureOpenAI_CLI.Tests/TelemetryEmitterTests.cs` -- the
   schema, IsEnabled, bucket, and redaction tests
+- `azureopenai-cli/Resilience/FallbackChain.cs` -- the S03E22 fallback
+  decorator that emits `fallback_attempt` / `fallback_outcome`
+- `azureopenai-cli/Resilience/FallbackPolicy.cs` -- the S03E22 chain
+  parser/validator (max-depth=3, known-presets gate)
+- `tests/AzureOpenAI_CLI.Tests/FallbackChainTests.cs` -- the S03E22
+  policy + classification + telemetry-shape tests
 - `tests/AzureOpenAI_CLI.Tests/Benchmarks/BenchmarkHarness.cs` --
   Bania's S03E12 *The Receipt* harness; the latency-bucket
   boundaries above were chosen to align with the harness vocabulary
