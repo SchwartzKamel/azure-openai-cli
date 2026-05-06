@@ -493,6 +493,101 @@ FR021_JSON
         fail "S03E07 redactor: [REDACTED:bearer] tag present" "stderr: $redact_stderr"
     fi
 
+    # ── S03E10 -- The Keychain (per-provider env sections) ───────────────
+    echo ""
+    echo "▸ S03E10 -- per-provider credential sections"
+    local keychain_home; keychain_home=$(mktemp -d)
+    mkdir -p "$keychain_home/.config/az-ai"
+    cat > "$keychain_home/.config/az-ai/env" <<'KCEOF'
+# Default section -- back-compat shell-export form.
+export AZUREOPENAIENDPOINT="https://kc-azure.example.com/"
+export AZUREOPENAIMODEL="gpt-4o-mini"
+
+[provider:openai]
+API_KEY=sk-keychain-test-secret-OPENAI
+
+[provider:groq]
+API_KEY=gsk_keychain-test-secret-GROQ
+KCEOF
+    chmod 600 "$keychain_home/.config/az-ai/env"
+
+    # `--config show` is the only mode that exercises the loader without
+    # needing real credentials. It must succeed and the resolved Azure
+    # endpoint must come through from the default section.
+    local kc_out kc_rc
+    set +e
+    kc_out=$(env -i HOME="$keychain_home" PATH="$PATH" \
+        AZUREOPENAIAPI="dummy-shell-key" \
+        "$BIN" --config show 2>&1)
+    kc_rc=$?
+    set -e
+
+    if [ "$kc_rc" -eq 0 ]; then
+        pass "S03E10 keychain: --config show exits 0 with [provider:*] sections"
+    else
+        fail "S03E10 keychain: --config show exits 0" "rc=$kc_rc out=$kc_out"
+    fi
+
+    # Default-section endpoint must be picked up.
+    if printf '%s' "$kc_out" | grep -qF 'kc-azure.example.com'; then
+        pass "S03E10 keychain: default section endpoint loaded"
+    else
+        fail "S03E10 keychain: default section endpoint loaded" "out=$kc_out"
+    fi
+
+    # Headline Newman invariant: the OpenAI section's secret value must
+    # NEVER appear in any --config show output (the binary never prints
+    # secrets; this asserts the loader didn't leak it into a printed slot).
+    if printf '%s' "$kc_out" | grep -qF 'sk-keychain-test-secret-OPENAI'; then
+        fail "S03E10 keychain: OPENAI_API_KEY value not leaked" "secret leaked into --config show: $kc_out"
+    else
+        pass "S03E10 keychain: OPENAI_API_KEY value not leaked"
+    fi
+    if printf '%s' "$kc_out" | grep -qF 'gsk_keychain-test-secret-GROQ'; then
+        fail "S03E10 keychain: GROQ_API_KEY value not leaked" "secret leaked into --config show: $kc_out"
+    else
+        pass "S03E10 keychain: GROQ_API_KEY value not leaked"
+    fi
+
+    # Unknown provider section warns to stderr but does not abort.
+    cat > "$keychain_home/.config/az-ai/env" <<'KCEOF2'
+[provider:bogus-not-a-provider]
+API_KEY=should-be-skipped
+KCEOF2
+    chmod 600 "$keychain_home/.config/az-ai/env"
+    # Use --config show (not --version) because --help/--version short-circuit
+    # before LoadConfigEnv runs.
+    local kc2_stderr kc2_rc
+    set +e
+    kc2_stderr=$(env -i HOME="$keychain_home" PATH="$PATH" \
+        DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" --config show 2>&1 1>/dev/null)
+    kc2_rc=$?
+    set -e
+    if [ "$kc2_rc" -eq 0 ]; then
+        pass "S03E10 keychain: unknown section does not abort startup"
+    else
+        fail "S03E10 keychain: unknown section does not abort" "rc=$kc2_rc stderr=$kc2_stderr"
+    fi
+    if printf '%s' "$kc2_stderr" | grep -qF '[WARNING]'; then
+        pass "S03E10 keychain: unknown section warns to stderr"
+    else
+        fail "S03E10 keychain: unknown section warns to stderr" "stderr=$kc2_stderr"
+    fi
+
+    # --raw must silence the warning.
+    local kc3_stderr
+    set +e
+    kc3_stderr=$(env -i HOME="$keychain_home" PATH="$PATH" \
+        DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" --raw --config show 2>&1 1>/dev/null)
+    set -e
+    if printf '%s' "$kc3_stderr" | grep -qF '[WARNING]'; then
+        fail "S03E10 keychain: --raw silences unknown-section warning" "stderr leaked under --raw: $kc3_stderr"
+    else
+        pass "S03E10 keychain: --raw silences unknown-section warning"
+    fi
+
+    rm -rf "$keychain_home"
+
     # ── API-gated smoke (skip unless creds present) ───────────────────────
     if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then
         skip "real API call" "AZUREOPENAIENDPOINT/AZUREOPENAIAPI not set"

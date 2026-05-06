@@ -50,6 +50,18 @@ internal static class SecretRedactor
     private static readonly Regex AzureKeyEnvRx =
         new(@"(?<name>AZURE[_]?OPENAI[_]?API(?:[_]?KEY)?)\s*=\s*[^\s""']+", Opts, MatchTimeout);
 
+    // 3b. S03E10 -- per-provider env-var namespaces (ADR-010 / The Keychain).
+    //     OPENAI_API_KEY, GROQ_API_KEY, TOGETHER_API_KEY, CLOUDFLARE_API_TOKEN.
+    //     The generic api[_-]?key / token pattern in KvSecretRx already
+    //     catches these by tail-match, but a dedicated rule makes the
+    //     coverage explicit so SecretRedactorTests can assert by name and
+    //     a future provider rename can't silently widen the gap.
+    private static readonly Regex ProviderKeyEnvRx =
+        new(
+            @"(?<name>OPENAI_API_KEY|GROQ_API_KEY|TOGETHER_API_KEY|CLOUDFLARE_API_TOKEN)\s*=\s*[^\s""']+",
+            Opts,
+            MatchTimeout);
+
     // 4. URL credentials -- https://user:pass@host/...
     private static readonly Regex UrlCredRx =
         new(@"(?<scheme>https?://)[^:/?#\s]+:[^@/?#\s]+@", Opts, MatchTimeout);
@@ -93,6 +105,10 @@ internal static class SecretRedactor
             s = UrlCredRx.Replace(s, m => m.Groups["scheme"].Value + "[REDACTED:url-cred]@");
             s = JsonSecretFieldRx.Replace(s, m => "\"" + m.Groups["name"].Value + "\": \"[REDACTED:api-key]\"");
             s = KvSecretRx.Replace(s, m => m.Groups["name"].Value + "=[REDACTED:api-key]");
+            // ProviderKeyEnvRx runs LAST so the specific provider-key label
+            // overrides any generic api-key label that KvSecretRx wrote
+            // earlier for the same variable (S03E10).
+            s = ProviderKeyEnvRx.Replace(s, m => m.Groups["name"].Value + "=[REDACTED:provider-key]");
             return s;
         }
         catch (RegexMatchTimeoutException)

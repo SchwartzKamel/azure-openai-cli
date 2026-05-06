@@ -145,7 +145,21 @@ internal class Program
             // credential store written by setup-secrets.sh. Critical for contexts
             // where the shell profile hasn't sourced it (Espanso, AHK, cron, etc.).
             // The file uses shell syntax (export KEY="value") so we parse manually.
-            LoadConfigEnv();
+            // S03E10 -- raw-mode pre-detection: ParseArgs hasn't run yet, but
+            // the section-aware loader must stay silent on stderr under
+            // --raw / --json (Espanso / AHK / cron consumers). Cheap O(N) scan.
+            var preRaw = false;
+            for (var ai = 0; ai < args.Length; ai++)
+            {
+                var a = args[ai];
+                if (string.Equals(a, "--raw", StringComparison.Ordinal)
+                 || string.Equals(a, "--json", StringComparison.Ordinal))
+                {
+                    preRaw = true;
+                    break;
+                }
+            }
+            LoadConfigEnv(preRaw);
 
             var opts = ParseArgs(args);
 
@@ -1651,29 +1665,110 @@ internal class Program
     /// This ensures Espanso, AHK, cron, and other non-login-shell contexts can
     /// find credentials without the user having to source the file.
     /// </summary>
-    internal static void LoadConfigEnv()
+    internal static void LoadConfigEnv(bool isRaw = false)
     {
         var configEnvPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".config", "az-ai", "env");
-        LoadConfigEnvFrom(configEnvPath);
+        LoadConfigEnvFrom(configEnvPath, isRaw);
     }
 
+    // S03E10 -- The Keychain. Per-provider credential namespaces.
+    // ADR-010 routes the first non-Azure provider (OpenAI direct) through
+    // OPENAI_API_KEY rather than AZUREOPENAIAPI; later providers (Groq,
+    // Together, Cloudflare) need their own namespaces too. The env file
+    // gains optional INI-style section headers:
+    //
+    //     # default (unsectioned) -- back-compat with every existing file
+    //     export AZUREOPENAIAPI="..."
+    //
+    //     [provider:openai]
+    //     API_KEY=sk-...           -> OPENAI_API_KEY
+    //
+    //     [provider:groq]
+    //     API_KEY=gsk_...          -> GROQ_API_KEY
+    //
+    // Default section behaves exactly as before (shell-export compatible).
+    // Section keys are uppercased with the provider prefix. Unknown
+    // section names warn to stderr (silent under --raw / --json) and
+    // are skipped, never aborted -- forward-compat with future providers.
+    private static readonly HashSet<string> KnownProviderSections =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "azure", "openai", "foundry", "groq", "together", "cloudflare",
+        };
+
     /// <summary>Testable overload that accepts a custom path.</summary>
-    internal static void LoadConfigEnvFrom(string path)
+    internal static void LoadConfigEnvFrom(string path, bool isRaw = false)
     {
         if (!File.Exists(path)) return;
 
         try
         {
+            string? section = null; // null == default (unsectioned)
+            string? sectionProvider = null; // e.g. "OPENAI" when section is provider:openai
+            var sectionKnown = true;
+
             foreach (var rawLine in File.ReadAllLines(path))
             {
-                var line = rawLine.Trim();
+                var line = rawLine;
 
-                // Skip comments and blank lines
+                // BOM tolerance: strip UTF-8 BOM if present at start of line.
+                if (line.Length > 0 && line[0] == '\uFEFF')
+                {
+                    line = line[1..];
+                }
+
+                // CRLF tolerance: ReadAllLines handles \n / \r\n, but a stray
+                // \r at end of line (mixed-line-ending files) trims here.
+                line = line.Trim();
+
+                // Skip comments and blank lines.
                 if (line.Length == 0 || line[0] == '#') continue;
 
-                // Strip leading "export " if present
+                // Section header: [provider:NAME] (or unknown).
+                if (line[0] == '[' && line[^1] == ']')
+                {
+                    var hdr = line[1..^1].Trim();
+                    if (hdr.StartsWith("provider:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var name = hdr["provider:".Length..].Trim();
+                        if (KnownProviderSections.Contains(name))
+                        {
+                            section = "provider:" + name;
+                            sectionProvider = name.ToUpperInvariant();
+                            sectionKnown = true;
+                        }
+                        else
+                        {
+                            section = "provider:" + name;
+                            sectionProvider = null;
+                            sectionKnown = false;
+                            if (!isRaw)
+                            {
+                                Console.Error.WriteLine(
+                                    $"[WARNING] {path}: unknown provider section '[{hdr}]' -- skipping (known: azure, openai, foundry, groq, together, cloudflare)");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Non-provider section header -- reserved namespace.
+                        section = hdr;
+                        sectionProvider = null;
+                        sectionKnown = false;
+                        if (!isRaw)
+                        {
+                            Console.Error.WriteLine(
+                                $"[WARNING] {path}: unknown section '[{hdr}]' -- skipping (only [provider:NAME] is recognised)");
+                        }
+                    }
+                    continue;
+                }
+
+                // Strip leading "export " if present (default section keeps
+                // shell-source compatibility; tolerated in named sections too
+                // even though shell-source won't reach them).
                 if (line.StartsWith("export ", StringComparison.Ordinal))
                     line = line["export ".Length..];
 
@@ -1683,7 +1778,7 @@ internal class Program
                 var key = line[..eq].Trim();
                 var val = line[(eq + 1)..].Trim();
 
-                // Strip surrounding quotes
+                // Strip surrounding quotes.
                 if (val.Length >= 2
                     && ((val[0] == '"' && val[^1] == '"')
                      || (val[0] == '\'' && val[^1] == '\'')))
@@ -1691,16 +1786,41 @@ internal class Program
                     val = val[1..^1];
                 }
 
-                // Don't overwrite env vars already set (shell profile wins)
-                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+                // Resolve effective env-var name based on current section.
+                string effectiveKey;
+                if (section == null)
                 {
-                    Environment.SetEnvironmentVariable(key, val);
+                    // Default section: verbatim key.
+                    effectiveKey = key;
+                }
+                else if (sectionKnown && sectionProvider != null)
+                {
+                    // [provider:openai] + API_KEY -> OPENAI_API_KEY.
+                    // Already-namespaced keys (caller wrote the full name)
+                    // pass through unchanged so OPENAI_API_KEY in [provider:openai]
+                    // is not double-prefixed into OPENAI_OPENAI_API_KEY.
+                    var upperKey = key.ToUpperInvariant();
+                    var prefix = sectionProvider + "_";
+                    effectiveKey = upperKey.StartsWith(prefix, StringComparison.Ordinal)
+                        ? upperKey
+                        : prefix + upperKey;
+                }
+                else
+                {
+                    // Unknown section: skip silently (header warned once already).
+                    continue;
+                }
+
+                // Don't overwrite env vars already set (shell profile wins).
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(effectiveKey)))
+                {
+                    Environment.SetEnvironmentVariable(effectiveKey, val);
                 }
             }
         }
         catch
         {
-            // Silent by contract -- same as DotEnv ignoreExceptions
+            // Silent by contract -- same as DotEnv ignoreExceptions.
         }
     }
 
@@ -1742,13 +1862,19 @@ internal class Program
     }
 
     /// <summary>
-    /// ADR-005 provider dispatch. Constructs the appropriate <see cref="IChatClient"/>
-    /// based on environment configuration:
-    /// <list type="bullet">
-    ///   <item><b>Foundry path</b>: when <c>AZURE_FOUNDRY_ENDPOINT</c> is set AND the model
-    ///     is in <c>AZURE_FOUNDRY_MODELS</c>, routes through the Foundry/GitHub Models
-    ///     endpoint using <see cref="FoundryAuthPolicy"/>.</item>
-    ///   <item><b>Azure OpenAI path</b> (default): uses <c>AzureOpenAIClient</c> with the
+    /// ADR-005 + ADR-010 provider dispatch. Constructs the appropriate
+    /// <see cref="IChatClient"/> based on environment configuration.
+    ///
+    /// <b>Precedence (S03E09 The Compat):</b>
+    /// <list type="number">
+    ///   <item><b>Azure Foundry allowlist</b> wins: when <c>AZURE_FOUNDRY_ENDPOINT</c>
+    ///     is set AND the model is in <c>AZURE_FOUNDRY_MODELS</c>, routes through
+    ///     the Foundry/GitHub Models endpoint via <see cref="FoundryAuthPolicy"/>.</item>
+    ///   <item><b>OpenAI-compat allowlist</b>: when the model appears as
+    ///     <c>preset:model</c> in <c>AZ_AI_COMPAT_MODELS</c>, routes through
+    ///     <see cref="OpenAiCompatAdapter"/> using the named preset (openai,
+    ///     groq, together, cloudflare, ...).</item>
+    ///   <item><b>Azure OpenAI</b> (default): uses <c>AzureOpenAIClient</c> with the
     ///     standard <c>AZUREOPENAIENDPOINT</c>.</item>
     /// </list>
     /// Returns null if the endpoint is invalid (error already emitted).
@@ -1791,6 +1917,37 @@ internal class Program
             options.AddPolicy(new FoundryAuthPolicy(effectiveKey, "2024-05-01-preview"),
                 System.ClientModel.Primitives.PipelinePosition.PerCall);
             return new ChatClient(model, new ApiKeyCredential(effectiveKey), options).AsIChatClient();
+        }
+
+        // ADR-010 / S03E09 -- OpenAI-compat allowlist (second priority).
+        // AZ_AI_COMPAT_MODELS is `preset:model[,preset:model]*`. If the
+        // requested model matches one of the suffixes, route through the
+        // OpenAiCompatAdapter using the named preset. Malformed entries throw
+        // (surfaced via ErrorAndExit) so a typo does not silently fall through
+        // to Azure.
+        Dictionary<string, string>? compatModels;
+        try
+        {
+            compatModels = OpenAiCompatAdapter.ParseCompatModelsFromEnv();
+        }
+        catch (ArgumentException ex)
+        {
+            ErrorAndExit(ex.Message, 1, jsonMode: jsonMode);
+            return null;
+        }
+
+        if (compatModels != null && compatModels.TryGetValue(model, out var presetName))
+        {
+            try
+            {
+                var preset = OpenAiCompatAdapter.ResolveOrThrow(presetName);
+                return OpenAiCompatAdapter.Build(model, preset);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                ErrorAndExit(ex.Message, 1, jsonMode: jsonMode);
+                return null;
+            }
         }
 
         // Default: Azure OpenAI path

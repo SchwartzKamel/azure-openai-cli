@@ -280,4 +280,64 @@ public class SecretRedactorTests
         Assert.Contains("[REDACTED:api-key]", r, StringComparison.Ordinal);
         Assert.Contains("[REDACTED:url-cred]", r, StringComparison.Ordinal);
     }
+
+    // -- S03E10 -- per-provider env-var namespaces (ADR-010 / Keychain) --
+    // Newman's invariant: every credential namespace defined by a provider
+    // section in ~/.config/az-ai/env must scrub through the redactor on
+    // every error path, not via a generic tail-match accident.
+
+    [Theory]
+    [InlineData("OPENAI_API_KEY")]
+    [InlineData("GROQ_API_KEY")]
+    [InlineData("TOGETHER_API_KEY")]
+    [InlineData("CLOUDFLARE_API_TOKEN")]
+    public void ProviderApiKeyEnvVar_InErrorMessage_IsMasked(string varName)
+    {
+        var secret = "PROVIDER_KEY_VALUE_" + varName;
+        var input = $"Connection failed: {varName}={secret} could not be authorised";
+        var r = SecretRedactor.Redact(input);
+        Assert.DoesNotContain(secret, r, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED:provider-key]", r, StringComparison.Ordinal);
+        // The variable name is preserved so operators can identify which
+        // namespace was at fault without exposing the value.
+        Assert.Contains(varName, r, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProviderApiKey_ExportSyntax_IsMasked()
+    {
+        var input = "export OPENAI_API_KEY=sk-very-secret-openai-token";
+        var r = SecretRedactor.Redact(input);
+        Assert.DoesNotContain("sk-very-secret-openai-token", r, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED:provider-key]", r, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProviderApiKey_InException_IsMasked()
+    {
+        Exception caught;
+        try
+        {
+            throw new InvalidOperationException(
+                "downstream rejected GROQ_API_KEY=gsk_leakage_value as invalid");
+        }
+        catch (Exception ex) { caught = ex; }
+        var r = SecretRedactor.RedactException(caught);
+        Assert.DoesNotContain("gsk_leakage_value", r, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED:provider-key]", r, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AzureKey_AndOpenAiKey_BothMasked_DistinctLabels()
+    {
+        // Cross-contamination guard: in the same string, the Azure
+        // namespace must be tagged as :azure-key and the OpenAI namespace
+        // as :provider-key. They never collapse into one label.
+        var input = "AZUREOPENAIAPI=azure-secret-X OPENAI_API_KEY=openai-secret-Y";
+        var r = SecretRedactor.Redact(input);
+        Assert.DoesNotContain("azure-secret-X", r, StringComparison.Ordinal);
+        Assert.DoesNotContain("openai-secret-Y", r, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED:azure-key]", r, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED:provider-key]", r, StringComparison.Ordinal);
+    }
 }
