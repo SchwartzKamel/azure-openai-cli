@@ -13,15 +13,32 @@ shell-interpolated args).
 
 ## 0. What's in this kit
 
+### Core Hotkeys & Triggers
+
 | File | Purpose |
 |------|---------|
-| `espanso/ai.yml`               | Espanso matches for **Option A** (Espanso runs inside WSL). |
+| `espanso/ai.yml`               | Espanso matches for **Option A** (Espanso runs inside WSL): `:ai`, `:aifix`, `:aiexp`, `:aitldr`, `:aic`, etc. |
 | `espanso/ai-windows-to-wsl.yml`| Espanso matches for **Option B** (Espanso on Windows → `wsl.exe`). |
 | `espanso/ai-macos.yml`         | Espanso matches for **Option C** (Espanso on macOS, native). |
-| `ahk/az-ai.ahk`                | AutoHotkey v2 script for global Windows hotkeys → WSL. |
+| `ahk/az-ai.ahk`                | AutoHotkey v2 script for global Windows hotkeys (Ctrl+Shift+A, Ctrl+Shift+E, etc.) → WSL. |
 | `wsl-wrapper/az-ai-wrap.sh`    | Optional login-shell wrapper so Windows callers inherit env vars. |
 
-Pick **one** Espanso option (A, B, or C). AHK is independent and complements A or B.
+### Prompt Templates (NEW)
+
+| File | Purpose |
+|------|---------|
+| `espanso/ai-prompts.yml`       | **Espanso triggers** for five canonical prompting templates (`:aiquestion`, `:aiarch`, `:aicode`, `:aidata`, `:aicost`). |
+| `ahk/az-ai-prompts.ahk`        | **AutoHotkey v2 hotkeys** for five canonical templates (Ctrl+Shift+Q, Ctrl+Shift+R, etc.). |
+| `PROMPT-TEMPLATES-INTEGRATION.md` | **Setup guide** and reference for using the five prompting templates. |
+
+### Documentation
+
+| File | Purpose |
+|------|---------|
+| `docs/prompts/system-prompt-master.md` | Master system prompt (foundation for all az-ai interactions). |
+| `docs/prompts/task-templates.md` | Five canonical task templates (A–E) with output format specs and quick-start prompts. |
+
+**Pick one Espanso option** (A, B, or C) for your platform. **AHK is independent** and complements A or B. **Prompt templates are optional** — use them if you want structured output for planning, architecture, code generation, data workflows, or cost analysis.
 
 > **No GPU? No problem.** This kit works with **just Azure creds** -- no
 > Docker, no systemd, no NIM. Follow §1 and skip the entire "Local NIM

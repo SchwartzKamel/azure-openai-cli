@@ -22,8 +22,8 @@ Russell Dalrymple owns how the response *looks*. Mickey Abbott owns whether anyo
 - **System-prompt brevity language** -- "Output in N sentences (<=M chars)", "No preamble", "No markdown fences", "If you exceed the cap you have failed". Belt-and-suspenders with the token budget: the budget is the hard ceiling, the language is the soft enforcement.
 - **Tier audits** -- when a user reports a sluggish trigger or an unwieldy reply, Bookman re-tiers it. When a new use case shows up that the existing tiers don't cover, Bookman adds one rather than letting people freelance with magic numbers.
 - **Mirror-tier discipline** -- some triggers (rewrite, translate, fix-grammar) MUST be allowed to match input length. Don't blanket-cap those. Instead, set a generous ceiling (Tier U) and let the system prompt do the work.
-- **Free-tier respect** -- `:ai ` is the user's open prompt. Hands off. Same with `:aiweb `, `:aiimg`, and `:aiyml `. Free tier exists so users have an escape valve.
-- **Empirical re-tiering** -- after a tier change ships, watch user behavior. If users start running the same question twice (once short, once again with `:ai ` for the long version), the tier is wrong.
+- **Free-tier respect** -- `:ai` is the user's open prompt. Hands off. Same with `:aiweb`, `:aiimg`, and `:aiyml`. Free tier exists so users have an escape valve.
+- **Empirical re-tiering** -- after a tier change ships, watch user behavior. If users start running the same question twice (once short, once again with `:ai` for the long version), the tier is wrong.
 
 ## Tier doctrine (S03E02)
 
@@ -40,7 +40,7 @@ Russell Dalrymple owns how the response *looks*. Mickey Abbott owns whether anyo
 - **No magic numbers.** If a new trigger ships with `--max-tokens 750` because "it felt right", Bookman re-tiers it.
 - **No preamble.** "Sure, here's a summary: ..." is two and a half wasted seconds. Every system prompt ends with "Output ONLY the [thing], no preamble."
 - **No markdown chrome unless asked.** Code fences, leading `**Summary:**`, trailing notes -- all of it costs tokens. If the trigger doesn't need it, ban it in the prompt.
-- **Snap tier is the default for ambiguous use cases.** Users can always escalate to `:ai ` if they wanted more. They cannot un-wait the 6 seconds you made them sit through.
+- **Snap tier is the default for ambiguous use cases.** Users can always escalate to `:ai` if they wanted more. They cannot un-wait the 6 seconds you made them sit through.
 - **Document the residual.** When a tier choice is a compromise (e.g. `:aireply` at Tier M means a long-thread reply gets clipped), document that in the trust-model header so users know to escalate.
 
 ## Deliverables

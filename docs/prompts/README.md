@@ -9,6 +9,15 @@ code is the implementation of that spec.
 
 ## Current contents
 
+### Core System & Task Guidance
+
+| Doc | Subject |
+|---|---|
+| [`system-prompt-master.md`](./system-prompt-master.md) | Master system prompt for all az-ai interactions -- tone, principles, safety guardrails. Foundation for all other templates. |
+| [`task-templates.md`](./task-templates.md) | Five canonical task templates (Knowledge Q&A, Architecture Design, Code Generation, Data Workflows, Cost/ROI) with expected output formats and quick-start copy-paste prompts. |
+
+### Temperature, Safety, and Evaluation
+
 | Doc | Subject |
 |---|---|
 | [`temperature-cookbook.md`](./temperature-cookbook.md) | Recommended `--temperature` per task category (H3). |
@@ -18,6 +27,11 @@ code is the implementation of that spec.
 | [`ab-testing.md`](./ab-testing.md) | How to compare two versions of a persona -- fixed seed, matched fixtures, stat-sig honesty, human-judge baseline. |
 | [`engineering-guide.md`](./engineering-guide.md) | Principles, anti-patterns, and a PR review checklist for any prompt change. |
 | [`model-cards.md`](./model-cards.md) | When to write a model card, what goes in it, and the copy-paste template. |
+
+### Personas and Fixtures
+
+| Doc | Subject |
+|---|---|
 | [`personas/_template.md`](./personas/_template.md) | Copy-paste skeleton for a new persona spec -- the three shipped specs are the examples, this is the contract. |
 | [`personas/coder.md`](./personas/coder.md) | `coder` persona spec (v1). |
 | [`personas/reviewer.md`](./personas/reviewer.md) | `reviewer` persona spec (v1). |
@@ -27,6 +41,8 @@ code is the implementation of that spec.
 
 ## Roadmap (tracked in Maestro audit `docs/audits/docs-audit-2026-04-22-maestro.md`)
 
+- [x] Master system prompt guide -- [`system-prompt-master.md`](./system-prompt-master.md) -- Foundation for all az-ai interactions.
+- [x] Task templates (Knowledge Q&A, Architecture, Code Gen, Data Workflows, Cost/ROI) -- [`task-templates.md`](./task-templates.md).
 - [x] Per-prompt specs for `coder`, `reviewer`, `security` (user-facing three). `architect` / `writer` remain -- H1 (partial).
 - [~] Prompt-eval harness -- **design landed** ([`eval-harness.md`](./eval-harness.md)), runner not yet implemented -- H2.
 - [x] Persona A/B methodology -- [`ab-testing.md`](./ab-testing.md).
