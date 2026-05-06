@@ -278,23 +278,96 @@ internal static class WizardSession
                     StringComparison.Ordinal))
             {
                 // No-op write: rewrite (so the timestamp refreshes) but no backup.
-                File.WriteAllText(path, content);
-                SetRestrictivePermissions(path);
+                AtomicWrite(path, content);
                 return null;
             }
             // Different content: backup, then overwrite.
-            backup = path + ".bak."
-                + timestamp.ToUniversalTime().ToString("yyyyMMddTHHmmssZ", CultureInfo.InvariantCulture);
-            File.Copy(path, backup, overwrite: false);
-            SetRestrictivePermissions(backup);
+            backup = BackupWithBump(path, timestamp);
         }
 
-        File.WriteAllText(path, content);
-        SetRestrictivePermissions(path);
+        AtomicWrite(path, content);
         return backup;
     }
 
-    private static void SetRestrictivePermissions(string path)
+    /// <summary>
+    /// S03E25 -- The Rotation. Copy <paramref name="path"/> to a sibling
+    /// <c>.bak.&lt;ISO-8601-Z&gt;</c> file, bumping the suffix
+    /// (<c>.bak.&lt;ts&gt;.1</c>, <c>.2</c>, ...) on collision so we never
+    /// overwrite an existing backup. Sets mode 0600 on Unix. Returns the
+    /// backup path created. Caller has already confirmed the original file
+    /// exists.
+    /// </summary>
+    internal static string BackupWithBump(string path, DateTimeOffset timestamp)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var stamp = timestamp.ToUniversalTime().ToString("yyyyMMddTHHmmssZ", CultureInfo.InvariantCulture);
+        var basePath = path + ".bak." + stamp;
+        var candidate = basePath;
+        var n = 1;
+        // Collision-bump: never overwrite an existing backup. The cap of
+        // 1000 is paranoia -- the timestamp resolution is one second, so
+        // hitting double-digit collisions in practice would imply someone
+        // is running the wizard / rotate flow in a tight script loop.
+        while (File.Exists(candidate))
+        {
+            candidate = basePath + "." + n.ToString(CultureInfo.InvariantCulture);
+            n++;
+            if (n > 1000)
+            {
+                throw new IOException("Refusing to create more than 1000 backup variants for " + path);
+            }
+        }
+        File.Copy(path, candidate, overwrite: false);
+        SetRestrictivePermissions(candidate);
+        return candidate;
+    }
+
+    /// <summary>
+    /// S03E25 -- The Rotation. Atomic write of <paramref name="content"/>
+    /// to <paramref name="path"/>: write to a sibling <c>.tmp.&lt;guid&gt;</c>
+    /// (mode 0600), then <see cref="File.Move(string, string, bool)"/> over
+    /// the destination. POSIX rename(2) is atomic with respect to crashes;
+    /// readers either see the old file or the new one, never a partial
+    /// write. On Windows the same call uses MoveFileExW with the replace
+    /// flag, which is similarly atomic.
+    /// </summary>
+    internal static void AtomicWrite(string path, string content)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentNullException.ThrowIfNull(content);
+
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        var tmp = path + ".tmp." + Guid.NewGuid().ToString("N");
+        try
+        {
+            File.WriteAllText(tmp, content);
+            // chmod 600 BEFORE the rename so the destination inode is
+            // already restrictive when readers can first observe it.
+            SetRestrictivePermissions(tmp);
+            File.Move(tmp, path, overwrite: true);
+            // Re-apply: on some filesystems File.Move copies the source
+            // mode bits forward, but defense-in-depth.
+            SetRestrictivePermissions(path);
+        }
+        finally
+        {
+            // If File.Move succeeded the tmp is gone; if it threw, clean up.
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* best-effort */ }
+        }
+    }
+
+    /// <summary>
+    /// Set file mode 0600 on Unix; no-op on Windows. Best-effort -- mirrors
+    /// the <see cref="UserConfig"/> and <see cref="Preferences"/> precedent.
+    /// Exposed as <c>internal</c> so <c>CredsRotate</c> can verify the
+    /// invariant on freshly-written tmp files before rename.
+    /// </summary>
+    internal static void SetRestrictivePermissions(string path)
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return;
         try
