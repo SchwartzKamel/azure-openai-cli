@@ -26,8 +26,8 @@ agent loop. It is excellent at one thing on one provider. End of S03,
 the **same binary** speaks at least three providers in production:
 Azure OpenAI (the default, the one we offer SLAs against), one
 non-Azure cloud (Anthropic Claude or OpenAI direct -- pick one in
-E05), and at least one local OpenAI-compatible runtime (Ollama in
-E11, llama.cpp `llama-server` in E14). Provider selection is a
+E08), and at least one local OpenAI-compatible runtime (Ollama in
+E14, llama.cpp `llama-server` in E17). Provider selection is a
 named profile in the FR-014 preferences file, not a recompile.
 
 Equally important: end of S03, we have the *seam* but not yet the
@@ -39,7 +39,7 @@ breaking what S02 already shipped.
 ## Why this season, why now
 
 The 2026 CLI-LLM landscape (see `docs/competitive-landscape.md` and
-the E19 brief): every credible competitor -- `aichat`, `llm`,
+the E22 brief): every credible competitor -- `aichat`, `llm`,
 `fabric`, `mods`/`crush` -- ships at least three providers and at
 least one local backend. Sue Ellen's read in S02E19 was blunt:
 single-provider is no longer "focused", it is "narrow". Users who
@@ -107,15 +107,17 @@ extra SDKs is not yet justified. **Kramer concurs**: "One adapter,
 one base URL, one bearer -- I can build that in a weekend. Three
 SDKs and a credential shape per cloud -- that's a season."
 
-## 24-episode candidate slate
+## 27-episode slate (24 planned + 3 sweeps-week shipped)
 
 Each episode is one PR-sized unit of work. Lead-cast quotas: Costanza
 3, Kramer 4, Elaine 3, Jerry 3, Newman 3. Supporting players one
 each (with overlaps where natural). Lloyd Braun explicitly leads at
-least one onboarding episode (E16) and consults on the wizard
-extension in E18.
+least one onboarding episode (E19) and consults on the wizard
+extension in E21. The Sweeps Week audit triple (E03-E05) is a
+shipped insertion; the original blueprint episodes from E03 onward
+shifted +3.
 
-### Arc 1 -- Provider Abstraction Seam (E01-E04)
+### Arc 1 -- Provider Abstraction Seam (E01-E02, E06-E07)
 
 - **S03E01 -- *The Adapter*.** Define `IProviderAdapter`
   (chat, stream, capabilities, model resolution). Ship the seam with
@@ -125,108 +127,126 @@ extension in E18.
   flag -> env -> profile -> default per ADR-009. `--provider <name>`
   flag introduced; only `azure` is a legal value. **Lead: Costanza.**
   *FR-014, ADR-009.*
-- **S03E03 -- *The Schema*.** Land `preferences.json` v1 schema with
+
+### Arc 1.5 -- Sweeps Week / Audit Triple (E03-E05) -- *shipped 2026-05*
+
+- **S03E03 -- *The Docs Audit, Reprise*.** Elaine's six-week
+  re-sweep -- version pin drift, duplicate Espanso triggers, empty
+  CHANGELOG. **Lead: Elaine.** See
+  [`s03e03-the-docs-audit-reprise.md`](s03e03-the-docs-audit-reprise.md).
+- **S03E04 -- *The Mailman Knocks Twice*.** Newman's RED security
+  audit on the v2 surface plus the new audit-triple plumbing.
+  **Lead: Newman.** See
+  [`s03e04-the-mailman-knocks-twice.md`](s03e04-the-mailman-knocks-twice.md).
+- **S03E05 -- *The Auditor's Auditor*.** Wilhelm's meta-audit -- did
+  the docs and security audits follow process, and does the process
+  itself audit cleanly? **Lead: Mr. Wilhelm.** See
+  [`s03e05-the-auditors-auditor.md`](s03e05-the-auditors-auditor.md).
+
+### Arc 1, continued -- Provider Abstraction Seam (E06-E07)
+
+- **S03E06 -- *The Schema*.** Land `preferences.json` v1 schema with
   `providers{}` and `profiles{}` sections. `az-ai --config show`
   prints resolved provider + source layer. **Lead: Elaine.**
   *FR-014, FR-003 (absorbed), FR-009 (absorbed).*
-- **S03E04 -- *The Redactor*.** Centralised secret redactor on every
+- **S03E07 -- *The Redactor*.** Centralised secret redactor on every
   log / exception path; `Authorization: Bearer ...` in any error
   message becomes a P1 unit-test failure. **Lead: Newman.**
   *ADR-007 §2.*
 
-### Arc 2 -- First Non-Azure Cloud (E05-E10)
+### Arc 2 -- First Non-Azure Cloud (E08-E13)
 
-- **S03E05 -- *The Pick*.** Decision episode -- Anthropic vs OpenAI
+- **S03E08 -- *The Pick*.** Decision episode -- Anthropic vs OpenAI
   direct as the first non-Azure cloud. Costanza writes the decision
   ADR; Sue Ellen weighs in on competitive optics. (Recommendation in
   this draft: **OpenAI direct**, because it slots straight into the
   generic OpenAI-compat adapter with zero bridge code.) **Lead:
   Costanza.** *FR-014.*
-- **S03E06 -- *The Compat*.** Implement the generic
+- **S03E09 -- *The Compat*.** Implement the generic
   `OpenAiCompatAdapter` (HTTP + bearer + base URL + optional
   org-header). Wire it behind `--provider openai`. **Lead: Kramer.**
   *FR-014, FR-018 §4 (shared adapter).*
-- **S03E07 -- *The Keychain*.** Extend the per-OS credential store
+- **S03E10 -- *The Keychain*.** Extend the per-OS credential store
   from S02E04 (the locksmith) to namespace by provider:
   `az-ai/openai/api_key` distinct from `az-ai/azure/api_key`.
   **Lead: Newman.** *ADR-007 §2, FR-014 §3.*
-- **S03E08 -- *The Wizard, Reprise*.** First-run wizard learns to
+- **S03E11 -- *The Wizard, Reprise*.** First-run wizard learns to
   ask "which provider?" and writes a `default` profile. Falls back
   to Azure-only path if user just hits enter. **Lead: Jerry.**
   *FR-022, FR-023, FR-014.*
-- **S03E09 -- *The Receipt*.** Per-provider rate-card stubs in the
+- **S03E12 -- *The Receipt*.** Per-provider rate-card stubs in the
   cost path -- enough to render "Azure: $0.0021 / OpenAI: $0.0018"
   in `--verbose`, no smart picking yet. **Lead: Morty Seinfeld.**
   *FR-015 stub, FR-014.*
-- **S03E10 -- *The Stream*.** Verify streaming + tool-call parity
+- **S03E13 -- *The Stream*.** Verify streaming + tool-call parity
   on the new adapter; freeze the capability matrix for v3.0.
   **Lead: Puddy.** *FR-014 §4, FR-018 §4.4.*
 
-### Arc 3 -- First Local Provider (E11-E16)
+### Arc 3 -- First Local Provider (E14-E19)
 
-- **S03E11 -- *The Daemon*.** Ollama via the OpenAI-compat adapter --
+- **S03E14 -- *The Daemon*.** Ollama via the OpenAI-compat adapter --
   zero new code, only docs + a `providers.ollama` example profile.
   Proves the seam was right. **Lead: Kramer.** *FR-018, FR-014.*
-- **S03E12 -- *The Probe*.** `az-ai providers doctor` -- pings each
+- **S03E15 -- *The Probe*.** `az-ai providers doctor` -- pings each
   configured provider, reports reachable / authed / streaming /
   tools. Mirrors the `az-ai doctor` ergonomics from S02. **Lead:
   Jerry.** *FR-018 §4.5.*
-- **S03E13 -- *The Allowlist*.** SSRF allowlist for local provider
+- **S03E16 -- *The Allowlist*.** SSRF allowlist for local provider
   base URLs -- `127.0.0.1/32`, `::1/128`, `localhost`, plus a
   user-extendable list with a loud warning. Covers ADR-007 §3
   for every future HTTP adapter. **Lead: Newman.** *ADR-007 §3,
   FR-018 §4.6.*
-- **S03E14 -- *The Server*.** llama.cpp `llama-server` adapter --
+- **S03E17 -- *The Server*.** llama.cpp `llama-server` adapter --
   same OpenAI-compat path, but document the `--api-key`,
   `--host 127.0.0.1`, and digest-pinned binary build flow.
   **Lead: Kramer.** *FR-018, ADR-007 §1.*
-- **S03E15 -- *The Capability Gate*.** Tool calling is not universal
+- **S03E18 -- *The Capability Gate*.** Tool calling is not universal
   -- some local models don't support function calls. Adapter probes
   `/v1/models`, caches capability per model, and refuses
   `--agent` cleanly when unsupported. **Lead: Maestro.**
   *FR-014, FR-018 §4.4.*
-- **S03E16 -- *The First Hour, Local Edition*.** Lloyd Braun walks
+- **S03E19 -- *The First Hour, Local Edition*.** Lloyd Braun walks
   the onboarding path again -- "I just installed Ollama, can I use
   az-ai right now?" -- and we patch every spot it doesn't
   Just Work. **Lead: Lloyd Braun.** *FR-014, FR-018, S02 onboarding
   arc continuation.*
 
-### Arc 4 -- Provider Switch Ergonomics (E17-E20)
+### Arc 4 -- Provider Switch Ergonomics (E20-E23)
 
-- **S03E17 -- *The Switch*.** `az-ai --provider`, `--profile`,
+- **S03E20 -- *The Switch*.** `az-ai --provider`, `--profile`,
   `AZ_PROVIDER`, `AZ_PROFILE` env vars. Precedence chain documented,
   tested, and printed by `--config show`. **Lead: Costanza.**
   *FR-014 §3.*
-- **S03E18 -- *The Default*.** Smart default selection per ADR-009
+- **S03E21 -- *The Default*.** Smart default selection per ADR-009
   extended to multi-provider: if `AZ_PROVIDER=local` and no model
   flag, pick the smallest model the local runtime advertises. Lloyd
   Braun consult on UX. **Lead: Jerry.** *ADR-009, FR-014.*
-- **S03E19 -- *The Fallback*.** Best-effort fallback policy: if
+- **S03E22 -- *The Fallback*.** Best-effort fallback policy: if
   `azure` returns 429/5xx and a `fallbackProvider` is configured,
   retry once on the fallback. Off by default. Frank Costanza signs
   off on the SLO contract. **Lead: Frank Costanza.**
   *FR-014 §5, FR-018 §5.*
-- **S03E20 -- *The Persona, Multi-Provider*.** Squad personas grow
+- **S03E23 -- *The Persona, Multi-Provider*.** Squad personas grow
   an optional `provider:` and `model:` field so reviewer can be
   Azure GPT-4o while coder is local Gemma. **Lead: Elaine.**
   *FR-014, squad system docs.*
 
-### Arc 5 -- Hardening (E21-E23)
+### Arc 5 -- Hardening (E24-E26)
 
-- **S03E21 -- *The CVE Log, Per Provider*.** Trivy/CVE tracking grows
+- **S03E24 -- *The CVE Log, Per Provider*.** Trivy/CVE tracking grows
   a per-provider column. Newman's monthly sweep covers Ollama image
   digests and llama.cpp release tarballs. **Lead: Newman.**
   *ADR-007 §1.*
-- **S03E22 -- *The Rotation*.** BYOK rotation flow -- `az-ai creds
+- **S03E25 -- *The Rotation*.** BYOK rotation flow -- `az-ai creds
   rotate --provider openai` re-prompts and overwrites in keystore
   without leaking the old value. **Lead: Newman.** *ADR-007 §2.*
-- **S03E23 -- *The Offline Mode*.** `--offline` flag forbids any
+- **S03E26 -- *The Offline Mode*.** `--offline` flag forbids any
   non-loopback HTTP. Useful in air-gapped labs and as a CI guardrail.
   **Lead: Jerry.** *FR-018 motivation §1.*
 
-### Finale (E24)
+### Finale (E27)
 
-- **S03E24 -- *The Demo*.** End-to-end: same binary, three providers,
+- **S03E27 -- *The Demo*.** End-to-end: same binary, three providers,
   one Espanso trigger config -- `:aifix` on local Ollama, `:aitldr`
   on OpenAI direct, `:aic` on Azure GPT-4o. Peterman writes the
   launch copy; Keith Hernandez records the demo. **Lead:
@@ -237,12 +257,13 @@ extension in E18.
 
 | Cast | Episodes led |
 |---|---|
-| Costanza | E02, E05, E17, E24 (4) |
-| Kramer | E01, E06, E11, E14 (4) |
-| Newman | E04, E07, E13, E21, E22 (5) |
-| Jerry | E08, E12, E18, E23 (4) |
-| Elaine | E03, E20 (2) |
-| Supporting (one each) | Morty (E09), Puddy (E10), Maestro (E15), Lloyd (E16), Frank (E19), Peterman+Keith (co-E24) |
+| Costanza | E02, E08, E20, E27 (4) |
+| Kramer | E01, E09, E14, E17 (4) |
+| Newman | E07, E10, E16, E24, E25 (5) |
+| Jerry | E11, E15, E21, E26 (4) |
+| Elaine | E06, E23 (2) |
+| Supporting (one each) | Morty (E12), Puddy (E13), Maestro (E18), Lloyd (E19), Frank (E22), Peterman+Keith (co-E27) |
+| Sweeps Week (shipped) | Elaine (E03), Newman (E04), Wilhelm (E05) |
 
 Newman ends up with five because per-provider security review is
 the load-bearing wall of this season. Elaine gets two with heavy
@@ -252,18 +273,18 @@ consult work everywhere. Both are deliberate.
 
 | FR | Title | Episodes that touch it |
 |---|---|---|
-| **FR-003** | Local user preferences | E03 (absorbed into FR-014) |
-| **FR-005** | Shell integration & output intelligence | E24 (Espanso multi-trigger demo) |
-| **FR-009** | `--config set` + directory overrides | E03 (absorbed) |
-| **FR-010** | Model aliases & smart defaults | E18 |
-| **FR-014** | Local prefs + multi-provider profiles | E01-E20 (the spine of S03) |
-| **FR-015** | Pattern library + cost estimator | E09 (rate-card stub only; full estimator is S04) |
-| **FR-018** | llama.cpp / Ollama adapter | E11, E12, E13, E14, E15, E16, E23 |
+| **FR-003** | Local user preferences | E06 (absorbed into FR-014) |
+| **FR-005** | Shell integration & output intelligence | E27 (Espanso multi-trigger demo) |
+| **FR-009** | `--config set` + directory overrides | E06 (absorbed) |
+| **FR-010** | Model aliases & smart defaults | E21 |
+| **FR-014** | Local prefs + multi-provider profiles | E01-E02, E06-E23 (the spine of S03) |
+| **FR-015** | Pattern library + cost estimator | E12 (rate-card stub only; full estimator is S04) |
+| **FR-018** | llama.cpp / Ollama adapter | E14, E15, E16, E17, E18, E19, E26 |
 | **FR-019** | gemma.cpp direct adapter | *Deferred to S04* -- direct adapter, not OpenAI-compat, so it doesn't fit the S03 seam cheaply |
-| **FR-020** | NVIDIA NIM + per-trigger routing | *Partially deferred* -- the NIM adapter (OpenAI-compat) can land in E11's slot if greenlit; **per-trigger routing is S04 by definition** |
-| **FR-022 / FR-023** | Native / first-run wizard | E08 |
-| **ADR-007** | Third-party HTTP provider security | E04, E07, E13, E14, E21, E22 |
-| **ADR-009** | Default model resolution | E02, E18 |
+| **FR-020** | NVIDIA NIM + per-trigger routing | *Partially deferred* -- the NIM adapter (OpenAI-compat) can land in E14's slot if greenlit; **per-trigger routing is S04 by definition** |
+| **FR-022 / FR-023** | Native / first-run wizard | E11 |
+| **ADR-007** | Third-party HTTP provider security | E07, E10, E16, E17, E24, E25 |
+| **ADR-009** | Default model resolution | E02, E21 |
 
 ## Risks and known unknowns
 
@@ -288,18 +309,18 @@ consult work everywhere. Both are deliberate.
 5. **Default-model resolution across providers.** ADR-009 was
    written for one provider. With three, "the default model" depends
    on the active profile. Either ADR-009 gets a §amendment in E02
-   or we ship ADR-010 in E18.
+   or we ship ADR-010 in E21.
 6. **Test matrix explosion.** {Azure, OpenAI, Ollama, llama.cpp} x
    {single-shot, agent, streaming, tools} = 16 cells. CI minutes
-   are not free; Puddy in E10 must propose a tiered matrix
+   are not free; Puddy in E13 must propose a tiered matrix
    (smoke / nightly / pre-release).
 7. **Local-runtime install drift.** Ollama and llama.cpp ship weekly.
-   A capability that worked at E11 may regress at E16. Mitigation:
+   A capability that worked at E14 may regress at E19. Mitigation:
    pin a tested version in docs and CI (digest where possible per
    ADR-007 §1).
 8. **User confusion: "is this still an Azure tool?"** The repo name,
    the README banner, the binary name (`az-ai`) -- all Azure-coded.
-   Sue Ellen + Peterman own the messaging in E24 so we don't
+   Sue Ellen + Peterman own the messaging in E27 so we don't
    accidentally repositional ourselves out of the Azure-trust seam
    that S02E19 said was our moat.
 
@@ -326,10 +347,10 @@ consult work everywhere. Both are deliberate.
 1. **First non-Azure cloud: Anthropic or OpenAI direct?** This
    draft recommends **OpenAI direct** (zero bridge code, strongest
    developer-recognition value, drops in via the OpenAI-compat
-   adapter). Anthropic is the better *competitive* answer (E19
+   adapter). Anthropic is the better *competitive* answer (E22
    said so) but costs us a wire-format bridge. Larry calls.
 2. **Do we promote NIM (FR-020) from S04 into S03?** The NIM
-   adapter is OpenAI-compat and could land in E11's slot instead
+   adapter is OpenAI-compat and could land in E14's slot instead
    of (or alongside) Ollama. That would let Bania start the
    per-trigger latency benchmarks one season early -- but it also
    pulls hardware-specific concerns into a season we want to keep
