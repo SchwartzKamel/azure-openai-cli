@@ -138,6 +138,30 @@ jobs:
           severity: 'CRITICAL,HIGH'
           exit-code: '0'
 
+      - name: Trivy JSON for provider attribution
+        # Second invocation in JSON for downstream attribution. Cheap (the
+        # DB is already cached by the table-format scan above) and keeps
+        # the human-readable scan untouched. S03E24 *The CVE Log, Per
+        # Provider*. Non-blocking; full policy in docs/security/cve-policy.md.
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0 (only safe version)
+        with:
+          image-ref: 'azure-openai-cli:ci'
+          format: 'json'
+          output: 'trivy-image.json'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN'
+          exit-code: '0'
+
+      - name: Provider-attributed CVE report (advisory)
+        # Joins Trivy JSON against scripts/provider-deps.json and posts a
+        # per-provider CVE table to the step summary. NEVER fails the
+        # build (S03E24 ships reporting + policy doc only; hard gating is
+        # tracked in docs/security/cve-policy.md section 6).
+        if: always()
+        env:
+          PROVIDER_CVE_INPUT: trivy-image.json
+        run: bash scripts/provider-cve-report.sh azure-openai-cli:ci
+        continue-on-error: true
+
   # bench-canary: directional perf smoke on every push / PR. NOT a regression
   # gate — GitHub Actions runners are shared VMs with ±30 % jitter, so these
   # numbers are advisory only. Authoritative perf measurement lives on the

@@ -1,0 +1,98 @@
+name: SBOM
+
+# Per-PR SBOM regeneration + provider-attributed CVE report. NOT a release
+# gate -- the canonical, signed CycloneDX SBOM still ships from
+# .github/workflows/release.yml at tag time. This workflow keeps the
+# in-repo dist/sbom.json shape current for tooling and supplies the
+# provider-attributed CVE summary (S03E24 *The CVE Log, Per Provider*).
+#
+# Failures here surface as a step summary annotation. They do not block
+# merges -- the hard CI gate stays in ci.yml::docker (Trivy HIGH/CRITICAL).
+# Promotion of this workflow to a hard gate is tracked as a follow-up
+# episode -- see docs/security/cve-policy.md section 6.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbom-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  sbom:
+    name: SBOM + provider CVE attribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.sln') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Generate SBOM (dist/sbom.json)
+        run: bash scripts/sbom-generate.sh dist/sbom.json
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Build Docker image (for Trivy scan)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          load: true
+          tags: azure-openai-cli:sbom
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy scan (JSON output for attribution)
+        # Same pinned action as ci.yml::docker. Output is JSON so the
+        # attribution script can join it against scripts/provider-deps.json.
+        # exit-code: 0 (advisory) -- the gate is in ci.yml::docker.
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0 (only safe version)
+        with:
+          image-ref: 'azure-openai-cli:sbom'
+          format: 'json'
+          output: 'trivy-image.json'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN'
+          exit-code: '0'
+
+      - name: Provider-attributed CVE report
+        # Joins the Trivy JSON against scripts/provider-deps.json. Writes
+        # dist/provider-cve-report.json and appends a markdown table to
+        # the GitHub Actions step summary. Non-blocking by design (S03E24);
+        # the future hard gate is per docs/security/cve-policy.md.
+        env:
+          PROVIDER_CVE_INPUT: trivy-image.json
+        run: bash scripts/provider-cve-report.sh azure-openai-cli:sbom
+
+      - name: Upload SBOM + CVE report (always)
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: sbom-and-cve-report
+          path: |
+            dist/sbom.json
+            dist/provider-cve-report.json
+            trivy-image.json
+          if-no-files-found: warn
+          retention-days: 30

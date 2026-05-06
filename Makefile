@@ -83,6 +83,8 @@ help:
 	@echo "  make format      - Auto-format code"
 	@echo "  make format-check - Check formatting without changes"
 	@echo "  make audit       - Check for vulnerable NuGet packages"
+	@echo "  make sbom        - Emit dist/sbom.json (dotnet list package --include-transitive)"
+	@echo "  make cve-report  - Trivy + provider attribution (writes dist/provider-cve-report.json; see docs/security/cve-policy.md)"
 	@echo "  make all-tests   - Run unit + integration + docker tests"
 	@echo "  make publish-fast - Publish self-contained ReadyToRun binary (~100ms startup)"
 	@echo "  make publish-r2r  - Alias for publish-fast"
@@ -280,6 +282,29 @@ install-hooks:
 ## Audit: check for vulnerable NuGet packages
 audit:
 	$(DOTNET) list package --vulnerable --include-transitive
+
+## Sbom: emit dist/sbom.json (lightweight; not the release CycloneDX SBOM).
+## Used by `make cve-report` and by .github/workflows/sbom.yml. The
+## auditor-grade CycloneDX SBOM still ships from release.yml at tag time;
+## see docs/security/sbom.md for the full story.
+sbom:
+	@bash scripts/sbom-generate.sh dist/sbom.json
+
+## Cve-report: provider-attributed CVE summary (S03E24 *The CVE Log, Per Provider*).
+## Runs Trivy against the local Docker image and joins findings against
+## scripts/provider-deps.json. Reporting only -- never fails. Full policy
+## (severity tolerances, triage cadence) at docs/security/cve-policy.md.
+##
+## Prereqs (local):
+##   * trivy on PATH -- https://aquasecurity.github.io/trivy/latest/getting-started/installation/
+##     Linux: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+##     macOS: brew install trivy
+##   * jq on PATH (apt install jq / brew install jq)
+##   * Docker image built locally (`make build`) OR set IMAGE=<other-tag>.
+cve-report:
+	@command -v trivy >/dev/null 2>&1 || { echo "Error: trivy not found. See 'make help' notes for install path or docs/security/cve-policy.md."; exit 1; }
+	@command -v jq >/dev/null 2>&1 || { echo "Error: jq not found."; exit 1; }
+	@bash scripts/provider-cve-report.sh $${IMAGE:-$(FULL_IMAGE)}
 
 ## All-tests: run unit tests + integration tests + docker tests sequentially
 all-tests: test integration-test docker-test

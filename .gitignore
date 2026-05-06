@@ -16,6 +16,10 @@ scripts/*
 !scripts/test-i18n.sh
 !scripts/exec-report-check.sh
 !scripts/lint-espanso-yml.sh
+!scripts/provider-deps.json
+!scripts/provider-deps.schema.json
+!scripts/sbom-generate.sh
+!scripts/provider-cve-report.sh
 
 # env
 azureopenai-cli/.env

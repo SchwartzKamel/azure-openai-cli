@@ -1,0 +1,45 @@
+{
+  "$schema": "./provider-deps.schema.json",
+  "version": 1,
+  "description": "Maps NuGet package name patterns (case-insensitive glob) to provider attribution buckets used by scripts/provider-cve-report.sh. Build-time tooling only; not referenced by Program.cs or any AOT-shipped code. Update this file when a new SDK is added to azureopenai-cli/AzureOpenAI_CLI.csproj.",
+  "providers": {
+    "azure": {
+      "label": "Azure OpenAI / Azure AI Foundry SDK",
+      "patterns": [
+        "Azure.AI.OpenAI*",
+        "Azure.Identity*",
+        "Azure.Core*",
+        "Microsoft.Identity.*",
+        "Microsoft.Bcl.*"
+      ],
+      "owner": "Newman + Jerry",
+      "notes": "Azure-side dispatch path. Findings here gate Azure-provider releases per docs/security/cve-policy.md."
+    },
+    "openai": {
+      "label": "OpenAI SDK (compat-only path)",
+      "patterns": [
+        "OpenAI",
+        "OpenAI.*",
+        "OpenAI.GPT*"
+      ],
+      "owner": "Newman + Jerry",
+      "notes": "OpenAI-compat dispatch path (S03E08-E09). CVEs here attribute to the compat surface, not the Azure surface. Operators that never set AZ_AI_COMPAT_MODELS are not exposed."
+    },
+    "shared": {
+      "label": "Shared / cross-provider runtime",
+      "patterns": [
+        "Microsoft.Agents.AI*",
+        "Microsoft.Extensions.AI*",
+        "OpenTelemetry*",
+        "dotenv.net",
+        "System.*",
+        "Microsoft.Extensions.*",
+        "Microsoft.NET.*"
+      ],
+      "owner": "Jerry",
+      "notes": "Runtime, agent framework, telemetry, env loader. CVEs here affect every dispatch path; tolerance band is the strictest of the three."
+    }
+  },
+  "fallback_provider": "shared",
+  "fallback_notes": "Any package not matched by an explicit pattern is bucketed as 'shared'. This is conservative -- a CVE in an unattributed dep is treated as cross-cutting until a maintainer says otherwise."
+}
