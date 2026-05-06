@@ -29,6 +29,9 @@ End of S02, `azure-openai-cli` is an Azure-OpenAI-native single-shot binary -- e
 | S03E19 | *The First Hour, Local Edition* | Lloyd Braun | -- (docs-only; tutorial `docs/onboarding/local-providers.md`, 5 lloyd-2026-05-L-* findings opened against forward-looking docs and adjacent README/glossary gaps) | 2026-05 |
 | S03E14 | *The Screen Reader* | Mickey Abbott | GREEN (`--plain` flag + `Plain.cs` chokepoint; 18-site ASCII glyph audit; `NO_COLOR` / `TERM=dumb` / `AZ_AI_PLAIN` honored; 28 unit + 6 integration tests) | 2026-05 |
 | S03E15 | *The Probe* | Costanza | GREEN (`az-ai --doctor` subcommand; DNS + creds-presence + model-count probe across azure / foundry / compat presets; never emits credential values; 21 unit tests + 3 integration; exit 0/1) | 2026-05 |
+| S03E17 | *The Stream* (originally blueprint E13; renumbered: telemetry / a11y / doctor / allowlist / local-providers consumed E13-E16 + E19) | Kramer | -- (verification episode; 15 streaming + tool-call parity facts; no production code change; ledger'd existing HttpClient finding as `kramer-2026-05-CR-09-F3`, left open pending recorded-fixture episode) | 2026-05 |
+| S03E24 | *The CVE Log, Per Provider* | Jerry | GREEN (provider-attributed Trivy pipeline; `make cve-report`; per-provider severity tolerances at `docs/security/cve-policy.md`; reporting-only -- hard gate deferred to S03E25 *The Rotation*) | 2026-05 |
+| S03E26 | *The Offline Mode* | Newman | GREEN (`--offline` + `AZ_AI_OFFLINE=1` strict-equality env; six gated network seams: Azure SDK / Foundry SDK / OpenAI-compat / WebFetchTool / OTLP exporter / prewarm probe; `BlockOffline` verdict in EndpointAllowlist; layered with `AZ_AI_LOCAL_PROVIDERS=1` (offline does NOT relax loopback opt-in); +30 unit cases + 7 integration assertions; 3 LOW/INFO findings filed `newman-2026-05-O-1..3`) | 2026-05 |
 
 ## Active findings
 

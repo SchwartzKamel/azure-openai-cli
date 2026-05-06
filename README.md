@@ -308,7 +308,28 @@ The CLI is meant to be given shell and file access inside agent mode, so defense
 
 **Local providers (S03E16).** The OpenAI-compat dispatch path passes every preset URL through `Net/EndpointAllowlist.cs` before constructing a client. Loopback, RFC1918, link-local (including the cloud metadata service at `169.254.169.254`), and IPv6 ULA endpoints are blocked by default; set `AZ_AI_LOCAL_PROVIDERS=1` (strict equality) to opt in to local runtimes such as Ollama or `llama-server`. Multicast, broadcast, userinfo URLs, and privileged ports stay blocked even with opt-in. Audit details: [docs/audits/security-v2.1.3-allowlist.md](docs/audits/security-v2.1.3-allowlist.md).
 
+**Air-gapped operation (S03E26).** Pass `--offline` (or set `AZ_AI_OFFLINE=1`, strict equality) to forbid every non-loopback provider call -- Azure SDK, Foundry SDK, OpenAI-compat, `web_fetch`, the OTLP exporter, and the prewarm probe all gate on the same latch. The flag is layered on top of the loopback opt-in: `--offline` does NOT relax `AZ_AI_LOCAL_PROVIDERS=1`, so demos and air-gapped reviews can still talk to a local Ollama. `--doctor` reflects the gate row by row (`dns: blocked-offline`, `healthy: false`) so the state is auditable from outside the process.
+
+```sh
+# Air-gapped demo against a loopback Ollama
+AZ_AI_LOCAL_PROVIDERS=1 az-ai --offline --model ollama-llama3 "..."
+```
+
+For paranoid runs (a guarantee that no syscall can reach a non-loopback socket), pair the flag with kernel-level isolation: `unshare -n az-ai --offline ...` on Linux. The flag is a logical gate, not a network namespace. Audit details: [docs/audits/security-v2.1.4-offline.md](docs/audits/security-v2.1.4-offline.md).
+
 Full threat model and hardening checklist: [SECURITY.md](SECURITY.md). Report vulnerabilities per the policy there. To cryptographically verify a downloaded binary, container, or SBOM against the build attestations, see [docs/verifying-releases.md](docs/verifying-releases.md).
+
+### Security & supply chain
+
+Every PR regenerates `dist/sbom.json` and a provider-attributed CVE
+report (`dist/provider-cve-report.json`) via
+[`.github/workflows/sbom.yml`](.github/workflows/sbom.yml). Trivy
+findings are bucketed into `azure` / `openai` / `shared` per
+[`scripts/provider-deps.json`](scripts/provider-deps.json), so an
+operator on the default Azure path can read past a compat-only CVE
+without losing the signal. Per-provider severity tolerances and triage
+cadence: [docs/security/cve-policy.md](docs/security/cve-policy.md).
+Local run: `make cve-report` (requires Trivy + jq).
 
 ## Accessibility
 

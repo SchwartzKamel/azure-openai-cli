@@ -8,6 +8,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(security):** S03E26 *The Offline Mode* (Newman) -- new
+  `--offline` flag (and strict-equality env twin `AZ_AI_OFFLINE=1`)
+  forbids every non-loopback provider call across all six known network
+  seams: Azure SDK construction, Foundry SDK construction, OpenAI-compat
+  adapter, WebFetchTool, OTLP exporter, and the prewarm probe. Layered
+  model: offline does NOT relax the existing loopback opt-in -- loopback
+  hosts still require `AZ_AI_LOCAL_PROVIDERS=1` (e.g. Ollama at
+  `http://127.0.0.1:11434`). Implemented as a process-wide latch read
+  from the existing 2-arg `EndpointAllowlist.Check` overload, so legacy
+  call sites pick up offline mode without signature churn. New
+  `BlockOffline` verdict in the allowlist seam; friendly error names the
+  rule and the env-var to flip; no credential ever appears in the error
+  path (verified by adapter and doctor secret-shape leak guards).
+  `ProviderDoctor` reflects the gate row by row (`dns: blocked-offline`,
+  `healthy: false`) so operators can audit a process from the outside.
+  +30 unit cases (16 facts + 6 theory rows in `EndpointAllowlistTests`,
+  9 facts in new `OfflineModeTests`, ConsoleCapture-serialised) and +7
+  hermetic integration assertions in `tests/integration_tests.sh`. Audit
+  at `docs/audits/security-v2.1.4-offline.md` -- **GREEN**, three LOW /
+  INFO follow-ups filed as `newman-2026-05-O-1..3`. Exec-report at
+  `docs/exec-reports/s03e26-the-offline-mode.md`.
+
+### Added
+- **ci(security):** S03E24 *The CVE Log, Per Provider* (Jerry) --
+  provider-attributed CVE pipeline. New `make cve-report` target joins
+  Trivy findings against `scripts/provider-deps.json` to bucket
+  vulnerabilities as `azure` / `openai` / `shared`; output at
+  `dist/provider-cve-report.json` plus a markdown table on stdout / step
+  summary. New `.github/workflows/sbom.yml` regenerates `dist/sbom.json`
+  on every PR (lightweight; release-grade CycloneDX SBOM still ships
+  from `release.yml`). Existing Trivy step in `ci.yml::docker` gains a
+  non-blocking JSON-format invocation and the attribution summary --
+  `exit-code: 0` unchanged, hard gate is a follow-up episode. Per-
+  provider severity tolerances + weekly triage cadence at
+  `docs/security/cve-policy.md`. Exec report at
+  `docs/exec-reports/s03e24-the-cve-log.md`.
+- **test(streaming):** S03E17 *The Stream* (Kramer; original blueprint slot
+  E13, shipped at exec-report slot E17 because telemetry / a11y / doctor /
+  allowlist / local-providers consumed E13-E16 + E19) -- streaming + tool-call
+  parity verification for the OpenAI-compat dispatch path that landed in
+  S03E09. New `tests/AzureOpenAI_CLI.Tests/CompatStreamingTests.cs` (15
+  facts, `[Collection("ConsoleCapture")]`): five-chunk text reassembly,
+  order preservation, empty-string deltas, aggregate-to-`ChatResponse` round
+  trip, three-delta tool-call reassembly (callId / name / args union),
+  mixed text + tool-call interleaving, mid-stream cancellation injection,
+  pre-cancelled token, empty stream, MAF agent surface parity (text and
+  tool-call), `--json`-mode dispatch-seam invariant, and a sub-second
+  latency budget guard. `FakeChatClient` (S03E12 *The Receipt*) gained an
+  explicit-chunk-sequence constructor `(IReadOnlyList<ChatResponseUpdate>,
+  int? throwAfterChunk)` for deterministic wire-shape replay -- existing
+  token-repeat constructor unchanged. No production code change: the
+  audit confirmed the existing MAF `agent.RunStreamingAsync` path handles
+  both Azure-OpenAI and compat-routed providers identically because the
+  seam is `IChatClient`, and the OpenAI SDK adapter aggregates raw
+  `tool_calls` deltas before yielding `FunctionCallContent`. Pre-existing
+  Kramer finding (HttpClient parameter ignored on `OpenAiCompatAdapter.Build`)
+  ledgered as `kramer-2026-05-CR-09-F3` and left **open** -- still deferred
+  to the future recorded-fixture transport episode; out of scope for E17.
+  Exec-report at `docs/exec-reports/s03e17-the-stream.md`.
+
+### Added
 - **feat(a11y):** S03E14 *The Screen Reader* (Mickey Abbott) -- `--plain`
   CLI flag suppresses banner / color / unicode glyphs / spinner.
   Equivalent to setting `NO_COLOR=1 AZ_AI_PLAIN=1` for one invocation;
