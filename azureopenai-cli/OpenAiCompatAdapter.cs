@@ -33,7 +33,18 @@ internal sealed record OpenAiCompatPreset(
     Uri BaseUrl,
     string ApiKeyEnvVar,
     string? OrgEnvVar = null,
-    string AuthScheme = "Bearer");
+    string AuthScheme = "Bearer",
+    // S03E17 -- The Server. Local llama.cpp / Ollama-class presets need a few
+    // extra knobs that the cloud presets don't: an env var for runtime
+    // endpoint override (operators run llama-server on whatever port they
+    // like), an opt-out of the API-key requirement (llama-server is
+    // unauthenticated by default), an env var for the served model name, and
+    // a fallback default model so `--model llamacpp` (no AZ_AI_LLAMACPP_MODEL)
+    // resolves cleanly. All optional -- cloud presets stay unchanged.
+    string? EndpointEnvVar = null,
+    bool RequiresApiKey = true,
+    string? ModelEnvVar = null,
+    string? DefaultModel = null);
 
 /// <summary>
 /// ADR-010 OpenAI-compatible provider adapter. Builds an <see cref="IChatClient"/>
@@ -78,6 +89,21 @@ internal static class OpenAiCompatAdapter
                 "cloudflare",
                 new Uri("https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1"),
                 "CLOUDFLARE_API_TOKEN"),
+            // S03E17 -- The Server. llama.cpp's llama-server speaks the
+            // OpenAI /v1 wire protocol on http://localhost:8080 by default.
+            // Authentication is off unless the operator passes --api-key, so
+            // RequiresApiKey=false. Endpoint and model are env-overridable
+            // for non-default ports / model names. Capability profile is
+            // Conservative (no tool_calls, no vision, no JSON-mode) -- a
+            // local q4 build can't be assumed to honor function-calling.
+            ["llamacpp"] = new(
+                "llamacpp",
+                new Uri("http://localhost:8080/v1"),
+                "AZ_AI_LLAMACPP_API_KEY",
+                EndpointEnvVar: "AZ_AI_LLAMACPP_ENDPOINT",
+                RequiresApiKey: false,
+                ModelEnvVar: "AZ_AI_LLAMACPP_MODEL",
+                DefaultModel: "llamacpp"),
         };
 
     /// <summary>
@@ -169,19 +195,53 @@ internal static class OpenAiCompatAdapter
     /// </summary>
     internal static IChatClient Build(string modelOrAlias, OpenAiCompatPreset preset, HttpClient? http = null)
     {
-        if (string.IsNullOrWhiteSpace(modelOrAlias))
+        // S03E17: blank model is allowed when the preset has a fallback
+        // (DefaultModel or ModelEnvVar). The ResolveModel helper does the
+        // precedence dance; we only validate the *resolved* model is
+        // non-empty.
+        var resolvedModel = ResolveModel(preset, modelOrAlias);
+        if (string.IsNullOrWhiteSpace(resolvedModel))
             throw new ArgumentException("Model must be non-empty.", nameof(modelOrAlias));
 
         var apiKey = Environment.GetEnvironmentVariable(preset.ApiKeyEnvVar);
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            throw new InvalidOperationException(
-                $"OpenAI-compatible preset '{preset.Name}' requires env var "
-                + $"'{preset.ApiKeyEnvVar}' but it is unset or empty.");
+            // S03E17: presets that don't require an API key (llama.cpp,
+            // future Ollama) get a placeholder so the OpenAI SDK's
+            // ApiKeyCredential ctor stays happy. The unauthenticated
+            // server simply ignores the Authorization header.
+            if (!preset.RequiresApiKey)
+            {
+                apiKey = "no-auth-required";
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"OpenAI-compatible preset '{preset.Name}' requires env var "
+                    + $"'{preset.ApiKeyEnvVar}' but it is unset or empty.");
+            }
         }
 
         // Cloudflare Workers AI: rewrite the {account_id} placeholder.
         var endpoint = preset.BaseUrl;
+
+        // S03E17: optional runtime endpoint override (e.g.
+        // AZ_AI_LLAMACPP_ENDPOINT=http://127.0.0.1:8123/v1). Malformed URLs
+        // surface as InvalidOperationException so the operator sees the
+        // offending env var by name.
+        if (!string.IsNullOrWhiteSpace(preset.EndpointEnvVar))
+        {
+            var rawOverride = Environment.GetEnvironmentVariable(preset.EndpointEnvVar);
+            if (!string.IsNullOrWhiteSpace(rawOverride))
+            {
+                if (!Uri.TryCreate(rawOverride.Trim(), UriKind.Absolute, out var overrideUri))
+                {
+                    throw new InvalidOperationException(
+                        $"Env var '{preset.EndpointEnvVar}'='{rawOverride}' is not a valid absolute URL.");
+                }
+                endpoint = overrideUri;
+            }
+        }
         if (endpoint.OriginalString.Contains("{account_id}", StringComparison.Ordinal))
         {
             var accountId = Environment.GetEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID");
@@ -254,7 +314,25 @@ internal static class OpenAiCompatAdapter
             }
         }
 
-        return new ChatClient(modelOrAlias, new ApiKeyCredential(apiKey), options).AsIChatClient();
+        return new ChatClient(resolvedModel!, new ApiKeyCredential(apiKey), options).AsIChatClient();
+    }
+
+    /// <summary>
+    /// S03E17 -- model-name resolution for compat presets. Precedence:
+    /// (1) explicit non-blank <paramref name="requested"/> wins; (2) preset
+    /// <c>ModelEnvVar</c> if exported and non-blank; (3) preset
+    /// <c>DefaultModel</c>. Returns null if no source resolves -- the
+    /// caller decides whether that is fatal.
+    /// </summary>
+    internal static string? ResolveModel(OpenAiCompatPreset preset, string? requested)
+    {
+        if (!string.IsNullOrWhiteSpace(requested)) return requested!.Trim();
+        if (!string.IsNullOrWhiteSpace(preset.ModelEnvVar))
+        {
+            var fromEnv = Environment.GetEnvironmentVariable(preset.ModelEnvVar);
+            if (!string.IsNullOrWhiteSpace(fromEnv)) return fromEnv.Trim();
+        }
+        return preset.DefaultModel;
     }
 
     private static bool IsLoopback(Uri uri)

@@ -75,6 +75,14 @@ public static class ProviderCapabilities
             // Together: model-zoo, conservative defaults until per-model entries land.
             ["together"] = new(ToolCalls: false, Streaming: true, Vision: false, JsonMode: true, MaxContextTokens: null),
             // Cloudflare Workers AI: conservative -- only streaming is reliable.
+            // S03E17 -- The Server. llama.cpp's llama-server speaks the OpenAI
+            // wire protocol on localhost. We assume a generic local model: no
+            // tool_calls (function-calling support varies wildly across q4
+            // builds), no vision, no JSON-mode. Streaming is universal.
+            // Operators with a tool-calling capable build flip the bits via
+            // AZ_AI_CAPABILITY_OVERRIDES=llamacpp:<model>:tool_calls=true.
+            ["llamacpp"] = new(ToolCalls: false, Streaming: true, Vision: false, JsonMode: false, MaxContextTokens: 8192),
+
             ["cloudflare"] = new(ToolCalls: false, Streaming: true, Vision: false, JsonMode: false, MaxContextTokens: null),
         };
 
