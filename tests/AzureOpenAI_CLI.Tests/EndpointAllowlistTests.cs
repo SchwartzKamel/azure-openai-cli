@@ -517,4 +517,246 @@ public class EndpointAllowlistTests
             Environment.SetEnvironmentVariable(EndpointAllowlist.OptInEnvVar, prior.optIn);
         }
     }
+
+    // --------------------------------------------------------------------
+    // S03E26 -- The Offline Mode. Layered on top of S03E16:
+    //   * non-loopback Allow + offline=true   -> BlockOffline
+    //   * loopback     Allow + offline=true   -> Allow (when opt-in is on)
+    //   * loopback no-opt-in  + offline=true  -> still BlockLoopback
+    //                                            (offline does NOT relax the opt-in gate)
+    //   * existing block      + offline=true  -> verdict unchanged
+    //                                            (offline never *unblocks* anything)
+    // Tests use the explicit (uri, optIn, offlineMode) overload so they do
+    // not touch the process-wide static latch -- which would race with the
+    // ConsoleCapture serialised tests.
+    // --------------------------------------------------------------------
+
+    [Fact]
+    public void Offline_HttpsPublic_Blocked()
+    {
+        // Defends: the entire point of --offline. A normally-allowed HTTPS
+        // public endpoint must be refused.
+        var v = EndpointAllowlist.Check(
+            U("https://api.openai.com/v1"),
+            localProvidersOptIn: false,
+            offlineMode: true,
+            preResolved: new[] { IPAddress.Parse("8.8.8.8") });
+        Assert.Equal(AllowlistVerdict.BlockOffline, v);
+    }
+
+    [Fact]
+    public void Offline_HttpsPublic_BareIp_Blocked()
+    {
+        // Defends: bare-IP fast path participates in the offline gate.
+        var v = EndpointAllowlist.Check(
+            U("https://1.1.1.1/v1"),
+            localProvidersOptIn: false,
+            offlineMode: true);
+        Assert.Equal(AllowlistVerdict.BlockOffline, v);
+    }
+
+    [Fact]
+    public void Offline_HttpLocalhost_NoOptIn_StillBlockLoopback()
+    {
+        // Defends: layered model. --offline does NOT relax the loopback
+        // opt-in gate; the user must still set AZ_AI_LOCAL_PROVIDERS=1
+        // even when offline. (A stray --offline must not accidentally
+        // unlock 127.0.0.1 either.)
+        var v = EndpointAllowlist.Check(
+            U("http://localhost:11434/v1"),
+            localProvidersOptIn: false,
+            offlineMode: true);
+        Assert.Equal(AllowlistVerdict.BlockLoopback, v);
+    }
+
+    [Fact]
+    public void Offline_HttpLocalhost_WithOptIn_Allowed()
+    {
+        // Defends: --offline + AZ_AI_LOCAL_PROVIDERS=1 + Ollama-shape
+        // localhost URL -> Allow. This is the demo-recording / air-gapped
+        // dev posture: silent network, local runtime serves the model.
+        var v = EndpointAllowlist.Check(
+            U("http://localhost:11434/v1"),
+            localProvidersOptIn: true,
+            offlineMode: true);
+        Assert.Equal(AllowlistVerdict.Allow, v);
+    }
+
+    [Fact]
+    public void Offline_Loopback127_WithOptIn_Allowed()
+    {
+        // Defends: bare-IP 127.x.y.z literal under offline + opt-in.
+        var v = EndpointAllowlist.Check(
+            U("http://127.0.0.1:8080/v1"),
+            localProvidersOptIn: true,
+            offlineMode: true);
+        Assert.Equal(AllowlistVerdict.Allow, v);
+    }
+
+    [Fact]
+    public void Offline_IPv6Loopback_WithOptIn_Allowed()
+    {
+        // Defends: ::1 under offline + opt-in is loopback-equivalent.
+        var v = EndpointAllowlist.Check(
+            U("http://[::1]:11434/v1"),
+            localProvidersOptIn: true,
+            offlineMode: true);
+        Assert.Equal(AllowlistVerdict.Allow, v);
+    }
+
+    [Fact]
+    public void Offline_AzureShape_Endpoint_Blocked()
+    {
+        // Defends: a real-shaped Azure endpoint -- this is the most common
+        // accidental egress under --offline. Pre-resolved to a public IP
+        // to avoid hitting DNS in the unit run.
+        var v = EndpointAllowlist.Check(
+            U("https://contoso.cognitiveservices.azure.com/"),
+            localProvidersOptIn: false,
+            offlineMode: true,
+            preResolved: new[] { IPAddress.Parse("20.50.1.2") });
+        Assert.Equal(AllowlistVerdict.BlockOffline, v);
+    }
+
+    [Fact]
+    public void Offline_Rfc1918_StillBlockedAsPrivate()
+    {
+        // Defends: an existing block trumps offline. RFC-1918 without
+        // opt-in returns BlockPrivate (not BlockOffline) -- the older
+        // verdict carries more diagnostic information ("set
+        // AZ_AI_LOCAL_PROVIDERS=1") and offline does not need to
+        // re-block what the allowlist already blocks.
+        var v = EndpointAllowlist.Check(
+            U("https://10.0.0.1/v1"),
+            localProvidersOptIn: false,
+            offlineMode: true);
+        Assert.Equal(AllowlistVerdict.BlockPrivate, v);
+    }
+
+    [Fact]
+    public void Offline_CloudMetadata_StillBlockedAsLinkLocal()
+    {
+        // Defends: 169.254.169.254 (cloud metadata) is BlockLinkLocal
+        // first; offline does not relabel it. Layered diagnostics.
+        var v = EndpointAllowlist.Check(
+            U("https://169.254.169.254/latest/meta-data/"),
+            localProvidersOptIn: false,
+            offlineMode: true);
+        Assert.Equal(AllowlistVerdict.BlockLinkLocal, v);
+    }
+
+    [Fact]
+    public void Offline_DnsRebinding_MixedRecords_Blocked()
+    {
+        // Defends: a hostname that resolves to mixed public + loopback
+        // under --offline. Without opt-in: BlockLoopback (existing rule
+        // wins). The DNS-rebinding posture is preserved end-to-end.
+        var v = EndpointAllowlist.Check(
+            U("https://evil.example.com/v1"),
+            localProvidersOptIn: false,
+            offlineMode: true,
+            preResolved: new[] { IPAddress.Parse("8.8.8.8"), IPAddress.Parse("127.0.0.1") });
+        Assert.Equal(AllowlistVerdict.BlockLoopback, v);
+    }
+
+    [Fact]
+    public void Offline_DnsResolves_Public_Blocked()
+    {
+        // Defends: a hostname whose A-records are all public under
+        // --offline -> BlockOffline. The address classifier returns
+        // Allow; the offline post-process converts it.
+        var v = EndpointAllowlist.Check(
+            U("https://api.public.example/v1"),
+            localProvidersOptIn: false,
+            offlineMode: true,
+            preResolved: new[] { IPAddress.Parse("8.8.8.8"), IPAddress.Parse("1.1.1.1") });
+        Assert.Equal(AllowlistVerdict.BlockOffline, v);
+    }
+
+    [Fact]
+    public void Offline_DnsResolves_AllLoopback_Allowed()
+    {
+        // Defends: a hostname whose A-records are all loopback under
+        // --offline + opt-in -> Allow. (Some custom /etc/hosts entries
+        // alias e.g. "ollama.local" to 127.0.0.1.)
+        var v = EndpointAllowlist.Check(
+            U("http://ollama.local/v1"),
+            localProvidersOptIn: true,
+            offlineMode: true,
+            preResolved: new[] { IPAddress.Parse("127.0.0.1") });
+        Assert.Equal(AllowlistVerdict.Allow, v);
+    }
+
+    [Fact]
+    public void Offline_OffByDefault_DoesNotChangeBehavior()
+    {
+        // Defends: offline=false is a strict no-op. The S03E16 corpus
+        // remains green because the new overload's offline-disabled
+        // path is identical to the original Check() behavior.
+        var v = EndpointAllowlist.Check(
+            U("https://api.openai.com/v1"),
+            localProvidersOptIn: false,
+            offlineMode: false,
+            preResolved: new[] { IPAddress.Parse("8.8.8.8") });
+        Assert.Equal(AllowlistVerdict.Allow, v);
+    }
+
+    [Fact]
+    public void Offline_StaticLatch_PicksUpFromTwoArgOverload()
+    {
+        // Defends: WebFetchTool / OpenAiCompatAdapter call the 2-arg
+        // overload Check(uri, optIn). Setting the process-wide latch
+        // must propagate the offline verdict via that surface so we
+        // do not have to update every call site.
+        var prior = EndpointAllowlist.OfflineMode;
+        try
+        {
+            EndpointAllowlist.OfflineMode = true;
+            var v = EndpointAllowlist.Check(
+                U("https://api.openai.com/v1"),
+                localProvidersOptIn: false,
+                preResolved: new[] { IPAddress.Parse("8.8.8.8") });
+            Assert.Equal(AllowlistVerdict.BlockOffline, v);
+        }
+        finally
+        {
+            EndpointAllowlist.OfflineMode = prior;
+        }
+    }
+
+    [Fact]
+    public void Offline_Describe_HasActionableText()
+    {
+        // Defends: error text names the rule that fired and the env-var
+        // to flip. A silent "blocked" with no reason is a debugging tax.
+        var msg = EndpointAllowlist.Describe(AllowlistVerdict.BlockOffline);
+        Assert.False(string.IsNullOrWhiteSpace(msg));
+        Assert.Contains("--offline", msg, StringComparison.Ordinal);
+        Assert.Contains("AZ_AI_LOCAL_PROVIDERS", msg, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("1", true)]
+    [InlineData("0", false)]
+    [InlineData("true", false)]
+    [InlineData("yes", false)]
+    [InlineData("1 ", false)]
+    [InlineData("", false)]
+    public void OfflineEnv_StrictEqualityOnly(string value, bool expected)
+    {
+        // Defends: typo-tolerance bugs. AZ_AI_OFFLINE mirrors the same
+        // strict "1" contract as AZ_AI_TELEMETRY / AZ_AI_LOCAL_PROVIDERS;
+        // a "true" / "yes" / "1 " must keep the gate closed.
+        var key = EndpointAllowlist.OfflineEnvVar;
+        var prior = Environment.GetEnvironmentVariable(key);
+        try
+        {
+            Environment.SetEnvironmentVariable(key, value);
+            Assert.Equal(expected, EndpointAllowlist.OfflineModeFromEnv());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(key, prior);
+        }
+    }
 }

@@ -855,6 +855,120 @@ KCEOF2
 
     rm -rf "$doc_home"
 
+    # -- S03E26 The Offline Mode: --offline forbids non-loopback ----------
+    local off_home; off_home=$(mktemp -d)
+
+    # 1. --offline --help exits 0 (parser accepts the flag).
+    set +e
+    env -i HOME="$off_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        "$BIN" --offline --help >/dev/null 2>&1
+    local off_help_rc=$?
+    set -e
+    if [ "$off_help_rc" -eq 0 ]; then
+        pass "S03E26 offline: --offline --help exits 0"
+    else
+        fail "S03E26 offline: --offline --help" "expected exit 0, got $off_help_rc"
+    fi
+
+    # 2. --offline --doctor with NO providers configured exits 0.
+    set +e
+    env -i HOME="$off_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        "$BIN" --offline --doctor >/dev/null 2>&1
+    local off_empty_rc=$?
+    set -e
+    if [ "$off_empty_rc" -eq 0 ]; then
+        pass "S03E26 offline: --offline --doctor (no providers) exits 0"
+    else
+        fail "S03E26 offline: --offline --doctor (no providers)" "expected exit 0, got $off_empty_rc"
+    fi
+
+    # 3. --offline --doctor with Azure provider env -> exits 1 and reports
+    #    blocked-offline in the dns column.
+    set +e
+    local off_doctor_out
+    off_doctor_out=$(env -i HOME="$off_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-a-real-key-12345" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --offline --doctor 2>&1)
+    local off_doctor_rc=$?
+    set -e
+    if [ "$off_doctor_rc" -ne 0 ] && \
+       printf '%s' "$off_doctor_out" | grep -q 'blocked-offline'; then
+        pass "S03E26 offline: --offline --doctor reports blocked-offline (rc=$off_doctor_rc)"
+    else
+        fail "S03E26 offline: --offline --doctor blocked-offline" \
+            "rc=$off_doctor_rc out=$(printf '%s' "$off_doctor_out" | head -c 240)"
+    fi
+
+    # 4. AZ_AI_OFFLINE=1 env (no flag) acts identically to --offline.
+    set +e
+    local off_env_out
+    off_env_out=$(env -i HOME="$off_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZ_AI_OFFLINE=1 \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-a-real-key-12345" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --doctor 2>&1)
+    local off_env_rc=$?
+    set -e
+    if [ "$off_env_rc" -ne 0 ] && \
+       printf '%s' "$off_env_out" | grep -q 'blocked-offline'; then
+        pass "S03E26 offline: AZ_AI_OFFLINE=1 env (no flag) gates same as --offline"
+    else
+        fail "S03E26 offline: AZ_AI_OFFLINE=1 env" \
+            "rc=$off_env_rc out=$(printf '%s' "$off_env_out" | head -c 240)"
+    fi
+
+    # 5. --offline --doctor --json shows blocked-offline in the dns field.
+    set +e
+    local off_json
+    off_json=$(env -i HOME="$off_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-a-real-key-12345" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --offline --doctor --json 2>/dev/null)
+    set -e
+    if printf '%s' "$off_json" | python3 -c \
+        "import json,sys; d=json.load(sys.stdin); \
+         assert any(p.get('dns')=='blocked-offline' for p in d.get('providers',[])), 'no blocked-offline row'; \
+         assert d.get('all_healthy') is False" \
+        >/dev/null 2>&1; then
+        pass "S03E26 offline: --offline --doctor --json emits blocked-offline + all_healthy=false"
+    else
+        fail "S03E26 offline: --offline --doctor --json" \
+            "got: $(printf '%s' "$off_json" | head -c 240)"
+    fi
+
+    # 6. AZ_AI_OFFLINE=true (non-strict) does NOT activate offline mode
+    #    (strict-equality "1" only, mirrors AZ_AI_TELEMETRY / AZ_AI_LOCAL_PROVIDERS).
+    set +e
+    local off_lax_out
+    off_lax_out=$(env -i HOME="$off_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZ_AI_OFFLINE=true \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-a-real-key-12345" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --doctor 2>&1)
+    set -e
+    if printf '%s' "$off_lax_out" | grep -q 'blocked-offline'; then
+        fail "S03E26 offline: AZ_AI_OFFLINE=true must NOT enable offline" \
+            "lax env activated offline gate (strict-equality '1' is required)"
+    else
+        pass "S03E26 offline: AZ_AI_OFFLINE=true does not enable (strict-equality '1' only)"
+    fi
+
+    # 7. Secret-shape leak guard: offline error path must not emit the
+    #    AZUREOPENAIAPI value or any sk-... token.
+    if printf '%s' "$off_doctor_out" | grep -Eq 'Bearer [A-Za-z0-9._-]+|sk-[A-Za-z0-9]{8,}'; then
+        fail "S03E26 offline: secret-shape leak in offline path" \
+            "found Bearer/sk- pattern in --offline --doctor output"
+    else
+        pass "S03E26 offline: --offline --doctor emits no Bearer/sk- secret shape"
+    fi
+
+    rm -rf "$off_home"
+
     # ── API-gated smoke (skip unless creds present) ───────────────────────
     if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then
         skip "real API call" "AZUREOPENAIENDPOINT/AZUREOPENAIAPI not set"

@@ -109,9 +109,13 @@ internal class Program
         string? OutputPath,          // --output <path>: save image to explicit file path
         string? ImageSize,           // --size <WxH>: image dimensions (e.g. 1024x1024)
         bool ConfirmPrintSecret,     // --i-understand-this-will-print-the-secret: required confirmation for `--config export-env`
-        bool Plain                   // S03E14 (Mickey): --plain -- suppress banner / color / glyphs / spinner.
-                                     // Equivalent to NO_COLOR=1 AZ_AI_PLAIN=1 for one invocation. Looser
-                                     // than --raw: status text on stderr is still allowed, just plain-ASCII.
+        bool Plain,                 // S03E14 (Mickey): --plain -- suppress banner / color / glyphs / spinner.
+                                    // Equivalent to NO_COLOR=1 AZ_AI_PLAIN=1 for one invocation. Looser
+                                    // than --raw: status text on stderr is still allowed, just plain-ASCII.
+        bool Offline                // S03E26 (Newman): --offline -- forbid every non-loopback provider
+                                    // call. Loopback still requires AZ_AI_LOCAL_PROVIDERS=1; offline does
+                                    // not relax that gate. Air-gapped review + demo recording posture.
+                                    // Env fallback: AZ_AI_OFFLINE=1 (strict equality, mirrors AZ_AI_TELEMETRY).
     );
 
     private static async Task<int> Main(string[] args)
@@ -158,6 +162,7 @@ internal class Program
             // immaterial since we only set process-wide latches.
             var preRaw = false;
             var prePlain = false;
+            var preOffline = false;
             for (var ai = 0; ai < args.Length; ai++)
             {
                 var a = args[ai];
@@ -170,6 +175,10 @@ internal class Program
                 {
                     prePlain = true;
                 }
+                else if (string.Equals(a, "--offline", StringComparison.Ordinal))
+                {
+                    preOffline = true;
+                }
             }
             if (prePlain)
             {
@@ -177,6 +186,15 @@ internal class Program
                 // child wizards, and any future spinner code all see the
                 // same signal without an explicit Plain reference.
                 Plain.Activate();
+            }
+            // S03E26 -- latch the offline mode BEFORE ParseArgs so the
+            // ultra-early --doctor dispatch (line ~1075) sees it. Honor
+            // the env-var fallback too. Argv pre-scan + env both feed the
+            // same static latch so WebFetchTool / OpenAiCompatAdapter /
+            // Telemetry pick the mode up via their existing call sites.
+            if (preOffline || AzureOpenAI_CLI.Net.EndpointAllowlist.OfflineModeFromEnv())
+            {
+                AzureOpenAI_CLI.Net.EndpointAllowlist.OfflineMode = true;
             }
             LoadConfigEnv(preRaw);
 
@@ -393,7 +411,7 @@ internal class Program
         // real chat request hits a warm connection pool. Silent — never touches
         // stdout/stderr. Errors swallowed: if prewarm fails, the real request
         // cold-starts normally.
-        if (opts.Prewarm)
+        if (opts.Prewarm && !opts.Offline)
         {
             _ = PrewarmAsync(endpoint, apiKey);
             // S03E12 -- closes Kramer Finding 4 from S03E09. Prewarm the
@@ -401,6 +419,16 @@ internal class Program
             // No network -- exercises preset resolution + Build() so the
             // first real request through the compat seam is not a cold
             // start. Silent-by-contract; never observable from stdout/stderr.
+            // S03E26: --offline suppresses the network half (PrewarmAsync
+            // does an HTTP probe); compat prewarm stays enabled because it
+            // is build-only (no network).
+            _ = PrewarmCompatAsync();
+        }
+        else if (opts.Prewarm && opts.Offline)
+        {
+            // Build-only prewarm under --offline: still pre-pays the JIT /
+            // SDK static-init cost for the compat seam without touching
+            // the network. PrewarmCompatAsync is silent-by-contract.
             _ = PrewarmCompatAsync();
         }
 
@@ -876,7 +904,8 @@ internal class Program
         OutputPath: null,
         ImageSize: null,
         ConfirmPrintSecret: false,
-        Plain: false
+        Plain: false,
+        Offline: false
     );
 
     /// <summary>Default agent tool-call round cap, matching v1 (<c>--max-rounds</c>).</summary>
@@ -969,6 +998,7 @@ internal class Program
         string? outputPath = null;
         string? imageSize = null;
         bool plain = false;
+        bool offline = false;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -1262,6 +1292,14 @@ internal class Program
                     }
                     else { Fail("--size requires a value (e.g. 1024x1024)"); }
                     break;
+                // S03E26 -- The Offline Mode. Additive end-of-parser branch
+                // (Kramer's streaming dispatch hunk lives in the same file
+                // for S03E17 *The Stream*; placing this last keeps merge
+                // friction minimal). Forbids every non-loopback provider
+                // call; loopback still requires AZ_AI_LOCAL_PROVIDERS=1.
+                case "--offline":
+                    offline = true;
+                    break;
                 default:
                     // Scope 3: reject unknown flags. Anything that looks like a
                     // flag (starts with '-' but isn't bare '-', which some CLIs
@@ -1458,6 +1496,16 @@ internal class Program
             }
         }
 
+        // S03E26 -- AZ_AI_OFFLINE=1 env fallback for --offline. Strict
+        // equality with "1" mirrors AZ_AI_TELEMETRY / AZ_AI_LOCAL_PROVIDERS;
+        // any other value (including "true", "yes", "1 ") leaves the gate
+        // OFF. Process-wide latch is set by Main() pre-scan so --doctor
+        // (which dispatches inside the parser loop) sees the same answer.
+        if (!offline && AzureOpenAI_CLI.Net.EndpointAllowlist.OfflineModeFromEnv())
+        {
+            offline = true;
+        }
+
         return DefaultOptions() with
         {
             Model = model,
@@ -1504,6 +1552,7 @@ internal class Program
             ImageSize = imageSize,
             ConfirmPrintSecret = confirmPrintSecret,
             Plain = plain,
+            Offline = offline,
         };
     }
 
@@ -2014,6 +2063,23 @@ internal class Program
                 return null;
             }
 
+            // S03E26 -- The Offline Mode. Foundry endpoints are typically
+            // public; refuse non-loopback Foundry under --offline.
+            if (AzureOpenAI_CLI.Net.EndpointAllowlist.OfflineMode)
+            {
+                var foptIn = AzureOpenAI_CLI.Net.EndpointAllowlist.LocalProvidersOptInFromEnv();
+                var fverdict = AzureOpenAI_CLI.Net.EndpointAllowlist.Check(foundryUri, foptIn, offlineMode: true);
+                if (fverdict != AzureOpenAI_CLI.Net.AllowlistVerdict.Allow)
+                {
+                    ErrorAndExit(
+                        $"Foundry endpoint '{foundryUri}' "
+                        + AzureOpenAI_CLI.Net.EndpointAllowlist.Describe(fverdict)
+                        + ". Refusing to dispatch.",
+                        1, jsonMode: jsonMode);
+                    return null;
+                }
+            }
+
             var effectiveKey = !string.IsNullOrWhiteSpace(foundryKey) ? foundryKey : apiKey;
             var options = new OpenAI.OpenAIClientOptions { Endpoint = foundryUri };
             options.AddPolicy(new FoundryAuthPolicy(effectiveKey, "2024-05-01-preview"),
@@ -2061,6 +2127,30 @@ internal class Program
                 $"Invalid endpoint URL: '{endpoint}'. Must be a valid HTTPS URL.",
                 1, jsonMode: jsonMode);
             return null;
+        }
+
+        // S03E26 -- The Offline Mode. Defense-in-depth at the Azure dispatch
+        // seam: even though the EndpointAllowlist static latch is honored
+        // by every Check() call site, this branch never went through the
+        // allowlist (Azure SDK construction). Run an explicit gate so a
+        // misconfigured offline session refuses cleanly with the friendly
+        // error instead of silently constructing a client that will fail
+        // mid-call. Loopback Azure endpoints are vanishingly rare, so the
+        // common-case behavior is "any AZUREOPENAIENDPOINT is blocked under
+        // --offline".
+        if (AzureOpenAI_CLI.Net.EndpointAllowlist.OfflineMode)
+        {
+            var optIn = AzureOpenAI_CLI.Net.EndpointAllowlist.LocalProvidersOptInFromEnv();
+            var verdict = AzureOpenAI_CLI.Net.EndpointAllowlist.Check(endpointUri, optIn, offlineMode: true);
+            if (verdict != AzureOpenAI_CLI.Net.AllowlistVerdict.Allow)
+            {
+                ErrorAndExit(
+                    $"Azure OpenAI endpoint '{endpointUri}' "
+                    + AzureOpenAI_CLI.Net.EndpointAllowlist.Describe(verdict)
+                    + ". Refusing to dispatch.",
+                    1, jsonMode: jsonMode);
+                return null;
+            }
         }
 
         var client = new AzureOpenAIClient(endpointUri, new ApiKeyCredential(apiKey));
@@ -2561,7 +2651,19 @@ Telemetry (opt-in):
 Performance (FR-007):
   --prewarm                 Fire a background TLS handshake against the endpoint
                             at startup so the first chat request hits a warm
-                            connection (env: AZ_PREWARM=1)
+                            connection (env: AZ_PREWARM=1).
+                            Suppressed under --offline; build-only compat
+                            prewarm (no network) still runs.
+
+Air-gapped / Offline (S03E26):
+  --offline                 Forbid every non-loopback provider call (Azure,
+                            Foundry, OpenAI-compat, WebFetchTool, OTLP
+                            exporter). Loopback still requires
+                            AZ_AI_LOCAL_PROVIDERS=1 -- --offline does NOT
+                            relax that gate (layered model). Env fallback:
+                            AZ_AI_OFFLINE=1 (strict equality).
+                            Use for air-gapped review and demo recording
+                            where the network must be silent.
 
 Prompt Cache (FR-008, opt-in):
   --cache                   Cache successful responses and serve byte-identical
@@ -2639,7 +2741,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
 
     case ""${prev}"" in
         --completions)

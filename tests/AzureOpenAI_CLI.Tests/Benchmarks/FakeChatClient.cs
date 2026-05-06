@@ -22,10 +22,37 @@ internal sealed class FakeChatClient : IChatClient
     private readonly TimeSpan _perTokenLatency;
     private readonly int _tokenCount;
     private readonly string _tokenWord;
+    private readonly IReadOnlyList<ChatResponseUpdate>? _streamChunks;
+    private readonly int? _throwAfterChunk;
     private int _callCount;
 
     /// <summary>Number of times the client has been invoked since construction.</summary>
     public int CallCount => Volatile.Read(ref _callCount);
+
+    /// <summary>
+    /// S03E17 -- The Stream. Optional explicit chunk sequence: when set,
+    /// <see cref="GetStreamingResponseAsync"/> yields exactly these
+    /// <see cref="ChatResponseUpdate"/> instances in order, ignoring
+    /// <c>tokenCount</c> / <c>tokenWord</c>. Lets a test pin the wire shape
+    /// (text deltas, tool-call deltas, mixed text+usage, empty stream) without
+    /// touching real HTTP. Null preserves the S03E12 token-repeat behavior.
+    /// </summary>
+    public FakeChatClient(
+        IReadOnlyList<ChatResponseUpdate> streamChunks,
+        int? throwAfterChunk = null,
+        TimeSpan firstTokenLatency = default,
+        TimeSpan perTokenLatency = default)
+    {
+        ArgumentNullException.ThrowIfNull(streamChunks);
+        if (throwAfterChunk is int n && n < 0)
+            throw new ArgumentOutOfRangeException(nameof(throwAfterChunk), "Must be >= 0 when set.");
+        _streamChunks = streamChunks;
+        _throwAfterChunk = throwAfterChunk;
+        _firstTokenLatency = firstTokenLatency;
+        _perTokenLatency = perTokenLatency;
+        _tokenCount = 0;
+        _tokenWord = "ok";
+    }
 
     /// <summary>
     /// Construct a deterministic fake.
@@ -70,6 +97,22 @@ internal sealed class FakeChatClient : IChatClient
         Interlocked.Increment(ref _callCount);
         if (_firstTokenLatency > TimeSpan.Zero)
             await Task.Delay(_firstTokenLatency, cancellationToken).ConfigureAwait(false);
+
+        // S03E17 explicit chunk-sequence path: deterministic wire-shape replay.
+        if (_streamChunks is not null)
+        {
+            for (int i = 0; i < _streamChunks.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_throwAfterChunk is int n && i == n)
+                    throw new OperationCanceledException("Injected cancellation at chunk " + i, cancellationToken);
+                if (i > 0 && _perTokenLatency > TimeSpan.Zero)
+                    await Task.Delay(_perTokenLatency, cancellationToken).ConfigureAwait(false);
+                yield return _streamChunks[i];
+            }
+            yield break;
+        }
+
         for (int i = 0; i < _tokenCount; i++)
         {
             if (i > 0 && _perTokenLatency > TimeSpan.Zero)

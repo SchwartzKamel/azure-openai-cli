@@ -217,6 +217,23 @@ internal static class Telemetry
         }
 
         var endpointUri = new Uri(endpoint);
+
+        // S03E26 -- The Offline Mode. The OTLP exporter is the only network
+        // egress in the observability stack (TelemetryEmitter is stderr-only,
+        // see Observability/TelemetryEmitter.cs line 16). When --offline is
+        // set, refuse to construct the OTLP pipeline unless the collector
+        // endpoint is loopback AND AZ_AI_LOCAL_PROVIDERS=1 is set. Silent
+        // degrade: spans / meters become no-ops, no stderr noise.
+        if (AzureOpenAI_CLI.Net.EndpointAllowlist.OfflineMode)
+        {
+            var optIn = AzureOpenAI_CLI.Net.EndpointAllowlist.LocalProvidersOptInFromEnv();
+            var verdict = AzureOpenAI_CLI.Net.EndpointAllowlist.Check(endpointUri, optIn, offlineMode: true);
+            if (verdict != AzureOpenAI_CLI.Net.AllowlistVerdict.Allow)
+            {
+                return;
+            }
+        }
+
         var resourceBuilder = ResourceBuilder.CreateDefault()
             .AddService(ServiceName, serviceVersion: ServiceVersion);
 

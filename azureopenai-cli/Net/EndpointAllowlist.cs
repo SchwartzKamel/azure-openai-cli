@@ -39,6 +39,13 @@ internal enum AllowlistVerdict
     BlockMulticast,
     BlockMalformed,
     BlockBroadcast,
+    // S03E26 -- The Offline Mode. Layered on top of the S03E16 allowlist:
+    // when --offline (or AZ_AI_OFFLINE=1) is on, every non-loopback target
+    // is rejected with this verdict regardless of HTTPS/public posture.
+    // Loopback opt-in is NOT relaxed by --offline; if the user wants
+    // loopback they must still set AZ_AI_LOCAL_PROVIDERS=1 (so a stray
+    // --offline does not accidentally unlock 127.0.0.1 either).
+    BlockOffline,
 }
 
 /// <summary>
@@ -54,6 +61,31 @@ internal static class EndpointAllowlist
     /// convention as AZ_AI_TELEMETRY. Any other value (including "true",
     /// "yes", "1 " with trailing space, or unset) leaves the opt-in OFF.</summary>
     internal const string OptInEnvVar = "AZ_AI_LOCAL_PROVIDERS";
+
+    /// <summary>S03E26 -- The Offline Mode. Strict-equality "1" env-var
+    /// fallback for the <c>--offline</c> CLI flag. Same convention as
+    /// <see cref="OptInEnvVar"/> and <c>AZ_AI_TELEMETRY</c>.</summary>
+    internal const string OfflineEnvVar = "AZ_AI_OFFLINE";
+
+    /// <summary>
+    /// S03E26 -- process-wide latch set by <c>Program.Main</c> (early
+    /// pre-scan, before --doctor branches) when <c>--offline</c> is on
+    /// the command line or <see cref="OfflineEnvVar"/> equals "1". Read
+    /// by the parameterless overloads of <see cref="Check(Uri?,bool)"/>
+    /// so existing call sites in <see cref="Tools.WebFetchTool"/> /
+    /// <see cref="OpenAiCompatAdapter"/> pick the mode up without any
+    /// signature changes. Tests use the explicit
+    /// <see cref="Check(Uri?,bool,bool)"/> overload to inject the flag
+    /// without touching process state.
+    /// </summary>
+    internal static bool OfflineMode { get; set; }
+
+    /// <summary>True when <see cref="OfflineEnvVar"/> equals "1" (strict).</summary>
+    internal static bool OfflineModeFromEnv()
+    {
+        var raw = Environment.GetEnvironmentVariable(OfflineEnvVar);
+        return string.Equals(raw, "1", StringComparison.Ordinal);
+    }
 
     /// <summary>DNS resolution timeout. Cap is 3 seconds; well under the
     /// HttpClient default and short enough that a hostile/slow resolver
@@ -75,11 +107,29 @@ internal static class EndpointAllowlist
     /// by <see cref="DnsTimeoutSeconds"/>.
     /// </summary>
     internal static AllowlistVerdict Check(Uri? uri, bool localProvidersOptIn)
+        => Check(uri, localProvidersOptIn, OfflineMode);
+
+    /// <summary>
+    /// S03E26 explicit-offline overload. Used by tests and by callers that
+    /// have a per-invocation mode (rather than the process-wide latch).
+    /// When <paramref name="offlineMode"/> is true and the target is not
+    /// loopback, the verdict is <see cref="AllowlistVerdict.BlockOffline"/>
+    /// regardless of HTTPS/public posture. Loopback still requires
+    /// <see cref="OptInEnvVar"/>=1 -- offline does NOT relax that gate.
+    /// </summary>
+    internal static AllowlistVerdict Check(Uri? uri, bool localProvidersOptIn, bool offlineMode)
     {
-        var (verdict, host) = CheckUriShape(uri, localProvidersOptIn);
-        if (verdict != AllowlistVerdict.Allow || host is null)
+        var (verdict, host, knownLoopback) = CheckUriShape(uri, localProvidersOptIn);
+        if (verdict != AllowlistVerdict.Allow)
         {
+            // Existing block trumps -- offline never *unblocks* anything.
             return verdict;
+        }
+        if (host is null)
+        {
+            // Bare-IP literal or "localhost" name with opt-in: verdict is
+            // already final. Offline post-process: non-loopback -> BlockOffline.
+            return ApplyOffline(offlineMode, knownLoopback);
         }
 
         IPAddress[] addresses;
@@ -93,7 +143,7 @@ internal static class EndpointAllowlist
             return AllowlistVerdict.BlockMalformed;
         }
 
-        return CheckAddresses(addresses, localProvidersOptIn);
+        return CheckResolved(addresses, localProvidersOptIn, offlineMode);
     }
 
     /// <summary>
@@ -103,31 +153,79 @@ internal static class EndpointAllowlist
     /// loopback addresses.
     /// </summary>
     internal static AllowlistVerdict Check(Uri? uri, bool localProvidersOptIn, IPAddress[] preResolved)
+        => Check(uri, localProvidersOptIn, OfflineMode, preResolved);
+
+    /// <summary>S03E26 explicit-offline pre-resolved-addresses overload.</summary>
+    internal static AllowlistVerdict Check(Uri? uri, bool localProvidersOptIn, bool offlineMode, IPAddress[] preResolved)
     {
-        var (verdict, _) = CheckUriShape(uri, localProvidersOptIn);
+        var (verdict, host, knownLoopback) = CheckUriShape(uri, localProvidersOptIn);
         if (verdict != AllowlistVerdict.Allow)
         {
             return verdict;
         }
-        return CheckAddresses(preResolved, localProvidersOptIn);
+        if (host is null)
+        {
+            return ApplyOffline(offlineMode, knownLoopback);
+        }
+        return CheckResolved(preResolved, localProvidersOptIn, offlineMode);
+    }
+
+    /// <summary>Apply the offline post-process to an Allow verdict.</summary>
+    private static AllowlistVerdict ApplyOffline(bool offlineMode, bool isLoopback)
+    {
+        if (!offlineMode) return AllowlistVerdict.Allow;
+        return isLoopback ? AllowlistVerdict.Allow : AllowlistVerdict.BlockOffline;
+    }
+
+    /// <summary>Run resolved addresses through the classifier, then apply
+    /// the offline post-process. All addresses must be loopback for the
+    /// host to count as a loopback target under <c>--offline</c>; if any
+    /// resolves to public space, the offline gate fires. (DNS-rebinding
+    /// posture is preserved -- a mixed public/loopback record set was
+    /// already rejected by <see cref="CheckAddresses"/> when opt-in is
+    /// off; with opt-in on we re-check loopback-purity here.)</summary>
+    private static AllowlistVerdict CheckResolved(IPAddress[] addresses, bool localProvidersOptIn, bool offlineMode)
+    {
+        var v = CheckAddresses(addresses, localProvidersOptIn);
+        if (v != AllowlistVerdict.Allow) return v;
+        return ApplyOffline(offlineMode, AllAddressesLoopback(addresses));
+    }
+
+    /// <summary>True iff every supplied address is loopback (after
+    /// IPv4-mapped-IPv6 normalization). Empty/null array -> false.</summary>
+    private static bool AllAddressesLoopback(IPAddress[] addresses)
+    {
+        if (addresses is null || addresses.Length == 0) return false;
+        foreach (var a in addresses)
+        {
+            var addr = a;
+            if (addr is null) return false;
+            if (addr.IsIPv4MappedToIPv6) addr = addr.MapToIPv4();
+            if (!IPAddress.IsLoopback(addr)) return false;
+        }
+        return true;
     }
 
     /// <summary>
     /// URL-shape checks. Returns Allow (and the punycode host to resolve)
-    /// when the shape is acceptable; otherwise the failing verdict.
+    /// when the shape is acceptable; otherwise the failing verdict. The
+    /// third tuple element is meaningful only when verdict==Allow and
+    /// host==null (final, no DNS needed): true when the resolved literal
+    /// or the "localhost" name targets a loopback address. S03E26 uses
+    /// it to apply the offline post-process without re-classifying.
     /// </summary>
-    private static (AllowlistVerdict verdict, string? host) CheckUriShape(Uri? uri, bool localProvidersOptIn)
+    private static (AllowlistVerdict verdict, string? host, bool isLoopback) CheckUriShape(Uri? uri, bool localProvidersOptIn)
     {
         if (uri is null || !uri.IsAbsoluteUri)
         {
-            return (AllowlistVerdict.BlockMalformed, null);
+            return (AllowlistVerdict.BlockMalformed, null, false);
         }
 
         // Userinfo (user:pass@host) is never legitimate for a provider
         // endpoint and is a classic SSRF obfuscation vector. Block always.
         if (!string.IsNullOrEmpty(uri.UserInfo))
         {
-            return (AllowlistVerdict.BlockMalformed, null);
+            return (AllowlistVerdict.BlockMalformed, null, false);
         }
 
         // Scheme: HTTPS for public, HTTP only when loopback AND opt-in is on.
@@ -138,7 +236,7 @@ internal static class EndpointAllowlist
         var isHttp = string.Equals(scheme, "http", StringComparison.Ordinal);
         if (!isHttps && !isHttp)
         {
-            return (AllowlistVerdict.BlockMalformed, null);
+            return (AllowlistVerdict.BlockMalformed, null, false);
         }
 
         // Port shape: only 80, 443, or non-privileged (>=1024) ports.
@@ -147,19 +245,17 @@ internal static class EndpointAllowlist
         var port = uri.Port;
         if (port == 0)
         {
-            return (AllowlistVerdict.BlockMalformed, null);
+            return (AllowlistVerdict.BlockMalformed, null, false);
         }
         if (port < 1024 && port != 80 && port != 443)
         {
-            return (AllowlistVerdict.BlockMalformed, null);
+            return (AllowlistVerdict.BlockMalformed, null, false);
         }
 
         // HTTP requires opt-in. Without opt-in, only HTTPS public is allowed.
-        // (The address check still has to run; an HTTPS bare-IP into private
-        // space is rejected unless opt-in is on.)
         if (isHttp && !localProvidersOptIn)
         {
-            return (AllowlistVerdict.BlockLoopback, null);
+            return (AllowlistVerdict.BlockLoopback, null, false);
         }
 
         // Normalize host: punycode (defeats Unicode/IDN homoglyph), lower
@@ -168,7 +264,7 @@ internal static class EndpointAllowlist
         var host = uri.IdnHost;
         if (string.IsNullOrEmpty(host))
         {
-            return (AllowlistVerdict.BlockMalformed, null);
+            return (AllowlistVerdict.BlockMalformed, null, false);
         }
         host = host.ToLowerInvariant();
         if (host.EndsWith(".", StringComparison.Ordinal))
@@ -177,7 +273,7 @@ internal static class EndpointAllowlist
         }
         if (host.Length == 0)
         {
-            return (AllowlistVerdict.BlockMalformed, null);
+            return (AllowlistVerdict.BlockMalformed, null, false);
         }
 
         // Bare-IP literal in the URI -- check immediately, without DNS.
@@ -188,10 +284,13 @@ internal static class EndpointAllowlist
             var addrVerdict = ClassifyAddress(literal, localProvidersOptIn);
             if (addrVerdict != AllowlistVerdict.Allow)
             {
-                return (addrVerdict, null);
+                return (addrVerdict, null, false);
             }
-            // Public bare IP -- allow without DNS lookup.
-            return (AllowlistVerdict.Allow, null);
+            // Public bare IP -- allow without DNS lookup. Loopback-only
+            // when the literal is an IsLoopback address (after IPv4-mapped
+            // normalization).
+            var normalized = literal.IsIPv4MappedToIPv6 ? literal.MapToIPv4() : literal;
+            return (AllowlistVerdict.Allow, null, IPAddress.IsLoopback(normalized));
         }
 
         // The "localhost" hostname is special -- some resolvers return ::1,
@@ -199,11 +298,11 @@ internal static class EndpointAllowlist
         if (string.Equals(host, "localhost", StringComparison.Ordinal))
         {
             return localProvidersOptIn
-                ? (AllowlistVerdict.Allow, null)
-                : (AllowlistVerdict.BlockLoopback, null);
+                ? (AllowlistVerdict.Allow, null, true)
+                : (AllowlistVerdict.BlockLoopback, null, false);
         }
 
-        return (AllowlistVerdict.Allow, host);
+        return (AllowlistVerdict.Allow, host, false);
     }
 
     /// <summary>
@@ -366,6 +465,7 @@ internal static class EndpointAllowlist
             AllowlistVerdict.BlockMulticast => "multicast address (never a valid provider endpoint)",
             AllowlistVerdict.BlockBroadcast => "broadcast address (never a valid provider endpoint)",
             AllowlistVerdict.BlockMalformed => "malformed or unsupported URL (scheme, port, userinfo, or unresolvable host)",
+            AllowlistVerdict.BlockOffline => "blocked by --offline mode (set AZ_AI_LOCAL_PROVIDERS=1 to allow loopback only; non-loopback always blocked while offline)",
             _ => "blocked",
         };
     }

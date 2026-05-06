@@ -247,6 +247,38 @@ internal static class ProviderDoctor
         var credsPresent = !string.IsNullOrEmpty(p.CredEnvVar)
             && !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(p.CredEnvVar));
 
+        // S03E26 -- The Offline Mode. When the process-wide latch is set,
+        // every non-loopback provider row reports "blocked-offline" in the
+        // dns column and Healthy=false. Loopback hosts (127.x, ::1, the
+        // literal name "localhost") are still reportable as healthy when
+        // AZ_AI_LOCAL_PROVIDERS=1; without the opt-in they would already
+        // be unreachable on dispatch, so we leave them alone here and let
+        // the dispatch path produce the layered error if/when invoked.
+        if (AzureOpenAI_CLI.Net.EndpointAllowlist.OfflineMode && uri is not null)
+        {
+            var hostNorm = uri.IdnHost?.ToLowerInvariant() ?? string.Empty;
+            if (hostNorm.EndsWith(".", StringComparison.Ordinal))
+            {
+                hostNorm = hostNorm.Substring(0, hostNorm.Length - 1);
+            }
+            bool isLoopbackHost = string.Equals(hostNorm, "localhost", StringComparison.Ordinal);
+            if (!isLoopbackHost && IPAddress.TryParse(hostNorm, out var lit))
+            {
+                var addr = lit.IsIPv4MappedToIPv6 ? lit.MapToIPv4() : lit;
+                isLoopbackHost = IPAddress.IsLoopback(addr);
+            }
+            if (!isLoopbackHost)
+            {
+                return new ProviderDoctorEntry(
+                    Name: p.Name,
+                    Endpoint: p.Endpoint,
+                    Dns: "blocked-offline",
+                    CredsPresent: credsPresent,
+                    ModelsConfigured: p.ModelsCount,
+                    Healthy: false);
+            }
+        }
+
         var healthy = string.Equals(dns, "ok", StringComparison.Ordinal)
             && credsPresent
             && p.ModelsCount > 0;
