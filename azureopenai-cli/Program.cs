@@ -377,6 +377,12 @@ internal class Program
         if (opts.Prewarm)
         {
             _ = PrewarmAsync(endpoint, apiKey);
+            // S03E12 -- closes Kramer Finding 4 from S03E09. Prewarm the
+            // compat dispatch path as well when AZ_AI_COMPAT_MODELS is set.
+            // No network -- exercises preset resolution + Build() so the
+            // first real request through the compat seam is not a cold
+            // start. Silent-by-contract; never observable from stdout/stderr.
+            _ = PrewarmCompatAsync();
         }
 
         // FR-010: resolve model via alias map, then env, then UserConfig smart default,
@@ -2285,6 +2291,74 @@ internal class Program
         {
             // Silent degrade by design — prewarm is best-effort.
         }
+    }
+
+    /// <summary>
+    /// S03E12 -- *The Receipt*. Closes Kramer Finding 4 from S03E09 *The
+    /// Compat*: the original <see cref="PrewarmAsync"/> only warms the
+    /// Azure-OpenAI / Foundry leg of <see cref="BuildChatClient"/>, so any
+    /// request routed through <see cref="OpenAiCompatAdapter"/> hits a
+    /// fully cold client construction on the first call. This wrapper
+    /// exercises the compat dispatch's <i>build</i> path -- preset
+    /// resolution, env-var read, <see cref="OpenAiCompatAdapter.Build"/>,
+    /// and SDK option construction -- without performing any network I/O.
+    /// JIT, allocator, and SDK static-init costs are paid up front so the
+    /// real chat call hits a hot code path.
+    /// <para>
+    /// Silent by contract: never writes to stdout / stderr, swallows every
+    /// exception. Skipped when <c>AZ_AI_COMPAT_MODELS</c> is unset / empty.
+    /// Per-entry build failures (missing API key, missing
+    /// <c>CLOUDFLARE_ACCOUNT_ID</c>, malformed presets) are swallowed too --
+    /// this is a perf nicety, not a config validator.
+    /// </para>
+    /// <para>
+    /// Bania: "If you do not warm it, every first call is a cold start. If
+    /// every first call is a cold start, your p95 is a lie."
+    /// </para>
+    /// </summary>
+    internal static Task PrewarmCompatAsync()
+    {
+        try
+        {
+            var map = OpenAiCompatAdapter.ParseCompatModelsFromEnv();
+            if (map is null || map.Count == 0)
+                return Task.CompletedTask;
+
+            // Distinct presets only — building once per preset warms the SDK
+            // option/transport graph that the second call would otherwise
+            // pay for. Model name is per-build but cheap.
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in map)
+            {
+                var model = kv.Key;
+                var presetName = kv.Value;
+                if (!seen.Add(presetName))
+                    continue;
+                try
+                {
+                    var preset = OpenAiCompatAdapter.Resolve(presetName);
+                    if (preset is null) continue;
+                    // Build the IChatClient and discard. Build does not call
+                    // the API; it reads env, constructs OpenAIClientOptions,
+                    // installs auth/org policies, and returns an IChatClient.
+                    // That is the exact code path the first real request
+                    // would otherwise pay for. NO network is performed here.
+                    var client = OpenAiCompatAdapter.Build(model, preset);
+                    if (client is IDisposable d) d.Dispose();
+                }
+                catch
+                {
+                    // Per-entry silent degrade — missing API key, missing
+                    // CLOUDFLARE_ACCOUNT_ID, etc. The real request will
+                    // surface the actionable error via BuildChatClient.
+                }
+            }
+        }
+        catch
+        {
+            // Defence in depth — never let prewarm derail the host process.
+        }
+        return Task.CompletedTask;
     }
 
     /// <summary>

@@ -70,6 +70,83 @@ internal static class CostEstimator
     }
 
     /// <summary>
+    /// S03E12 -- *The Receipt*. Closes Kramer Finding 5 from S03E09: the
+    /// model-keyed <see cref="CostHook"/> table cannot price requests routed
+    /// through <c>OpenAiCompatAdapter</c>, because the operator-facing knob
+    /// for those is the <i>preset</i> name (openai / groq / together /
+    /// cloudflare), not the upstream model id. This method consults the
+    /// preset-keyed placeholder table in <see cref="CompatCostRates"/> and
+    /// returns an <see cref="EstimateResult"/> shaped identically to the
+    /// model-keyed path so renderers do not branch.
+    ///
+    /// Behaviour:
+    ///   <list type="bullet">
+    ///     <item>Preset known with rates -- numeric estimate, model field set
+    ///           to <c>"&lt;preset&gt;:&lt;modelOrEmpty&gt;"</c> for traceability.</item>
+    ///     <item>Preset null/empty -- returns an estimate carrying the literal
+    ///           <c>[REDACTED:provider]</c> in the model field, zero rates,
+    ///           and an "unknown rate" approximation note.</item>
+    ///     <item>Preset non-empty but unknown -- same redacted shape, with the
+    ///           approximation note carrying "unknown rate, $? estimate" so
+    ///           the operator sees the actionable message in <c>FormatText</c>.</item>
+    ///   </list>
+    /// Never returns null. Never throws. The compat path must not be the
+    /// place an operator first learns we have not priced their preset.
+    /// </summary>
+    public static EstimateResult EstimateForCompatPreset(string? preset, string? modelHint, string? prompt, int? outputMaxTokens)
+    {
+        int inputTokens = EstimateInputTokens(prompt);
+        string label;
+        string approxNote;
+        double inputPer1K = 0;
+        double outputPer1K = 0;
+
+        if (string.IsNullOrWhiteSpace(preset))
+        {
+            // Defensive: caller did not resolve a preset. Surface the
+            // [REDACTED:provider] sentinel so downstream log-scrubbers and
+            // operator eyeballs both see "we did not bill this honestly."
+            label = "[REDACTED:provider]";
+            approxNote = "unknown rate, $? estimate (preset unresolved -- emitting [REDACTED:provider])";
+        }
+        else if (CompatCostRates.TryGetRates(preset, out inputPer1K, out outputPer1K))
+        {
+            var modelTail = string.IsNullOrWhiteSpace(modelHint) ? "" : $":{modelHint!.Trim()}";
+            label = $"{preset.Trim()}{modelTail}";
+            var known = string.Join(", ", CompatCostRates.KnownPresets());
+            approxNote = $"chars/{CharsPerTokenApprox:0.#} -- PLACEHOLDER preset rates (known: {known}); update from upstream pricing.";
+        }
+        else
+        {
+            // Known shape, unknown preset. Both messages the brief asked for
+            // get emitted -- the [REDACTED:provider] in the label, the
+            // "unknown rate, $? estimate" in the approximation note.
+            label = "[REDACTED:provider]";
+            var known = string.Join(", ", CompatCostRates.KnownPresets());
+            approxNote = $"unknown rate, $? estimate -- preset '{preset}' not in known list ({known}); emitting [REDACTED:provider].";
+        }
+
+        double inputUsd = (inputTokens / 1000.0) * inputPer1K;
+        int? outMax = outputMaxTokens;
+        double? outUsdMax = null;
+        double totalUsdMax = inputUsd;
+        if (outMax.HasValue && outMax.Value > 0)
+        {
+            outUsdMax = (outMax.Value / 1000.0) * outputPer1K;
+            totalUsdMax = inputUsd + outUsdMax.Value;
+        }
+
+        return new EstimateResult(
+            Model: label,
+            InputTokensEst: inputTokens,
+            InputUsd: inputUsd,
+            OutputMaxTokens: outMax,
+            OutputUsdMax: outUsdMax,
+            TotalUsdMax: totalUsdMax,
+            Approximation: approxNote);
+    }
+
+    /// <summary>
     /// Render a human-friendly multi-line estimate for stdout.
     /// </summary>
     public static string FormatText(EstimateResult r)
