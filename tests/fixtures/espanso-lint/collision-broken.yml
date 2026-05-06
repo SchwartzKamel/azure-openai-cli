@@ -1,0 +1,9 @@
+matches:
+
+  # Collision fixture: this file pairs with collision-other.yml and
+  # deliberately reuses :aidata to prove that
+  # scripts/lint-espanso-yml.sh flags cross-file trigger collisions
+  # between non-platform-variant kits. Rename here (or in the paired
+  # file) to make the lint pass.
+  - trigger: ":aidata"
+    replace: "collision fixture body A"

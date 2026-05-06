@@ -1,0 +1,9 @@
+matches:
+
+  # Paired fixture for collision-broken.yml. This file reuses
+  # :aidata so the cross-file collision check has something to fire
+  # on. Both files use non-platform-variant names, so the lint MUST
+  # treat them as colliding kits (not as mutually-exclusive platform
+  # variants).
+  - trigger: ":aidata"
+    replace: "collision fixture body B"

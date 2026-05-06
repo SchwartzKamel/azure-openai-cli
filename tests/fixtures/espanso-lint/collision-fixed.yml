@@ -1,0 +1,8 @@
+matches:
+
+  # Rename of collision-broken.yml's :aidata to a more specific
+  # trigger. Pairing this file with collision-other.yml (instead of
+  # collision-broken.yml) MUST make the cross-file collision check
+  # pass.
+  - trigger: ":aidataworkflow"
+    replace: "collision fixture body A"

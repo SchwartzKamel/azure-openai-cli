@@ -1,19 +1,32 @@
 #!/usr/bin/env bash
-# lint-espanso-yml.sh — structural lint for the Espanso/PowerShell/WSL config.
+# lint-espanso-yml.sh -- structural lint for the Espanso/PowerShell/WSL config.
 #
 # Catches the bug class that broke ai-windows-to-wsl.yml in S02E37 and S03E01:
 # trigger renames that left $trigger out of sync, drifted BACKSPACE counts,
 # missing try/finally retype, or placeholders containing SendKeys metachars.
+# Also catches the bash-stdin/heredoc regression class from S03E04 / v2.1
+# audit (F-1, F-2) and -- as of 2026-05 -- cross-file trigger collisions
+# between the prompt-templates kit and any platform-variant kit.
 #
-# Usage: bash scripts/lint-espanso-yml.sh [path-to-yml]
+# Usage: bash scripts/lint-espanso-yml.sh [path-to-yml ...]
 # Default path: examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml
+#
+# When given multiple files, the script also runs a cross-file collision
+# check. Platform-variant files (ai.yml, ai-macos.yml, ai-windows-to-wsl.yml)
+# are mutually exclusive at install time, so duplicate triggers among them
+# are expected; duplicates that include any non-platform file (e.g. the
+# prompt-templates kit ai-prompts.yml) are real collisions and fail the
+# lint.
 
 set -u
 
 DEFAULT_PATH="examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml"
-TARGET="${1:-$DEFAULT_PATH}"
+if [ "$#" -eq 0 ]; then
+    set -- "$DEFAULT_PATH"
+fi
 
-python3 - "$TARGET" <<'PY'
+python3 - "$@" <<'PY'
+import os
 import re
 import sys
 
@@ -24,50 +37,27 @@ except ImportError:
     sys.exit(1)
 
 PREFIX = "[espanso-yml-lint]"
-path = sys.argv[1]
+paths = sys.argv[1:]
 failures = []
 
 def fail(severity, where, msg):
     failures.append(f"{PREFIX} {severity}: {where}: {msg}")
 
-# 1. Parse gate.
-try:
-    with open(path, "r", encoding="utf-8") as f:
-        doc = yaml.safe_load(f)
-except yaml.YAMLError as e:
-    mark = getattr(e, "problem_mark", None)
-    line = (mark.line + 1) if mark else "?"
-    print(f"{PREFIX} error: {path}: YAML parse error at line {line}: {e}")
-    sys.exit(1)
-except OSError as e:
-    print(f"{PREFIX} error: {path}: cannot open: {e}")
-    sys.exit(1)
+# Platform-variant group: these files ship the same trigger set per OS
+# and are mutually exclusive at install time -- a user loads exactly
+# one. Duplicate triggers WITHIN this group are expected. Any other
+# file (e.g., ai-prompts.yml, the prompt-templates kit) is loaded
+# *alongside* whichever platform variant is active; cross-group
+# duplicates are real collisions that the user will hit (S04 backlog
+# item resolved 2026-05).
+PLATFORM_VARIANTS = {"ai.yml", "ai-macos.yml", "ai-windows-to-wsl.yml"}
+PLATFORM_GROUP = "<platform-variant>"
 
-if not isinstance(doc, dict) or "matches" not in doc or not isinstance(doc["matches"], list):
-    print(f"{PREFIX} error: {path}: top-level 'matches:' list missing")
-    sys.exit(1)
+def file_group(path):
+    base = os.path.basename(path)
+    return PLATFORM_GROUP if base in PLATFORM_VARIANTS else base
 
-matches = doc["matches"]
-
-# 2. Unique triggers.
-triggers = []
-for i, m in enumerate(matches):
-    if not isinstance(m, dict):
-        fail("error", f"matches[{i}]", "match block is not a mapping")
-        continue
-    if "trigger" not in m:
-        fail("error", f"matches[{i}]", "missing 'trigger:' key")
-        continue
-    triggers.append(m["trigger"])
-
-seen = {}
-for t in triggers:
-    seen[t] = seen.get(t, 0) + 1
-dups = sorted([t for t, c in seen.items() if c > 1])
-for d in dups:
-    fail("error", repr(d), f"duplicate trigger appears {seen[d]} times")
-
-# 3. Per-trigger structural assertions.
+# Regexes used by per-trigger structural checks.
 SAFE_PH_RE = re.compile(r"^[A-Za-z0-9 .,:;!?\-]+$")
 TRIGGER_ASSIGN_RE = re.compile(r"^\s*\$trigger\s*=\s*'([^']*)'\s*$", re.MULTILINE)
 PH_ASSIGN_RE      = re.compile(r"^\s*\$ph\s*=\s*'([^']*)'\s*$",      re.MULTILINE)
@@ -80,6 +70,11 @@ SENDWAIT_TRIG_RE  = re.compile(r"SendWait\(\s*\$trigger\s*\)")
 #   * forbid Invoke-Expression / iex composition with form values.
 SYS_INLINE_FORM_RE = re.compile(r"--system\s+'[^']*\{\{\s*form1\.")
 IEX_FORM_RE        = re.compile(r"(Invoke-Expression|iex)\s*[^\n]*\{\{\s*form1\.", re.IGNORECASE)
+
+# Heredoc-body extractor for bash triggers (S03E04 / v2.1 audit F-1, F-2).
+HEREDOC_OPEN_RE = re.compile(r"<<\s*'([A-Za-z_][A-Za-z0-9_]*)'")
+PLACEHOLDER_RE  = re.compile(r"\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\.")
+
 
 def find_cmd(match):
     """Return (cmd, shell) from a shell-type var, or (None, None)."""
@@ -95,12 +90,6 @@ def find_cmd(match):
             return cmd, shell
     return None, None
 
-# Heredoc-body extractor for bash triggers (S03E04 / v2.1 audit F-1, F-2).
-# Returns the cmd text with all `<<'TAG' ... TAG` blocks (single-quoted
-# terminator) stripped. Anything left containing `{{...}}` is a
-# user-controlled placeholder bleeding into a shell-parsed context.
-HEREDOC_OPEN_RE = re.compile(r"<<\s*'([A-Za-z_][A-Za-z0-9_]*)'")
-PLACEHOLDER_RE  = re.compile(r"\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\.")
 
 def strip_quoted_heredocs(cmd_text):
     """Remove the body of every <<'TAG'...TAG block from cmd_text.
@@ -110,124 +99,195 @@ def strip_quoted_heredocs(cmd_text):
     interpolate $(...) and ${VAR}, so we deliberately do NOT mask them.
     """
     out_lines = []
-    in_heredoc = None  # current terminator string, or None
+    in_heredoc = None
     for line in cmd_text.splitlines():
         if in_heredoc is None:
             m = HEREDOC_OPEN_RE.search(line)
             if m:
-                # Keep the opening line itself (it's parsed by bash) so
-                # any { { form.X } } on the same line as the opener is
-                # caught. Then enter heredoc mode.
                 out_lines.append(line)
                 in_heredoc = m.group(1)
             else:
                 out_lines.append(line)
         else:
-            # Inside a quoted heredoc -- terminator is the line that,
-            # stripped of leading/trailing whitespace, equals the tag.
-            # (YAML literal-block indent stripping puts it at col 0 in
-            # what bash actually sees, but we tolerate any indent here
-            # since we only need to find the close.)
             if line.strip() == in_heredoc:
                 in_heredoc = None
-                # Drop both terminator and body from the inspected text.
-            # else: body line, drop it.
-    if in_heredoc is not None:
-        # Unclosed heredoc -- caller will see this as a structural
-        # warning when placeholder check fires.
-        pass
     return "\n".join(out_lines)
 
-for m in matches:
-    if not isinstance(m, dict) or "trigger" not in m:
-        continue
-    trigger = m["trigger"]
-    where = repr(trigger)
-    cmd, shell = find_cmd(m)
-    if cmd is None:
-        # Non-shell trigger: skip structural checks.
-        continue
 
-    # Bash trigger guard (S03E04 / v2.1 audit F-1, F-2): any {{form...}}
-    # placeholder MUST live inside a single-quoted heredoc body. If it
-    # leaks into the surrounding shell, bash sees attacker-controlled
-    # text in a context where $(...), backticks, ${VAR}, or
-    # apostrophe-driven literal escapes are evaluated.
-    if shell == "bash":
-        outside = strip_quoted_heredocs(cmd)
-        for ph_match in PLACEHOLDER_RE.finditer(outside):
-            line_no = outside[:ph_match.start()].count("\n") + 1
+def collect_triggers(match):
+    """Return the list of trigger strings this match declares.
+
+    Espanso supports both `trigger: ":foo"` and `triggers: [":foo", ":foo2"]`
+    (synonym list). We collect every form so cross-file collision
+    detection sees synonyms too.
+    """
+    out = []
+    if "trigger" in match and isinstance(match["trigger"], str):
+        out.append(match["trigger"])
+    if "triggers" in match and isinstance(match["triggers"], list):
+        for t in match["triggers"]:
+            if isinstance(t, str):
+                out.append(t)
+    return out
+
+
+def lint_one(path):
+    """Parse + per-file structural checks. Return list of triggers found,
+    or None on parse failure (which is also recorded in `failures`)."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            doc = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        mark = getattr(e, "problem_mark", None)
+        line = (mark.line + 1) if mark else "?"
+        fail("error", path, f"YAML parse error at line {line}: {e}")
+        return None
+    except OSError as e:
+        fail("error", path, f"cannot open: {e}")
+        return None
+
+    if not isinstance(doc, dict) or "matches" not in doc or not isinstance(doc["matches"], list):
+        fail("error", path, "top-level 'matches:' list missing")
+        return None
+
+    matches = doc["matches"]
+
+    # Per-file: collect triggers, flag intra-file duplicates.
+    triggers = []
+    for i, m in enumerate(matches):
+        if not isinstance(m, dict):
+            fail("error", f"{path}: matches[{i}]", "match block is not a mapping")
+            continue
+        ts = collect_triggers(m)
+        if not ts:
+            fail("error", f"{path}: matches[{i}]", "missing 'trigger:' / 'triggers:' key")
+            continue
+        triggers.extend(ts)
+
+    seen = {}
+    for t in triggers:
+        seen[t] = seen.get(t, 0) + 1
+    for d in sorted([t for t, c in seen.items() if c > 1]):
+        fail("error", f"{path}: {d!r}", f"duplicate trigger appears {seen[d]} times in this file")
+
+    # Per-trigger structural assertions.
+    for m in matches:
+        if not isinstance(m, dict) or "trigger" not in m:
+            continue
+        trigger = m["trigger"]
+        where = f"{path}: {trigger!r}"
+        cmd, shell = find_cmd(m)
+        if cmd is None:
+            continue
+
+        if shell == "bash":
+            outside = strip_quoted_heredocs(cmd)
+            for ph_match in PLACEHOLDER_RE.finditer(outside):
+                line_no = outside[:ph_match.start()].count("\n") + 1
+                fail("error", where,
+                     f"line {line_no}: form placeholder {{{{...}}}} appears "
+                     "outside a single-quoted heredoc body in a bash cmd; "
+                     "user input must reach az-ai via stdin (see "
+                     "docs/exec-reports/s03e01-the-yada-yada-strikes-back.md "
+                     "and the v2.1 audit F-1/F-2)")
+            continue
+
+        # PowerShell-side checks (S02E37 trigger drift, BACKSPACE counts).
+        trig_matches = TRIGGER_ASSIGN_RE.findall(cmd)
+        if len(trig_matches) != 1:
+            fail("error", where, f"expected exactly one $trigger assignment, found {len(trig_matches)}")
+        else:
+            if trig_matches[0] != trigger:
+                fail("error", where,
+                     f"$trigger value {trig_matches[0]!r} does not match outer trigger {trigger!r} "
+                     "(rename drift -- a trigger was changed without updating $trigger)")
+
+        ph_matches = PH_ASSIGN_RE.findall(cmd)
+        if len(ph_matches) != 1:
+            fail("error", where, f"expected exactly one $ph assignment, found {len(ph_matches)}")
+        else:
+            ph_val = ph_matches[0]
+            if not SAFE_PH_RE.match(ph_val):
+                fail("error", where,
+                     f"$ph value {ph_val!r} contains characters unsafe for SendKeys "
+                     r"(metachars + ^ % ~ ( ) [ ] { } would be misinterpreted)")
+
+        bs = BACKSPACE_RE.findall(cmd)
+        if len(bs) != 2:
+            fail("error", where, f"expected exactly two BACKSPACE substitutions, found {len(bs)}")
+        else:
+            if bs[0] != "trigger":
+                fail("error", where, f"first BACKSPACE must reference $trigger.Length, got $${bs[0]}.Length")
+            if bs[1] != "ph":
+                fail("error", where, f"second BACKSPACE must reference $ph.Length, got $${bs[1]}.Length")
+
+        if "try {" not in cmd:
+            fail("error", where, "missing 'try {' block")
+        if "} finally {" not in cmd:
+            fail("error", where, "missing '} finally {' block")
+        bs_iter = list(BACKSPACE_RE.finditer(cmd))
+        if len(bs_iter) >= 2:
+            second_bs_end = bs_iter[1].end()
+            retype = SENDWAIT_TRIG_RE.search(cmd, second_bs_end)
+            if retype is None:
+                fail("error", where,
+                     "missing SendWait($trigger) retype after second BACKSPACE in finally block")
+
+        if SYS_INLINE_FORM_RE.search(cmd):
             fail("error", where,
-                 f"line {line_no}: form placeholder {{{{...}}}} appears "
-                 "outside a single-quoted heredoc body in a bash cmd; "
-                 "user input must reach az-ai via stdin (see "
-                 "docs/exec-reports/s03e01-the-yada-yada-strikes-back.md "
-                 "and the v2.1 audit F-1/F-2)")
-        # Bash triggers don't follow the PowerShell $trigger/$ph
-        # structural pattern; skip the rest of the per-trigger checks.
-        continue
-
-    # $trigger assignment.
-    trig_matches = TRIGGER_ASSIGN_RE.findall(cmd)
-    if len(trig_matches) != 1:
-        fail("error", where, f"expected exactly one $trigger assignment, found {len(trig_matches)}")
-    else:
-        if trig_matches[0] != trigger:
+                 "{{form1.X}} appears inside a single-quoted --system argument; "
+                 "use a PS switch-mapped variable (choice fields) or env var via WSLENV "
+                 "(free-form fields) instead -- raw substitution is the S03E01 bug class")
+        if IEX_FORM_RE.search(cmd):
             fail("error", where,
-                 f"$trigger value {trig_matches[0]!r} does not match outer trigger {trigger!r} "
-                 "(rename drift — a trigger was changed without updating $trigger)")
+                 "Invoke-Expression / iex composed with {{form1.X}} -- forbidden")
 
-    # $ph assignment.
-    ph_matches = PH_ASSIGN_RE.findall(cmd)
-    if len(ph_matches) != 1:
-        fail("error", where, f"expected exactly one $ph assignment, found {len(ph_matches)}")
-    else:
-        ph_val = ph_matches[0]
-        if not SAFE_PH_RE.match(ph_val):
-            fail("error", where,
-                 f"$ph value {ph_val!r} contains characters unsafe for SendKeys "
-                 r"(metachars + ^ % ~ ( ) [ ] { } would be misinterpreted)")
+    return triggers
 
-    # Two BACKSPACE substitutions, in order: trigger.Length then ph.Length.
-    bs = BACKSPACE_RE.findall(cmd)
-    if len(bs) != 2:
-        fail("error", where, f"expected exactly two BACKSPACE substitutions, found {len(bs)}")
-    else:
-        if bs[0] != "trigger":
-            fail("error", where, f"first BACKSPACE must reference $trigger.Length, got $${bs[0]}.Length")
-        if bs[1] != "ph":
-            fail("error", where, f"second BACKSPACE must reference $ph.Length, got $${bs[1]}.Length")
 
-    # try / finally / retype.
-    if "try {" not in cmd:
-        fail("error", where, "missing 'try {' block")
-    if "} finally {" not in cmd:
-        fail("error", where, "missing '} finally {' block")
-    # SendWait($trigger) must appear AFTER the second BACKSPACE substitution.
-    bs_iter = list(BACKSPACE_RE.finditer(cmd))
-    if len(bs_iter) >= 2:
-        second_bs_end = bs_iter[1].end()
-        retype = SENDWAIT_TRIG_RE.search(cmd, second_bs_end)
-        if retype is None:
-            fail("error", where,
-                 "missing SendWait($trigger) retype after second BACKSPACE in finally block")
+# Run per-file lint, collect triggers per file.
+all_triggers_by_file = {}
+for path in paths:
+    triggers = lint_one(path)
+    if triggers is not None:
+        all_triggers_by_file[path] = triggers
 
-    # Form-input injection guards.
-    if SYS_INLINE_FORM_RE.search(cmd):
-        fail("error", where,
-             "{{form1.X}} appears inside a single-quoted --system argument; "
-             "use a PS switch-mapped variable (choice fields) or env var via WSLENV "
-             "(free-form fields) instead -- raw substitution is the S03E01 bug class")
-    if IEX_FORM_RE.search(cmd):
-        fail("error", where,
-             "Invoke-Expression / iex composed with {{form1.X}} -- forbidden")
+# Cross-file collision check (only meaningful when more than one file is
+# given). Platform variants are treated as a single "group" since users
+# install exactly one.
+if len(all_triggers_by_file) >= 2:
+    # trigger -> list of (group, path)
+    occurrences = {}
+    for path, triggers in all_triggers_by_file.items():
+        group = file_group(path)
+        for t in triggers:
+            occurrences.setdefault(t, []).append((group, path))
+
+    for trig in sorted(occurrences):
+        occ = occurrences[trig]
+        groups = {g for g, _ in occ}
+        # Collision iff the trigger appears in 2+ distinct groups (a
+        # platform-variant kit + a non-platform kit, or two distinct
+        # non-platform kits).
+        if len(groups) >= 2:
+            files = sorted({p for _, p in occ})
+            fail("error", f"<cross-file>: {trig!r}",
+                 "trigger collides across kits that load together: "
+                 + ", ".join(files))
 
 if failures:
     for line in failures:
         print(line)
-    print(f"{PREFIX} summary: {len(failures)} failure(s) in {path}")
+    total = sum(len(v) for v in all_triggers_by_file.values())
+    print(f"{PREFIX} summary: {len(failures)} failure(s) across "
+          f"{len(all_triggers_by_file)} file(s), {total} trigger(s) checked")
     sys.exit(1)
 
-print(f"{PREFIX} ok: {path} ({len(triggers)} triggers checked)")
+total = sum(len(v) for v in all_triggers_by_file.values())
+if len(all_triggers_by_file) == 1:
+    only_path = next(iter(all_triggers_by_file))
+    print(f"{PREFIX} ok: {only_path} ({total} triggers checked)")
+else:
+    print(f"{PREFIX} ok: {len(all_triggers_by_file)} files, {total} triggers checked, no cross-file collisions")
 sys.exit(0)
 PY
