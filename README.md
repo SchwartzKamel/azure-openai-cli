@@ -240,7 +240,7 @@ Set `AZURE_FOUNDRY_ENDPOINT`, `AZURE_FOUNDRY_KEY`, and `AZURE_FOUNDRY_MODELS` to
 
 ### OpenAI-compatible providers (S03E09 *The Compat*)
 
-ADR-010 ships an OpenAI-compat seam: any provider that speaks the OpenAI `/v1/chat/completions` wire protocol shows up as a *preset* against `OpenAiCompatAdapter`. Built-in presets: `openai`, `groq`, `together`, `cloudflare`. Each preset names the env var it reads its API key from -- credentials never live in code or config.
+ADR-010 ships an OpenAI-compat seam: any provider that speaks the OpenAI `/v1/chat/completions` wire protocol shows up as a *preset* against `OpenAiCompatAdapter`. Built-in presets: `openai`, `groq`, `together`, `cloudflare`, `llamacpp`. Each preset names the env var it reads its API key from -- credentials never live in code or config.
 
 Route specific models with `AZ_AI_COMPAT_MODELS` (comma-separated `preset:model` pairs). **Precedence:** Azure Foundry allowlist (`AZURE_FOUNDRY_MODELS`) wins, then OpenAI-compat allowlist, then default Azure OpenAI. Example:
 
@@ -277,7 +277,7 @@ profile : --profile   >  AZ_PROFILE   >  (none)
 model   : --model     >  AZ_MODEL     >  profile.model     >  AZUREOPENAIMODEL[0] / AZ_AI_COMPAT_MODELS[provider] / fallback
 ```
 
-The default heuristic for provider: `azure` if `AZUREOPENAIENDPOINT` is set, else `openai` if `OPENAI_API_KEY` is set, else the first OpenAI-compat preset whose key env var is populated (`groq` / `together` / `cloudflare`), else a friendly error listing the providers it knows. `--config show` reports every rail's source label so you can see exactly where the resolved value came from:
+The default heuristic for provider follows a documented six-rung ladder (ADR-011, S03E22 *The Default*): (1) `azure` when both `AZUREOPENAIENDPOINT` and `AZUREOPENAIAPI` are set; (2) the single preset whose `AZ_AI_<PRESET>_ENDPOINT` is set when exactly one is present; (3) when ≥2 preset endpoints are set, `AZ_AI_LOCAL_PROVIDERS=1`, and at least one endpoint URL points to a loopback host on a known local-runtime port (ollama 11434, llamacpp 8080, lmstudio 1234), the first such preset alphabetically with the label `default:<preset>:local-detected`; (4) `openai` when `OPENAI_API_KEY` is set; (5) the alphabetically first preset endpoint when ≥2 are set and no other signal applies (with a `multiple-presets-no-cli-no-profile-no-env-pin` warning so you know the cascade went there); (6) `azure:fallback` when nothing matched (BuildChatClient will then fail closed with a friendly error). The match is URL-string only -- no socket probe; ProviderDoctor (`--diag`) keeps the live probe. `--config show` reports every rail's source label so you can see exactly where the resolved value came from:
 
 ```bash
 $ az-ai --profile work --config show | grep -A4 'Switch resolution'
@@ -353,6 +353,13 @@ AZ_AI_LOCAL_PROVIDERS=1 az-ai --offline --model ollama-llama3 "..."
 ```
 
 For paranoid runs (a guarantee that no syscall can reach a non-loopback socket), pair the flag with kernel-level isolation: `unshare -n az-ai --offline ...` on Linux. The flag is a logical gate, not a network namespace. Audit details: [docs/audits/security-v2.1.4-offline.md](docs/audits/security-v2.1.4-offline.md).
+
+**Best-effort fallback chain (S03E22).** Pass `--fallback openai,groq` (or set `AZ_AI_FALLBACK=openai,groq`, CLI wins) to opt in to a fallback chain. When the primary provider returns a transient failure (5xx / 429 / network timeout) the chain is tried in order, max 3 alternates, no duplicates. Auth (401/403), other 4xx, capability mismatches, and user-cancel (Ctrl-C) all short-circuit -- no point asking another provider when the request itself is the problem. Streaming has a load-bearing invariant: once the first chunk has been yielded, fallback is OFF; mid-stream truncation prints a one-line `[fallback] stream-truncated` warn on stderr and re-throws the original exception. The transcript is never corrupted by a provider switch mid-flight. Default is off; opt-in only. Telemetry adds two opt-in event shapes (`fallback_attempt`, `fallback_outcome`) under the existing `AZ_AI_TELEMETRY=1` strict-equality gate. Reliability charter: [docs/observability/slo.md](docs/observability/slo.md) §2 / §5 (the new `fallback.rate` SLI + alert thresholds).
+
+```sh
+# Try OpenAI then Groq if Azure 5xx's
+az-ai --fallback openai,groq --model gpt-4o-mini "..."
+```
 
 Full threat model and hardening checklist: [SECURITY.md](SECURITY.md). Report vulnerabilities per the policy there. To cryptographically verify a downloaded binary, container, or SBOM against the build attestations, see [docs/verifying-releases.md](docs/verifying-releases.md).
 

@@ -653,6 +653,31 @@ internal class Program
                 return 1; // BuildChatClient already emitted the error
             }
 
+            // S03E22 *The Fallback* (Frank Costanza) -- opt-in chain wrap.
+            // Resolve the policy from --fallback (CLI wins) or AZ_AI_FALLBACK.
+            // When inactive, Wrap returns the primary unchanged: zero overhead
+            // and zero behaviour change for users who don't opt in. Validation
+            // errors print to stderr and exit 2 (parse-time, before any I/O).
+            // Production factory currently always returns Skipped("no-fallback-creds")
+            // -- per-preset alternate cred discovery is finding frank-2026-05-FB-1.
+            var fbPolicy = AzureOpenAI_CLI.Resilience.FallbackPolicy.Resolve(
+                Environment.GetCommandLineArgs(),
+                Environment.GetEnvironmentVariable);
+            if (fbPolicy.HasError)
+            {
+                Console.Error.WriteLine($"Error: --fallback: {fbPolicy.ErrorMessage}");
+                return 2;
+            }
+            if (fbPolicy.IsActive)
+            {
+                AzureOpenAI_CLI.Resilience.AlternateChatClientFactory altFactory =
+                    static (preset, _model) => AzureOpenAI_CLI.Resilience.AlternateBuildResult.Skipped(
+                        "no-fallback-creds (frank-2026-05-FB-1)");
+                Action<string>? warnSink = (opts.Raw || opts.Json) ? null : Console.Error.WriteLine;
+                chatClient = AzureOpenAI_CLI.Resilience.FallbackChain.Wrap(
+                    chatClient, telProvider, model, fbPolicy, altFactory, warnSink, opts.Raw || opts.Json);
+            }
+
             // S03E18 -- The Capability Gate. Before sending any request,
             // refuse fast if the (preset, model) tuple does not advertise the
             // capability the request needs. Better a friendly preflight error
@@ -1433,6 +1458,16 @@ internal class Program
                 case "--offline":
                     offline = true;
                     break;
+                // S03E22 *The Fallback* (Frank Costanza). Append-at-end keeps
+                // merge friction minimal vs e20 (--provider/--profile/--model)
+                // and e26 (--offline). Value is parsed by FallbackPolicy at
+                // dispatch time via Environment.GetCommandLineArgs(); we just
+                // need to consume the value here so Scope-3 default doesn't
+                // reject it as an unknown flag.
+                case "--fallback":
+                    if (i + 1 < args.Length) { i++; /* value consumed by FallbackPolicy.Resolve */ }
+                    else { Fail("--fallback requires a comma-separated chain (e.g. openai,groq)"); }
+                    break;
                 // S03E20 -- The Switch (Costanza). Append-at-end placement
                 // keeps merge friction minimal vs. e18 (dispatch / capability
                 // gate) and e25 (creds rotate). Order-independent: all three
@@ -2099,9 +2134,17 @@ internal class Program
         var keys = new[]
         {
             "AZ_PROVIDER", "AZ_PROFILE", "AZ_MODEL",
-            "AZUREOPENAIENDPOINT", "AZUREOPENAIMODEL",
-            "AZ_AI_COMPAT_MODELS",
+            "AZUREOPENAIENDPOINT", "AZUREOPENAIAPI", "AZUREOPENAIMODEL",
+            "AZ_AI_COMPAT_MODELS", "AZ_AI_LOCAL_PROVIDERS",
             "OPENAI_API_KEY", "GROQ_API_KEY", "TOGETHER_API_KEY", "CLOUDFLARE_API_TOKEN",
+            // S03E22 (ADR-011) -- AZ_AI_<PRESET>_ENDPOINT family for the
+            // new default-provider heuristic. Listed explicitly (not
+            // pattern-scanned at snapshot time) to keep the env-read cost
+            // bounded and reviewable. Add a row here when ADR-011's
+            // local-runtime table grows.
+            "AZ_AI_OLLAMA_ENDPOINT", "AZ_AI_LLAMACPP_ENDPOINT", "AZ_AI_LMSTUDIO_ENDPOINT",
+            "AZ_AI_OPENAI_ENDPOINT", "AZ_AI_GROQ_ENDPOINT",
+            "AZ_AI_TOGETHER_ENDPOINT", "AZ_AI_CLOUDFLARE_ENDPOINT",
         };
         var snap = new Dictionary<string, string?>(StringComparer.Ordinal);
         foreach (var k in keys)
@@ -2848,6 +2891,19 @@ Air-gapped / Offline (S03E26):
                             Use for air-gapped review and demo recording
                             where the network must be silent.
 
+  --fallback <list>         Opt-in fallback chain (S03E22 Frank Costanza).
+                            Comma-separated preset names tried in order when
+                            the primary provider returns a transient error
+                            (5xx / 429 / network timeout). Max 3 alternates,
+                            no duplicates, presets must be known. Auth/4xx/
+                            capability/user-cancel errors short-circuit (no
+                            fallback). Stream invariant: once the first chunk
+                            is yielded, no provider switch -- the transcript
+                            is never corrupted mid-flight.
+                            Env fallback: AZ_AI_FALLBACK=openai,groq (CLI
+                            wins over env). Default: off (no chain).
+                            Example: --fallback openai,groq,together
+
 Prompt Cache (FR-008, opt-in):
   --cache                   Cache successful responses and serve byte-identical
                             repeats from local disk (env: AZ_CACHE=1).
@@ -2924,7 +2980,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
 
     case ""${prev}"" in
         --completions)

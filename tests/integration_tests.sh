@@ -1270,6 +1270,232 @@ SWEOF
 
     rm -rf "$sw_home"
 
+    # ── S03E22 -- The Default (file slot 22): heuristic ladder ─────────────
+    echo ""
+    echo "▸ S03E22 -- The Default: six-rung heuristic (ADR-011)"
+
+    # All assertions in this block run with a clean HOME so no
+    # preferences.json shadows the resolver. We toggle env vars to walk
+    # the ladder rung-by-rung and read the source label from --config show.
+    local def_home
+    def_home=$(mktemp -d "${TMPDIR:-/tmp}/az-ai-default.XXXXXX")
+    mkdir -p "$def_home/.config/az-ai"
+
+    # 1. Rung 1: AZUREOPENAIENDPOINT + AZUREOPENAIAPI → default:azure
+    local def1_out
+    def1_out=$(env -i HOME="$def_home" PATH="$PATH" \
+                XDG_CONFIG_HOME="$def_home/.config" \
+                AZUREOPENAIENDPOINT="https://x.cognitiveservices.azure.com/" \
+                AZUREOPENAIAPI="not-a-real-key" \
+                "$BIN" --config show 2>&1 || true)
+    if printf '%s' "$def1_out" | grep -qE 'provider source:[[:space:]]+default:azure(\b|$)'; then
+        pass "S03E22 default: rung 1 (azure endpoint+api → default:azure)"
+    else
+        fail "S03E22 default: rung 1 azure" "out=$(printf '%s' "$def1_out" | head -c 320)"
+    fi
+
+    # 2. Rung 2: exactly one AZ_AI_<PRESET>_ENDPOINT → default:<preset>
+    local def2_out
+    def2_out=$(env -i HOME="$def_home" PATH="$PATH" \
+                XDG_CONFIG_HOME="$def_home/.config" \
+                AZ_AI_GROQ_ENDPOINT="https://api.groq.com/openai/v1" \
+                "$BIN" --config show 2>&1 || true)
+    if printf '%s' "$def2_out" | grep -qE 'provider source:[[:space:]]+default:groq(\b|$)'; then
+        pass "S03E22 default: rung 2 (single preset endpoint → default:groq)"
+    else
+        fail "S03E22 default: rung 2 single preset" "out=$(printf '%s' "$def2_out" | head -c 320)"
+    fi
+
+    # 3. Rung 5: tie-break across multiple presets emits the warning.
+    #    cloudflare < groq alphabetically → wins.
+    local def5_out
+    def5_out=$(env -i HOME="$def_home" PATH="$PATH" \
+                XDG_CONFIG_HOME="$def_home/.config" \
+                AZ_AI_GROQ_ENDPOINT="https://api.groq.com/openai/v1" \
+                AZ_AI_CLOUDFLARE_ENDPOINT="https://api.cloudflare.com/client/v4/accounts/x/ai/v1" \
+                "$BIN" --config show 2>&1 || true)
+    if printf '%s' "$def5_out" | grep -qE 'provider source:[[:space:]]+default:cloudflare(\b|$)'; then
+        pass "S03E22 default: rung 5 tie-break picks alphabetical first (cloudflare)"
+    else
+        fail "S03E22 default: rung 5 tie-break" "out=$(printf '%s' "$def5_out" | head -c 320)"
+    fi
+    if printf '%s' "$def5_out" | grep -qF 'multiple-presets-no-cli-no-profile-no-env-pin'; then
+        pass "S03E22 default: rung 5 emits multi-preset warning"
+    else
+        fail "S03E22 default: rung 5 warning" "out=$(printf '%s' "$def5_out" | head -c 320)"
+    fi
+
+    # 4. AZ_PROVIDER pin pre-empts the heuristic entirely (env source).
+    local def_pin_out
+    def_pin_out=$(env -i HOME="$def_home" PATH="$PATH" \
+                    XDG_CONFIG_HOME="$def_home/.config" \
+                    AZ_PROVIDER="openai" \
+                    AZ_AI_GROQ_ENDPOINT="https://api.groq.com/openai/v1" \
+                    AZ_AI_CLOUDFLARE_ENDPOINT="https://api.cloudflare.com/client/v4/accounts/x/ai/v1" \
+                    "$BIN" --config show 2>&1 || true)
+    if printf '%s' "$def_pin_out" | grep -qE 'provider source:[[:space:]]+env:AZ_PROVIDER(\b|$)'; then
+        pass "S03E22 default: AZ_PROVIDER pre-empts heuristic"
+    else
+        fail "S03E22 default: AZ_PROVIDER pre-empts" "out=$(printf '%s' "$def_pin_out" | head -c 320)"
+    fi
+
+    # 5. Rung 6: nothing set → default:azure:fallback (fails closed
+    #    later, but the resolver itself stamps a deterministic label).
+    local def6_out
+    def6_out=$(env -i HOME="$def_home" PATH="$PATH" \
+                XDG_CONFIG_HOME="$def_home/.config" \
+                "$BIN" --config show 2>&1 || true)
+    if printf '%s' "$def6_out" | grep -qE 'provider source:[[:space:]]+default:azure:fallback(\b|$)'; then
+        pass "S03E22 default: rung 6 fallback label when no signals"
+    else
+        fail "S03E22 default: rung 6 fallback" "out=$(printf '%s' "$def6_out" | head -c 320)"
+    fi
+
+    rm -rf "$def_home"
+
+    # ── S03E17 -- The Server (file slot 21): llamacpp preset ──────────────
+    echo ""
+    echo "▸ S03E17 -- The Server: llamacpp OpenAI-compat preset"
+
+    # 1. --doctor probes the llamacpp preset (compat:llamacpp row) when
+    #    AZ_AI_COMPAT_MODELS routes a model to it. Endpoint column shows
+    #    the default localhost:8080/v1 base URL.
+    local lc_doc_out
+    set +e
+    lc_doc_out=$(env -i HOME="${TMPDIR:-/tmp}" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZ_AI_LOCAL_PROVIDERS=1 \
+        AZ_AI_COMPAT_MODELS="llamacpp:llamacpp" \
+        "$BIN" --doctor 2>&1 || true)
+    set -e
+    if printf '%s' "$lc_doc_out" | grep -q 'compat:llamacpp' && \
+       printf '%s' "$lc_doc_out" | grep -q 'localhost:8080'; then
+        pass "S03E17 server: --doctor lists compat:llamacpp probe row with default endpoint"
+    else
+        fail "S03E17 server: --doctor llamacpp probe" \
+            "out=$(printf '%s' "$lc_doc_out" | head -c 320)"
+    fi
+
+    # 2. --doctor --json emits a structured row for compat:llamacpp.
+    local lc_json_out
+    set +e
+    lc_json_out=$(env -i HOME="${TMPDIR:-/tmp}" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZ_AI_LOCAL_PROVIDERS=1 \
+        AZ_AI_COMPAT_MODELS="llamacpp:llamacpp" \
+        "$BIN" --doctor --json 2>&1 || true)
+    set -e
+    if printf '%s' "$lc_json_out" | grep -q 'compat:llamacpp'; then
+        pass "S03E17 server: --doctor --json emits compat:llamacpp row"
+    else
+        fail "S03E17 server: --doctor --json llamacpp" \
+            "out=$(printf '%s' "$lc_json_out" | head -c 320)"
+    fi
+
+    # 3. Capability gate refuses --agent (tool-calls) on llamacpp by
+    #    default (Conservative profile). Names AZ_AI_CAPABILITY_OVERRIDES
+    #    so the operator knows the escape hatch. Azure stub creds keep
+    #    the early credential check happy; compat allowlist routes the
+    #    model to llamacpp before any Azure HTTP call would happen.
+    local lc_gate_out lc_gate_rc
+    set +e
+    lc_gate_out=$(env -i HOME="${TMPDIR:-/tmp}" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-real" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        AZ_AI_LOCAL_PROVIDERS=1 \
+        AZ_AI_COMPAT_MODELS="llamacpp:llamacpp" \
+        "$BIN" --agent --model llamacpp "ping" 2>&1)
+    lc_gate_rc=$?
+    set -e
+    if [ "$lc_gate_rc" -ne 0 ] && \
+       printf '%s' "$lc_gate_out" | grep -q 'AZ_AI_CAPABILITY_OVERRIDES'; then
+        pass "S03E17 server: capability gate refuses tool-calls on llamacpp (rc=$lc_gate_rc)"
+    else
+        fail "S03E17 server: capability gate llamacpp tool-calls" \
+            "rc=$lc_gate_rc out=$(printf '%s' "$lc_gate_out" | head -c 320)"
+    fi
+
+    # 4. Loopback gate enforced: with AZ_AI_LOCAL_PROVIDERS unset, dispatch
+    #    to llamacpp must be refused. The error message names the opt-in
+    #    knob so the operator knows how to unblock it.
+    local lc_block_out lc_block_rc
+    set +e
+    lc_block_out=$(env -i HOME="${TMPDIR:-/tmp}" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-real" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        AZ_AI_COMPAT_MODELS="llamacpp:llamacpp" \
+        "$BIN" --model llamacpp "ping" 2>&1)
+    lc_block_rc=$?
+    set -e
+    if [ "$lc_block_rc" -ne 0 ] && \
+       printf '%s' "$lc_block_out" | grep -q 'AZ_AI_LOCAL_PROVIDERS'; then
+        pass "S03E17 server: loopback gate refuses llamacpp without AZ_AI_LOCAL_PROVIDERS=1 (rc=$lc_block_rc)"
+    else
+        fail "S03E17 server: loopback gate llamacpp" \
+            "rc=$lc_block_rc out=$(printf '%s' "$lc_block_out" | head -c 320)"
+    fi
+
+    # ── S03E22 *The Fallback* (Frank Costanza) ────────────────────────────
+    echo "▸ S03E22 fallback chain (--fallback opt-in)"
+
+    # 1. --help mentions --fallback (discoverable).
+    if "$BIN" --help 2>&1 | grep -q -- "--fallback"; then
+        pass "S03E22 fallback: --help mentions --fallback"
+    else
+        fail "S03E22 fallback: --help missing --fallback" "help text didn't mention the flag"
+    fi
+
+    # 2. unknown preset -> exit 2 + lists known presets on stderr.
+    fb_unknown_out=$("$BIN" --fallback bogus -- "hi" 2>&1 1>/dev/null || true)
+    fb_unknown_rc=$("$BIN" --fallback bogus -- "hi" >/dev/null 2>&1; echo $?)
+    if [ "$fb_unknown_rc" = "2" ] && \
+       printf '%s' "$fb_unknown_out" | grep -qi "unknown fallback provider" && \
+       printf '%s' "$fb_unknown_out" | grep -q "openai"; then
+        pass "S03E22 fallback: unknown preset exits 2 + lists known"
+    else
+        fail "S03E22 fallback: unknown preset" "rc=$fb_unknown_rc out=$(printf '%s' "$fb_unknown_out" | head -c 240)"
+    fi
+
+    # 3. depth >3 -> exit 2 + "exceeds max" message.
+    fb_depth_out=$("$BIN" --fallback openai,groq,together,cloudflare -- "hi" 2>&1 1>/dev/null || true)
+    fb_depth_rc=$("$BIN" --fallback openai,groq,together,cloudflare -- "hi" >/dev/null 2>&1; echo $?)
+    if [ "$fb_depth_rc" = "2" ] && printf '%s' "$fb_depth_out" | grep -qi "exceeds the maximum"; then
+        pass "S03E22 fallback: depth>3 exits 2 with max-depth message"
+    else
+        fail "S03E22 fallback: depth>3" "rc=$fb_depth_rc out=$(printf '%s' "$fb_depth_out" | head -c 240)"
+    fi
+
+    # 4. duplicate preset -> exit 2 + "duplicate" message.
+    fb_dup_out=$("$BIN" --fallback openai,openai -- "hi" 2>&1 1>/dev/null || true)
+    fb_dup_rc=$("$BIN" --fallback openai,openai -- "hi" >/dev/null 2>&1; echo $?)
+    if [ "$fb_dup_rc" = "2" ] && printf '%s' "$fb_dup_out" | grep -qi "more than once"; then
+        pass "S03E22 fallback: duplicate preset exits 2"
+    else
+        fail "S03E22 fallback: duplicate" "rc=$fb_dup_rc out=$(printf '%s' "$fb_dup_out" | head -c 240)"
+    fi
+
+    # 5. --fallback without value -> Fail() exits 2 with helpful message.
+    fb_noval_out=$("$BIN" --fallback 2>&1 1>/dev/null || true)
+    fb_noval_rc=$("$BIN" --fallback >/dev/null 2>&1; echo $?)
+    if [ "$fb_noval_rc" != "0" ] && printf '%s' "$fb_noval_out" | grep -q "requires a comma-separated"; then
+        pass "S03E22 fallback: missing value exits non-zero (rc=$fb_noval_rc)"
+    else
+        fail "S03E22 fallback: missing value" "rc=$fb_noval_rc out=$(printf '%s' "$fb_noval_out" | head -c 240)"
+    fi
+
+    # 6. AZ_AI_FALLBACK env with valid chain accepted by --doctor (parse-time
+    #    succeeds; --doctor doesn't dispatch so production-skip never triggers).
+    fb_env_rc=$(AZ_AI_FALLBACK=openai,groq "$BIN" --doctor >/dev/null 2>&1; echo $?)
+    # rc 0 (no providers) or rc 1 (providers configured) both acceptable;
+    # what matters is parse didn't reject (rc != 2).
+    if [ "$fb_env_rc" != "2" ]; then
+        pass "S03E22 fallback: AZ_AI_FALLBACK env with valid chain parses ok (rc=$fb_env_rc)"
+    else
+        fail "S03E22 fallback: env-valid" "rc=$fb_env_rc unexpectedly 2"
+    fi
+
+    # ── S03E22 fallback -- end ────────────────────────────────────────────
+
     # ── API-gated smoke (skip unless creds present) ───────────────────────
     if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then
         skip "real API call" "AZUREOPENAIENDPOINT/AZUREOPENAIAPI not set"

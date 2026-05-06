@@ -8,6 +8,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(resilience):** S03E22 *The Fallback* (Frank Costanza) -- opt-in
+  best-effort fallback chain wrapping the primary chat client. New flag
+  `--fallback <list>` (and env `AZ_AI_FALLBACK`, CLI wins) accepts a
+  comma-separated chain of preset names (max 3 alternates, no
+  duplicates, known presets only: azure / foundry / openai / groq /
+  together / cloudflare / ollama). On a *transient* primary failure
+  (5xx / 429 / network timeout) the chain is tried in order; *non-transient*
+  failures (auth 401/403, other 4xx, `CapabilityMismatchException`,
+  user-cancel via Ctrl-C) short-circuit and never trigger fallback.
+  Streaming carries a load-bearing invariant: once the first chunk has
+  been yielded, fallback is OFF -- mid-stream primary failure prints a
+  one-line `[fallback] stream-truncated` warn to stderr and re-throws,
+  because switching providers mid-flight would corrupt the transcript.
+  Telemetry is additive and opt-in (existing `AZ_AI_TELEMETRY=1` strict-
+  equality gate): two new event shapes `fallback_attempt` and
+  `fallback_outcome` with stable key order, no prompts/completions/
+  endpoints, `error_class` routed through `SecretRedactor` and bounded
+  to 200 chars. New SLIs in [docs/observability/slo.md](docs/observability/slo.md):
+  `fallback.rate` (target ≤ 5% / 28d), `fallback.recovery_rate`,
+  `fallback.exhaustion_rate`, `fallback.stream_truncated_rate`; alert
+  thresholds *info* > 5% / 1h, *page* > 20% / 15m. Default is OFF: the
+  wrap is a no-op pass-through when policy is inactive, zero overhead,
+  zero behaviour change for users who don't opt in. Production
+  `AlternateChatClientFactory` currently always returns
+  `Skipped("no-fallback-creds")` -- per-preset cred discovery for
+  alternates is finding [`frank-2026-05-FB-1`](docs/findings-backlog.md).
+  47 new unit facts (`tests/AzureOpenAI_CLI.Tests/FallbackChainTests.cs`),
+  6 new integration assertions
+  (`tests/integration_tests.sh ▸ S03E22 fallback chain`).
+- **feat(compat):** S03E17 *The Server* (Kramer) -- OpenAI-compat preset
+  for [llama.cpp's `llama-server`](https://github.com/ggml-org/llama.cpp/tree/master/tools/server).
+  New built-in preset `llamacpp` points at `http://localhost:8080/v1` by
+  default; runtime-overridable via `AZ_AI_LLAMACPP_ENDPOINT` (alt port /
+  loopback IP). Authentication is opt-in: `RequiresApiKey=false` because
+  llama-server is unauthenticated by default; operators who launch it
+  with `--api-key` can still export `AZ_AI_LLAMACPP_API_KEY` and the
+  preset will forward it as Bearer. Model name resolves via
+  `AZ_AI_LLAMACPP_MODEL` env var or falls back to the literal
+  `"llamacpp"` (llama-server ignores the field anyway -- only one model
+  is loaded at a time). Capability profile is **Conservative**
+  (`tool_calls=false, vision=false, json_mode=false, streaming=true`);
+  flip individual bits per (preset, model) via
+  `AZ_AI_CAPABILITY_OVERRIDES=llamacpp:<model>:tool_calls=true`. The
+  loopback target is gated by the existing `AZ_AI_LOCAL_PROVIDERS=1`
+  opt-in (S03E16); without it, dispatch is refused with the same
+  actionable error as the other local-provider presets. ProviderDoctor
+  auto-discovers the preset when `AZ_AI_COMPAT_MODELS=llamacpp:<model>`
+  is set. +25 unit facts (`LlamaCppPresetTests`) covering preset shape,
+  model resolution precedence, optional API-key path, endpoint override
+  (happy path + malformed URL + non-loopback HTTP refusal), capability
+  defaults + override, allowlist verdicts, and ProviderDoctor probe
+  emission; +4 integration assertions in `tests/integration_tests.sh`
+  covering `--doctor` table/json rows, capability gate refusal naming
+  the override knob, and loopback gate refusal naming
+  `AZ_AI_LOCAL_PROVIDERS`.
+
+### Added (e22 -- preserved entry from before this commit)
+
+- **feat(cli):** S03E22 *The Default* (Costanza) -- documented six-rung
+  default-provider heuristic (ADR-011) replacing the ad-hoc preset-table
+  walk in `PreferencesResolver.ResolveDefaultProvider`. The ladder is, in
+  order: (1) `default:azure` when both `AZUREOPENAIENDPOINT` and
+  `AZUREOPENAIAPI` are set; (2) `default:<preset>` when exactly one
+  `AZ_AI_<PRESET>_ENDPOINT` is set; (3) `default:<preset>:local-detected`
+  when ≥2 preset endpoints are set, `AZ_AI_LOCAL_PROVIDERS=1`, and at
+  least one endpoint URL parses to a loopback host on the canonical port
+  for that preset (alphabetical first match wins; URL-string parse only,
+  no socket probe -- ProviderDoctor still owns the live probe);
+  (4) `default:openai` when `OPENAI_API_KEY` is present; (5) alphabetical
+  tie-break across multiple preset endpoints with no other signal,
+  emitting warning `multiple-presets-no-cli-no-profile-no-env-pin`;
+  (6) `default:azure:fallback` when nothing matches (fails closed at
+  `BuildChatClient`). `SnapshotEnv()` extended additively with
+  `AZUREOPENAIAPI`, `AZ_AI_LOCAL_PROVIDERS`, and the
+  `AZ_AI_<PRESET>_ENDPOINT` family (ollama / llamacpp / lmstudio / openai
+  / groq / together / cloudflare). 36 unit facts in
+  `DefaultProviderHeuristicTests.cs`; 7 of the 44 e20 resolver tests
+  updated to reflect the new label semantics (this is a behavioral
+  change documented in ADR-011 § Migration: key-only envs like
+  `GROQ_API_KEY` no longer trigger a preset default by themselves --
+  pair them with `AZ_AI_GROQ_ENDPOINT` or use `AZ_PROVIDER=groq`).
 - **security(cli):** S03E25 *The Rotation* (Newman) -- `az-ai
   --rotate-creds [provider]` BYOK rotation flow with atomic write,
   timestamped backup (`env.bak.<ISO-8601-Z>`, collision-bumped on
