@@ -150,6 +150,29 @@ Precedence (highest → lowest): **CLI flag > environment variable > user config
 
 The binary also auto-loads `~/.config/az-ai/env` at startup (shell `export KEY="value"` format, written by `make setup-secrets`). Existing env vars are not overwritten, so your shell profile still wins. This is critical for non-login-shell contexts like Espanso, AHK, and cron where your profile isn't sourced.
 
+#### Per-provider sections (S03E10 *The Keychain*)
+
+The env file accepts optional INI-style section headers so credentials for each provider live in their own namespace and cannot accidentally cross-contaminate. The default (unsectioned) content keeps working unchanged -- existing files do **not** need to be edited.
+
+```text
+# Default section -- shell-export compatible, back-compat with every existing file.
+export AZUREOPENAIENDPOINT="https://my-resource.openai.azure.com/"
+export AZUREOPENAIAPI="azure-key-here"
+export AZUREOPENAIMODEL="gpt-4o,gpt-4o-mini"
+
+# Per-provider section -- keys are namespaced by section header.
+[provider:openai]
+API_KEY=sk-openai-key-here          # -> sets OPENAI_API_KEY
+
+[provider:groq]
+API_KEY=gsk_groq-key-here           # -> sets GROQ_API_KEY
+
+[provider:cloudflare]
+API_TOKEN=cf_token-here             # -> sets CLOUDFLARE_API_TOKEN
+```
+
+Recognised provider sections: `azure`, `openai`, `foundry`, `groq`, `together`, `cloudflare`. Unknown sections emit a `[WARNING]` to stderr (silent under `--raw` / `--json`) and are skipped without aborting startup. The default section keeps shell-source compatibility -- `source ~/.config/az-ai/env` still works for any unsectioned content.
+
 Full env-var reference (single source of truth): [docs/prerequisites.md](docs/prerequisites.md).
 
 ### Power user / scripted setup
@@ -186,6 +209,22 @@ Keeping token spend sane -- model selection, caching, and per-persona budgets: [
 ### Multi-provider routing (Foundry / GitHub Models)
 
 Set `AZURE_FOUNDRY_ENDPOINT`, `AZURE_FOUNDRY_KEY`, and `AZURE_FOUNDRY_MODELS` to route specific models through Azure AI Foundry or GitHub Models instead of Azure OpenAI. Any model listed in `AZURE_FOUNDRY_MODELS` is dispatched to the Foundry endpoint via `FoundryAuthPolicy` (swaps Bearer auth to `api-key` header); all other models use the default Azure OpenAI path. Configure interactively with `make set-foundry ENDPOINT=... KEY=... MODELS=...` and inspect with `make providers`. See [docs/adr/ADR-005-foundry-routing.md](docs/adr/ADR-005-foundry-routing.md).
+
+### OpenAI-compatible providers (S03E09 *The Compat*)
+
+ADR-010 ships an OpenAI-compat seam: any provider that speaks the OpenAI `/v1/chat/completions` wire protocol shows up as a *preset* against `OpenAiCompatAdapter`. Built-in presets: `openai`, `groq`, `together`, `cloudflare`. Each preset names the env var it reads its API key from -- credentials never live in code or config.
+
+Route specific models with `AZ_AI_COMPAT_MODELS` (comma-separated `preset:model` pairs). **Precedence:** Azure Foundry allowlist (`AZURE_FOUNDRY_MODELS`) wins, then OpenAI-compat allowlist, then default Azure OpenAI. Example:
+
+```bash
+export AZ_AI_COMPAT_MODELS="openai:gpt-4o-mini,groq:llama-3.1-70b"
+export OPENAI_API_KEY="sk-..."
+export GROQ_API_KEY="gsk-..."
+az-ai --model gpt-4o-mini "Summarize this changelog"   # routes to api.openai.com
+az-ai --model llama-3.1-70b "Same, but on Groq"        # routes to api.groq.com
+```
+
+Cloudflare Workers AI additionally requires `CLOUDFLARE_ACCOUNT_ID` (substituted into the endpoint URL). See [docs/adr/ADR-010-first-non-azure-cloud.md](docs/adr/ADR-010-first-non-azure-cloud.md).
 
 ### Makefile targets
 

@@ -54,6 +54,9 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | elaine-2026-05-n1 | [docs-audit-2026-05-elaine.md](audits/docs-audit-2026-05-elaine.md) | NIT | open | Elaine | README chrome contains em-dash (U+2014) and right-arrow (U+2192) | 2026-05-06 |
 | elaine-2026-05-n2 | [docs-audit-2026-05-elaine.md](audits/docs-audit-2026-05-elaine.md) | NIT | open | Elaine | README `--config` flag split across two table rows | 2026-05-06 |
 | newman-2026-05-F-3 | [security-v2.1-post-prompts.md](audits/security-v2.1-post-prompts.md) | MEDIUM | open | Jerry | docs-lint.yml regressed to tag-pinned actions | 2026-05-06 |
+| newman-2026-05-K-1 | [security-v2.1.2-keychain.md](audits/security-v2.1.2-keychain.md) | LOW | open | Elaine | README per-provider example block does not restate chmod 600 hygiene | 2026-05-07 |
+| newman-2026-05-K-2 | [security-v2.1.2-keychain.md](audits/security-v2.1.2-keychain.md) | LOW | open | Costanza | ADR-010 references per-OS keychain but no ADR exists for it (file half delivered, keychain half deferred) | 2026-05-07 |
+| newman-2026-05-K-3 | [security-v2.1.2-keychain.md](audits/security-v2.1.2-keychain.md) | INFO | open | Newman | Raw-mode pre-detection scans argv only; future raw-mode aliases (env / config) would not be honoured | 2026-05-07 |
 | newman-2026-05-F-4 | [security-v2.1-post-prompts.md](audits/security-v2.1-post-prompts.md) | MEDIUM | open | Kramer | BuildImageClient duplicates BuildChatClient Foundry path | 2026-05-06 |
 | newman-2026-05-F-5 | [security-v2.1-post-prompts.md](audits/security-v2.1-post-prompts.md) | MEDIUM | open | Kramer | ClipboardImageWriter.RunWSL interpolates wslpath into PowerShell string | 2026-05-06 |
 | newman-2026-05-F-6 | [security-v2.1-post-prompts.md](audits/security-v2.1-post-prompts.md) | LOW | open | Kramer | ClipboardImageWriter.RunMacOS builds AppleScript by string concat | 2026-05-06 |

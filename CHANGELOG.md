@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(provider):** `OpenAiCompatAdapter` (S03E09 *The Compat*):
+  route models to OpenAI-compatible endpoints (OpenAI, Groq,
+  Together, Cloudflare presets) via the `AZ_AI_COMPAT_MODELS`
+  allowlist (`preset:model` pairs). Built-in presets read API keys
+  from per-provider env vars (`OPENAI_API_KEY`, `GROQ_API_KEY`,
+  `TOGETHER_API_KEY`, `CLOUDFLARE_API_TOKEN`). Dispatch precedence:
+  Azure Foundry allowlist > OpenAI-compat allowlist > default
+  Azure OpenAI. Implements ADR-010.
+- **feat(keychain):** Per-provider credential sections in
+  `~/.config/az-ai/env` (S03E10 *The Keychain*): `[provider:openai]`,
+  `[provider:azure]`, `[provider:foundry]`, `[provider:groq]`,
+  `[provider:together]`, `[provider:cloudflare]`. Bare keys inside a
+  section are namespaced by the provider (e.g. `API_KEY` under
+  `[provider:openai]` becomes `OPENAI_API_KEY`). Default unsectioned
+  content remains shell-export compatible -- existing files do not
+  need to be edited. Unknown sections emit a `[WARNING]` (silent
+  under `--raw`/`--json`) and skip without aborting. SecretRedactor
+  extended with a `[REDACTED:provider-key]` label for
+  `OPENAI_API_KEY`, `GROQ_API_KEY`, `TOGETHER_API_KEY`, and
+  `CLOUDFLARE_API_TOKEN`.
 - **feat(prompts):** Five canonical task templates land in the
   Espanso/AHK example kit -- `:aicode`, `:aiquestion`, `:aiarch`,
   `:aidata`, `:aicost` -- as `examples/espanso-ahk-wsl/espanso/ai-prompts.yml`,
