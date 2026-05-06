@@ -82,7 +82,7 @@ SYS_INLINE_FORM_RE = re.compile(r"--system\s+'[^']*\{\{\s*form1\.")
 IEX_FORM_RE        = re.compile(r"(Invoke-Expression|iex)\s*[^\n]*\{\{\s*form1\.", re.IGNORECASE)
 
 def find_cmd(match):
-    """Return the cmd string from a shell-type var, or None."""
+    """Return (cmd, shell) from a shell-type var, or (None, None)."""
     for var in match.get("vars", []) or []:
         if not isinstance(var, dict):
             continue
@@ -90,18 +90,81 @@ def find_cmd(match):
             continue
         params = var.get("params") or {}
         cmd = params.get("cmd")
+        shell = params.get("shell")
         if isinstance(cmd, str):
-            return cmd
-    return None
+            return cmd, shell
+    return None, None
+
+# Heredoc-body extractor for bash triggers (S03E04 / v2.1 audit F-1, F-2).
+# Returns the cmd text with all `<<'TAG' ... TAG` blocks (single-quoted
+# terminator) stripped. Anything left containing `{{...}}` is a
+# user-controlled placeholder bleeding into a shell-parsed context.
+HEREDOC_OPEN_RE = re.compile(r"<<\s*'([A-Za-z_][A-Za-z0-9_]*)'")
+PLACEHOLDER_RE  = re.compile(r"\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\.")
+
+def strip_quoted_heredocs(cmd_text):
+    """Remove the body of every <<'TAG'...TAG block from cmd_text.
+
+    Only single-quoted terminators count -- those are the ones that
+    disable bash interpolation. Unquoted heredocs (<<TAG) still
+    interpolate $(...) and ${VAR}, so we deliberately do NOT mask them.
+    """
+    out_lines = []
+    in_heredoc = None  # current terminator string, or None
+    for line in cmd_text.splitlines():
+        if in_heredoc is None:
+            m = HEREDOC_OPEN_RE.search(line)
+            if m:
+                # Keep the opening line itself (it's parsed by bash) so
+                # any { { form.X } } on the same line as the opener is
+                # caught. Then enter heredoc mode.
+                out_lines.append(line)
+                in_heredoc = m.group(1)
+            else:
+                out_lines.append(line)
+        else:
+            # Inside a quoted heredoc -- terminator is the line that,
+            # stripped of leading/trailing whitespace, equals the tag.
+            # (YAML literal-block indent stripping puts it at col 0 in
+            # what bash actually sees, but we tolerate any indent here
+            # since we only need to find the close.)
+            if line.strip() == in_heredoc:
+                in_heredoc = None
+                # Drop both terminator and body from the inspected text.
+            # else: body line, drop it.
+    if in_heredoc is not None:
+        # Unclosed heredoc -- caller will see this as a structural
+        # warning when placeholder check fires.
+        pass
+    return "\n".join(out_lines)
 
 for m in matches:
     if not isinstance(m, dict) or "trigger" not in m:
         continue
     trigger = m["trigger"]
     where = repr(trigger)
-    cmd = find_cmd(m)
+    cmd, shell = find_cmd(m)
     if cmd is None:
         # Non-shell trigger: skip structural checks.
+        continue
+
+    # Bash trigger guard (S03E04 / v2.1 audit F-1, F-2): any {{form...}}
+    # placeholder MUST live inside a single-quoted heredoc body. If it
+    # leaks into the surrounding shell, bash sees attacker-controlled
+    # text in a context where $(...), backticks, ${VAR}, or
+    # apostrophe-driven literal escapes are evaluated.
+    if shell == "bash":
+        outside = strip_quoted_heredocs(cmd)
+        for ph_match in PLACEHOLDER_RE.finditer(outside):
+            line_no = outside[:ph_match.start()].count("\n") + 1
+            fail("error", where,
+                 f"line {line_no}: form placeholder {{{{...}}}} appears "
+                 "outside a single-quoted heredoc body in a bash cmd; "
+                 "user input must reach az-ai via stdin (see "
+                 "docs/exec-reports/s03e01-the-yada-yada-strikes-back.md "
+                 "and the v2.1 audit F-1/F-2)")
+        # Bash triggers don't follow the PowerShell $trigger/$ph
+        # structural pattern; skip the rest of the per-trigger checks.
         continue
 
     # $trigger assignment.

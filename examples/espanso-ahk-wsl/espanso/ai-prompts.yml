@@ -1,5 +1,5 @@
 # ~/.config/espanso/match/ai-prompts.yml
-# az-ai Prompting Guide — Quick-access Espanso shortcuts for the five canonical task templates.
+# az-ai Prompting Guide -- Quick-access Espanso shortcuts for the five canonical task templates.
 #
 # Templates (from docs/prompts/task-templates.md):
 #   A. Knowledge Q&A / guidance
@@ -11,19 +11,26 @@
 # Each trigger:
 #   - Inserts the master system prompt + task template into a form.
 #   - User edits the specific request (query, goal, parameters).
-#   - Sends to az-ai with --system flag.
+#   - Sends to az-ai with --system flag (hard-coded, never user-controlled).
 #   - Returns structured response (plan, details, risks, next steps).
 #
-# Expected latency: 3–5 s per trigger (Azure round-trip).
+# Expected latency: 3-5 s per trigger (Azure round-trip).
 #
-# Design rules (same as ai.yml):
+# Design rules (unified S03E01 pattern, see ai.yml + s03e01-the-yada-yada-strikes-back):
 #   * --raw on every invocation (no spinner, stats).
-#   * User text via STDIN, never shell-interpolated args.
-#   * Clipboard read fallback chain: wl-paste → xclip → PowerShell.
+#   * User text via STDIN through a *quoted* heredoc (<<'__AZ_AI_EOF__').
+#     Single-quoting the terminator disables $(...), backticks, ${VAR}, and
+#     all other bash interpolation inside the body, so user form values
+#     cannot escape into the shell.
+#   * --system arguments are hard-coded constant strings -- never include
+#     {{form.X}} placeholders. F-1/F-2 from the v2.1 audit blocked any
+#     user-controlled text from reaching the system prompt.
+#   * Optional/blank form fields are tolerated: empty values just produce
+#     a label line with nothing after it, which the model handles fine.
 
 matches:
 
-  # ── :aiquestion — Knowledge Q&A template ────────────────────────────────
+  # -- :aiquestion -- Knowledge Q&A template -------------------------------
   # Master prompt + Template A: Ask a question, get Azure-focused answer + checklist.
   - trigger: ":aiquestion"
     replace: "{{output}}"
@@ -44,21 +51,21 @@ matches:
             xdotool key --repeat $tl BackSpace 2>/dev/null || true
             sleep 0.05
             xdotool type --clearmodifiers "$ph" 2>/dev/null || true
-            
-            system_prompt='You are az-ai. Provide a concise, Azure-focused answer to the user'"'"'s question. If relevant, include a short checklist of implementation steps. Cite sources when applicable. If ambiguous, ask 1 clarifying question before answering.'
-            
-            response=$(printf '%s' '{{question.query}}' \
-              | az-ai --raw --max-tokens 800 --temperature 0.3 \
-                  --system "$system_prompt" \
-                  2>/dev/null)
-            
+
+            response=$(az-ai --raw --max-tokens 800 --temperature 0.3 \
+                --system 'You are az-ai. Provide a concise, Azure-focused answer to the user question. If relevant, include a short checklist of implementation steps. Cite sources when applicable. If ambiguous, ask 1 clarifying question before answering.' \
+                2>/dev/null <<'__AZ_AI_EOF__'
+            {{question.query}}
+            __AZ_AI_EOF__
+            )
+
             xdotool key --repeat ${#ph} BackSpace 2>/dev/null || true
             sleep 0.05
             xdotool type --clearmodifiers "$(printf '%*s' $tl '')" 2>/dev/null || true
             sleep 0.05
             printf '%s' "$response"
 
-  # ── :aiarch — Architecture Design template ───────────────────────────────
+  # -- :aiarch -- Architecture Design template -----------------------------
   # Master prompt + Template B: Propose Azure AI solution architecture.
   - trigger: ":aiarch"
     replace: "{{output}}"
@@ -83,26 +90,28 @@ matches:
             xdotool key --repeat $tl BackSpace 2>/dev/null || true
             sleep 0.05
             xdotool type --clearmodifiers "$ph" 2>/dev/null || true
-            
-            system_prompt='You are az-ai. Given the user goal, propose a high-level Azure AI solution architecture. Include components and their roles, data flow (input → processing → output), security and compliance considerations, and rough cost estimate (ranges, not exact figures). Then provide a compact implementation plan with 4-6 milestones.'
-            
-            user_input="Goal: {{goal.goal_text}}"
-            [ -n "{{goal.constraints}}" ] && user_input="$user_input"$'\n\nConstraints: {{goal.constraints}}'
-            [ -n "{{goal.resources}}" ] && user_input="$user_input"$'\n\nExisting resources: {{goal.resources}}'
-            
-            response=$(printf '%s' "$user_input" \
-              | az-ai --raw --max-tokens 1500 --temperature 0.3 \
-                  --system "$system_prompt" \
-                  2>/dev/null)
-            
+
+            response=$(az-ai --raw --max-tokens 1500 --temperature 0.3 \
+                --system 'You are az-ai. Given the user goal, propose a high-level Azure AI solution architecture. Include components and their roles, data flow (input -> processing -> output), security and compliance considerations, and rough cost estimate (ranges, not exact figures). Then provide a compact implementation plan with 4-6 milestones.' \
+                2>/dev/null <<'__AZ_AI_EOF__'
+            Goal: {{goal.goal_text}}
+
+            Constraints: {{goal.constraints}}
+
+            Existing resources: {{goal.resources}}
+            __AZ_AI_EOF__
+            )
+
             xdotool key --repeat ${#ph} BackSpace 2>/dev/null || true
             sleep 0.05
             xdotool type --clearmodifiers "$(printf '%*s' $tl '')" 2>/dev/null || true
             sleep 0.05
             printf '%s' "$response"
 
-  # ── :aicode — Code Generation template ────────────────────────────────────
+  # -- :aicode -- Code Generation template ---------------------------------
   # Master prompt + Template C: Generate minimal, reproducible code example.
+  # The system prompt is hard-coded; language and runtime travel via stdin
+  # in the heredoc body, NOT into the --system flag (F-1 fix).
   - trigger: ":aicode"
     replace: "{{output}}"
     vars:
@@ -126,21 +135,25 @@ matches:
             xdotool key --repeat $tl BackSpace 2>/dev/null || true
             sleep 0.05
             xdotool type --clearmodifiers "$ph" 2>/dev/null || true
-            
-            system_prompt='You are az-ai. Generate a minimal, reproducible example in {{request.language}}, runtime {{request.runtime}}. Include prerequisites, installation steps, code comments, basic tests, and troubleshooting. Use placeholders for secrets. Format: Prerequisites | Installation | Code | How to Run | Tests | Troubleshooting.'
-            
-            response=$(printf '%s' "{{request.task_desc}}" \
-              | az-ai --raw --max-tokens 1200 --temperature 0.2 \
-                  --system "$system_prompt" \
-                  2>/dev/null)
-            
+
+            response=$(az-ai --raw --max-tokens 1200 --temperature 0.2 \
+                --system 'You are az-ai. Generate a minimal, reproducible example using the language and runtime specified by the user input below. Include prerequisites, installation steps, code comments, basic tests, and troubleshooting. Use placeholders for secrets. Format: Prerequisites | Installation | Code | How to Run | Tests | Troubleshooting.' \
+                2>/dev/null <<'__AZ_AI_EOF__'
+            Language: {{request.language}}
+            Runtime: {{request.runtime}}
+
+            Task description:
+            {{request.task_desc}}
+            __AZ_AI_EOF__
+            )
+
             xdotool key --repeat ${#ph} BackSpace 2>/dev/null || true
             sleep 0.05
             xdotool type --clearmodifiers "$(printf '%*s' $tl '')" 2>/dev/null || true
             sleep 0.05
             printf '%s' "$response"
 
-  # ── :aidata — Data Workflow template ─────────────────────────────────────
+  # -- :aidata -- Data Workflow template -----------------------------------
   # Master prompt + Template D: Design ETL / MLOps / data pipeline.
   - trigger: ":aidata"
     replace: "{{output}}"
@@ -167,24 +180,27 @@ matches:
             xdotool key --repeat $tl BackSpace 2>/dev/null || true
             sleep 0.05
             xdotool type --clearmodifiers "$ph" 2>/dev/null || true
-            
-            system_prompt='You are az-ai. Design an end-to-end data ingestion, preprocessing, and model deployment workflow in Azure. Include data sources and ingestion, storage and partitioning, compute (preprocessing, training, validation), model deployment and serving, monitoring and alerting, governance and compliance. Provide a textual data flow diagram and component details.'
-            
-            user_input="Data sources: {{workflow.sources}}"$'\n'"Processing goals: {{workflow.goals}}"$'\n'"Model/output: {{workflow.model_type}}"
-            [ -n "{{workflow.compliance}}" ] && user_input="$user_input"$'\n'"Governance: {{workflow.compliance}}"
-            
-            response=$(printf '%s' "$user_input" \
-              | az-ai --raw --max-tokens 1500 --temperature 0.3 \
-                  --system "$system_prompt" \
-                  2>/dev/null)
-            
+
+            response=$(az-ai --raw --max-tokens 1500 --temperature 0.3 \
+                --system 'You are az-ai. Design an end-to-end data ingestion, preprocessing, and model deployment workflow in Azure. Include data sources and ingestion, storage and partitioning, compute (preprocessing, training, validation), model deployment and serving, monitoring and alerting, governance and compliance. Provide a textual data flow diagram and component details.' \
+                2>/dev/null <<'__AZ_AI_EOF__'
+            Data sources: {{workflow.sources}}
+
+            Processing goals: {{workflow.goals}}
+
+            Model/output: {{workflow.model_type}}
+
+            Governance: {{workflow.compliance}}
+            __AZ_AI_EOF__
+            )
+
             xdotool key --repeat ${#ph} BackSpace 2>/dev/null || true
             sleep 0.05
             xdotool type --clearmodifiers "$(printf '%*s' $tl '')" 2>/dev/null || true
             sleep 0.05
             printf '%s' "$response"
 
-  # ── :aicost — Cost & ROI Assessment template ──────────────────────────────
+  # -- :aicost -- Cost & ROI Assessment template ---------------------------
   # Master prompt + Template E: Financial viability, optimization strategies.
   - trigger: ":aicost"
     replace: "{{output}}"
@@ -211,51 +227,54 @@ matches:
             xdotool key --repeat $tl BackSpace 2>/dev/null || true
             sleep 0.05
             xdotool type --clearmodifiers "$ph" 2>/dev/null || true
-            
-            system_prompt='You are az-ai. Provide a cost/ROI assessment for the proposed Azure AI solution. Include key assumptions (volume, duration, pricing tier), financial model (costs vs. benefits), optimization options (autoscale, reserved instances, caching, batching), break-even analysis (if applicable), and decision criteria (when to optimize, when to accept higher cost).'
-            
-            user_input="Solution: {{financial.solution}}"$'\n'"Usage: {{financial.usage}}"$'\n'"Target SLA: {{financial.sla}}"
-            [ -n "{{financial.constraints}}" ] && user_input="$user_input"$'\n'"Constraints: {{financial.constraints}}"
-            
-            response=$(printf '%s' "$user_input" \
-              | az-ai --raw --max-tokens 1200 --temperature 0.3 \
-                  --system "$system_prompt" \
-                  2>/dev/null)
-            
+
+            response=$(az-ai --raw --max-tokens 1200 --temperature 0.3 \
+                --system 'You are az-ai. Provide a cost/ROI assessment for the proposed Azure AI solution. Include key assumptions (volume, duration, pricing tier), financial model (costs vs. benefits), optimization options (autoscale, reserved instances, caching, batching), break-even analysis (if applicable), and decision criteria (when to optimize, when to accept higher cost).' \
+                2>/dev/null <<'__AZ_AI_EOF__'
+            Solution: {{financial.solution}}
+
+            Usage: {{financial.usage}}
+
+            Target SLA: {{financial.sla}}
+
+            Constraints: {{financial.constraints}}
+            __AZ_AI_EOF__
+            )
+
             xdotool key --repeat ${#ph} BackSpace 2>/dev/null || true
             sleep 0.05
             xdotool type --clearmodifiers "$(printf '%*s' $tl '')" 2>/dev/null || true
             sleep 0.05
             printf '%s' "$response"
 
-  # ── :aiprompts — Show all available prompt templates ─────────────────────
+  # -- :aiprompts -- Show all available prompt templates -------------------
   # Reference card: trigger names, templates, use cases.
   - trigger: ":aiprompts"
     replace: |
-      ═══════════════════════════════════════════════════════════════════════════════════
-      az-ai Prompt Templates — Quick Reference
-      ═══════════════════════════════════════════════════════════════════════════════════
-      
+      ===================================================================================
+      az-ai Prompt Templates -- Quick Reference
+      ===================================================================================
+
       Template A: Knowledge Q&A / Guidance
       Trigger: :aiquestion
       Use: Answer technical questions, provide best-practice guidance, clarify Azure concepts.
-      
+
       Template B: Architecture Design / Solution Planning
       Trigger: :aiarch
       Use: Design end-to-end Azure AI solutions, plan system architecture, propose strategies.
-      
+
       Template C: Code or Template Generation
       Trigger: :aicode
       Use: Generate minimal, reproducible code examples, infrastructure templates, configs.
-      
+
       Template D: Data Processing / ETL / MLOps Workflow
       Trigger: :aidata
       Use: Design end-to-end data pipelines, MLOps workflows, data governance solutions.
-      
+
       Template E: Cost, ROI, and Optimization
       Trigger: :aicost
       Use: Assess financial viability, calculate break-even, recommend cost optimizations.
-      
-      ═══════════════════════════════════════════════════════════════════════════════════
+
+      ===================================================================================
       See docs/prompts/task-templates.md for full details.
-      ═══════════════════════════════════════════════════════════════════════════════════
+      ===================================================================================

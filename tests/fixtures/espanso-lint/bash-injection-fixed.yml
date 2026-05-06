@@ -1,0 +1,24 @@
+matches:
+
+  - trigger: ":aifixed"
+    replace: "{{output}}"
+    vars:
+      - name: question
+        type: form
+        params:
+          layout: "Q:\n[[query]]"
+          fields:
+            query:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            response=$(az-ai --raw \
+                --system 'You are az-ai. Answer concisely.' \
+                2>/dev/null <<'__AZ_AI_EOF__'
+            {{question.query}}
+            __AZ_AI_EOF__
+            )
+            printf '%s' "$response"

@@ -1,0 +1,22 @@
+matches:
+
+  - trigger: ":aibroken"
+    replace: "{{output}}"
+    vars:
+      - name: question
+        type: form
+        params:
+          layout: "Q:\n[[query]]"
+          fields:
+            query:
+              multiline: true
+      - name: output
+        type: shell
+        params:
+          shell: bash
+          cmd: |
+            response=$(printf '%s' "{{question.query}}" \
+              | az-ai --raw \
+                  --system 'You are az-ai. Lang: {{question.query}}' \
+                  2>/dev/null)
+            printf '%s' "$response"
