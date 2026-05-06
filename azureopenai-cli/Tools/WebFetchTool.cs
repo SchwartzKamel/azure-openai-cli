@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Net;
 using System.Reflection;
+using AzureOpenAI_CLI.Net;
 
 namespace AzureOpenAI_CLI.Tools;
 
@@ -33,24 +34,12 @@ internal static class WebFetchTool
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != "https")
             return "Error: only HTTPS URLs are allowed.";
 
-        // DNS rebinding / SSRF protection: resolve hostname and block private IPs
-        IPAddress[] addresses;
-        try
+        // S03E16: SSRF allowlist seam. WebFetchTool is a tool, never a
+        // provider connection -- localProvidersOptIn is hard-coded false.
+        var verdict = EndpointAllowlist.Check(uri, localProvidersOptIn: false);
+        if (verdict != AllowlistVerdict.Allow)
         {
-            addresses = await Dns.GetHostAddressesAsync(uri.Host, ct);
-        }
-        catch (Exception ex)
-        {
-            return $"Error: failed to resolve hostname '{uri.Host}': {ex.Message}";
-        }
-
-        if (addresses.Length == 0)
-            return $"Error: hostname '{uri.Host}' did not resolve to any address.";
-
-        foreach (var addr in addresses)
-        {
-            if (IsPrivateAddress(addr))
-                return $"Error: access to private/loopback addresses is blocked for security.";
+            return $"Error: URL blocked by endpoint allowlist ({EndpointAllowlist.Describe(verdict)}).";
         }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -105,68 +94,35 @@ internal static class WebFetchTool
         if (finalUri.Scheme != "https")
             return "Error: redirect to non-HTTPS URL is blocked for security.";
 
-        IPAddress[] addresses;
-        try
+        // S03E16: post-redirect URI passes through the same allowlist.
+        var verdict = EndpointAllowlist.Check(finalUri, localProvidersOptIn: false);
+        if (verdict != AllowlistVerdict.Allow)
         {
-            addresses = await Dns.GetHostAddressesAsync(finalUri.Host, ct);
-        }
-        catch (Exception ex)
-        {
-            return $"Error: failed to resolve redirected hostname '{finalUri.Host}': {ex.Message}";
+            return $"Error: redirect blocked by endpoint allowlist ({EndpointAllowlist.Describe(verdict)}).";
         }
 
-        foreach (var addr in addresses)
-        {
-            if (IsPrivateAddress(addr))
-                return "Error: redirect to private/loopback address is blocked for security.";
-        }
-
+        await Task.CompletedTask;
         return null;
     }
 
     /// <summary>
-    /// Returns true if the address is loopback, link-local, or in a private RFC-1918 / RFC-4193 range.
+    /// Back-compat shim for callers / tests that pre-date S03E16. Delegates
+    /// to <see cref="EndpointAllowlist"/>'s address classifier so the legacy
+    /// surface continues to answer "is this address blocked for the tool
+    /// surface" without a second range catalog drifting alongside the new
+    /// seam. Tool surface = opt-in always false.
     /// </summary>
     internal static bool IsPrivateAddress(IPAddress address)
     {
-        if (IPAddress.IsLoopback(address))
+        // Build a synthetic HTTPS URI so the address-classifier path can
+        // run through the public Check overload. The URI shape is irrelevant
+        // here -- the literal IP host triggers the bare-IP fast path.
+        if (address is null) return true;
+        var host = address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6
+            ? "[" + address.ToString() + "]"
+            : address.ToString();
+        if (!Uri.TryCreate("https://" + host + "/", UriKind.Absolute, out var uri))
             return true;
-
-        // Map IPv4-mapped IPv6 addresses to their IPv4 equivalent
-        if (address.IsIPv4MappedToIPv6)
-            address = address.MapToIPv4();
-
-        var bytes = address.GetAddressBytes();
-
-        if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-        {
-            // 10.0.0.0/8
-            if (bytes[0] == 10)
-                return true;
-            // 172.16.0.0/12
-            if (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)
-                return true;
-            // 192.168.0.0/16
-            if (bytes[0] == 192 && bytes[1] == 168)
-                return true;
-            // 127.0.0.0/8 (additional loopback check)
-            if (bytes[0] == 127)
-                return true;
-            // 169.254.0.0/16 (link-local)
-            if (bytes[0] == 169 && bytes[1] == 254)
-                return true;
-        }
-        else if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
-        {
-            // ::1 is already handled by IPAddress.IsLoopback above
-            // fd00::/8 (unique local addresses)
-            if (bytes[0] == 0xfd)
-                return true;
-            // fe80::/10 (link-local)
-            if (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80)
-                return true;
-        }
-
-        return false;
+        return EndpointAllowlist.Check(uri, localProvidersOptIn: false) != AllowlistVerdict.Allow;
     }
 }

@@ -272,6 +272,57 @@ for f in ('model', 'input_tokens_est', 'total_usd_max'):
         pass "--raw --estimate suppresses banner text"
     fi
 
+    # ── S03E14 -- The Screen Reader (Mickey Abbott) ───────────────────────
+    # Accessibility / CLI ergonomics: --plain, NO_COLOR, TERM=dumb, AZ_AI_PLAIN
+    # all yield ASCII-only and ANSI-free output across the headline surfaces.
+    echo ""
+    echo "▸ Accessibility (S03E14)"
+
+    # The literal control byte is awkward in shell single-quotes; build it once.
+    local _esc; _esc=$(printf '\033')
+
+    _assert_clean() {
+        # _assert_clean <label> <captured-text>
+        local label="$1" text="$2"
+        if printf '%s' "$text" | LC_ALL=C grep -q "${_esc}\["; then
+            fail "$label is ANSI-free" "found ESC[ in output"
+            return
+        fi
+        if printf '%s' "$text" | LC_ALL=C grep -q '[^[:print:][:space:]]'; then
+            fail "$label is ASCII-only" "found non-printable / non-ASCII byte"
+            return
+        fi
+        pass "$label is ASCII-only and ANSI-free"
+    }
+
+    # 1. --help under --plain.
+    local plain_help; plain_help=$("$BIN" --plain --help 2>&1)
+    _assert_clean "--plain --help" "$plain_help"
+    if printf '%s' "$plain_help" | grep -qF -- "--plain"; then
+        pass "--help advertises --plain"
+    else
+        fail "--help advertises --plain" "missing --plain in help output"
+    fi
+
+    # 2. --version under NO_COLOR=1.
+    local no_color_ver; no_color_ver=$(NO_COLOR=1 "$BIN" --version 2>&1)
+    _assert_clean "NO_COLOR=1 --version" "$no_color_ver"
+
+    # 3. --help under TERM=dumb.
+    local dumb_help; dumb_help=$(TERM=dumb "$BIN" --help 2>&1)
+    _assert_clean "TERM=dumb --help" "$dumb_help"
+
+    # 4. --help under AZ_AI_PLAIN=1.
+    local plain_env_help; plain_env_help=$(AZ_AI_PLAIN=1 "$BIN" --help 2>&1)
+    _assert_clean "AZ_AI_PLAIN=1 --help" "$plain_env_help"
+
+    # 5. Banner has no em-dash / arrow / mask glyph anywhere.
+    if printf '%s' "$plain_help" | LC_ALL=C grep -qE $'\xE2\x80\x94|\xE2\x86\x92|\xE2\x80\xA2|\xE2\x9C\x93'; then
+        fail "--help contains no unicode glyphs" "found em-dash / arrow / bullet / check"
+    else
+        pass "--help contains no unicode glyphs"
+    fi
+
     # ── 8 & 9. --set-model / --current-model / --models round-trip ────────
     echo ""
     echo "▸ Model alias round-trip (hermetic HOME)"
@@ -662,6 +713,147 @@ KCEOF2
 
         rm -rf "$wiz_home" "$answers_file" "$script_log"
     fi
+
+    # ── S03E13 -- The Telemetry (Frank Costanza opt-in observability) ─────
+    echo ""
+    echo "▸ S03E13 -- opt-in telemetry (AZ_AI_TELEMETRY=1)"
+
+    # Drive the dispatch path with bogus credentials so it fails predictably
+    # (no real API call). The dispatch try/catch lands in catch (Exception),
+    # sets outcome=unknown_error, and the finally emits the structured event
+    # to stderr. Stdout is irrelevant for these assertions.
+    local tel_home; tel_home=$(mktemp -d)
+    local tel_stderr_on tel_stderr_off
+
+    set +e
+    tel_stderr_on=$(env -i HOME="$tel_home" PATH="$PATH" \
+        DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZ_AI_TELEMETRY=1 \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-a-real-key" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --raw "S03E13 telemetry probe" 2>&1 1>/dev/null)
+    set -e
+
+    # Extract the single line that looks like a telemetry event (starts with
+    # '{"event_id":'). There must be exactly one. Other stderr lines (errors,
+    # warnings) are tolerated -- the assertion is on the telemetry line.
+    local tel_lines
+    tel_lines=$(printf '%s\n' "$tel_stderr_on" | grep -c '^{"event_id":' || true)
+    if [ "$tel_lines" = "1" ]; then
+        pass "S03E13 telemetry: emits exactly one event line on stderr when AZ_AI_TELEMETRY=1"
+    else
+        fail "S03E13 telemetry: emits exactly one event line on stderr when AZ_AI_TELEMETRY=1" \
+            "expected 1 event line, got $tel_lines. stderr: $tel_stderr_on"
+    fi
+
+    local tel_event
+    tel_event=$(printf '%s\n' "$tel_stderr_on" | grep '^{"event_id":' | head -n1)
+    local f
+    local missing=""
+    for f in '"event_id"' '"ts"' '"model"' '"provider"' '"dispatch_path"' '"latency_ms_bucket"' '"outcome"' '"error_class"'; do
+        if ! printf '%s' "$tel_event" | grep -qF "$f"; then
+            missing="$missing $f"
+        fi
+    done
+    if [ -z "$missing" ]; then
+        pass "S03E13 telemetry: event has all expected schema fields"
+    else
+        fail "S03E13 telemetry: event has all expected schema fields" "missing:$missing event=$tel_event"
+    fi
+
+    # Privacy guarantee: bogus key value MUST NOT appear in the event line.
+    if printf '%s' "$tel_event" | grep -qF 'sk-not-a-real-key'; then
+        fail "S03E13 telemetry: event must not leak API key" "leaked: $tel_event"
+    else
+        pass "S03E13 telemetry: event does not leak API key"
+    fi
+    # Endpoint hostname likewise must not appear in the event payload.
+    if printf '%s' "$tel_event" | grep -qF 'invalid.example.invalid'; then
+        fail "S03E13 telemetry: event must not leak endpoint" "leaked: $tel_event"
+    else
+        pass "S03E13 telemetry: event does not leak endpoint"
+    fi
+
+    # Negative: without AZ_AI_TELEMETRY=1, no telemetry line on stderr.
+    set +e
+    tel_stderr_off=$(env -i HOME="$tel_home" PATH="$PATH" \
+        DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-a-real-key" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --raw "S03E13 telemetry probe" 2>&1 1>/dev/null)
+    set -e
+    if printf '%s\n' "$tel_stderr_off" | grep -q '^{"event_id":'; then
+        fail "S03E13 telemetry: default off (env unset) emits no event" "leaked: $tel_stderr_off"
+    else
+        pass "S03E13 telemetry: default off (env unset) emits no event"
+    fi
+
+    # Negative: AZ_AI_TELEMETRY=0 does not enable.
+    set +e
+    local tel_zero
+    tel_zero=$(env -i HOME="$tel_home" PATH="$PATH" \
+        DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZ_AI_TELEMETRY=0 \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-a-real-key" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --raw "S03E13 telemetry probe" 2>&1 1>/dev/null)
+    set -e
+    if printf '%s\n' "$tel_zero" | grep -q '^{"event_id":'; then
+        fail "S03E13 telemetry: AZ_AI_TELEMETRY=0 must not enable" "leaked: $tel_zero"
+    else
+        pass "S03E13 telemetry: AZ_AI_TELEMETRY=0 does not enable (strict-equality '1')"
+    fi
+
+    rm -rf "$tel_home"
+
+    # -- S03E15 The Probe: az-ai --doctor ----------------------------------
+    local doc_home; doc_home=$(mktemp -d)
+
+    # 1. With NO providers configured (hermetic empty HOME, no env), --doctor exits 0.
+    set +e
+    env -i HOME="$doc_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        "$BIN" --doctor >/dev/null 2>&1
+    local doc_rc=$?
+    set -e
+    if [ "$doc_rc" -eq 0 ]; then
+        pass "S03E15 doctor: no providers configured exits 0"
+    else
+        fail "S03E15 doctor: no providers configured" "expected exit 0, got $doc_rc"
+    fi
+
+    # 2. --doctor --json emits valid JSON with required keys.
+    set +e
+    local doc_json
+    doc_json=$(env -i HOME="$doc_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        "$BIN" --doctor --json 2>/dev/null)
+    set -e
+    if printf '%s' "$doc_json" | python3 -c \
+        "import json,sys; d=json.load(sys.stdin); assert 'providers' in d and 'all_healthy' in d" \
+        >/dev/null 2>&1; then
+        pass "S03E15 doctor: --json emits valid schema"
+    else
+        fail "S03E15 doctor: --json schema" "got: $(printf '%s' "$doc_json" | head -c 200)"
+    fi
+
+    # 3. --doctor output never contains obvious-secret-shape (Bearer / sk-...).
+    set +e
+    local doc_out
+    doc_out=$(env -i HOME="$doc_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-a-real-key-12345" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --doctor 2>&1 || true)
+    set -e
+    if printf '%s' "$doc_out" | grep -Eq 'Bearer [A-Za-z0-9._-]+|sk-[A-Za-z0-9]{8,}'; then
+        fail "S03E15 doctor: secret-shape leak" "found Bearer/sk- pattern in output"
+    else
+        pass "S03E15 doctor: never emits Bearer/sk- secret shape"
+    fi
+
+    rm -rf "$doc_home"
 
     # ── API-gated smoke (skip unless creds present) ───────────────────────
     if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then

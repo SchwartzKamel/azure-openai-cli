@@ -1,5 +1,6 @@
 using System.ClientModel;
 using System.ClientModel.Primitives;
+using AzureOpenAI_CLI.Net;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using OpenAI.Chat;
@@ -198,6 +199,21 @@ internal static class OpenAiCompatAdapter
         {
             throw new InvalidOperationException(
                 $"OpenAI-compatible endpoint '{endpoint}' must be HTTPS unless loopback.");
+        }
+
+        // S03E16: SSRF allowlist gate. Localhost / RFC1918 / link-local
+        // require explicit AZ_AI_LOCAL_PROVIDERS=1 opt-in. Multicast,
+        // broadcast, malformed URIs, userinfo, and weird privileged ports
+        // are blocked unconditionally. We do NOT fall through to a network
+        // call when the verdict is anything other than Allow.
+        var optIn = EndpointAllowlist.LocalProvidersOptInFromEnv();
+        var verdict = EndpointAllowlist.Check(endpoint, optIn);
+        if (verdict != AllowlistVerdict.Allow)
+        {
+            throw new ArgumentException(
+                $"compat preset '{preset.Name}' resolves to {EndpointAllowlist.Describe(verdict)}; "
+                + $"endpoint='{endpoint}'. Refusing to dispatch.",
+                nameof(preset));
         }
 
         var options = new OpenAIClientOptions { Endpoint = endpoint };

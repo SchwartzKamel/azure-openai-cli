@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using AzureOpenAI_CLI.Cache;
+using AzureOpenAI_CLI.Observability;
 using Azure.AI.OpenAI;
 using dotenv.net;
 using Microsoft.Agents.AI;
@@ -107,7 +108,10 @@ internal class Program
         bool ImageMode,              // --image: generate image instead of chat
         string? OutputPath,          // --output <path>: save image to explicit file path
         string? ImageSize,           // --size <WxH>: image dimensions (e.g. 1024x1024)
-        bool ConfirmPrintSecret      // --i-understand-this-will-print-the-secret: required confirmation for `--config export-env`
+        bool ConfirmPrintSecret,     // --i-understand-this-will-print-the-secret: required confirmation for `--config export-env`
+        bool Plain                   // S03E14 (Mickey): --plain -- suppress banner / color / glyphs / spinner.
+                                     // Equivalent to NO_COLOR=1 AZ_AI_PLAIN=1 for one invocation. Looser
+                                     // than --raw: status text on stderr is still allowed, just plain-ASCII.
     );
 
     private static async Task<int> Main(string[] args)
@@ -148,7 +152,12 @@ internal class Program
             // S03E10 -- raw-mode pre-detection: ParseArgs hasn't run yet, but
             // the section-aware loader must stay silent on stderr under
             // --raw / --json (Espanso / AHK / cron consumers). Cheap O(N) scan.
+            // S03E14 (Mickey): pre-detect --plain alongside --raw so glyph /
+            // color decisions made BEFORE ParseArgs (banner, env-loader
+            // warnings) honor it. Cheap O(N) scan -- order of flags is
+            // immaterial since we only set process-wide latches.
             var preRaw = false;
+            var prePlain = false;
             for (var ai = 0; ai < args.Length; ai++)
             {
                 var a = args[ai];
@@ -156,8 +165,18 @@ internal class Program
                  || string.Equals(a, "--json", StringComparison.Ordinal))
                 {
                     preRaw = true;
-                    break;
                 }
+                else if (string.Equals(a, "--plain", StringComparison.Ordinal))
+                {
+                    prePlain = true;
+                }
+            }
+            if (prePlain)
+            {
+                // Sets NO_COLOR=1 and AZ_AI_PLAIN=1 in process env so Theme,
+                // child wizards, and any future spinner code all see the
+                // same signal without an explicit Plain reference.
+                Plain.Activate();
             }
             LoadConfigEnv(preRaw);
 
@@ -285,13 +304,13 @@ internal class Program
             var initialized = AzureOpenAI_CLI.Squad.SquadInitializer.Initialize();
             if (initialized)
             {
-                Console.WriteLine("✓ Squad initialized: .squad.json and .squad/ directory created.");
+                Console.WriteLine("[ok] Squad initialized: .squad.json and .squad/ directory created.");
                 Console.WriteLine("  Edit .squad.json to customize personas and routing rules.");
                 return 0;
             }
             else
             {
-                Console.WriteLine("✓ Squad already initialized (found .squad.json).");
+                Console.WriteLine("[ok] Squad already initialized (found .squad.json).");
                 return 0;
             }
         }
@@ -319,7 +338,7 @@ internal class Program
             foreach (var name in personas)
             {
                 var persona = config.GetPersona(name);
-                Console.WriteLine($"  • {name} — {persona?.Description ?? "(no description)"}");
+                Console.WriteLine($"  - {name} -- {persona?.Description ?? "(no description)"}");
             }
             return 0;
         }
@@ -475,7 +494,7 @@ internal class Program
                 activePersona = coordinator.Route(prompt);
                 if (activePersona != null && !opts.Raw && !opts.Json)
                 {
-                    Console.Error.WriteLine($"🎭 Auto-routed to: {activePersona.Name} ({activePersona.Role})");
+                    Console.Error.WriteLine($"[persona] Auto-routed to: {activePersona.Name} ({activePersona.Role})");
                 }
             }
             else
@@ -530,13 +549,19 @@ internal class Program
 
                 if (!opts.Raw && !opts.Json)
                 {
-                    Console.Error.WriteLine($"🎭 Persona: {activePersona.Name} ({activePersona.Role})");
+                    Console.Error.WriteLine($"[persona] {activePersona.Name} ({activePersona.Role})");
                 }
             }
         }
 
         // Build chat client — dispatches to Azure OpenAI or Foundry/GitHub Models
         // based on endpoint env vars. See ADR-005.
+        // S03E13 -- opt-in telemetry. The DispatchScope captures start time
+        // and the provider/dispatch_path tuple here, BEFORE the dispatch try,
+        // so the finally always emits exactly one event (idempotent). The
+        // emitter is a no-op unless AZ_AI_TELEMETRY=1 (strict equality).
+        var (telProvider, telDispatchPath) = ResolveDispatchInfo(model);
+        var telScope = TelemetryEmitter.StartDispatch(model, telProvider, telDispatchPath);
         try
         {
             var chatClient = BuildChatClient(endpoint, apiKey, model, opts.Json);
@@ -704,7 +729,7 @@ internal class Program
             if (!opts.Raw && !Console.IsErrorRedirected && inputTokens.HasValue)
             {
                 var total = inputTokens.Value + outputTokens.GetValueOrDefault();
-                Console.Error.WriteLine($"  [tokens: {inputTokens}→{outputTokens}, {total} total]");
+                Console.Error.WriteLine($"  [tokens: {inputTokens}->{outputTokens}, {total} total]");
             }
 
             // Trailing newline (NOT in raw mode)
@@ -719,7 +744,7 @@ internal class Program
                 try
                 {
                     var summary = responseBuffer.Length > 500
-                        ? responseBuffer.ToString(0, 500) + "…"
+                        ? responseBuffer.ToString(0, 500) + "..."
                         : responseBuffer.ToString();
                     personaMemory.AppendHistory(activePersona.Name, prompt, summary);
                 }
@@ -749,6 +774,7 @@ internal class Program
                 try { personaMemory.AppendHistory(activePersona.Name, prompt ?? "", "[cancelled]"); }
                 catch { /* best-effort */ }
             }
+            telScope.SetOutcome("cancelled", null);
             return ErrorAndExit("Request timed out", 3, jsonMode: opts.Json);
         }
         catch (Azure.RequestFailedException ex)
@@ -759,7 +785,8 @@ internal class Program
             // "A type initializer threw an exception".
             var rfEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
             var rfApiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
-            var msg = $"Azure OpenAI request failed: {ex.Status} {ex.ErrorCode} — {ex.Message}";
+            var msg = $"Azure OpenAI request failed: {ex.Status} {ex.ErrorCode} -- {ex.Message}";
+            telScope.SetOutcome(ex.Status >= 500 ? "server_error" : "client_error", ex.ErrorCode ?? ex.GetType().Name);
             return ErrorAndExit(UnsafeReplaceSecrets(msg, rfApiKey, rfEndpoint), 1, jsonMode: opts.Json);
         }
         catch (Exception ex)
@@ -780,9 +807,17 @@ internal class Program
             {
                 msg += " Endpoint may be deleted or unreachable. Run 'az-ai --setup' to reconfigure.";
             }
+            telScope.SetOutcome("unknown_error", ex.GetType().FullName);
             return ErrorAndExit(
                 $"Request failed: {msg}",
                 1, jsonMode: opts.Json);
+        }
+        finally
+        {
+            // S03E13: emit exactly one telemetry event for this dispatch (no-op
+            // unless AZ_AI_TELEMETRY=1). Idempotent; finally fires even on
+            // returns inside catch arms.
+            telScope.Emit();
         }
     }
 
@@ -840,7 +875,8 @@ internal class Program
         ImageMode: false,
         OutputPath: null,
         ImageSize: null,
-        ConfirmPrintSecret: false
+        ConfirmPrintSecret: false,
+        Plain: false
     );
 
     /// <summary>Default agent tool-call round cap, matching v1 (<c>--max-rounds</c>).</summary>
@@ -932,6 +968,7 @@ internal class Program
         bool imageMode = false;
         string? outputPath = null;
         string? imageSize = null;
+        bool plain = false;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -1025,6 +1062,28 @@ internal class Program
                     break;
                 case "--raw":
                     raw = true;
+                    break;
+                case "--doctor":
+                    // S03E15 -- The Probe (Costanza). Self-contained branch:
+                    // dispatches the diagnostic immediately and exits with
+                    // its return code (0 = all healthy, 1 = at least one
+                    // unhealthy). Pre-scan args for --json since flag order
+                    // is not guaranteed; --plain is read via Plain.IsActive
+                    // which honors the env-var latch Mickey set up in
+                    // S03E14. NEVER issues an authenticated API call and
+                    // NEVER emits credential values.
+                    Environment.Exit(Cli.ProviderDoctor.Run(
+                        jsonMode: Array.Exists(args, a => string.Equals(a, "--json", StringComparison.Ordinal)),
+                        plain: Plain.IsActive(),
+                        Console.Out,
+                        Console.Error));
+                    break;
+                case "--plain":
+                    // S03E14 (Mickey): plain-output mode -- suppress banner,
+                    // color, unicode glyphs, spinner. Looser than --raw
+                    // (status text on stderr still allowed). Plain.Activate()
+                    // runs early in Main() before any output happens.
+                    plain = true;
                     break;
                 case "--agent":
                     agentMode = true;
@@ -1444,6 +1503,7 @@ internal class Program
             OutputPath = outputPath,
             ImageSize = imageSize,
             ConfirmPrintSecret = confirmPrintSecret,
+            Plain = plain,
         };
     }
 
@@ -1523,7 +1583,7 @@ internal class Program
         {
             var known = string.Join(", ", Observability.CostHook.KnownModels());
             return ErrorAndExit(
-                $"Unknown model '{model}' — no price data available. Known: {known}. " +
+                $"Unknown model '{model}' -- no price data available. Known: {known}. " +
                 "Set AZAI_PRICE_TABLE to a custom JSON price table to add models.",
                 1, jsonMode: opts.Json);
         }
@@ -1605,7 +1665,7 @@ internal class Program
             }
             current = current.InnerException;
         }
-        return parts.Count == 0 ? ex.GetType().Name : string.Join(" → ", parts);
+        return parts.Count == 0 ? ex.GetType().Name : string.Join(" -> ", parts);
     }
 
     /// <summary>
@@ -1868,19 +1928,55 @@ internal class Program
     }
 
     /// <summary>
-    /// ADR-005 + ADR-010 provider dispatch. Constructs the appropriate
-    /// <see cref="IChatClient"/> based on environment configuration.
-    ///
-    /// <b>Precedence (S03E09 The Compat):</b>
-    /// <list type="number">
-    ///   <item><b>Azure Foundry allowlist</b> wins: when <c>AZURE_FOUNDRY_ENDPOINT</c>
-    ///     is set AND the model is in <c>AZURE_FOUNDRY_MODELS</c>, routes through
-    ///     the Foundry/GitHub Models endpoint via <see cref="FoundryAuthPolicy"/>.</item>
+    /// S03E13 -- resolves <c>(provider, dispatch_path)</c> for telemetry from
+    /// the same env signals that <see cref="BuildChatClient"/> uses to route.
+    /// Cheap, no I/O. Mirrors but does not replicate the full BuildChatClient
+    /// decision tree -- a granular bucket only, not a duplicated router.
+    /// <list type="bullet">
+    ///   <item>Foundry allowlist hit  -> ("foundry", "foundry-allowlist")</item>
+    ///   <item>Compat allowlist hit   -> (preset,    "compat-allowlist")</item>
+    ///   <item>Default                -> ("azure",   "azure-default")</item>
+    /// </list>
+    /// </summary>
+    internal static (string provider, string dispatchPath) ResolveDispatchInfo(string model)
+    {
+        // Foundry leg first (matches BuildChatClient priority order).
+        var foundryModels = ParseFoundryModels();
+        if (foundryModels != null && foundryModels.Contains(model))
+        {
+            return ("foundry", "foundry-allowlist");
+        }
+
+        // Compat allowlist.
+        try
+        {
+            var compatModels = OpenAiCompatAdapter.ParseCompatModelsFromEnv();
+            if (compatModels != null && compatModels.TryGetValue(model, out var presetName))
+            {
+                var preset = (presetName ?? "unknown").ToLowerInvariant();
+                return (preset, "compat-allowlist");
+            }
+        }
+        catch
+        {
+            // Malformed AZ_AI_COMPAT_MODELS -- BuildChatClient will surface
+            // the error; for telemetry we just fall through to "azure".
+        }
+
+        return ("azure", "azure-default");
+    }
+
+    /// <summary>
+    /// Builds the <see cref="IChatClient"/> for the requested endpoint /
+    /// API key / model triple. Dispatches to one of:
+    /// <list type="bullet">
+    ///   <item><b>Foundry / GitHub Models</b>: when the model appears in the
+    ///     <c>AZ_AI_FOUNDRY_MODELS</c> allowlist.</item>
     ///   <item><b>OpenAI-compat allowlist</b>: when the model appears as
     ///     <c>preset:model</c> in <c>AZ_AI_COMPAT_MODELS</c>, routes through
     ///     <see cref="OpenAiCompatAdapter"/> using the named preset (openai,
-    ///     groq, together, cloudflare, ...).</item>
-    ///   <item><b>Azure OpenAI</b> (default): uses <c>AzureOpenAIClient</c> with the
+    ///     groq, together, cloudflare, or unknown).</item>
+    ///   <item><b>Azure OpenAI</b> (default): the standard Azure path using the
     ///     standard <c>AZUREOPENAIENDPOINT</c>.</item>
     /// </list>
     /// Returns null if the endpoint is invalid (error already emitted).
@@ -2388,7 +2484,7 @@ internal class Program
 
     private static void ShowHelp()
     {
-        Console.WriteLine(@"az-ai (v2.0.0) — Azure OpenAI CLI (Microsoft Agent Framework)
+        Console.WriteLine(@"az-ai (v2.0.0) -- Azure OpenAI CLI (Microsoft Agent Framework)
 
 Usage:
   az-ai [OPTIONS] <prompt>
@@ -2406,6 +2502,12 @@ Core Options:
                             Silent-by-design: no spinner, no color, no [ERROR]
                             prefix on stderr when combined with --json. See
                             .github/contracts/color-contract.md rule 6.
+  --plain                   Plain-ASCII output: no banner, no color, no glyphs,
+                            no spinner. Looser than --raw -- status text on
+                            stderr is still allowed. Equivalent to setting
+                            NO_COLOR=1 AZ_AI_PLAIN=1 for one invocation.
+                            Honors NO_COLOR / AZ_AI_PLAIN / TERM=dumb env vars.
+                            See docs/accessibility.md.
   --json                    Emit machine-readable JSON (errors + estimator output)
   --help, -h                Show this help
   --version, -v             Show version (add --short for bare semver)
@@ -2430,7 +2532,7 @@ Persona / Squad Mode:
 Model Aliases (FR-010):
   --models, --list-models   List configured model aliases
   --current-model           Show the default model alias
-  --set-model <a>=<d>       Persist alias → deployment mapping
+  --set-model <a>=<d>       Persist alias -> deployment mapping
 
 Configuration (FR-003/FR-009, precedence: env > CLI > ./.azureopenai-cli.json > ~/.azureopenai-cli.json):
   --config <path>           Use an alternate config file
@@ -2452,7 +2554,7 @@ Shell Completions:
 
 Telemetry (opt-in):
   --telemetry               Enable OpenTelemetry + FinOps cost events on stderr
-                            (env: AZ_TELEMETRY=1 — equivalent to --telemetry)
+                            (env: AZ_TELEMETRY=1 -- equivalent to --telemetry)
   --otel                    Export spans to OTLP endpoint (tracing only)
   --metrics                 Export metrics to OTLP endpoint (meters only)
 
@@ -2537,7 +2639,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
 
     case ""${prev}"" in
         --completions)
@@ -2573,6 +2675,7 @@ _az-ai() {
         '--personas[List personas]'
         '--squad-init[Initialize squad]'
         '--raw[Raw text output]'
+        '--plain[Plain ASCII output -- no banner / color / glyphs]'
         '--json[JSON output]'
         '--version[Show version]'
         '--help[Show help]'
@@ -2613,6 +2716,7 @@ complete -c az-ai -l persona -d 'Use a persona' -r
 complete -c az-ai -l personas -d 'List personas'
 complete -c az-ai -l squad-init -d 'Initialize squad'
 complete -c az-ai -l raw -d 'Raw text output'
+complete -c az-ai -l plain -d 'Plain ASCII output -- no banner / color / glyphs'
 complete -c az-ai -l json -d 'JSON output'
 complete -c az-ai -l version -s v -d 'Show version'
 complete -c az-ai -l help -s h -d 'Show help'
@@ -2711,7 +2815,7 @@ complete -c az-ai -w az-ai
             bool isDefault = !string.IsNullOrEmpty(config.DefaultModel)
                 && string.Equals(config.DefaultModel, kv.Key, StringComparison.OrdinalIgnoreCase);
             var marker = isDefault ? " *" : "";
-            var prefix = isDefault ? "→ " : "  ";
+            var prefix = isDefault ? "* " : "  ";
             var warn = allowedModels != null && !allowedModels.Contains(kv.Value, StringComparer.OrdinalIgnoreCase)
                 ? " [NOT IN ALLOWLIST]"
                 : "";
@@ -2756,7 +2860,7 @@ complete -c az-ai -w az-ai
             config.DefaultModel = alias;
         }
         config.Save();
-        Console.WriteLine($"✓ Model alias '{alias}' → '{deployment}' saved to {config.LoadedFrom}");
+        Console.WriteLine($"[ok] Model alias '{alias}' -> '{deployment}' saved to {config.LoadedFrom}");
         return 0;
     }
 
@@ -2779,7 +2883,7 @@ complete -c az-ai -w az-ai
                         1, opts.Json);
                 }
                 config.Save();
-                Console.WriteLine($"✓ {opts.ConfigKey}={opts.ConfigValue} saved to {config.LoadedFrom}");
+                Console.WriteLine($"[ok] {opts.ConfigKey}={opts.ConfigValue} saved to {config.LoadedFrom}");
                 return 0;
 
             case "get":
@@ -2830,11 +2934,11 @@ complete -c az-ai -w az-ai
                     if (File.Exists(resetPath))
                     {
                         File.Delete(resetPath);
-                        Console.WriteLine($"✓ Config reset: {resetPath} deleted");
+                        Console.WriteLine($"[ok] Config reset: {resetPath} deleted");
                     }
                     else
                     {
-                        Console.WriteLine($"✓ No config to reset (no file at {resetPath})");
+                        Console.WriteLine($"[ok] No config to reset (no file at {resetPath})");
                     }
                     return 0;
                 }

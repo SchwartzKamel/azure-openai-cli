@@ -59,6 +59,26 @@ internal record ConfigShowResolvedField(
 );
 
 /// <summary>
+/// S03E15 -- The Probe. JSON envelope for <c>az-ai --doctor --json</c>.
+/// One entry per configured provider plus a roll-up boolean. Never carries
+/// credential values; <c>creds_present</c> is the only credential signal.
+/// </summary>
+internal record ProviderDoctorReport(
+    [property: JsonPropertyName("providers")] List<ProviderDoctorEntry> Providers,
+    [property: JsonPropertyName("all_healthy")] bool AllHealthy
+);
+
+/// <summary>One row in <see cref="ProviderDoctorReport"/>.</summary>
+internal record ProviderDoctorEntry(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("endpoint")] string Endpoint,
+    [property: JsonPropertyName("dns")] string Dns,
+    [property: JsonPropertyName("creds_present")] bool CredsPresent,
+    [property: JsonPropertyName("models_configured")] int ModelsConfigured,
+    [property: JsonPropertyName("healthy")] bool Healthy
+);
+
+/// <summary>
 /// System.Text.Json source generator context for AOT-compatible serialization.
 /// Covers all types that are serialized/deserialized across the CLI.
 ///
@@ -88,6 +108,12 @@ internal record ConfigShowResolvedField(
 [JsonSerializable(typeof(string))]
 // ── Observability (Phase 5) ─────────────────────────────────────
 [JsonSerializable(typeof(AzureOpenAI_CLI.Observability.CostEvent))]
+// ── S03E13 opt-in telemetry (Frank Costanza) ────────────────────
+// TelemetryEmitter uses a manual Utf8JsonWriter for the wire format so
+// key order is stable and the line is compact (NDJSON-ready). This entry
+// keeps the type AOT-discoverable for any future deserialization path
+// (e.g. test harnesses parsing captured stderr lines).
+[JsonSerializable(typeof(AzureOpenAI_CLI.Observability.TelemetryEvent))]
 // ── User configuration (FR-003 / FR-009 / FR-010) ───────────────
 [JsonSerializable(typeof(UserConfig))]
 [JsonSerializable(typeof(UserDefaults))]
@@ -99,6 +125,10 @@ internal record ConfigShowResolvedField(
 [JsonSerializable(typeof(Dictionary<string, ProfileEntry>))]
 [JsonSerializable(typeof(ConfigShowJson))]
 [JsonSerializable(typeof(ConfigShowResolvedField))]
+// -- S03E15 The Probe -----------------------------------------------------
+[JsonSerializable(typeof(ProviderDoctorReport))]
+[JsonSerializable(typeof(ProviderDoctorEntry))]
+[JsonSerializable(typeof(List<ProviderDoctorEntry>))]
 // ── Squad types ─────────────────────────────────────────────────
 [JsonSerializable(typeof(SquadConfig))]
 [JsonSerializable(typeof(TeamConfig))]

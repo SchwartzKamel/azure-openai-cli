@@ -31,7 +31,9 @@ public class ExceptionUnwrapTests
         Assert.Contains("outer", result);
         Assert.Contains("middle", result);
         Assert.Contains("root cause", result);
-        Assert.Contains(" → ", result);
+        // S03E14 (Mickey): joiner is ASCII " -> " (was Unicode "\u2192").
+        // The test name says "Arrow" -- the ASCII arrow is still an arrow.
+        Assert.Contains(" -> ", result);
         // Order preserved: outer first, root last.
         Assert.True(result.IndexOf("outer") < result.IndexOf("middle"));
         Assert.True(result.IndexOf("middle") < result.IndexOf("root cause"));
