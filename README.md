@@ -132,6 +132,16 @@ Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) -- ide
 
 Upgrading from v1.9.x? See [docs/migration-v1-to-v2.md](docs/migration-v1-to-v2.md). Nothing breaks; a lot adds.
 
+### Telemetry (opt-in)
+
+Default off. Set `AZ_AI_TELEMETRY=1` (strict-equality on the literal string `"1"` -- not `"true"`, not `"yes"`, not `"1 "`) to emit one structured NDJSON event per dispatch on stderr. Eight fields: `event_id`, `ts`, `model`, `provider`, `dispatch_path`, `latency_ms_bucket`, `outcome`, `error_class`. Never emits prompts, completions, tokens, API keys, endpoints, file paths, or stack traces. Sample event:
+
+```json
+{"event_id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","ts":"2026-05-09T12:34:56.789Z","model":"gpt-4o-mini","provider":"azure","dispatch_path":"azure-default","latency_ms_bucket":"250","outcome":"success","error_class":null}
+```
+
+Schema, SLOs, privacy charter, and the upstream-pricing review cadence: [docs/observability/slo.md](docs/observability/slo.md).
+
 ## Performance
 
 Cold-start and binary-size figures for v2.0.5 are being re-measured on the current release matrix. See [docs/perf/v2.0.5-baseline.md](docs/perf/v2.0.5-baseline.md) for current numbers -- v1.8 legacy figures are no longer representative and have been removed here pending that refresh.
@@ -296,7 +306,41 @@ Set the image model deployment with `AZURE_IMAGE_MODEL` or `make set-image-model
 
 The CLI is meant to be given shell and file access inside agent mode, so defense-in-depth matters. `shell_exec` blocks a denylist of destructive commands and enforces timeouts; `web_fetch` is HTTPS-only with SSRF filtering against private/link-local ranges; `read_file` refuses sensitive paths and caps read size; `delegate_task` recursion is depth-capped. Credentials are never baked into the binary or Docker image -- always injected at runtime.
 
+**Local providers (S03E16).** The OpenAI-compat dispatch path passes every preset URL through `Net/EndpointAllowlist.cs` before constructing a client. Loopback, RFC1918, link-local (including the cloud metadata service at `169.254.169.254`), and IPv6 ULA endpoints are blocked by default; set `AZ_AI_LOCAL_PROVIDERS=1` (strict equality) to opt in to local runtimes such as Ollama or `llama-server`. Multicast, broadcast, userinfo URLs, and privileged ports stay blocked even with opt-in. Audit details: [docs/audits/security-v2.1.3-allowlist.md](docs/audits/security-v2.1.3-allowlist.md).
+
 Full threat model and hardening checklist: [SECURITY.md](SECURITY.md). Report vulnerabilities per the policy there. To cryptographically verify a downloaded binary, container, or SBOM against the build attestations, see [docs/verifying-releases.md](docs/verifying-releases.md).
+
+## Accessibility
+
+`az-ai` honors [no-color.org](https://no-color.org) (`NO_COLOR`),
+`TERM=dumb`, `FORCE_COLOR`, and `CLICOLOR` / `CLICOLOR_FORCE`. The
+`--plain` flag (and `AZ_AI_PLAIN=1` env var, S03E14) suppress banner /
+color / unicode glyphs / spinner for screen-reader, low-bandwidth, and
+CI-log consumers; default CLI output is ASCII-only and ANSI-free. See
+[docs/accessibility.md](docs/accessibility.md) for the full policy,
+glyph-alternatives table, supported screen readers (Orca, NVDA, JAWS,
+VoiceOver), and the plain-mode test matrix.
+
+### Diagnosing your setup
+
+`az-ai --doctor` (S03E15) probes every configured provider and prints a
+health table -- DNS reachability, credential presence (boolean only,
+never the value), and model-allowlist count. No authenticated API call
+is ever issued; output is routed through `SecretRedactor` as
+defense-in-depth. Add `--json` for machine-readable output or `--plain`
+for ASCII key:value stanzas. Exit code 0 = all healthy, 1 = at least
+one unhealthy.
+
+```text
+$ az-ai --doctor
++--------------------+----------------------------------------------+-------------+-------+--------+
+| provider           | endpoint                                     | dns         | creds | models |
++--------------------+----------------------------------------------+-------------+-------+--------+
+| azure              | https://example.cognitiveservices.azure.c... | ok          | yes   | 2      |
+| compat:openai      | https://api.openai.com/v1                    | ok          | yes   | 1      |
++--------------------+----------------------------------------------+-------------+-------+--------+
+all 2 provider(s) healthy
+```
 
 ## Install
 
@@ -339,6 +383,7 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 - [docs/persona-guide.md](docs/persona-guide.md) -- persona + Squad reference (`--persona`, `.squad.json`, memory)
 - [docs/espanso-ahk-integration.md](docs/espanso-ahk-integration.md) -- text expansion setup
 - [docs/cost-optimization.md](docs/cost-optimization.md) -- token budgeting and per-persona cost profiles
+- [docs/onboarding/local-providers.md](docs/onboarding/local-providers.md) -- the first hour with a local model on your laptop (Ollama walkthrough; S03E19)
 
 ### Security
 

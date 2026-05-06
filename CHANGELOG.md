@@ -8,6 +8,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(a11y):** S03E14 *The Screen Reader* (Mickey Abbott) -- `--plain`
+  CLI flag suppresses banner / color / unicode glyphs / spinner.
+  Equivalent to setting `NO_COLOR=1 AZ_AI_PLAIN=1` for one invocation;
+  looser than `--raw` (status text on stderr is still allowed, just
+  plain-ASCII). New `AZ_AI_PLAIN` env var honored in addition to
+  `NO_COLOR` and `TERM=dumb`. Centralized in
+  `azureopenai-cli/Plain.cs` (single chokepoint, AOT-clean). Wired
+  early in `Main()` so the env-loader, banner, and any future spinner
+  see a consistent picture without an explicit dependency on `Plain`.
+  Bash / zsh / fish completion scripts learn the new flag.
+- **docs(a11y):** S03E14 *The Screen Reader* -- accessibility policy
+  appendix added to `docs/accessibility.md` (precedence table,
+  glyph-alternatives map, screen-reader notes, key:value vs. table
+  rendering rule). README gains a short "Accessibility" subsection
+  pointing at it. Exec-report at
+  `docs/exec-reports/s03e14-the-screen-reader.md`.
+- **security(net):** S03E16 *The Allowlist* -- SSRF endpoint allowlist
+  (`Net/EndpointAllowlist.cs`) gates compat-provider connections;
+  localhost requires explicit `AZ_AI_LOCAL_PROVIDERS=1` opt-in.
+  Strict-equality acceptance (mirrors `AZ_AI_TELEMETRY` from E13).
+  Single seam shared by `WebFetchTool` (tool surface, opt-in always
+  off) and `OpenAiCompatAdapter.Build()` (provider surface). Eight
+  verdict states; friendly error names the rule that fired and the
+  env-var to flip. 57 adversarial test cases under
+  `tests/AzureOpenAI_CLI.Tests/EndpointAllowlistTests.cs` covering
+  RFC1918, link-local (incl. cloud metadata 169.254.169.254), IPv6
+  loopback / fe80 / fc00 / ff00, multicast, broadcast, 0.0.0.0,
+  userinfo, privileged ports, octal / decimal / IPv6-mapped-IPv4 /
+  trailing-dot localhost obfuscation, IDN homoglyph punycode
+  normalization, mixed-case host, and DNS-rebinding (multi-record
+  resolver stub). Audit verdict GREEN
+  (`docs/audits/security-v2.1.3-allowlist.md`); three forward-
+  hardening findings filed (`fdr-2026-05-A-1` MEDIUM,
+  `fdr-2026-05-A-2` LOW, `fdr-2026-05-A-3` LOW).
+- **docs(onboarding):** S03E19 *The First Hour, Local Edition* --
+  `docs/onboarding/local-providers.md` tutorial walks a new user from
+  install to first local-model response (Ollama). Path A (wizard) and
+  Path B (manual env file) are both documented; every E14-E18
+  dependency is tagged "(coming soon: S03ENN)" with a today-workaround
+  paired so the page reads cleanly before, during, and after those
+  episodes ship.
+- **feat(diagnostics):** S03E15 *The Probe* -- `az-ai --doctor` subcommand
+  probes endpoint reachability + credential presence + model allowlist
+  for every configured provider (Azure, Foundry, OpenAI-compat presets);
+  never emits credential values. DNS resolution is capped at 3s and
+  parallelized via `Task.WhenAll`. Output formats: default ASCII table,
+  `--json` (`{"providers":[...],"all_healthy":bool}`), and `--plain`
+  key:value stanzas. Exit code 0 = all healthy, 1 = at least one
+  unhealthy. Every textual output line routes through `SecretRedactor`
+  as defense in depth. New file: `azureopenai-cli/Cli/ProviderDoctor.cs`.
+- **feat(observability):** S03E13 *The Telemetry* -- opt-in structured
+  telemetry on the compat-dispatch path. Set `AZ_AI_TELEMETRY=1` to
+  enable; default off, strict-equality acceptance (any other value,
+  including `"true"`, `"yes"`, `"1 "` with trailing space, keeps it
+  off). Emits one NDJSON line per dispatch to stderr (never stdout, even
+  under `--json`). Schema is fixed at eight fields: `event_id`, `ts`,
+  `model`, `provider`, `dispatch_path`, `latency_ms_bucket`, `outcome`,
+  `error_class`. Never emits prompts, completions, tokens, API keys,
+  endpoints, file paths, stack traces, or user names -- the privacy
+  guarantee is enforced by the schema, not by reviewer vigilance.
+  `error_class` is run through `SecretRedactor` and truncated at 200
+  chars. Initial SLO charter and pricing-review cadence proposed in
+  `docs/observability/slo.md` (Morty Seinfeld + Frank Costanza,
+  quarterly, 10% delta threshold).
 - **feat(wizard):** S03E11 *The Wizard, Reprise* -- setup wizard now
   provider-aware (azure, openai, groq, together, cloudflare); writes
   `[provider:NAME]` sections to `~/.config/az-ai/env` (E10 format) plus
@@ -55,6 +119,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   trigger pattern. Commit `905515e`.
 
 ### Fixed
+- **fix(a11y):** S03E14 *The Screen Reader* (Mickey Abbott) -- glyph-leak
+  audit scrubs every non-ASCII byte from default CLI output paths.
+  Replaced: `\u2014` (em-dash) in banner, `--current-model` arrow, and
+  error-chain joiner `Program.UnwrapException`; `\u2192` (RIGHTWARDS
+  ARROW) in `--set-model` / `--config set` / token-usage line / help
+  text; `\u2022` (BULLET) in `--personas` listing; `\u2713` (CHECK
+  MARK) on every wizard / squad / config-set acknowledgement; theatre-
+  mask emoji (`\ud83c\udfad`) in persona auto-route messages; `\u2026`
+  (HORIZONTAL ELLIPSIS) in cached-response truncation marker. None of
+  the previous glyphs survived screen-reader pronunciation cleanly.
+  All replaced with their ASCII equivalents (`--`, `->`, `-`, `[ok]`,
+  `[persona]`, `...`). Default CLI output is now ASCII-only and
+  ANSI-free; verified by 28 new xUnit `AccessibilityTests` and 6 new
+  `tests/integration_tests.sh` assertions covering `--help`,
+  `--version`, `--version --short` under `NO_COLOR`, `TERM=dumb`,
+  `AZ_AI_PLAIN=1`, and `--plain`.
 - **fix(perf):** `PrewarmAsync` now also covers compat-routed providers
   via the new `PrewarmCompatAsync` wrapper (S03E12 *The Receipt*, closes
   Kramer Finding 4 from S03E09): when `AZ_AI_COMPAT_MODELS` is set the

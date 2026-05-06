@@ -24,6 +24,11 @@ End of S02, `azure-openai-cli` is an Azure-OpenAI-native single-shot binary -- e
 | S03E09 | *The Compat* | Kramer | -- (clean episode; OpenAiCompatAdapter shipped) | 2026-05 |
 | S03E11 | *The Wizard, Reprise* | Jerry | GREEN (provider-aware wizard, env-file writer, 32 unit tests + 5 integration; closes K-1 chmod-600 README gap) | 2026-05 |
 | S03E12 | *The Receipt* | Kenny Bania | -- (bench harness + compat prewarm + compat cost rates; closes CR-09 F4 + F5) | 2026-05 |
+| S03E13 | *The Telemetry* | Frank Costanza | GREEN (opt-in `AZ_AI_TELEMETRY=1` emitter + initial SLO charter; pricing-review cadence pinned) | 2026-05 |
+| S03E16 | *The Allowlist* | FDR | GREEN (SSRF endpoint allowlist seam; 57 adversarial cases; `AZ_AI_LOCAL_PROVIDERS=1` opt-in; 3 forward-hardening findings filed) | 2026-05 |
+| S03E19 | *The First Hour, Local Edition* | Lloyd Braun | -- (docs-only; tutorial `docs/onboarding/local-providers.md`, 5 lloyd-2026-05-L-* findings opened against forward-looking docs and adjacent README/glossary gaps) | 2026-05 |
+| S03E14 | *The Screen Reader* | Mickey Abbott | GREEN (`--plain` flag + `Plain.cs` chokepoint; 18-site ASCII glyph audit; `NO_COLOR` / `TERM=dumb` / `AZ_AI_PLAIN` honored; 28 unit + 6 integration tests) | 2026-05 |
+| S03E15 | *The Probe* | Costanza | GREEN (`az-ai --doctor` subcommand; DNS + creds-presence + model-count probe across azure / foundry / compat presets; never emits credential values; 21 unit tests + 3 integration; exit 0/1) | 2026-05 |
 
 ## Active findings
 

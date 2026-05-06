@@ -469,5 +469,72 @@ the patterns.
 
 ---
 
+## 12. S03E14 update -- `--plain` and the glyph audit
+
+The S03E14 episode (*The Screen Reader*) added one CLI flag and one env
+var, then audited every default CLI output surface for non-ASCII glyphs.
+
+### `--plain` flag and `AZ_AI_PLAIN` env var
+
+| Signal              | Effect                                                  |
+|---------------------|---------------------------------------------------------|
+| `--plain` flag      | Suppresses banner / color / glyphs / spinner. Status text on stderr is still allowed (just plain-ASCII). |
+| `AZ_AI_PLAIN=1`     | Same as `--plain` for the duration of one shell. Any non-empty, non-`0` value activates. |
+| `NO_COLOR=<any>`    | Implies plain mode (cascades through `Plain.IsActive()`). |
+| `TERM=dumb`         | Implies plain mode. Emacs `M-x shell`, `tramp`, vintage serial. |
+
+`--raw` is still the strictest contract -- it suppresses **all**
+non-content output (no `[ERROR]` prefix when paired with `--json`, no
+spinner, no status). `--plain` is the *ergonomic* tier:
+human-friendly status text, just no decoration.
+
+### Glyph alternatives (CLI output)
+
+Default CLI output is now ASCII-only. The audit replaced:
+
+| Before              | After       | Site                                       |
+|---------------------|-------------|--------------------------------------------|
+| `\u2014` em-dash    | `--`        | banner, error chain, error messages        |
+| `\u2192` arrow      | `->`        | `--set-model`, `--config set`, token line  |
+| `\u2022` bullet     | `-`         | `--personas` listing                       |
+| `\u2713` check mark | `[ok]`      | wizard / squad / config-set ack            |
+| `\ud83c\udfad` mask | `[persona]` | persona auto-route notice                  |
+| `\u2026` ellipsis   | `...`       | cached-response truncation                 |
+
+The replacements were chosen so a screen reader pronounces them
+audibly: a check mark is silent or rendered as "U+2713" in many TTS
+voices; `[ok]` is announced as "bracket O K bracket". A theatre-mask
+emoji depends on the user's emoji font and TTS dictionary; `[persona]`
+is unambiguous English.
+
+### Centralized chokepoint
+
+`azureopenai-cli/Plain.cs` is the single decision point. `IsActive()`
+returns true when any of `--plain` / `AZ_AI_PLAIN` / `NO_COLOR` /
+`TERM=dumb` is set. `Activate()` is wired in `Program.Main()` before
+any output happens; it sets `NO_COLOR=1` and `AZ_AI_PLAIN=1` in the
+process env so `Theme.UseColor()` and any future spinner code see a
+consistent picture without an explicit `Plain` reference.
+
+### Test coverage
+
+- `tests/AzureOpenAI_CLI.Tests/AccessibilityTests.cs` -- 28 unit
+  tests covering `Plain.IsActive()` precedence, `--help` / `--version`
+  / `--version --short` ASCII-only and ANSI-free under all four plain
+  signals (`NO_COLOR`, `TERM=dumb`, `AZ_AI_PLAIN`, `--plain`),
+  `Plain.Override` test seam, `Plain.Activate()` contract.
+- `tests/integration_tests.sh` -- 6 shell assertions covering the
+  same surfaces against the built `az-ai` binary.
+
+### Coordination with S03E13 (Frank Costanza, telemetry)
+
+S03E13 emits structured NDJSON to stderr (`AZ_AI_TELEMETRY=1`).
+Mickey's `Plain` chokepoint **never** wraps that JSON in color, glyphs,
+or spinner chrome -- the schema is fixed at eight fields and the
+output path is byte-for-byte stable across `--plain` / `--raw` / no
+flag.
+
+---
+
 *Color is garnish, never the entrée. Information must survive
 monochrome. If it can't be read aloud, it can't be shipped.* -- M.A.
