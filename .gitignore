@@ -20,6 +20,8 @@ scripts/*
 !scripts/provider-deps.schema.json
 !scripts/sbom-generate.sh
 !scripts/provider-cve-report.sh
+!scripts/demo/
+!scripts/demo/**
 
 # env
 azureopenai-cli/.env
