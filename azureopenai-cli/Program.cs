@@ -171,7 +171,7 @@ internal class Program
             var inner = ex;
             while (inner is AggregateException agg && agg.InnerException != null)
                 inner = agg.InnerException;
-            Console.Error.WriteLine($"[ERROR] {inner.GetType().Name}: {inner.Message}");
+            Console.Error.WriteLine($"[ERROR] {inner.GetType().Name}: {SecretRedactor.Redact(inner.Message)}");
             Console.Error.WriteLine("Run 'az-ai --help' for usage or 'az-ai --setup' to reconfigure.");
             return 99;
         }
@@ -1623,17 +1623,23 @@ internal class Program
     /// </summary>
     internal static int ErrorAndExit(string message, int exitCode, bool jsonMode)
     {
+        // S03E07 -- The Redactor (ADR-007 section 2). Belt-and-suspenders:
+        // every error message routed through this helper is scrubbed for
+        // bearer tokens, api-key headers, URL credentials, and JSON secret
+        // fields before it ever lands on stderr. Static error strings are
+        // a no-op through the redactor; dynamic content is the threat.
+        var redactedMessage = SecretRedactor.Redact(message);
         if (jsonMode)
         {
             // Scope 2 (Puddy finding): JSON errors go to stderr so that
             // `az-ai --json ... | jq` only sees happy-path results on stdout.
             // Happy-path JSON (results) stays on stdout at its own call sites.
-            var errorObj = new ErrorJsonResponse(Error: true, Message: message, ExitCode: exitCode);
+            var errorObj = new ErrorJsonResponse(Error: true, Message: redactedMessage, ExitCode: exitCode);
             Console.Error.WriteLine(JsonSerializer.Serialize(errorObj, AppJsonContext.Default.ErrorJsonResponse));
         }
         else
         {
-            Console.Error.WriteLine($"[ERROR] {message}");
+            Console.Error.WriteLine($"[ERROR] {redactedMessage}");
         }
         return exitCode;
     }
@@ -2607,13 +2613,7 @@ complete -c az-ai -w az-ai
                 }
 
             case "show":
-                Console.WriteLine($"# Effective configuration");
-                Console.WriteLine($"# source: {config.LoadedFrom ?? "(no file — using defaults)"}");
-                foreach (var line in config.ListKeys())
-                {
-                    Console.WriteLine(line);
-                }
-                return 0;
+                return RunConfigShow(opts, config);
 
             case "export-env":
                 return HandleExportEnv(opts, config);
@@ -2621,6 +2621,195 @@ complete -c az-ai -w az-ai
             default:
                 return ErrorAndExit($"Unknown --config subcommand '{opts.ConfigSubcommand}'", 1, opts.Json);
         }
+    }
+
+    /// <summary>
+    /// Handles <c>--config show</c> (FR-014 / S03E06). Prints the legacy
+    /// effective-configuration key=value block (UserConfig) followed by the
+    /// resolved provider/endpoint/model/profile and their source layers from
+    /// <see cref="Preferences"/>. Under <c>--json</c>, emits a structured
+    /// <see cref="ConfigShowJson"/> envelope. NEVER prints secrets.
+    /// </summary>
+    internal static int RunConfigShow(CliOptions opts, UserConfig config)
+    {
+        // Load preferences -- missing file is OK (returns defaults).
+        var prefsPath = Preferences.DefaultPath();
+        Preferences prefs;
+        try
+        {
+            prefs = Preferences.Load(prefsPath);
+        }
+        catch (InvalidPreferencesException ex)
+        {
+            return ErrorAndExit(
+                $"Invalid preferences file '{ex.Path}': {ex.Message}",
+                1, opts.Json);
+        }
+        var prefsLoaded = prefs.LoadedFrom != null;
+
+        // Resolve each layer per ADR-009 generalised order:
+        //   CLI flag > env var > active profile > provider default.
+        // Source labels are stable strings consumers can switch on.
+        var (envDefaultModel, _) = ParseModelEnv();
+        var envEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+        var envProfile = Environment.GetEnvironmentVariable("AZ_PROFILE");
+        var envProvider = Environment.GetEnvironmentVariable("AZ_PROVIDER");
+
+        // Profile resolution: env > preferences (first key) > "default".
+        string? profileName = null;
+        string profileSource = "default (none configured)";
+        if (!string.IsNullOrWhiteSpace(envProfile))
+        {
+            profileName = envProfile;
+            profileSource = "env AZ_PROFILE";
+        }
+        else if (prefs.Profiles.ContainsKey("default"))
+        {
+            profileName = "default";
+            profileSource = "preferences.json";
+        }
+        else if (prefs.Profiles.Count > 0)
+        {
+            profileName = prefs.Profiles.Keys.OrderBy(k => k, StringComparer.Ordinal).First();
+            profileSource = "preferences.json (first entry)";
+        }
+
+        ProfileEntry? activeProfile = null;
+        if (profileName != null && prefs.Profiles.TryGetValue(profileName, out var pe))
+        {
+            activeProfile = pe;
+        }
+
+        // Provider resolution: env > active profile > preferences first key > "azure".
+        string provider;
+        string providerSource;
+        if (!string.IsNullOrWhiteSpace(envProvider))
+        {
+            provider = envProvider;
+            providerSource = "env AZ_PROVIDER";
+        }
+        else if (activeProfile != null && !string.IsNullOrWhiteSpace(activeProfile.Provider))
+        {
+            provider = activeProfile.Provider;
+            providerSource = $"profile '{profileName}'";
+        }
+        else if (prefs.Providers.Count > 0)
+        {
+            provider = prefs.Providers.Keys.OrderBy(k => k, StringComparer.Ordinal).First();
+            providerSource = "preferences.json (first provider)";
+        }
+        else
+        {
+            provider = "azure";
+            providerSource = "hardcoded default";
+        }
+
+        ProviderEntry? providerEntry = null;
+        if (prefs.Providers.TryGetValue(provider, out var pv))
+        {
+            providerEntry = pv;
+        }
+
+        // Endpoint resolution: env > userConfig > providerEntry > unset.
+        string? endpoint = null;
+        string endpointSource = "unset";
+        if (!string.IsNullOrWhiteSpace(envEndpoint))
+        {
+            endpoint = envEndpoint;
+            endpointSource = "env AZUREOPENAIENDPOINT";
+        }
+        else if (!string.IsNullOrWhiteSpace(config.Endpoint))
+        {
+            endpoint = config.Endpoint;
+            endpointSource = "user config (~/.azureopenai-cli.json)";
+        }
+        else if (providerEntry != null && !string.IsNullOrWhiteSpace(providerEntry.Endpoint))
+        {
+            endpoint = providerEntry.Endpoint;
+            endpointSource = $"preferences provider '{provider}'";
+        }
+
+        // Model resolution: CLI > env > userConfig.smart > profile > providerEntry > fallback.
+        string? model = null;
+        string modelSource = "unset";
+        if (!string.IsNullOrWhiteSpace(opts.Model))
+        {
+            model = config.ResolveModel(opts.Model);
+            modelSource = "CLI --model";
+        }
+        else if (!string.IsNullOrWhiteSpace(envDefaultModel))
+        {
+            model = envDefaultModel;
+            modelSource = "env AZUREOPENAIMODEL[0]";
+        }
+        else if (config.ResolveSmartDefault() is { } smart && !string.IsNullOrWhiteSpace(smart))
+        {
+            model = smart;
+            modelSource = "user config default_model";
+        }
+        else if (activeProfile != null && !string.IsNullOrWhiteSpace(activeProfile.Model))
+        {
+            model = activeProfile.Model;
+            modelSource = $"profile '{profileName}'";
+        }
+        else if (providerEntry != null && !string.IsNullOrWhiteSpace(providerEntry.ModelAlias))
+        {
+            model = providerEntry.ModelAlias;
+            modelSource = $"preferences provider '{provider}'";
+        }
+        else
+        {
+            model = DefaultModelFallback;
+            modelSource = "hardcoded fallback (ADR-009)";
+        }
+
+        var providerNames = prefs.Providers.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
+        var profileNames = prefs.Profiles.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
+
+        if (opts.Json)
+        {
+            var payload = new ConfigShowJson(
+                Resolved: new Dictionary<string, ConfigShowResolvedField>(StringComparer.Ordinal)
+                {
+                    ["provider"] = new(provider, providerSource),
+                    ["endpoint"] = new(endpoint, endpointSource),
+                    ["model"] = new(model, modelSource),
+                    ["profile"] = new(profileName, profileSource),
+                },
+                PreferencesPath: prefsPath,
+                PreferencesLoaded: prefsLoaded,
+                Providers: providerNames,
+                Profiles: profileNames);
+            Console.WriteLine(JsonSerializer.Serialize(payload, AppJsonContext.Default.ConfigShowJson));
+            return 0;
+        }
+
+        // Legacy block (chaos / regression test compatibility).
+        Console.WriteLine("# Effective configuration");
+        Console.WriteLine($"# source: {config.LoadedFrom ?? "(no file -- using defaults)"}");
+        foreach (var line in config.ListKeys())
+        {
+            Console.WriteLine(line);
+        }
+
+        // FR-014 / S03E06 resolved layers.
+        Console.WriteLine();
+        Console.WriteLine("Resolved configuration:");
+        Console.WriteLine($"  provider:    {Pad(provider, 24)} (source: {providerSource})");
+        Console.WriteLine($"  endpoint:    {Pad(endpoint ?? "(unset)", 24)} (source: {endpointSource})");
+        Console.WriteLine($"  model:       {Pad(model ?? "(unset)", 24)} (source: {modelSource})");
+        Console.WriteLine($"  profile:     {Pad(profileName ?? "(none)", 24)} (source: {profileSource})");
+        Console.WriteLine();
+        Console.WriteLine($"Preferences file: {prefsPath} ({(prefsLoaded ? "loaded" : "not present")})");
+        Console.WriteLine($"Providers known: {(providerNames.Count == 0 ? "(none)" : string.Join(", ", providerNames))}");
+        Console.WriteLine($"Profiles known:  {(profileNames.Count == 0 ? "(none)" : string.Join(", ", profileNames))}");
+        return 0;
+    }
+
+    private static string Pad(string s, int width)
+    {
+        if (s.Length >= width) return s;
+        return s + new string(' ', width - s.Length);
     }
 
     /// <summary>

@@ -447,6 +447,52 @@ FR021_JSON
         rm -rf "$fr021_dir"
     fi
 
+    # ── S03E07 The Redactor (Newman): bearer tokens / api-keys must not
+    #    leak through error stderr. Smoke-test the centralised
+    #    SecretRedactor by triggering a "task file not found" error whose
+    #    path contains an Authorization: Bearer header. The path appears
+    #    in the [ERROR] line, so the redactor MUST scrub it.
+    echo ""
+    echo "▸ S03E07 Redactor smoke (ADR-007 section 2)"
+    local redact_bin; redact_bin=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")
+    local redact_path="/tmp/Authorization: Bearer SECRET-NEWMAN-9999"
+    local redact_stderr redact_rc
+    set +e
+    redact_stderr=$(env HOME="$test_home" \
+        AZUREOPENAIENDPOINT="https://example.invalid/" \
+        AZUREOPENAIAPI="dummy-key-not-used" \
+        AZUREOPENAIMODEL="gpt-4" \
+        "$redact_bin" --task-file "$redact_path" "hi" 2>&1 1>/dev/null)
+    redact_rc=$?
+    set -e
+
+    if [ "$redact_rc" -eq 1 ]; then
+        pass "S03E07 redactor: error path exits 1"
+    else
+        fail "S03E07 redactor: error path exits 1" "got exit $redact_rc; stderr: $redact_stderr"
+    fi
+
+    # P1: stderr must NOT contain a literal bearer token.
+    if printf '%s' "$redact_stderr" | grep -qE 'Bearer[[:space:]]+[A-Za-z0-9._-]'; then
+        fail "S03E07 redactor: no bearer token in stderr" "stderr leaked: $redact_stderr"
+    else
+        pass "S03E07 redactor: no bearer token in stderr"
+    fi
+
+    # P1: stderr must NOT contain a raw 'api-key:' header value pair.
+    if printf '%s' "$redact_stderr" | grep -qiE 'api-key:[[:space:]]+[A-Za-z0-9._-]'; then
+        fail "S03E07 redactor: no api-key header in stderr" "stderr leaked: $redact_stderr"
+    else
+        pass "S03E07 redactor: no api-key header in stderr"
+    fi
+
+    # Positive: the [REDACTED:bearer] tag must be present.
+    if printf '%s' "$redact_stderr" | grep -qF '[REDACTED:bearer]'; then
+        pass "S03E07 redactor: [REDACTED:bearer] tag present"
+    else
+        fail "S03E07 redactor: [REDACTED:bearer] tag present" "stderr: $redact_stderr"
+    fi
+
     # ── API-gated smoke (skip unless creds present) ───────────────────────
     if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then
         skip "real API call" "AZUREOPENAIENDPOINT/AZUREOPENAIAPI not set"

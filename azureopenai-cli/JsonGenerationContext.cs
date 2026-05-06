@@ -39,6 +39,26 @@ internal record ExportEnvJson(
 );
 
 /// <summary>
+/// JSON envelope emitted by <c>--config show --json</c> (FR-014 / S03E06).
+/// Surfaces the resolved provider/endpoint/model/profile alongside their
+/// source-layer labels so callers can diff config without parsing prose.
+/// Secrets (API keys) are NEVER included.
+/// </summary>
+internal record ConfigShowJson(
+    [property: JsonPropertyName("resolved")] Dictionary<string, ConfigShowResolvedField> Resolved,
+    [property: JsonPropertyName("preferences_path")] string? PreferencesPath,
+    [property: JsonPropertyName("preferences_loaded")] bool PreferencesLoaded,
+    [property: JsonPropertyName("providers")] List<string> Providers,
+    [property: JsonPropertyName("profiles")] List<string> Profiles
+);
+
+/// <summary>One resolved field + its source layer (env, profile, default, ...).</summary>
+internal record ConfigShowResolvedField(
+    [property: JsonPropertyName("value")] string? Value,
+    [property: JsonPropertyName("source")] string Source
+);
+
+/// <summary>
 /// System.Text.Json source generator context for AOT-compatible serialization.
 /// Covers all types that are serialized/deserialized across the CLI.
 ///
@@ -71,6 +91,14 @@ internal record ExportEnvJson(
 // ── User configuration (FR-003 / FR-009 / FR-010) ───────────────
 [JsonSerializable(typeof(UserConfig))]
 [JsonSerializable(typeof(UserDefaults))]
+// ── Preferences (FR-014 / S03E06) ────────────────────────────────
+[JsonSerializable(typeof(Preferences))]
+[JsonSerializable(typeof(ProviderEntry))]
+[JsonSerializable(typeof(ProfileEntry))]
+[JsonSerializable(typeof(Dictionary<string, ProviderEntry>))]
+[JsonSerializable(typeof(Dictionary<string, ProfileEntry>))]
+[JsonSerializable(typeof(ConfigShowJson))]
+[JsonSerializable(typeof(ConfigShowResolvedField))]
 // ── Squad types ─────────────────────────────────────────────────
 [JsonSerializable(typeof(SquadConfig))]
 [JsonSerializable(typeof(TeamConfig))]
