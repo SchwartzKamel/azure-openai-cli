@@ -8,16 +8,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(prompts):** Five canonical task templates land in the
+  Espanso/AHK example kit -- `:aicode`, `:aiquestion`, `:aiarch`,
+  `:aidata`, `:aicost` -- as `examples/espanso-ahk-wsl/espanso/ai-prompts.yml`,
+  shipping a curated prompt library on top of the unified S03
+  trigger pattern. Commit `905515e`.
 
-### Changed
-
-### Deprecated
-
-### Removed
-
-### Fixed
+### Documentation
+- **docs(audits):** S03 sweeps-week audit triple lands in
+  `docs/audits/` -- `docs-audit-2026-05-elaine.md` (docs, YELLOW,
+  22 findings), `security-v2.1-post-prompts.md` (security, RED,
+  F-1 CRITICAL bash injection), and `audit-process-meta-2026-05.md`
+  (process meta-audit, YELLOW). Commit `8b71d14`.
+- **docs(s03):** Audit-triple episodes land as
+  `docs/exec-reports/s03e03-the-docs-audit-reprise.md`,
+  `s03e04-the-mailman-knocks-twice.md`, and
+  `s03e05-the-auditors-auditor.md`; `s03-blueprint.md` renumbered
+  so the unplanned sweep slots into Arc 1.5 without disturbing the
+  provider-abstraction spine (E03-E05 now sweeps; original E03+
+  shift to E06+). Commit `03d5559`.
 
 ### Security
+- **fix(espanso):** Close form-input bash injection in
+  `examples/espanso-ahk-wsl/espanso/ai-prompts.yml` -- F-1 CRITICAL
+  (`:aicode` shell-interpolated form fields into the bash system
+  prompt and into a double-quoted user-prompt argument) and F-2
+  HIGH (apostrophe-driven shell breakout across `:aiquestion`,
+  `:aiarch`, `:aidata`, `:aicost`). All five triggers rewritten on
+  the WSLENV / `env VAR=...; bash -c '... "$VAR" ...'` pattern;
+  free-form fields piped via stdin, choice fields `case`-mapped to
+  fixed allowlists. As a side effect, triggers now accept English
+  text containing apostrophes (`it's`, `don't`, `O'Reilly`) which
+  previously failed silently. Audit:
+  `docs/audits/security-v2.1-post-prompts.md` F-1 / F-2.
+  Commit `c25ca38`. ([s03e04-the-mailman-knocks-twice])
 
 ## [2.2.0] -- 2026-04-30
 

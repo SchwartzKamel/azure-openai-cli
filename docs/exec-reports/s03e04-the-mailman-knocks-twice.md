@@ -380,3 +380,9 @@ The advisory does not need a CVE because the affected code is an example shipped
 For the reader pulling this episode out of the season finale: the headline of S03E04 is not "Newman caught a CRITICAL." Newman catching CRITICALs is what Newman does; if he stopped, that would be the headline. The headline of S03E04 is the showrunner shipped a CRITICAL on a feature he authored personally, between his own breakfast and his own lunch, in a file that shipped in the same morning's commit, against a pattern *he* had spent E01 hardening. The lesson is procedural and it lands on the orchestrator, not on the engineer, not on the auditor, not on the lint script. The lint script is *also* fixed, but the lint script was downstream of the orchestrator skipping the pre-flight that would have caught the issue before the lint script ever ran.
 
 The fix dispatch is in flight. The verdict is RED. The next episode is queued. The mailman knocks twice; the third knock is the one we do not want.
+
+---
+
+### Postscript (same sweep)
+
+Kramer's `fix-ai-prompts-injection` patch landed in commit `c25ca38` roughly three minutes after this writeup was begun. F-1 and F-2 are closed in the working tree at the time of writeup; pending Newman re-audit per `docs/audits/security-v2.1.1-reaudit.md` (planned filename, shipping in parallel). No re-audit episode number is reserved -- when the re-audit lands, it slots into the next available S03 sweep slot or annexes onto E05 as an addendum, at the showrunner's discretion. The audit ID to cite remains `security-v2.1-post-prompts.md` F-1 / F-2 until the re-audit doc supersedes it.
