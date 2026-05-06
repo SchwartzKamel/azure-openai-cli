@@ -92,3 +92,24 @@ Run this against any draft before merge:
 - Starter scaffold: [`_template.md`](../../docs/exec-reports/_template.md)
 - Dispatch brief that produced the episode: [`episode-brief`](episode-brief.md)
 - Commit conventions used at the bottom of Act III: [`commit`](commit.md)
+
+## Findings backlog discipline
+
+Audit reports under `docs/audits/` are the source of evidence; the canonical
+ledger of every finding is [`docs/findings-backlog.md`](../../docs/findings-backlog.md),
+governed by the [`findings-backlog`](findings-backlog.md) skill. Every gate-tier
+finding -- CRITICAL, HIGH, MAJOR, or RED -- in any audit report MUST be mirrored
+to a row in `docs/findings-backlog.md`. MEDIUM / LOW / MINOR / NIT / INFO are
+encouraged but not enforced. Exec reports that cite a finding in their Lessons
+section without a backlog row will get caught by `make exec-report-check`,
+which is wired into `make preflight` and the pre-push hook.
+
+The gate is mechanical: `scripts/exec-report-check.sh` walks `docs/audits/*.md`,
+extracts every gate-tier finding ID from `### <ID> -- ...` headings (resolving
+severity from the heading itself or the enclosing `## CRITICAL` / `## HIGH` /
+`## MAJOR` / `## RED` section), and fails if any ID is missing a row in the
+backlog. Audits that legitimately index findings elsewhere (meta-process
+reports, retrospectives that aggregate by reference) opt out by adding a
+`Findings-Backlog-Exempt: true` line at start-of-line in the audit body.
+Reserve the opt-out -- if the report names a defect, the backlog wants to
+know about it.

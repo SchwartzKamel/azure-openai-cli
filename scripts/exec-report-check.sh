@@ -21,6 +21,155 @@
 
 set -euo pipefail
 
+# ---------------------------------------------------------------------------
+# Phase 1: findings-backlog audit gate (W-01 closure).
+#
+# For every audit report under docs/audits/ (excluding _template.md and any
+# file carrying a `Findings-Backlog-Exempt: true` front-matter line), every
+# gate-tier finding -- CRITICAL / HIGH / MAJOR / RED -- must have a matching
+# row in docs/findings-backlog.md. MEDIUM / LOW / MINOR / NIT / INFO are
+# exempt (still encouraged, not enforced).
+#
+# Matching rule: a backlog row for a finding must contain BOTH the audit's
+# filename AND the finding ID as a whole-word token, on the same line.
+#
+# Severity is determined per finding by, in order:
+#   1. An inline gate-tier word (CRITICAL / HIGH / MAJOR / RED) in the
+#      `### <ID> -- ...` heading line.
+#   2. The most recent section heading of the form `## CRITICAL`,
+#      `## HIGH`, `## MAJOR`, or `## RED` (Elaine-style audits).
+# Findings whose severity cannot be resolved to a gate-tier are skipped --
+# unindexed-non-gate findings are not gate failures.
+# ---------------------------------------------------------------------------
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+backlog_file="$repo_root/docs/findings-backlog.md"
+audits_dir="$repo_root/docs/audits"
+
+if [ -d "$audits_dir" ] && [ -f "$backlog_file" ]; then
+    missing_rows=""
+    missing_count=0
+
+    # Iterate audits. Skip the template and explicit opt-outs.
+    while IFS= read -r -d '' audit; do
+        base=$(basename "$audit")
+        case "$base" in
+            _template.md) continue ;;
+        esac
+        if grep -qE '^Findings-Backlog-Exempt:[[:space:]]*true[[:space:]]*$' "$audit"; then
+            continue
+        fi
+
+        # Extract gate-tier finding IDs from this audit. awk tracks current
+        # section severity (## CRITICAL / ## HIGH / ## MAJOR / ## RED) and
+        # emits any `### <ID> -- ...` heading whose severity is gate-tier.
+        ids=$(awk '
+            BEGIN { sect = "" }
+            /^## / {
+                line = $0
+                sub(/^## +/, "", line)
+                # First word, uppercased.
+                first = line
+                sub(/[[:space:]].*$/, "", first)
+                up = toupper(first)
+                if (up == "CRITICAL" || up == "HIGH" || up == "MAJOR" || up == "RED") {
+                    sect = up
+                } else {
+                    sect = ""
+                }
+                next
+            }
+            /^### / {
+                # Match a finding heading: "### <ID> -- ..." or "### <ID>:".
+                # ID = leading run of letters/digits/dash up to first space.
+                line = $0
+                sub(/^### +/, "", line)
+                # Extract ID = first token before " --" or ":" or whitespace.
+                id = line
+                sub(/[[:space:]]+--.*$/, "", id)
+                sub(/:.*$/, "", id)
+                sub(/[[:space:]].*$/, "", id)
+                if (id == "" || id !~ /^[A-Za-z]+-?[0-9]+$/) next
+
+                up_line = toupper(line)
+                # Pad with spaces so first/last word is matchable with the
+                # "non-letter on each side" idiom -- portable across awks
+                # (POSIX awk has no \b).
+                pad = " " up_line " "
+                gsub(/[^A-Z0-9]/, " ", pad)
+                sev = ""
+                if (pad ~ / CRITICAL /) sev = "CRITICAL"
+                else if (pad ~ / HIGH /) sev = "HIGH"
+                else if (pad ~ / MAJOR /) sev = "MAJOR"
+                else if (pad ~ / RED /) sev = "RED"
+                else if (sect != "") sev = sect
+                if (sev != "") print id
+            }
+        ' "$audit")
+
+        [ -z "$ids" ] && continue
+
+        while IFS= read -r id; do
+            [ -z "$id" ] && continue
+            # A backlog row must contain both the audit basename AND the ID
+            # as a whole-word token on the same line. Use awk for whole-word
+            # matching against the literal ID (avoids regex meta in IDs).
+            if ! awk -v base="$base" -v id="$id" '
+                index($0, base) == 0 { next }
+                {
+                    # Substring check: id appears in the line and is NOT
+                    # immediately followed by a digit (so "M1" does not
+                    # falsely match "M11"). Left boundary is unconstrained
+                    # because backlog rows prefix IDs with the auditor key
+                    # (e.g., "elaine-2026-05-M1"), so a dash is expected
+                    # on the left.
+                    pos = 1
+                    while ((p = index(substr($0, pos), id)) > 0) {
+                        idx = pos + p - 1
+                        after = substr($0, idx + length(id), 1)
+                        if (after !~ /[0-9]/) { found = 1; exit }
+                        pos = idx + length(id)
+                    }
+                }
+                END { exit (found ? 0 : 1) }
+            ' "$backlog_file"; then
+                missing_rows="$missing_rows  $base :: $id"$'\n'
+                missing_count=$((missing_count + 1))
+            fi
+        done <<< "$ids"
+    done < <(find "$audits_dir" -maxdepth 1 -type f -name '*.md' -print0)
+
+    if [ "$missing_count" -gt 0 ]; then
+        {
+            echo ""
+            echo "[exec-report-check] FAIL (findings-backlog gate)"
+            echo ""
+            echo "$missing_count gate-tier finding(s) (CRITICAL/HIGH/MAJOR/RED) are not"
+            echo "indexed in docs/findings-backlog.md:"
+            echo ""
+            printf '%s' "$missing_rows"
+            echo ""
+            echo "Required: add a row to docs/findings-backlog.md whose ID column"
+            echo "          references the finding ID and whose Source column links"
+            echo "          to the audit file. The row must contain both the audit"
+            echo "          filename and the finding ID on the same line."
+            echo ""
+            echo "Opt out:  add 'Findings-Backlog-Exempt: true' as a front-matter"
+            echo "          line in the audit (start of line, colon-separated)."
+            echo "          Reserve for meta-process reports that index findings"
+            echo "          elsewhere by design."
+            echo ""
+            echo "Skill:    .github/skills/findings-backlog.md"
+            echo ""
+        } >&2
+        exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Phase 2: original exec-report-per-push gate.
+# ---------------------------------------------------------------------------
+
 # Locate range. Prefer @{u} (tracked upstream); fall back to origin/main.
 if upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null); then
     range="$upstream..HEAD"

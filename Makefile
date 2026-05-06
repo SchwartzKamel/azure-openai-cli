@@ -46,7 +46,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight exec-report-check install-hooks publish publish-fast publish-aot publish-r2r setup setup-secrets \
+.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight exec-report-check findings-backlog-test install-hooks publish publish-fast publish-aot publish-r2r setup setup-secrets \
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
@@ -261,6 +261,13 @@ preflight: format-check color-contract-lint dotnet-build test integration-test e
 ## scripts/exec-report-check.sh for the full rules.
 exec-report-check:
 	@bash scripts/exec-report-check.sh
+
+## Findings-backlog gate self-test (opt-in). Runs the negative + positive
+## fixtures against scripts/exec-report-check.sh. Use after editing the
+## gate logic. Not wired into preflight -- preflight already runs the
+## gate against the real audits corpus.
+findings-backlog-test:
+	@bash tests/findings-backlog-lint-test.sh
 
 ## Install the project's git hooks (pre-push runs exec-report-check).
 ## Idempotent. Re-run after cloning or when the hook script is updated.
