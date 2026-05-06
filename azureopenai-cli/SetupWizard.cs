@@ -4,85 +4,115 @@ namespace AzureOpenAI_CLI;
 
 /// <summary>
 /// Interactive setup wizard (<c>--setup</c> / <c>--init-wizard</c> /
-/// <c>az-ai setup</c>). Walks the user through configuring the Azure OpenAI
-/// endpoint, API key, and a default model deployment, then persists the
-/// values to the user config file at <see cref="UserConfig.DefaultPath"/>
-/// (0600 perms via <see cref="UserConfig.Save"/>).
+/// <c>az-ai setup</c>). S03E11 *The Wizard, Reprise* extends the original
+/// Azure-only flow into a provider-aware sequence:
 ///
-/// <para>
-/// Invariants:
-/// <list type="bullet">
-///   <item>Never runs when stdin or stdout is redirected — interactive
-///   prompts must never block a pipe / CI / script. The caller in
-///   <see cref="Program"/> gates on <see cref="IsInteractiveTty"/> before
-///   invoking <see cref="RunAsync"/>; the wizard re-checks defensively.</item>
-///   <item>Never runs under <c>--raw</c> / <c>--json</c> (also gated by the
-///   caller).</item>
-///   <item>The API key is read character-by-character with <c>*</c> echoed
-///   in place of each char; it is never printed to stdout or stderr in
-///   plaintext.</item>
-///   <item>Ctrl+C / Esc / EOF aborts with exit 130 and no partial writes —
-///   <see cref="UserConfig.Save"/> is only called once every prompt has
-///   succeeded.</item>
+/// <list type="number">
+///   <item>Pick the default provider (azure / openai / groq / together / cloudflare).</item>
+///   <item>Collect the credentials that provider needs.</item>
+///   <item>Optionally loop to add a second (third, ...) provider.</item>
+///   <item>Validate compat model strings via
+///     <see cref="OpenAiCompatAdapter.ParseCompatModels"/>, then write
+///     <c>~/.config/az-ai/env</c> with <c>[provider:NAME]</c> sections (E10
+///     format) plus default-section back-compat exports
+///     (<c>AZUREOPENAIENDPOINT</c>, <c>AZUREOPENAIAPI</c>,
+///     <c>AZUREOPENAIMODEL</c>, <c>AZ_AI_COMPAT_MODELS</c>).</item>
 /// </list>
-/// </para>
+///
+/// <para>Invariants (preserved from S02 implementation):</para>
+/// <list type="bullet">
+///   <item>Refuses politely under <c>--raw</c> / <c>--json</c> / non-TTY.</item>
+///   <item>API key reads via masked input -- never echoes plaintext.</item>
+///   <item>Existing env file is backed up to <c>env.bak.&lt;timestamp&gt;</c>
+///     before overwrite; idempotent re-runs (same answers) skip the backup.</item>
+///   <item>chmod 600 on Unix (best-effort, matches UserConfig / Preferences).</item>
+/// </list>
 /// </summary>
 internal static class SetupWizard
 {
-    /// <summary>
-    /// Exit code for user-initiated cancellation (Ctrl+C / SIGINT / Esc / EOF).
-    /// Matches the convention used elsewhere in <see cref="Program"/>.
-    /// </summary>
+    /// <summary>Exit code for user-initiated cancellation (Ctrl+C / EOF).</summary>
     private const int ExitCanceled = 130;
 
     /// <summary>
-    /// Run the wizard interactively. Returns a process exit code:
-    /// 0 on success, 130 on user cancellation, 1 on validation failure.
-    /// Persists via <see cref="UserConfig.Save"/> only after every prompt
-    /// has succeeded — partial writes are not possible.
+    /// Run the wizard interactively. Returns 0 on success, 130 on user cancel.
     /// </summary>
     internal static async Task<int> RunAsync()
     {
-        // Defensive re-check: caller (Program.RunAsync) already gates on this,
-        // but the wizard never trusts the caller for a security invariant.
         if (!IsInteractiveTty())
         {
             Console.Error.WriteLine(
                 "[ERROR] Setup wizard requires an interactive terminal (stdin/stdout must not be redirected).");
+            Console.Error.WriteLine(
+                "        Set credentials manually instead -- see README \"Power user / scripted setup\".");
             return 1;
         }
 
-        // Touch await so the async signature stays meaningful and forward-
-        // compatible with future async prompts (connectivity check, etc.).
         await Task.Yield();
 
         try
         {
             PrintBanner();
 
-            var config = UserConfig.Load(quiet: true);
+            var defaultProvider = PromptProviderChoice(
+                prompt: "Default provider",
+                highlight: SmartDefaultProvider());
+            if (defaultProvider is null) return ExitCanceled;
 
-            var endpoint = PromptEndpoint(config.Endpoint);
-            if (endpoint is null) return ExitCanceled;
+            var answers = new List<ProviderAnswer>();
+            var first = PromptProvider(defaultProvider);
+            if (first is null) return ExitCanceled;
+            answers.Add(first);
 
-            var apiKey = PromptApiKey(hasExisting: !string.IsNullOrEmpty(config.ApiKey));
-            if (apiKey is null) return ExitCanceled;
+            while (true)
+            {
+                if (answers.Count >= WizardProviders.All.Length) break;
+                var configured = answers.Select(a => a.Provider).ToHashSet(StringComparer.Ordinal);
+                var remaining = WizardProviders.All.Where(p => !configured.Contains(p)).ToArray();
+                if (remaining.Length == 0) break;
 
-            var (alias, deployment) = PromptDefaultModel(config);
-            if (alias is null || deployment is null) return ExitCanceled;
+                Console.WriteLine();
+                Console.Write($"Add another provider? [y/N] (remaining: {string.Join(", ", remaining)}): ");
+                var ans = Console.ReadLine();
+                if (ans is null) return ExitCanceled;
+                ans = ans.Trim();
+                if (!string.Equals(ans, "y", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(ans, "yes", StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
 
-            // All prompts succeeded — only now do we mutate + persist. No
-            // partial writes can leak from an aborted wizard.
-            config.Endpoint = endpoint;
-            // Empty string from PromptApiKey signals "keep existing" — only
-            // overwrite when the user actually typed a new key.
-            if (apiKey.Length > 0) config.ApiKey = apiKey;
-            config.Models[alias] = deployment;
-            config.DefaultModel = alias;
+                var next = PromptProviderChoice(
+                    prompt: "Which provider",
+                    highlight: remaining[0],
+                    allow: remaining);
+                if (next is null) return ExitCanceled;
+                var na = PromptProvider(next);
+                if (na is null) return ExitCanceled;
+                answers.Add(na);
+            }
 
-            config.Save();
+            var path = WizardSession.DefaultEnvFilePath();
+            var content = WizardSession.BuildEnvFileContent(answers, defaultProvider, DateTimeOffset.UtcNow);
 
-            PrintSuccess(config.LoadedFrom ?? UserConfig.DefaultPath);
+            if (File.Exists(path))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"An existing env file is at {path}.");
+                Console.Write("Back up and overwrite? [Y/n]: ");
+                var ans = Console.ReadLine();
+                if (ans is null) return ExitCanceled;
+                ans = ans.Trim();
+                if (string.Equals(ans, "n", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(ans, "no", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine("Aborted. No changes saved.");
+                    return ExitCanceled;
+                }
+            }
+
+            var backup = WizardSession.WriteEnvFile(path, content, DateTimeOffset.UtcNow);
+
+            PrintSuccess(path, backup, answers, defaultProvider);
             return 0;
         }
         catch (OperationCanceledException)
@@ -94,9 +124,7 @@ internal static class SetupWizard
     }
 
     /// <summary>
-    /// True when the wizard is safe to launch: both stdin and stdout are
-    /// interactive TTYs. Guards against triggering the wizard in scripts,
-    /// pipes, CI, or under <c>--raw</c> / <c>--json</c> consumers.
+    /// True when the wizard is safe to launch (TTY on stdin and stdout).
     /// </summary>
     internal static bool IsInteractiveTty()
     {
@@ -105,29 +133,144 @@ internal static class SetupWizard
         return true;
     }
 
+    /// <summary>
+    /// Smart default for the provider menu: <c>azure</c> if AOAI endpoint is
+    /// already exported (existing user re-running the wizard); else
+    /// <c>openai</c> (the most common net-new install in the multi-provider era).
+    /// </summary>
+    internal static string SmartDefaultProvider()
+    {
+        var ep = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+        return !string.IsNullOrWhiteSpace(ep) ? WizardProviders.Azure : WizardProviders.OpenAI;
+    }
+
     private static void PrintBanner()
     {
         Console.WriteLine();
         Console.WriteLine("Welcome to az-ai setup!");
-        Console.WriteLine("This wizard will configure your Azure OpenAI credentials and save");
-        Console.WriteLine($"them to {UserConfig.DefaultPath} (permissions 0600).");
+        Console.WriteLine("This wizard will configure your providers and save them to");
+        Console.WriteLine($"  {WizardSession.DefaultEnvFilePath()}");
+        Console.WriteLine("(file mode 0600 on Unix; existing files are backed up first).");
         Console.WriteLine();
         Console.WriteLine("Press Ctrl+C at any time to abort without saving.");
         Console.WriteLine();
     }
 
+    private static string? PromptProviderChoice(string prompt, string highlight, string[]? allow = null)
+    {
+        var choices = allow ?? WizardProviders.All;
+        while (true)
+        {
+            Console.WriteLine();
+            Console.WriteLine(prompt + ":");
+            for (int i = 0; i < choices.Length; i++)
+            {
+                var marker = string.Equals(choices[i], highlight, StringComparison.Ordinal) ? "*" : " ";
+                Console.WriteLine($"  {marker} {i + 1}) {choices[i]}");
+            }
+            Console.Write($"Pick [{highlight}]: ");
+            var input = Console.ReadLine();
+            if (input is null) return null;
+            input = input.Trim();
+            if (input.Length == 0) return highlight;
+            if (int.TryParse(input, System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out var idx)
+                && idx >= 1 && idx <= choices.Length)
+            {
+                return choices[idx - 1];
+            }
+            if (WizardProviders.TryCanonicalize(input, out var canon)
+                && Array.Exists(choices, c => string.Equals(c, canon, StringComparison.Ordinal)))
+            {
+                return canon;
+            }
+            Console.WriteLine($"  Not a valid choice. Pick a number 1..{choices.Length} or a name from the list.");
+        }
+    }
+
+    private static ProviderAnswer? PromptProvider(string provider)
+    {
+        return string.Equals(provider, WizardProviders.Azure, StringComparison.Ordinal)
+            ? PromptAzure()
+            : PromptCompat(provider);
+    }
+
+    private static ProviderAnswer? PromptAzure()
+    {
+        var endpoint = PromptEndpoint(Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT"));
+        if (endpoint is null) return null;
+
+        var apiKey = PromptApiKey("Azure OpenAI API key", required: true);
+        if (apiKey is null) return null;
+
+        var models = PromptLine(
+            "Azure model deployment name(s), comma-separated",
+            defaultValue: "gpt-4o-mini",
+            required: true);
+        if (models is null) return null;
+
+        return new ProviderAnswer(
+            Provider: WizardProviders.Azure,
+            ApiKey: apiKey,
+            Models: models,
+            Endpoint: endpoint);
+    }
+
+    private static ProviderAnswer? PromptCompat(string provider)
+    {
+        var apiKey = PromptApiKey($"{Capitalize(provider)} API key", required: true);
+        if (apiKey is null) return null;
+
+        var defaultModel = provider switch
+        {
+            "openai" => "gpt-4o-mini",
+            "groq" => "llama-3.1-70b-versatile",
+            "together" => "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            "cloudflare" => "@cf/meta/llama-3.1-8b-instruct",
+            _ => string.Empty,
+        };
+
+        while (true)
+        {
+            var models = PromptLine(
+                $"{Capitalize(provider)} model name(s), comma-separated",
+                defaultValue: defaultModel,
+                required: true);
+            if (models is null) return null;
+
+            var rejection = WizardSession.ValidateCompatModels(provider, models);
+            if (rejection is not null)
+            {
+                Console.WriteLine("  " + rejection);
+                continue;
+            }
+
+            string? accountId = null;
+            if (string.Equals(provider, WizardProviders.Cloudflare, StringComparison.Ordinal))
+            {
+                accountId = PromptLine(
+                    "Cloudflare account id",
+                    defaultValue: Environment.GetEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID"),
+                    required: true);
+                if (accountId is null) return null;
+            }
+
+            return new ProviderAnswer(
+                Provider: provider,
+                ApiKey: apiKey,
+                Models: models,
+                AccountId: accountId);
+        }
+    }
+
     private static string? PromptEndpoint(string? existing)
     {
-        // Env var fallback is informational only — we still write to UserConfig.
-        if (string.IsNullOrEmpty(existing))
-            existing = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
-
         while (true)
         {
             var suffix = string.IsNullOrEmpty(existing) ? "" : $" [{existing}]";
             Console.Write($"Azure OpenAI endpoint URL{suffix}: ");
             var input = Console.ReadLine();
-            if (input is null) return null; // EOF / Ctrl+D
+            if (input is null) return null;
 
             input = input.Trim();
             if (string.IsNullOrEmpty(input) && !string.IsNullOrEmpty(existing))
@@ -144,16 +287,13 @@ internal static class SetupWizard
                 Console.WriteLine($"  {rejection}");
                 continue;
             }
-
             return input.TrimEnd('/');
         }
     }
 
     /// <summary>
-    /// Validates that <paramref name="url"/> is a well-formed Azure OpenAI resource root URL:
-    /// must start with <c>https://</c>, parse as an absolute URI, and have no path, query, or fragment.
-    /// Returns <see langword="true"/> when valid; otherwise <see langword="false"/> with a
-    /// human-readable rejection reason in <paramref name="rejection"/>.
+    /// Validates that <paramref name="url"/> is a well-formed Azure OpenAI
+    /// resource root URL.
     /// </summary>
     internal static bool TryParseEndpointUrl(string url, out string? rejection)
     {
@@ -162,122 +302,106 @@ internal static class SetupWizard
             rejection = "Endpoint must start with https://";
             return false;
         }
-
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
         {
             rejection = "That doesn't look like a valid URL. Try again.";
             return false;
         }
-
-        // Reject deep paths, query strings, and fragments — the endpoint
-        // must be the Azure OpenAI resource root. Anything deeper will
-        // silently break the client SDK's URL construction at runtime.
-        if (uri.AbsolutePath != "/" ||
-            !string.IsNullOrEmpty(uri.Query) ||
-            !string.IsNullOrEmpty(uri.Fragment))
+        if (uri.AbsolutePath != "/" || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
         {
             rejection =
                 "Endpoint must be a root URL with no path, query, or fragment "
                 + "(e.g. https://my-resource.openai.azure.com).";
             return false;
         }
-
         rejection = null;
         return true;
     }
 
-    private static string? PromptApiKey(bool hasExisting)
+    private static string? PromptApiKey(string label, bool required)
     {
         while (true)
         {
-            var suffix = hasExisting ? " [press Enter to keep existing]" : "";
-            Console.Write($"Azure OpenAI API key (input hidden){suffix}: ");
+            Console.Write($"{label} (input hidden): ");
             var key = ReadMaskedLine();
             Console.WriteLine();
 
-            if (key is null) return null; // Esc / EOF
+            if (key is null) return null;
 
             if (key.Length == 0)
             {
-                if (hasExisting)
-                {
-                    // Empty result = "keep existing". Caller (RunAsync)
-                    // interprets length==0 as no overwrite.
-                    return string.Empty;
-                }
+                if (!required) return string.Empty;
                 Console.WriteLine("  API key is required.");
                 continue;
             }
-
-            if (key.Length < 16)
+            if (key.Length < 8)
             {
-                Console.WriteLine("  That key looks too short — Azure OpenAI keys are typically 32+ chars. Try again.");
+                Console.WriteLine("  That key looks too short. Try again.");
                 continue;
             }
-
             return key;
         }
     }
 
-    private static (string? alias, string? deployment) PromptDefaultModel(UserConfig config)
+    private static string? PromptLine(string label, string? defaultValue, bool required)
     {
-        var existingDeployment = !string.IsNullOrEmpty(config.DefaultModel)
-            && config.Models.TryGetValue(config.DefaultModel, out var ed)
-                ? ed
-                : null;
-        var defaultValue = existingDeployment ?? "gpt-4o-mini";
-
-        Console.Write($"Default model deployment name [{defaultValue}]: ");
-        var input = Console.ReadLine();
-        if (input is null) return (null, null);
-
-        input = input.Trim();
-        if (string.IsNullOrEmpty(input))
-            input = defaultValue;
-
-        // Reuse the existing alias if the user already had one configured;
-        // otherwise default to "default" for predictability.
-        var alias = !string.IsNullOrEmpty(config.DefaultModel)
-            ? config.DefaultModel
-            : "default";
-
-        return (alias, input);
+        while (true)
+        {
+            var suffix = string.IsNullOrEmpty(defaultValue) ? "" : $" [{defaultValue}]";
+            Console.Write($"{label}{suffix}: ");
+            var input = Console.ReadLine();
+            if (input is null) return null;
+            input = input.Trim();
+            if (input.Length == 0)
+            {
+                if (!string.IsNullOrEmpty(defaultValue)) return defaultValue;
+                if (!required) return string.Empty;
+                Console.WriteLine("  Value is required.");
+                continue;
+            }
+            return input;
+        }
     }
 
-    private static void PrintSuccess(string path)
+    private static void PrintSuccess(string path, string? backup, IReadOnlyList<ProviderAnswer> answers, string defaultProvider)
     {
         Console.WriteLine();
         Console.WriteLine($"Configuration saved to {path}");
+        if (!string.IsNullOrEmpty(backup))
+        {
+            Console.WriteLine($"Previous file backed up to {backup}");
+        }
+        Console.WriteLine($"Default provider: {defaultProvider}");
+        Console.WriteLine($"Providers configured: {string.Join(", ", answers.Select(a => a.Provider))}");
         Console.WriteLine();
         Console.WriteLine("You're all set. Try:");
         Console.WriteLine("  az-ai \"Hello, world\"");
         Console.WriteLine();
-        Console.WriteLine("Re-run this wizard any time with: az-ai --setup");
-        Console.WriteLine("Edit individual keys with:        az-ai --config set <key>=<value>");
+        Console.WriteLine("Re-run the wizard with: az-ai --setup");
         Console.WriteLine();
     }
 
+    private static string Capitalize(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+        if (char.IsUpper(s[0])) return s;
+        return char.ToUpperInvariant(s[0]) + s.Substring(1);
+    }
+
     /// <summary>
-    /// Read a line from stdin with each character echoed as <c>*</c>. Returns
-    /// the entered string (possibly empty) on Enter, or null on Esc / EOF /
-    /// console-not-a-tty fallback failure. Supports Backspace. Never echoes
-    /// the actual key material to any output stream.
+    /// Read a line from stdin echoing <c>*</c> per character. Returns null on
+    /// Esc / EOF / pseudo-TTY failure (Newman audit H-1: never falls back to
+    /// Console.ReadLine, which would echo plaintext to scrollback).
     /// </summary>
     private static string? ReadMaskedLine()
     {
-        // Caller already gated on IsInteractiveTty(); ReadKey should be safe.
-        // Defensive try/catch handles exotic hosts (e.g. some CI containers
-        // claim a TTY but throw on ReadKey).
         try
         {
             var buffer = new StringBuilder();
             while (true)
             {
                 var keyInfo = Console.ReadKey(intercept: true);
-                if (keyInfo.Key == ConsoleKey.Enter)
-                {
-                    return buffer.ToString();
-                }
+                if (keyInfo.Key == ConsoleKey.Enter) return buffer.ToString();
                 if (keyInfo.Key == ConsoleKey.Backspace)
                 {
                     if (buffer.Length > 0)
@@ -287,34 +411,19 @@ internal static class SetupWizard
                     }
                     continue;
                 }
-                if (keyInfo.Key == ConsoleKey.Escape)
-                {
-                    // Esc = cancel, exit-130 path.
-                    return null;
-                }
-                // Ignore control chars (Tab, arrows, F-keys, etc.).
-                if (keyInfo.KeyChar == '\0' || char.IsControl(keyInfo.KeyChar))
-                    continue;
-
+                if (keyInfo.Key == ConsoleKey.Escape) return null;
+                if (keyInfo.KeyChar == '\0' || char.IsControl(keyInfo.KeyChar)) continue;
                 buffer.Append(keyInfo.KeyChar);
                 Console.Write('*');
             }
         }
         catch (InvalidOperationException)
         {
-            // Console.ReadKey throws on pseudo-TTYs that pass the redirect
-            // check but lack a real console (some container runtimes,
-            // dotnet test capture, certain CI runners with tty: true but no
-            // /dev/tty wiring, restricted hosts, WSL + ssh -t edge cases).
-            // Fail closed: do NOT fall back to Console.ReadLine, which would
-            // echo the secret to scrollback / tmux logs / TTY loggers. Emit
-            // a one-line stderr warning and return null so the caller short-
-            // circuits to ExitCanceled (130) without ever accepting plaintext.
-            // Newman audit H-1.
+            // Newman H-1: fail closed; never fall back to Console.ReadLine.
             Console.Error.WriteLine(
                 "[ERROR] Cannot read masked input on this terminal; refusing to "
-                + "accept API key in plaintext. Set AZUREOPENAIAPI environment "
-                + "variable instead.");
+                + "accept API key in plaintext. Set the appropriate API_KEY "
+                + "environment variable instead (see README).");
             return null;
         }
     }
