@@ -216,6 +216,21 @@ internal static class OpenAiCompatAdapter
                 nameof(preset));
         }
 
+        // S03E18 -- The Capability Gate. Look up the (preset, model) profile
+        // from the registry. Unknown presets fall through to Conservative();
+        // warn so the operator knows defaults will refuse tool-calls / vision
+        // until they file a registry entry or set AZ_AI_CAPABILITY_OVERRIDES.
+        // Silent under --raw / --json (machine surfaces stay clean); we
+        // detect those by scanning argv since this seam is below the parser.
+        if (!AzureOpenAI_CLI.Capabilities.ProviderCapabilities.HasPreset(preset.Name)
+            && !IsRawOrJsonArgv())
+        {
+            Console.Error.WriteLine(
+                $"[capability] Unknown capability profile for preset '{preset.Name}'; "
+                + $"defaulting to Conservative. Set "
+                + $"{AzureOpenAI_CLI.Capabilities.ProviderCapabilities.OverridesEnvVar} if you know better.");
+        }
+
         var options = new OpenAIClientOptions { Endpoint = endpoint };
 
         // Default Bearer auth is what the OpenAI SDK already emits via
@@ -247,6 +262,29 @@ internal static class OpenAiCompatAdapter
         var host = uri.Host;
         if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)) return true;
         if (host == "127.0.0.1" || host == "::1" || host == "[::1]") return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Cheap argv scan for <c>--raw</c> or <c>--json</c>. The capability-gate
+    /// warn path runs below the argument parser, so we cannot read CliOptions
+    /// here; mirrors the same pattern used elsewhere when stderr output must
+    /// stay silent on machine surfaces. Always-false under tests that do not
+    /// set CommandLineArgs (defensive).
+    /// </summary>
+    private static bool IsRawOrJsonArgv()
+    {
+        try
+        {
+            var args = Environment.GetCommandLineArgs();
+            for (int i = 1; i < args.Length; i++)
+            {
+                var a = args[i];
+                if (string.Equals(a, "--raw", StringComparison.Ordinal)) return true;
+                if (string.Equals(a, "--json", StringComparison.Ordinal)) return true;
+            }
+        }
+        catch { /* Environment.GetCommandLineArgs never throws under .NET, but be defensive. */ }
         return false;
     }
 
