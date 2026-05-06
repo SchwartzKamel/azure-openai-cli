@@ -10,6 +10,32 @@ End of S02, `azure-openai-cli` is an Azure-OpenAI-native single-shot binary -- e
 
 ## Episodes shipped
 
+> **Blueprint-vs-shipped reconciliation (closes `arc4-5-renumber`):**
+>
+> Wave 6 consumed slots E13/E14 with telemetry + accessibility (which the blueprint had reserved for *Stream* / *Daemon*). Subsequent waves cascaded:
+>
+> | Blueprint title | File slot shipped | Cast |
+> |---|---|---|
+> | *Stream* | s03e17 | Kramer (audit) |
+> | *Daemon* (Ollama) | absorbed into s03e19 *First Hour Local* | Lloyd |
+> | *Probe* | s03e15 ✓ | Costanza |
+> | *Allowlist* | s03e16 ✓ | FDR |
+> | *Server* (llama.cpp) | s03e21 | Kramer |
+> | *Capability Gate* | s03e18 ✓ | Costanza |
+> | *Switch* | s03e20 ✓ | Costanza |
+> | *Default* (ADR-011) | s03e22 | Costanza |
+> | *Fallback* | s03e23 | Frank Costanza |
+> | *Persona Multi-Provider* | s03e28 | Kramer |
+> | *CVE Log* | s03e24 ✓ | Jerry |
+> | *Rotation* | s03e25 ✓ | Newman |
+> | *Offline* | s03e26 ✓ | Newman |
+> | *Demo* (finale) | s03e27 ✓ | Larry David |
+> | *Telemetry* (extra) | s03e13 | Frank Costanza |
+> | *Screen Reader* (extra) | s03e14 | Mickey Abbott |
+> | *First Hour Local* | s03e19 ✓ | Lloyd |
+>
+> Blueprint narrative numbering remains the canonical *story* order; this table is the canonical *file* lookup. No file renames are planned -- exec-report URLs are stable historical artifacts.
+
 | Slot | Title | Lead | Verdict | Date |
 |------|-------|------|---------|------|
 | S03E01 | *The Yada Yada Strikes Back* | Kramer | shipped (audit clean after wave 9) | 2026-05 |

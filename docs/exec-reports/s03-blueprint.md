@@ -1,5 +1,7 @@
 # Season 3 -- Blueprint -- *Local & Multi-Provider*
 
+> **Status (2026-05): SEASON CLOSED.** All 27 episodes shipped. The narrative episode order below remains the canonical *story* sequence; see [`s03-writers-room.md`](s03-writers-room.md) §"Episodes shipped" for the blueprint→shipped-file-slot reconciliation table (closes the `arc4-5-renumber` cleanup todo). Exec-report URLs are stable historical artifacts and are not renamed.
+
 **Status:** Draft v2 -- awaiting showrunner greenlight
 **Lead writer:** George Costanza (PM)
 **Guest in the room:** Cosmo Kramer (engineering, feasibility seams)
