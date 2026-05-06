@@ -1496,6 +1496,127 @@ SWEOF
 
     # ── S03E22 fallback -- end ────────────────────────────────────────────
 
+    # ── S03E23 *The Persona, Multi-Provider* (Kramer; file slot 28) ──────
+    echo "▸ S03E23 persona pin (.squad.json provider/model)"
+
+    # Resolve $BIN to an absolute path so we can cd into a tempdir without
+    # losing it (mirrors the FR-021 regression block at #15).
+    local pmp_bin; pmp_bin=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")
+
+    # Isolated workspace: a .squad.json with a known-good and a bad pin we
+    # can target one at a time. Cleaned up at end of block (no RETURN trap
+    # — the function already owns one).
+    local pmp_dir; pmp_dir=$(mktemp -d -t azai-pmp.XXXXXX)
+    pmp_cleanup() { rm -rf "$pmp_dir" 2>/dev/null || true; }
+
+    # Good config -- pin coder->openai/gpt-4o, reviewer with no pins.
+    cat > "$pmp_dir/.squad.json" <<'PMP_GOOD'
+{
+  "team": {"name": "PMP"},
+  "personas": [
+    {"name": "coder", "role": "engineer", "system_prompt": "Code.",
+     "tools": [], "provider": "openai", "model": "gpt-4o"},
+    {"name": "reviewer", "role": "reviewer", "system_prompt": "Review.",
+     "tools": []}
+  ],
+  "routing": []
+}
+PMP_GOOD
+
+    # 1. --personas lists the persona-pin-bearing config without crashing
+    #    (validation passes; both personas surface).
+    local pmp_list_out
+    pmp_list_out=$(cd "$pmp_dir" && env HOME="$test_home" "$pmp_bin" --personas 2>&1; true)
+    if printf '%s' "$pmp_list_out" | grep -q "coder" && \
+       printf '%s' "$pmp_list_out" | grep -q "reviewer"; then
+        pass "S03E23 persona pin: --personas lists persona with pinned provider"
+    else
+        fail "S03E23 persona pin: --personas list" \
+             "out=$(printf '%s' "$pmp_list_out" | head -c 240)"
+    fi
+
+    # 2. Bad config -- unknown provider -> Load() rejects with actionable
+    #    error referencing persona name + bad value + 'Known providers'.
+    cat > "$pmp_dir/.squad.json" <<'PMP_BAD'
+{
+  "team": {"name": "PMP"},
+  "personas": [
+    {"name": "kramer", "role": "engineer", "system_prompt": "x",
+     "tools": [], "provider": "anthropic"}
+  ],
+  "routing": []
+}
+PMP_BAD
+    local pmp_bad_out pmp_bad_rc
+    pmp_bad_out=$(cd "$pmp_dir" && env HOME="$test_home" "$pmp_bin" --personas 2>&1 1>/dev/null; true)
+    set +e
+    (cd "$pmp_dir" && env HOME="$test_home" "$pmp_bin" --personas >/dev/null 2>&1)
+    pmp_bad_rc=$?
+    set -e
+    if [ "$pmp_bad_rc" != "0" ] && \
+       printf '%s' "$pmp_bad_out" | grep -q "anthropic" && \
+       printf '%s' "$pmp_bad_out" | grep -qi "known providers"; then
+        pass "S03E23 persona pin: unknown provider rejected at load (rc=$pmp_bad_rc)"
+    else
+        fail "S03E23 persona pin: unknown provider" \
+             "rc=$pmp_bad_rc out=$(printf '%s' "$pmp_bad_out" | head -c 320)"
+    fi
+
+    # 3. Bad config error names the offending persona so the operator can
+    #    grep the file straight to it.
+    if printf '%s' "$pmp_bad_out" | grep -q "kramer"; then
+        pass "S03E23 persona pin: error names the offending persona"
+    else
+        fail "S03E23 persona pin: error missing persona name" \
+             "out=$(printf '%s' "$pmp_bad_out" | head -c 240)"
+    fi
+
+    # 4. Squad-init scaffold passes validator (no persona pins by default
+    #    -> Validate() is a no-op). Remove the bad config first; --squad-init
+    #    refuses to overwrite.
+    rm -f "$pmp_dir/.squad.json"
+    set +e
+    (cd "$pmp_dir" && env HOME="$test_home" "$pmp_bin" --squad-init >/dev/null 2>&1)
+    local pmp_init_rc=$?
+    set -e
+    local pmp_personas_rc
+    set +e
+    (cd "$pmp_dir" && env HOME="$test_home" "$pmp_bin" --personas >/dev/null 2>&1)
+    pmp_personas_rc=$?
+    set -e
+    if [ "$pmp_init_rc" = "0" ] && [ "$pmp_personas_rc" = "0" ]; then
+        pass "S03E23 persona pin: squad-init scaffold passes validator"
+    else
+        fail "S03E23 persona pin: scaffold validator" \
+             "init_rc=$pmp_init_rc personas_rc=$pmp_personas_rc"
+    fi
+
+    # 5. Empty `provider` / `model` strings are permissive (treated as no
+    #    pin). Safety net for a half-edited .squad.json where a key was
+    #    added but no value typed in yet.
+    cat > "$pmp_dir/.squad.json" <<'PMP_EMPTY'
+{
+  "team": {"name": "PMP"},
+  "personas": [
+    {"name": "coder", "role": "engineer", "system_prompt": "x",
+     "tools": [], "provider": "", "model": ""}
+  ],
+  "routing": []
+}
+PMP_EMPTY
+    set +e
+    (cd "$pmp_dir" && env HOME="$test_home" "$pmp_bin" --personas >/dev/null 2>&1)
+    local pmp_empty_rc=$?
+    set -e
+    if [ "$pmp_empty_rc" = "0" ]; then
+        pass "S03E23 persona pin: empty provider/model strings ignored"
+    else
+        fail "S03E23 persona pin: empty pins" "rc=$pmp_empty_rc"
+    fi
+
+    pmp_cleanup
+    # ── S03E23 persona pin -- end ─────────────────────────────────────────
+
     # ── API-gated smoke (skip unless creds present) ───────────────────────
     if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then
         skip "real API call" "AZUREOPENAIENDPOINT/AZUREOPENAIAPI not set"

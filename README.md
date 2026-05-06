@@ -128,7 +128,7 @@ Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) -- ide
 | `--models`, `--list-models`, `--current-model`, `--set-model <alias>=<deployment>` | Persist alias → deployment mappings in `~/.azureopenai-cli.json`. First `--set-model` also becomes the default. |
 | `--telemetry` (or `AZ_TELEMETRY=1`) | Opt-in OpenTelemetry spans + per-call cost events on stderr. Zero overhead when off. |
 | `--estimate` / `--dry-run-cost` / `--estimate-with-output <n>` | Predict USD cost for a prompt **without calling the API**. Short-circuits before credential resolution -- safe for CI budget gates. |
-| `--persona <name\|auto>` | Named persona routing -- now wired end-to-end via `SquadCoordinator` and `PersonaMemory`. See [docs/persona-guide.md](docs/persona-guide.md). |
+| `--persona <name\|auto>` | Named persona routing -- now wired end-to-end via `SquadCoordinator` and `PersonaMemory`. Personas may pin a `provider` and/or `model` field in `.squad.json` (S03E23 *The Persona, Multi-Provider*); the pin sits between profile and default in the precedence chain (`cli > env > profile > persona > default`) and is validated at load time against the known-providers list. Missing creds for a pinned provider drop the pin and warn (silent under `--raw` / `--json`). See [docs/persona-guide.md](docs/persona-guide.md). |
 
 Upgrading from v1.9.x? See [docs/migration-v1-to-v2.md](docs/migration-v1-to-v2.md). Nothing breaks; a lot adds.
 
@@ -446,6 +446,22 @@ docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "H
 ## Documentation
 
 📚 **Start here:** [docs/README.md](docs/README.md) -- the full docs map (architecture, ops, security, perf, process, ADRs, exec reports, proposals).
+
+### Demo
+
+Run the Season 3 finale demo end-to-end (mock-only, no real API
+calls, ~30 seconds wall-clock):
+
+```bash
+DOTNET_ROOT=/usr/lib/dotnet make publish-aot && make install
+bash scripts/demo/season3-finale.sh
+```
+
+Five acts -- Setup, Switch, Rules, Fallback, Curtain Call -- with 22
+asserted invariants. See [scripts/demo/README.md](scripts/demo/README.md)
+for the asciinema recording recipe, and
+[docs/season-recaps/season-3-recap.md](docs/season-recaps/season-3-recap.md)
+for the marketing-grade season retrospective.
 
 ### Architecture & decisions
 

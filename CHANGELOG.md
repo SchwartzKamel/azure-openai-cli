@@ -8,6 +8,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(squad):** S03E23 *The Persona, Multi-Provider* (Kramer; file slot
+  s03e28) -- per-persona `provider` and/or `model` pins in `.squad.json`.
+  When a persona is invoked AND it declares a `provider` and/or `model`
+  field, those values flow through `PreferencesResolver.Resolve()` as a
+  new precedence rung between profile and default: **cli > env > profile
+  > persona > default**. CLI flags, `AZ_PROVIDER` / `AZ_MODEL`, and
+  `--profile` pins still win every time -- the persona rung only fires
+  when no higher rail resolved. Validation is up-front: an unknown
+  provider in `.squad.json` (anything not in
+  `[azure, foundry, openai, groq, together, cloudflare, llamacpp]`) is
+  rejected at config-load with an actionable error naming the persona,
+  the bad value, the source path, and the known providers list. Missing
+  creds for a pinned provider (per
+  `PreferencesResolver.GetCredEnvVarName`) drop the pin and emit a single
+  `[persona:NAME] pinned provider 'X' has no credentials in Y; falling
+  through to the global default-provider chain` warning to stderr (silent
+  under `--raw` / `--json`); the persona's `model` pin survives and the
+  persona memory file still loads. Capability gate (S03E18), endpoint
+  allowlist (S03E16), and offline gate (S03E26) all stay in front of the
+  dispatch path -- a persona pin is not an escape hatch. New helper
+  `SquadCoordinator.ApplyPersonaPin(baseInputs, persona, env, warnSink)`
+  is the public seam; pure, no Console writes, no env reads outside the
+  passed-in snapshot. New source labels: `persona:<name>:provider` and
+  `persona:<name>:model`. 42 new unit facts in
+  [`tests/AzureOpenAI_CLI.Tests/PersonaProviderPinTests.cs`](tests/AzureOpenAI_CLI.Tests/PersonaProviderPinTests.cs)
+  (precedence ladder + Validate gate + ApplyPersonaPin missing-creds +
+  end-to-end Resolve round-trip + capability/offline gate cross-checks);
+  5 new integration assertions
+  (`tests/integration_tests.sh ▸ S03E23 persona pin`). Two findings filed
+  [`kramer-2026-05-PMP-1`](docs/findings-backlog.md) (persona-pin
+  dispatch routing relies on operator-set `AZ_AI_COMPAT_MODELS` -- no
+  env-rewrite shim) and
+  [`kramer-2026-05-PMP-2`](docs/findings-backlog.md) (`--config show`
+  does not yet echo the persona rung).
+- **docs(s03e27):** S03E27 *The Demo* (Larry David, solo) -- Season 3
+  finale curtain call. New mock-only end-to-end demo at
+  [`scripts/demo/season3-finale.sh`](scripts/demo/season3-finale.sh):
+  five acts (Setup / Switch / Rules / Fallback / Curtain Call), 22
+  asserted invariants, ASCII-only bordered banners, idempotent with
+  cleanup trap, gates gracefully when the `az-ai` on PATH is missing
+  or pre-S03 (exits 0 with a "build az-ai first" message so CI does
+  not flap). The script exercises `--doctor`, `--rotate-creds --help`,
+  `--config show` (default + `--provider` override + `AZ_PROFILE` from
+  a throwaway `preferences.json`), `--fallback bogus` rejection (rc=2
+  with the known-presets list), `--fallback openai,groq` parse,
+  `AZ_AI_FALLBACK` env recognition, `AZ_AI_OFFLINE=1` short-circuit,
+  and `AZ_AI_TELEMETRY=1` NDJSON emission to stderr -- all without a
+  single real provider call. Companion docs:
+  [`scripts/demo/README.md`](scripts/demo/README.md) (prereqs, run,
+  asciinema record + replay recipe),
+  [`docs/exec-reports/s03e27-the-demo.md`](docs/exec-reports/s03e27-the-demo.md)
+  (Larry-voice exec report + full-season retrospective + S04 tag
+  scene), and
+  [`docs/season-recaps/season-3-recap.md`](docs/season-recaps/season-3-recap.md)
+  (marketing-grade season recap, arc-by-arc prose + "By the numbers"
+  stat block). Zero `.cs` changed -- the finale is a curtain call,
+  not a feature. Season 3 closes at 27 / 27 episodes.
 - **feat(resilience):** S03E22 *The Fallback* (Frank Costanza) -- opt-in
   best-effort fallback chain wrapping the primary chat client. New flag
   `--fallback <list>` (and env `AZ_AI_FALLBACK`, CLI wins) accepts a

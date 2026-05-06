@@ -634,6 +634,94 @@ internal class Program
                 {
                     Console.Error.WriteLine($"[persona] {activePersona.Name} ({activePersona.Role})");
                 }
+
+                // ── S03E28 -- The Persona, Multi-Provider (Kramer) ──────────
+                // If this persona pins a provider and/or model in .squad.json,
+                // re-resolve through PreferencesResolver with the Persona rung
+                // populated. The rung sits BELOW profile/env/cli, so any
+                // higher-precedence pin still wins. Missing creds for the
+                // pinned provider drop the pin + warn (handled inside
+                // SquadCoordinator.ApplyPersonaPin). When neither pin is set,
+                // ApplyPersonaPin returns the inputs unchanged -- zero-cost
+                // for personas without a pin (the existing path stays warm).
+                if (!string.IsNullOrWhiteSpace(activePersona.Provider)
+                    || !string.IsNullOrWhiteSpace(activePersona.Model))
+                {
+                    Preferences personaPrefs;
+                    try
+                    {
+                        personaPrefs = Preferences.Load(Preferences.DefaultPath());
+                    }
+                    catch (InvalidPreferencesException ex)
+                    {
+                        return ErrorAndExit(
+                            $"Invalid preferences file '{ex.Path}': {ex.Message}",
+                            1, jsonMode: opts.Json);
+                    }
+                    Action<string>? personaWarnSink = (opts.Raw || opts.Json)
+                        ? null
+                        : Console.Error.WriteLine;
+                    var personaBaseInputs = new ResolutionInputs(
+                        CliProvider: opts.Provider,
+                        CliProfile: opts.Profile,
+                        CliModel: opts.Model,
+                        Env: SnapshotEnv());
+                    var personaInputs = AzureOpenAI_CLI.Squad.SquadCoordinator.ApplyPersonaPin(
+                        personaBaseInputs, activePersona, personaBaseInputs.Env, personaWarnSink);
+                    try
+                    {
+                        var personaOutcome = PreferencesResolver.Resolve(personaPrefs, personaInputs);
+                        // Override `model` only when the resolver actually
+                        // landed on the persona rung (or the pinned model
+                        // produced a different value). Higher rungs winning
+                        // is the documented contract -- the model variable
+                        // already reflects them via the early Resolve call.
+                        if (!string.Equals(personaOutcome.Model, model, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (!opts.Raw && !opts.Json
+                                && personaOutcome.ModelSource.StartsWith("persona:", StringComparison.Ordinal))
+                            {
+                                Console.Error.WriteLine(
+                                    "[persona:" + activePersona.Name + "] model -> '"
+                                    + personaOutcome.Model + "' (source: " + personaOutcome.ModelSource + ")");
+                            }
+                            model = personaOutcome.Model;
+                        }
+                        if (!opts.Raw && !opts.Json
+                            && personaOutcome.ProviderSource.StartsWith("persona:", StringComparison.Ordinal))
+                        {
+                            Console.Error.WriteLine(
+                                "[persona:" + activePersona.Name + "] provider -> '"
+                                + personaOutcome.Provider + "' (source: " + personaOutcome.ProviderSource + ")");
+                        }
+                        // Forward any non-fatal advisories from the resolver.
+                        if (!opts.Raw && !opts.Json && personaOutcome.Warnings.Count > 0)
+                        {
+                            foreach (var w in personaOutcome.Warnings)
+                            {
+                                Console.Error.WriteLine("[WARNING] " + w);
+                            }
+                        }
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        return ErrorAndExit(ex.Message, 1, jsonMode: opts.Json);
+                    }
+
+                    // Re-validate the (possibly-updated) model against the
+                    // AZUREOPENAIMODEL allowlist if one is in effect. Persona
+                    // pins do not bypass the allowlist -- the operator opted
+                    // into the gate at env-config time and the persona is
+                    // not above it.
+                    if (allowedModels != null && !allowedModels.Contains(model, StringComparer.OrdinalIgnoreCase))
+                    {
+                        var list = string.Join(", ", allowedModels);
+                        return ErrorAndExit(
+                            $"Persona '{activePersona.Name}' pinned model '{model}' which is not in the allowed list. "
+                            + $"Allowed models: [{list}]. Add it to AZUREOPENAIMODEL or remove the persona model pin.",
+                            1, jsonMode: opts.Json);
+                    }
+                }
             }
         }
 
