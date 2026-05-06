@@ -8,6 +8,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **security(cli):** S03E25 *The Rotation* (Newman) -- `az-ai
+  --rotate-creds [provider]` BYOK rotation flow with atomic write,
+  timestamped backup (`env.bak.<ISO-8601-Z>`, collision-bumped on
+  re-use), and the mode 0600 invariant verified post-rename. Reuses
+  `WizardSession` filesystem helpers (extracted: `BackupWithBump`,
+  `AtomicWrite`, `SetRestrictivePermissions`); the masked-input loop
+  is shared via the new `Cli/MaskedInput` helper which preserves
+  the Newman H-1 invariant (fail-closed on `InvalidOperationException`,
+  never falls back to `Console.ReadLine`). The rotated key value is
+  never logged on success, failure, exception, or smoke-check paths;
+  every textual line is routed through `SecretRedactor.Redact` as
+  defense-in-depth. Refuses with exit 3 on `--raw` and on non-TTY
+  stdin (mirrors the `--setup` gate). 35 unit facts in
+  `CredsRotateTests.cs` + 6 integration assertions
+  (`tests/integration_tests.sh`).
+- **feat(cli):** S03E20 *The Switch* (Costanza) -- `--provider`,
+  `--profile`, `--model` flags with a documented precedence chain
+  (cli > env > profile > built-in default). `Preferences.Resolve()`
+  is the single pure function the dispatcher consults; it returns a
+  `ResolutionOutcome` whose `Source` field stamps every resolved value
+  with a stable label (`cli` / `env:AZ_PROVIDER` /
+  `profile:<name>:provider` / `default:azure` / etc.) so
+  `--config show` and future debug paths speak one vocabulary. Missing
+  profiles surface a friendly error listing the available names;
+  profile-vs-`AZ_AI_COMPAT_MODELS` mismatches emit a stderr warning
+  (profile wins, by design). `--config show` gains a
+  "Switch resolution (S03E20):" block with per-rail source labels.
+  44 unit facts in `ResolutionPrecedenceTests.cs` + 6 integration
+  assertions; resolver is pure (no I/O, no Console writes).
+- **feat(dispatch):** S03E18 *The Capability Gate* (Costanza) -- new
+  provider+model feature matrix that refuses incompatible requests at
+  dispatch time instead of letting them surface as a confusing 4xx from
+  the wire. New `azureopenai-cli/Capabilities/` directory ships
+  `CapabilityDescriptor` (record: `ToolCalls` / `Streaming` / `Vision` /
+  `JsonMode` / `MaxContextTokens?`) and `ProviderCapabilities`
+  (registry + `Get(preset, model)` + override parser + `Mismatch`
+  factory). Built-in matrix as of 2026-05: `azure` / `foundry` =
+  permissive (caller-owned deployment); `openai` = full tools / vision /
+  json with model-specific narrowings (`gpt-3.5-turbo` no vision; `o1-*`
+  no streaming; `o1-mini` no tools); `groq` = tools only on
+  `llama-3.1-70b-versatile` and `llama-3.3-70b-versatile`, vision off,
+  json on; `together` = tools off / vision off / json on (preset-default
+  conservative until per-model rows land); `cloudflare` = streaming-only
+  (everything else off, conservative). Override mechanism:
+  `AZ_AI_CAPABILITY_OVERRIDES=preset:model:capability=bool[,...]` --
+  case-insensitive, malformed entries warn to stderr (silent under
+  `--raw` / `--json`) and are skipped. Dispatch wiring fires right after
+  `BuildChatClient`: tool-call requests to a non-tool-call model
+  (`--agent` / `--ralph` / persona-with-tools) throw
+  `CapabilityMismatchException` -> friendly stderr + exit code 2; vision
+  mismatch is wired the same way (reserved for future flag); `--schema`
+  on a model without `json_mode` warns to stderr and degrades gracefully
+  (request proceeds as a regular completion). Telemetry (E13) emits one
+  event per refusal with `outcome="client_error"` and
+  `error_class="CapabilityMismatch"`. `OpenAiCompatAdapter.Build` warns
+  to stderr when an unknown preset falls through to `Conservative()`.
+  +33 unit cases in `CapabilityGateTests` (ConsoleCapture-serialised) +
+  5 integration assertions in `tests/integration_tests.sh`. Three LOW /
+  INFO findings filed `costanza-2026-05-CG-1..3` for matrix review
+  cadence, conservative coverage gaps on Together / Cloudflare, and
+  future HEAD-probe autodetection. Exec-report at
+  `docs/exec-reports/s03e18-the-capability-gate.md`.
+
+### Fixed
+- **fix(dispatch):** S03E18 -- a tool-call request against a non-tool-call
+  Groq model previously surfaced as the upstream provider's confusing
+  4xx after the dispatch round-trip. The capability gate now refuses
+  preflight with a friendly error that names the override env var, so
+  the user self-rescues without reading the wire response.
+
+### Added
 - **feat(security):** S03E26 *The Offline Mode* (Newman) -- new
   `--offline` flag (and strict-equality env twin `AZ_AI_OFFLINE=1`)
   forbids every non-loopback provider call across all six known network

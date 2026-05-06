@@ -112,10 +112,13 @@ internal class Program
         bool Plain,                 // S03E14 (Mickey): --plain -- suppress banner / color / glyphs / spinner.
                                     // Equivalent to NO_COLOR=1 AZ_AI_PLAIN=1 for one invocation. Looser
                                     // than --raw: status text on stderr is still allowed, just plain-ASCII.
-        bool Offline                // S03E26 (Newman): --offline -- forbid every non-loopback provider
+        bool Offline,               // S03E26 (Newman): --offline -- forbid every non-loopback provider
                                     // call. Loopback still requires AZ_AI_LOCAL_PROVIDERS=1; offline does
                                     // not relax that gate. Air-gapped review + demo recording posture.
                                     // Env fallback: AZ_AI_OFFLINE=1 (strict equality, mirrors AZ_AI_TELEMETRY).
+                                    // S03E20 (Costanza) -- The Switch: precedence chain inputs.
+        string? Provider,           // --provider <name>: explicit provider override (azure / openai / groq / ...).
+        string? Profile             // --profile <name>: select a named profile from preferences.json.
     );
 
     private static async Task<int> Main(string[] args)
@@ -441,9 +444,61 @@ internal class Program
         // When an allowed set is configured, the resolved model must be in it.
         var (envDefaultModel, allowedModels) = ParseModelEnv();
 
+        // S03E20 -- The Switch (Costanza). Run the centralized precedence
+        // resolver to (a) honor --profile / --provider when set, (b) surface
+        // the friendly missing-profile error, and (c) emit any non-fatal
+        // warnings (profile/compat-models mismatch). The resolver is pure;
+        // we feed it a snapshot of the current process env. We adopt its
+        // model only when the legacy chain (CLI alias > AZUREOPENAIMODEL >
+        // smart default) has nothing to say AND the resolver picked a
+        // profile-pinned model -- this keeps existing behavior bit-exact
+        // for users who never touch --profile / --provider, while letting
+        // profile.model genuinely participate in resolution when invoked.
+        string? profileModel = null;
+        if (!string.IsNullOrWhiteSpace(opts.Profile)
+            || !string.IsNullOrWhiteSpace(opts.Provider)
+            || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("AZ_PROFILE"))
+            || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("AZ_PROVIDER"))
+            || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("AZ_MODEL")))
+        {
+            Preferences switchPrefs;
+            try
+            {
+                switchPrefs = Preferences.Load(Preferences.DefaultPath());
+            }
+            catch (InvalidPreferencesException ex)
+            {
+                return ErrorAndExit(
+                    $"Invalid preferences file '{ex.Path}': {ex.Message}",
+                    1, jsonMode: opts.Json);
+            }
+            try
+            {
+                var inputs = new ResolutionInputs(
+                    CliProvider: opts.Provider,
+                    CliProfile: opts.Profile,
+                    CliModel: opts.Model,
+                    Env: SnapshotEnv());
+                var outcome = PreferencesResolver.Resolve(switchPrefs, inputs);
+                profileModel = outcome.Model;
+                if (!opts.Raw && !opts.Json && outcome.Warnings.Count > 0)
+                {
+                    foreach (var w in outcome.Warnings)
+                    {
+                        Console.Error.WriteLine("[WARNING] " + w);
+                    }
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ErrorAndExit(ex.Message, 1, jsonMode: opts.Json);
+            }
+        }
+
         var resolvedCliModel = userConfig.ResolveModel(opts.Model);
         var model = resolvedCliModel
             ?? envDefaultModel
+            ?? profileModel
             ?? userConfig.ResolveSmartDefault()
             ?? DefaultModelFallback;
 
@@ -596,6 +651,46 @@ internal class Program
             if (chatClient == null)
             {
                 return 1; // BuildChatClient already emitted the error
+            }
+
+            // S03E18 -- The Capability Gate. Before sending any request,
+            // refuse fast if the (preset, model) tuple does not advertise the
+            // capability the request needs. Better a friendly preflight error
+            // than a confused 4xx from the provider mid-stream. The override
+            // env var is named in the error so the user can self-rescue when
+            // our snapshot is wrong.
+            var capsCheck = AzureOpenAI_CLI.Capabilities.ProviderCapabilities.Get(telProvider, model);
+            bool needsTools = opts.AgentMode || opts.RalphMode
+                || (activePersona != null && activePersona.Tools.Count > 0);
+            if (needsTools && !capsCheck.ToolCalls)
+            {
+                var ex = AzureOpenAI_CLI.Capabilities.ProviderCapabilities.Mismatch(telProvider, model, "tool_calls");
+                telScope.SetOutcome("client_error", AzureOpenAI_CLI.Capabilities.CapabilityMismatchException.ErrorClass);
+                telScope.Emit();
+                return ErrorAndExit(ex.Message, 2, jsonMode: opts.Json);
+            }
+            // Vision input: no current CLI surface emits image content into a
+            // chat request, but the gate is wired now so the future flag (or
+            // a persona that injects an image) trips before the wire call.
+            // Today this is reachable only via override or future work; the
+            // ProviderCapabilities.Get path stays warm regardless.
+            bool needsVision = false; // reserved
+            if (needsVision && !capsCheck.Vision)
+            {
+                var ex = AzureOpenAI_CLI.Capabilities.ProviderCapabilities.Mismatch(telProvider, model, "vision");
+                telScope.SetOutcome("client_error", AzureOpenAI_CLI.Capabilities.CapabilityMismatchException.ErrorClass);
+                telScope.Emit();
+                return ErrorAndExit(ex.Message, 2, jsonMode: opts.Json);
+            }
+            // JSON / structured-output mode: graceful degradation -- warn but
+            // do not fail. Schema is the strongest CLI signal that the user
+            // wants a JSON response from the model.
+            bool needsJsonMode = !string.IsNullOrEmpty(opts.Schema);
+            if (needsJsonMode && !capsCheck.JsonMode && !opts.Raw && !opts.Json)
+            {
+                Console.Error.WriteLine(
+                    $"[capability] {telProvider}:{model} does not advertise json_mode; "
+                    + $"sending as a regular completion (override via {AzureOpenAI_CLI.Capabilities.ProviderCapabilities.OverridesEnvVar}).");
             }
 
             // System prompt for agent: persona override > opts.SystemPrompt.
@@ -905,7 +1000,9 @@ internal class Program
         ImageSize: null,
         ConfirmPrintSecret: false,
         Plain: false,
-        Offline: false
+        Offline: false,
+        Provider: null,
+        Profile: null
     );
 
     /// <summary>Default agent tool-call round cap, matching v1 (<c>--max-rounds</c>).</summary>
@@ -999,6 +1096,12 @@ internal class Program
         string? imageSize = null;
         bool plain = false;
         bool offline = false;
+        // S03E20 (Costanza) -- The Switch. New flags placed at end of parser
+        // to minimize merge friction with e18 (capability-gate) which is
+        // editing the dispatch path and the help block. Parser remains
+        // order-independent: these can appear anywhere on the command line.
+        string? provider = null;
+        string? profile = null;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -1092,6 +1195,36 @@ internal class Program
                     break;
                 case "--raw":
                     raw = true;
+                    break;
+                case "--rotate-creds":
+                    // S03E25 -- The Rotation (Newman). Self-contained
+                    // subcommand: BYOK rotation with atomic write,
+                    // timestamped backup, mode 0600 invariant. Optional
+                    // positional provider follows the flag (e.g.
+                    // `--rotate-creds openai`); when absent the handler
+                    // prompts an interactive menu of currently configured
+                    // providers. NEVER emits the typed key value -- every
+                    // textual line is routed through SecretRedactor.
+                    {
+                        string? rotateProvider = null;
+                        if (i + 1 < args.Length)
+                        {
+                            var maybe = args[i + 1];
+                            if (!string.IsNullOrEmpty(maybe) && maybe[0] != '-')
+                            {
+                                rotateProvider = maybe;
+                                i++;
+                            }
+                        }
+                        Environment.Exit(Cli.CredsRotate.Run(
+                            providerArg: rotateProvider,
+                            jsonMode: Array.Exists(args, a => string.Equals(a, "--json", StringComparison.Ordinal)),
+                            raw: Array.Exists(args, a => string.Equals(a, "--raw", StringComparison.Ordinal)),
+                            plain: Plain.IsActive(),
+                            stdin: Console.In,
+                            stdout: Console.Out,
+                            stderr: Console.Error));
+                    }
                     break;
                 case "--doctor":
                     // S03E15 -- The Probe (Costanza). Self-contained branch:
@@ -1299,6 +1432,18 @@ internal class Program
                 // call; loopback still requires AZ_AI_LOCAL_PROVIDERS=1.
                 case "--offline":
                     offline = true;
+                    break;
+                // S03E20 -- The Switch (Costanza). Append-at-end placement
+                // keeps merge friction minimal vs. e18 (dispatch / capability
+                // gate) and e25 (creds rotate). Order-independent: all three
+                // flags accept their value as the next argv entry.
+                case "--provider":
+                    if (i + 1 < args.Length) { provider = args[++i]; }
+                    else { Fail("--provider requires a name (e.g. azure, openai, groq, together, cloudflare)"); }
+                    break;
+                case "--profile":
+                    if (i + 1 < args.Length) { profile = args[++i]; }
+                    else { Fail("--profile requires a name from preferences.json"); }
                     break;
                 default:
                     // Scope 3: reject unknown flags. Anything that looks like a
@@ -1553,6 +1698,8 @@ internal class Program
             ConfirmPrintSecret = confirmPrintSecret,
             Plain = plain,
             Offline = offline,
+            Provider = provider,
+            Profile = profile,
         };
     }
 
@@ -1937,6 +2084,31 @@ internal class Program
         {
             // Silent by contract -- same as DotEnv ignoreExceptions.
         }
+    }
+
+    /// <summary>
+    /// S03E20 -- The Switch. Snapshot the environment variables consulted by
+    /// <see cref="PreferencesResolver.Resolve"/>. Pure: builds a small
+    /// dictionary of the keys we read so the resolver itself never touches
+    /// process state. Keys are case-sensitive (matches Environment behaviour
+    /// on Linux / macOS); only the canonical keys are populated to keep the
+    /// dictionary small and the resolver's contract narrow.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string?> SnapshotEnv()
+    {
+        var keys = new[]
+        {
+            "AZ_PROVIDER", "AZ_PROFILE", "AZ_MODEL",
+            "AZUREOPENAIENDPOINT", "AZUREOPENAIMODEL",
+            "AZ_AI_COMPAT_MODELS",
+            "OPENAI_API_KEY", "GROQ_API_KEY", "TOGETHER_API_KEY", "CLOUDFLARE_API_TOKEN",
+        };
+        var snap = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var k in keys)
+        {
+            snap[k] = Environment.GetEnvironmentVariable(k);
+        }
+        return snap;
     }
 
     /// <summary>
@@ -2581,7 +2753,14 @@ Usage:
   echo ""prompt"" | az-ai [OPTIONS]
 
 Core Options:
-  --model, -m <alias|name>  Model deployment or alias (env: AZUREOPENAIMODEL)
+  --model, -m <alias|name>  Model deployment or alias (env: AZUREOPENAIMODEL, AZ_MODEL)
+  --provider <name>         Provider override: azure | openai | groq | together |
+                            cloudflare | foundry. Wins over AZ_PROVIDER and over
+                            any profile pin. (env: AZ_PROVIDER) (S03E20)
+  --profile <name>          Select a named profile from preferences.json. Profile
+                            pins provider + optional model. Missing profile
+                            errors with the list of available names.
+                            (env: AZ_PROFILE) (S03E20)
   --temperature, -t <float> Sampling temperature 0.0-2.0 (env: AZURE_TEMPERATURE, default: 0.55;
                             0.15 when --validate is active and neither flag nor env is set)
   --max-tokens <int>        Max completion tokens (env: AZURE_MAX_TOKENS, default: 10000)
@@ -2638,6 +2817,10 @@ Setup:
   --setup                   Interactive guided configuration wizard
                             (works even when endpoint/credentials are broken)
   --init-wizard             Alias for --setup
+  --rotate-creds [provider] Rotate the API key for one provider (S03E25).
+                            Atomic write + timestamped backup + mode 0600.
+                            Interactive only -- refuses --raw / non-TTY.
+                            Never logs the key value.
 
 Shell Completions:
   --completions <shell>     Emit bash|zsh|fish completion script to stdout
@@ -2741,7 +2924,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
 
     case ""${prev}"" in
         --completions)
@@ -2782,6 +2965,8 @@ _az-ai() {
         '--version[Show version]'
         '--help[Show help]'
         '--model[Select model]:model:'
+        '--provider[Provider override (azure/openai/groq/together/cloudflare/foundry)]:provider:(azure openai groq together cloudflare foundry)'
+        '--profile[Named profile from preferences.json]:profile:'
         '--set-model[Set model alias]:spec:'
         '--current-model[Show default alias]'
         '--models[List aliases]'
@@ -2823,6 +3008,8 @@ complete -c az-ai -l json -d 'JSON output'
 complete -c az-ai -l version -s v -d 'Show version'
 complete -c az-ai -l help -s h -d 'Show help'
 complete -c az-ai -l model -s m -d 'Select model' -r
+complete -c az-ai -l provider -d 'Provider override (S03E20)' -xa 'azure openai groq together cloudflare foundry'
+complete -c az-ai -l profile -d 'Named profile from preferences.json (S03E20)' -r
 complete -c az-ai -l set-model -d 'Set model alias' -r
 complete -c az-ai -l current-model -d 'Show default alias'
 complete -c az-ai -l models -d 'List aliases'
@@ -3240,6 +3427,39 @@ complete -c az-ai -w az-ai
         Console.WriteLine($"Preferences file: {prefsPath} ({(prefsLoaded ? "loaded" : "not present")})");
         Console.WriteLine($"Providers known: {(providerNames.Count == 0 ? "(none)" : string.Join(", ", providerNames))}");
         Console.WriteLine($"Profiles known:  {(profileNames.Count == 0 ? "(none)" : string.Join(", ", profileNames))}");
+
+        // S03E20 -- The Switch (Costanza). Run the unified resolver and
+        // surface its single-source label so users / scripts can grep for
+        // "Switch resolution:" without parsing the legacy block. The legacy
+        // block above stays for backward compatibility (chaos / regression
+        // tests). Resolver may throw if no provider can be resolved -- in
+        // that case we surface the message but do NOT fail --config show
+        // (the operator is using --config show to diagnose exactly this).
+        try
+        {
+            var switchInputs = new ResolutionInputs(
+                CliProvider: opts.Provider,
+                CliProfile: opts.Profile,
+                CliModel: opts.Model,
+                Env: SnapshotEnv());
+            var outcome = PreferencesResolver.Resolve(prefs, switchInputs);
+            Console.WriteLine();
+            Console.WriteLine("Switch resolution (S03E20):");
+            Console.WriteLine($"  source:           {outcome.Source}");
+            Console.WriteLine($"  provider source:  {outcome.ProviderSource}");
+            Console.WriteLine($"  model source:     {outcome.ModelSource}");
+            Console.WriteLine($"  profile source:   {outcome.ProfileSource ?? "(none)"}");
+            foreach (var w in outcome.Warnings)
+            {
+                Console.WriteLine($"  [WARNING] {w}");
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.WriteLine();
+            Console.WriteLine("Switch resolution (S03E20):");
+            Console.WriteLine($"  source: (unresolved -- {ex.Message})");
+        }
         return 0;
     }
 

@@ -254,6 +254,43 @@ az-ai --model llama-3.1-70b "Same, but on Groq"        # routes to api.groq.com
 
 Cloudflare Workers AI additionally requires `CLOUDFLARE_ACCOUNT_ID` (substituted into the endpoint URL). See [docs/adr/ADR-010-first-non-azure-cloud.md](docs/adr/ADR-010-first-non-azure-cloud.md).
 
+### Capability gate (S03E18 *The Capability Gate*)
+
+The CLI ships a provider+model feature matrix and a dispatch-time gate that refuses requests the downstream model cannot honour. Tool-call requests against models that do not advertise tool-calling, and vision requests against text-only models, fail fast with a friendly error and exit code `2` -- no more confused 4xx surfacing through the wire. `--schema` against a model without `json_mode` warns to stderr and degrades to a regular completion.
+
+Override the matrix when our snapshot is wrong:
+
+```bash
+# I know this Together model handles tool-calls; let it through.
+export AZ_AI_CAPABILITY_OVERRIDES="together:meta-llama-3.1-70b-instruct:tool_calls=true"
+```
+
+Format is comma-separated `preset:model:capability=bool` (capabilities: `tool_calls`, `streaming`, `vision`, `json_mode`). Malformed entries warn and are skipped.
+
+### Choosing a provider and model (S03E20 *The Switch*)
+
+Three knobs, one documented precedence chain. CLI flag wins, then env var, then the named profile in `preferences.json`, then a built-in default. The same chain runs for the provider rail and the model rail; the profile rail is optional (skipped entirely when no `--profile` and no `AZ_PROFILE` is set).
+
+```text
+provider: --provider  >  AZ_PROVIDER  >  profile.provider  >  default heuristic
+profile : --profile   >  AZ_PROFILE   >  (none)
+model   : --model     >  AZ_MODEL     >  profile.model     >  AZUREOPENAIMODEL[0] / AZ_AI_COMPAT_MODELS[provider] / fallback
+```
+
+The default heuristic for provider: `azure` if `AZUREOPENAIENDPOINT` is set, else `openai` if `OPENAI_API_KEY` is set, else the first OpenAI-compat preset whose key env var is populated (`groq` / `together` / `cloudflare`), else a friendly error listing the providers it knows. `--config show` reports every rail's source label so you can see exactly where the resolved value came from:
+
+```bash
+$ az-ai --profile work --config show | grep -A4 'Switch resolution'
+Switch resolution (S03E20):
+  source:           profile:work:provider
+  provider source:  profile:work:provider
+  model source:     profile:work:model
+  profile source:   cli
+
+# Override a profile's provider for one invocation:
+$ az-ai --profile work --provider openai "draft a release note"
+```
+
 ### Makefile targets
 
 The core targets (`make setup`, `make install`, `make test`, `make preflight`) are documented in [CONTRIBUTING.md](CONTRIBUTING.md). Additional management targets:
@@ -330,6 +367,18 @@ operator on the default Azure path can read past a compat-only CVE
 without losing the signal. Per-provider severity tolerances and triage
 cadence: [docs/security/cve-policy.md](docs/security/cve-policy.md).
 Local run: `make cve-report` (requires Trivy + jq).
+
+### Rotating credentials
+
+`az-ai --rotate-creds [provider]` (S03E25) rotates the API key for one
+configured provider in `~/.config/az-ai/env`. The flow takes a
+timestamped backup (`env.bak.<ISO-8601-Z>`, never overwritten -- bumps
+to `.bak.<ts>.1` on collision), then atomically writes the new file
+(tmp + rename) under mode 0600. The key is read with hidden input and
+never logged on any success, failure, or exception path; every textual
+line is routed through `SecretRedactor`. Interactive only -- refuses
+under `--raw` or when stdin/stdout are redirected. To change the
+endpoint or add a new provider, run `az-ai --setup` instead.
 
 ## Accessibility
 

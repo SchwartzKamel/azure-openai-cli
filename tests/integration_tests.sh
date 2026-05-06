@@ -714,6 +714,102 @@ KCEOF2
         rm -rf "$wiz_home" "$answers_file" "$script_log"
     fi
 
+    # ── S03E25 -- The Rotation (Newman BYOK rotation flow) ───────────────
+    echo ""
+    echo "▸ S03E25 -- creds rotate (--rotate-creds)"
+
+    # 1. Non-TTY refusal: piping stdin without a PTY must exit 3 with
+    #    [ERROR], not block on a prompt.
+    local rot_rc rot_out
+    set +e
+    rot_out=$(echo "" | "$BIN" --rotate-creds openai 2>&1)
+    rot_rc=$?
+    set -e
+    if [ "$rot_rc" -eq 3 ] && printf '%s' "$rot_out" | grep -qF '[ERROR]'; then
+        pass "S03E25 rotate: non-TTY refuses with [ERROR] (rc=3)"
+    else
+        fail "S03E25 rotate: non-TTY refuses with [ERROR]" "rc=$rot_rc out=$rot_out"
+    fi
+
+    # 2-5. PTY-driven happy path. Pre-seed the env file with a known old
+    #     key, drive the prompts via `script`, then assert: rewritten key,
+    #     backup with old key, mode 0600 on both, key not in --doctor.
+    if ! command -v script >/dev/null 2>&1; then
+        skip "S03E25 rotate: PTY-driven --rotate-creds" "script(1) not available"
+    else
+        local rot_home; rot_home=$(mktemp -d)
+        mkdir -p "$rot_home/.config/az-ai"
+        local rot_env="$rot_home/.config/az-ai/env"
+        cat > "$rot_env" <<'ROTEOF'
+# az-ai env file
+export AZ_AI_COMPAT_MODELS="openai:gpt-4o-mini"
+
+[provider:openai]
+API_KEY=sk-old-rotation-test-0123456789
+ROTEOF
+        chmod 600 "$rot_env"
+
+        local rot_answers; rot_answers=$(mktemp)
+        # Sequence: new key (typed char-by-char into ReadKey), then "y".
+        printf '%s\ny\n' 'sk-new-rotation-test-fedcba9876' > "$rot_answers"
+
+        local rot_log; rot_log=$(mktemp)
+        set +e
+        env -i HOME="$rot_home" PATH="$PATH" TERM=dumb \
+            DOTNET_ROOT="${DOTNET_ROOT:-}" \
+            script -qec "$BIN --rotate-creds openai" "$rot_log" < "$rot_answers" >/dev/null 2>&1
+        local rot_pty_rc=$?
+        set -e
+
+        if [ "$rot_pty_rc" -eq 0 ] && grep -qF 'API_KEY=sk-new-rotation-test-fedcba9876' "$rot_env"; then
+            pass "S03E25 rotate: PTY-driven rotate rewrites the API key"
+        else
+            fail "S03E25 rotate: PTY-driven rotate rewrites the API key" \
+                "rc=$rot_pty_rc contents=$(cat "$rot_env")"
+        fi
+
+        local rot_backup
+        rot_backup=$(ls -1 "$rot_home/.config/az-ai/"env.bak.* 2>/dev/null | head -1 || true)
+        if [ -n "$rot_backup" ] && grep -qF 'sk-old-rotation-test' "$rot_backup"; then
+            pass "S03E25 rotate: backup file contains the OLD key"
+        else
+            fail "S03E25 rotate: backup file contains the OLD key" \
+                "backup=$rot_backup"
+        fi
+
+        local rot_mode rot_bak_mode
+        rot_mode=$(stat -c '%a' "$rot_env" 2>/dev/null || stat -f '%Lp' "$rot_env" 2>/dev/null)
+        if [ "$rot_mode" = "600" ]; then
+            pass "S03E25 rotate: rewritten env file is mode 0600"
+        else
+            fail "S03E25 rotate: rewritten env file is mode 0600" "actual: $rot_mode"
+        fi
+        if [ -n "$rot_backup" ]; then
+            rot_bak_mode=$(stat -c '%a' "$rot_backup" 2>/dev/null || stat -f '%Lp' "$rot_backup" 2>/dev/null)
+            if [ "$rot_bak_mode" = "600" ]; then
+                pass "S03E25 rotate: backup file is mode 0600"
+            else
+                fail "S03E25 rotate: backup file is mode 0600" "actual: $rot_bak_mode"
+            fi
+        fi
+
+        # The new key must NEVER appear in --doctor output (Newman H-2).
+        local doc_out
+        set +e
+        doc_out=$(env -i HOME="$rot_home" PATH="$PATH" \
+            DOTNET_ROOT="${DOTNET_ROOT:-}" \
+            "$BIN" --doctor 2>&1 || true)
+        set -e
+        if printf '%s' "$doc_out" | grep -qF 'sk-new-rotation-test'; then
+            fail "S03E25 rotate: --doctor does not echo the rotated key" \
+                "leaked output: $doc_out"
+        else
+            pass "S03E25 rotate: --doctor does not echo the rotated key"
+        fi
+
+        rm -rf "$rot_home" "$rot_answers" "$rot_log"
+    fi
+
     # ── S03E13 -- The Telemetry (Frank Costanza opt-in observability) ─────
     echo ""
     echo "▸ S03E13 -- opt-in telemetry (AZ_AI_TELEMETRY=1)"
@@ -968,6 +1064,211 @@ KCEOF2
     fi
 
     rm -rf "$off_home"
+
+    # -- S03E18 The Capability Gate: refuse incompatible requests early ----
+    local cg_home; cg_home=$(mktemp -d)
+
+    # 1. Baseline: --help exits 0 even with capability env set (gate is
+    #    dispatch-side, not parser-side).
+    set +e
+    env -i HOME="$cg_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZ_AI_CAPABILITY_OVERRIDES="bogus-but-ignored" \
+        "$BIN" --help >/dev/null 2>&1
+    local cg_help_rc=$?
+    set -e
+    if [ "$cg_help_rc" -eq 0 ]; then
+        pass "S03E18 capability gate: --help unaffected by AZ_AI_CAPABILITY_OVERRIDES"
+    else
+        fail "S03E18 capability gate: --help" "expected 0, got $cg_help_rc"
+    fi
+
+    # 2. Tool-call request to a Groq model that does NOT support tool-calls
+    #    (llama-3.1-8b-instant) -> exit 2 + friendly CapabilityMismatch.
+    set +e
+    local cg_tool_out
+    cg_tool_out=$(env -i HOME="$cg_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-real-1234" \
+        AZUREOPENAIMODEL="llama-3.1-8b-instant" \
+        AZ_AI_COMPAT_MODELS="groq:llama-3.1-8b-instant" \
+        GROQ_API_KEY="sk-not-real-groq" \
+        "$BIN" --agent --raw "hello" 2>&1)
+    local cg_tool_rc=$?
+    set -e
+    if [ "$cg_tool_rc" -eq 2 ] && \
+       printf '%s' "$cg_tool_out" | grep -q 'does not support tool_calls'; then
+        pass "S03E18 capability gate: tool-call gate fires on groq:llama-3.1-8b-instant (exit 2)"
+    else
+        fail "S03E18 capability gate: tool-call refusal" \
+            "rc=$cg_tool_rc out=$(printf '%s' "$cg_tool_out" | head -c 240)"
+    fi
+
+    # 3. Override env flips the bit -> request proceeds past the gate (the
+    #    subsequent network call to invalid.example.invalid will fail, but
+    #    NOT with exit 2 / CapabilityMismatch).
+    set +e
+    local cg_ovr_out
+    cg_ovr_out=$(env -i HOME="$cg_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://invalid.example.invalid/" \
+        AZUREOPENAIAPI="sk-not-real-1234" \
+        AZUREOPENAIMODEL="llama-3.1-8b-instant" \
+        AZ_AI_COMPAT_MODELS="groq:llama-3.1-8b-instant" \
+        AZ_AI_CAPABILITY_OVERRIDES="groq:llama-3.1-8b-instant:tool_calls=true" \
+        GROQ_API_KEY="sk-not-real-groq" \
+        "$BIN" --agent --raw "hello" 2>&1)
+    local cg_ovr_rc=$?
+    set -e
+    if [ "$cg_ovr_rc" -ne 2 ] && \
+       ! printf '%s' "$cg_ovr_out" | grep -q 'does not support tool_calls'; then
+        pass "S03E18 capability gate: AZ_AI_CAPABILITY_OVERRIDES flips tool_calls past gate"
+    else
+        fail "S03E18 capability gate: override path" \
+            "rc=$cg_ovr_rc out=$(printf '%s' "$cg_ovr_out" | head -c 240)"
+    fi
+
+    # 4. Error message names the override env var so the user can self-rescue.
+    if printf '%s' "$cg_tool_out" | grep -q 'AZ_AI_CAPABILITY_OVERRIDES'; then
+        pass "S03E18 capability gate: error message names AZ_AI_CAPABILITY_OVERRIDES"
+    else
+        fail "S03E18 capability gate: actionable hint" \
+            "tool-call refusal did not mention AZ_AI_CAPABILITY_OVERRIDES"
+    fi
+
+    # 5. Capability-gate refusal must NOT leak the API key.
+    if printf '%s' "$cg_tool_out" | grep -Eq 'Bearer [A-Za-z0-9._-]+|sk-not-real'; then
+        fail "S03E18 capability gate: secret-shape leak" "key value appears in refusal output"
+    else
+        pass "S03E18 capability gate: refusal emits no Bearer/sk- key value"
+    fi
+
+    rm -rf "$cg_home"
+
+    # ── S03E20 -- The Switch (Costanza) ───────────────────────────────────
+    echo ""
+    echo "▸ S03E20 -- The Switch: precedence chain"
+
+    # Build a sandbox HOME with a curated preferences.json so the resolver
+    # has profiles to consult. The file lives at
+    # ${XDG_CONFIG_HOME}/az-ai/preferences.json on Linux/macOS; Preferences
+    # honors XDG_CONFIG_HOME first, falls back to $HOME/.config.
+    local sw_home
+    sw_home=$(mktemp -d "${TMPDIR:-/tmp}/az-ai-switch.XXXXXX")
+    mkdir -p "$sw_home/.config/az-ai"
+    cat > "$sw_home/.config/az-ai/preferences.json" <<'SWEOF'
+{
+  "schema": "1",
+  "providers": {
+    "azure": {"endpoint": "https://x.cognitiveservices.azure.com/"},
+    "groq":  {}
+  },
+  "profiles": {
+    "work": {"provider": "azure", "model": "gpt-4o-pinned"},
+    "ci":   {"provider": "groq",  "model": "llama-3.1-pinned"}
+  }
+}
+SWEOF
+    chmod 600 "$sw_home/.config/az-ai/preferences.json"
+
+    # 1. --config show prints the new "Switch resolution (S03E20)" block
+    #    with a source field. Provided AZUREOPENAIENDPOINT so default
+    #    heuristic resolves to azure.
+    local sw_show_out sw_show_rc
+    set +e
+    sw_show_out=$(env -i HOME="$sw_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://x.cognitiveservices.azure.com/" \
+        AZUREOPENAIAPI="sk-not-real" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --config show 2>&1)
+    sw_show_rc=$?
+    set -e
+    if [ "$sw_show_rc" -eq 0 ] && \
+       printf '%s' "$sw_show_out" | grep -qF 'Switch resolution (S03E20):' && \
+       printf '%s' "$sw_show_out" | grep -qE '^\s*source:\s+'; then
+        pass "S03E20 switch: --config show emits Switch resolution + source field"
+    else
+        fail "S03E20 switch: --config show source field" "rc=$sw_show_rc out=$(printf '%s' "$sw_show_out" | head -c 320)"
+    fi
+
+    # 2. --provider azure overrides AZ_PROVIDER=groq -> source 'cli'.
+    local sw_cli_out
+    set +e
+    sw_cli_out=$(env -i HOME="$sw_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://x.cognitiveservices.azure.com/" \
+        AZUREOPENAIAPI="sk-not-real" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        AZ_PROVIDER="groq" \
+        "$BIN" --provider azure --config show 2>&1)
+    set -e
+    if printf '%s' "$sw_cli_out" | grep -qE 'provider source:\s+cli'; then
+        pass "S03E20 switch: --provider beats AZ_PROVIDER (provider source = cli)"
+    else
+        fail "S03E20 switch: --provider precedence" "out=$(printf '%s' "$sw_cli_out" | head -c 320)"
+    fi
+
+    # 3. --profile work chains to the profile's provider (azure) and model.
+    local sw_prof_out
+    set +e
+    sw_prof_out=$(env -i HOME="$sw_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://x.cognitiveservices.azure.com/" \
+        AZUREOPENAIAPI="sk-not-real" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --profile work --config show 2>&1)
+    set -e
+    if printf '%s' "$sw_prof_out" | grep -qF 'profile:work:provider' && \
+       printf '%s' "$sw_prof_out" | grep -qF 'profile:work:model'; then
+        pass "S03E20 switch: --profile chains to profile provider + model"
+    else
+        fail "S03E20 switch: --profile chain" "out=$(printf '%s' "$sw_prof_out" | head -c 320)"
+    fi
+
+    # 4. Missing profile errors with the available list (work, ci).
+    local sw_miss_out sw_miss_rc
+    set +e
+    sw_miss_out=$(env -i HOME="$sw_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://x.cognitiveservices.azure.com/" \
+        AZUREOPENAIAPI="sk-not-real" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        "$BIN" --profile production --raw "hi" 2>&1)
+    sw_miss_rc=$?
+    set -e
+    if [ "$sw_miss_rc" -ne 0 ] && \
+       printf '%s' "$sw_miss_out" | grep -qF "'production'" && \
+       printf '%s' "$sw_miss_out" | grep -qF 'Available profiles:' && \
+       printf '%s' "$sw_miss_out" | grep -q 'work' && \
+       printf '%s' "$sw_miss_out" | grep -q 'ci'; then
+        pass "S03E20 switch: missing profile lists available names"
+    else
+        fail "S03E20 switch: missing profile message" "rc=$sw_miss_rc out=$(printf '%s' "$sw_miss_out" | head -c 320)"
+    fi
+
+    # 5. --provider, --profile, --model appear in --help.
+    local sw_help_out
+    sw_help_out=$("$BIN" --help 2>&1)
+    if printf '%s' "$sw_help_out" | grep -qFe '--provider <name>' && \
+       printf '%s' "$sw_help_out" | grep -qFe '--profile <name>'; then
+        pass "S03E20 switch: --help documents --provider and --profile"
+    else
+        fail "S03E20 switch: --help doc" "help missing --provider/--profile"
+    fi
+
+    # 6. AZ_PROFILE env routes to the profile's provider when no --profile.
+    local sw_env_out
+    set +e
+    sw_env_out=$(env -i HOME="$sw_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://x.cognitiveservices.azure.com/" \
+        AZUREOPENAIAPI="sk-not-real" \
+        AZUREOPENAIMODEL="gpt-4o-mini" \
+        AZ_PROFILE="ci" \
+        "$BIN" --config show 2>&1)
+    set -e
+    if printf '%s' "$sw_env_out" | grep -qF 'profile:ci:provider' && \
+       printf '%s' "$sw_env_out" | grep -qF 'env:AZ_PROFILE'; then
+        pass "S03E20 switch: AZ_PROFILE env resolves to profile.provider"
+    else
+        fail "S03E20 switch: AZ_PROFILE env chain" "out=$(printf '%s' "$sw_env_out" | head -c 320)"
+    fi
+
+    rm -rf "$sw_home"
 
     # ── API-gated smoke (skip unless creds present) ───────────────────────
     if [ -z "${AZUREOPENAIENDPOINT:-}" ] || [ -z "${AZUREOPENAIAPI:-}" ]; then
