@@ -60,7 +60,42 @@ internal sealed class SquadConfig
             MaxDepth = MaxJsonDepth,
         };
         var ctx = new AppJsonContext(options);
-        return JsonSerializer.Deserialize(json, ctx.SquadConfig);
+        var cfg = JsonSerializer.Deserialize(json, ctx.SquadConfig);
+        // S03E28 -- The Persona, Multi-Provider (Kramer). Validate persona
+        // pins at load time so a bad value in .squad.json is surfaced once,
+        // up front, with a clear error -- not at dispatch time when the
+        // operator is mid-flow.
+        cfg?.Validate(path);
+        return cfg;
+    }
+
+    /// <summary>
+    /// S03E28 -- The Persona, Multi-Provider. Validate every persona's
+    /// optional <c>provider</c> pin against
+    /// <see cref="PreferencesResolver.IsKnownProvider"/>. Throws
+    /// <see cref="InvalidOperationException"/> on the first offender,
+    /// pointing at the persona name and the bad value, and listing the
+    /// known providers. <c>model</c> is free-form (no allowlist) -- the
+    /// dispatch path validates against AZUREOPENAIMODEL / AZ_AI_COMPAT_MODELS.
+    /// Idempotent + cheap; safe to call from Load() and from tests that
+    /// hand-construct a config.
+    /// </summary>
+    public void Validate(string? sourcePath = null)
+    {
+        foreach (var p in Personas)
+        {
+            if (string.IsNullOrWhiteSpace(p.Provider)) continue;
+            if (!PreferencesResolver.IsKnownProvider(p.Provider))
+            {
+                var src = sourcePath is null ? ".squad.json" : sourcePath;
+                throw new InvalidOperationException(
+                    "Invalid persona pin in " + src + ": persona '" + p.Name
+                    + "' pins provider '" + p.Provider + "' which is not a known provider. "
+                    + "Known providers: [" + PreferencesResolver.KnownProvidersList() + "]. "
+                    + "Fix the 'provider' field on this persona, or remove it to fall back to the "
+                    + "global resolution chain.");
+            }
+        }
     }
 
     /// <summary>
@@ -115,6 +150,17 @@ internal sealed class PersonaConfig
 
     [JsonPropertyName("model")]
     public string? Model { get; set; }
+
+    /// <summary>
+    /// S03E28 -- The Persona, Multi-Provider (Kramer). Optional provider
+    /// pin. When non-null, this persona invocation routes through the
+    /// pinned provider (subject to the global precedence chain: cli &gt;
+    /// env &gt; profile &gt; persona &gt; default). Must be one of the providers
+    /// understood by <see cref="PreferencesResolver.IsKnownProvider"/>;
+    /// validated at <see cref="SquadConfig.Load"/>.
+    /// </summary>
+    [JsonPropertyName("provider")]
+    public string? Provider { get; set; }
 }
 
 internal sealed class RoutingRule
