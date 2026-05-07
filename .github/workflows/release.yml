@@ -57,6 +57,18 @@ jobs:
           - rid: win-x64
             os: windows-latest
             ext: zip
+          # Missing platforms added per README / stage.sh RID contract (C1)
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            ext: tar.gz
+          - rid: osx-x64
+            os: macos-13
+            ext: tar.gz
+          - rid: win-arm64
+            # Cross-publish from win-x64 runner; MSVC ARM64 cross-toolchain
+            # is available in the Visual Studio installation on windows-latest.
+            os: windows-latest
+            ext: zip
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -184,52 +196,61 @@ jobs:
           cd artifacts
           sha256sum az-ai-*.tar.gz az-ai-*.zip 2>/dev/null | sort | tee ../digests.txt
 
+      # H2: extract [Unreleased] block from CHANGELOG.md as release notes.
+      # H1: embed SHA-256 manifest in the release body and publish digests.txt.
+      - name: Build release body
+        run: |
+          CHANGELOG_NOTES="$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md)"
+          DIGEST_BLOCK="$(cat digests.txt)"
+          REPO="${{ github.repository }}"
+          REF="${{ github.ref_name }}"
+          REPO_OWNER="${{ github.repository_owner }}"
+          {
+            printf '%s\n\n' "$CHANGELOG_NOTES"
+            printf '## Docker\n\n'
+            printf '```bash\n'
+            printf 'docker pull ghcr.io/%s:%s\n' "$REPO" "$REF"
+            printf '```\n\n'
+            printf '## Binaries (`az-ai`)\n\n'
+            printf 'All archives extract to `az-ai-<version>-<rid>/` containing the\n'
+            printf 'NativeAOT `az-ai` binary plus `LICENSE`, `NOTICE`,\n'
+            printf '`THIRD_PARTY_NOTICES.md`, and `README.md` so every distributed artifact\n'
+            printf 'carries the full legal/attribution bundle.\n\n'
+            printf '| Platform | File |\n'
+            printf '|----------|------|\n'
+            printf '| Linux x64 (glibc) | `az-ai-%s-linux-x64.tar.gz` |\n' "$REF"
+            printf '| Linux x64 (musl/Alpine) | `az-ai-%s-linux-musl-x64.tar.gz` |\n' "$REF"
+            printf '| Linux ARM64 | `az-ai-%s-linux-arm64.tar.gz` |\n' "$REF"
+            printf '| Windows x64 | `az-ai-%s-win-x64.zip` |\n' "$REF"
+            printf '| Windows ARM64 | `az-ai-%s-win-arm64.zip` |\n' "$REF"
+            printf '| macOS Apple Silicon | `az-ai-%s-osx-arm64.tar.gz` |\n' "$REF"
+            printf '| macOS Intel | `az-ai-%s-osx-x64.tar.gz` |\n' "$REF"
+            printf '\n'
+            printf '## Provenance\n\n'
+            printf 'Every artifact is attested via Sigstore keyless signing\n'
+            printf '(`actions/attest-build-provenance`). Verify with:\n\n'
+            printf '```bash\n'
+            printf 'gh attestation verify az-ai-%s-linux-x64.tar.gz \\\n' "$REF"
+            printf '    --owner %s\n' "$REPO_OWNER"
+            printf '```\n\n'
+            printf 'SBOMs (CycloneDX JSON) are attached alongside each archive.\n\n'
+            printf '## Package Manager Install\n\n'
+            printf '- Homebrew (latest): `brew install schwartzkamel/tap/az-ai`\n'
+            printf '- Homebrew (pinned): `brew install schwartzkamel/tap/az-ai@%s`\n' "$REF"
+            printf '- Scoop:   `scoop install schwartzkamel/az-ai`\n'
+            printf '- Nix:     `nix run github:SchwartzKamel/azure-openai-cli?dir=packaging/nix`\n\n'
+            printf '## SHA-256 Checksums\n\n'
+            printf '```\n'
+            printf '%s\n' "$DIGEST_BLOCK"
+            printf '```\n'
+          } > release-body.md
+
       - name: Create release
         uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
         with:
-          generate_release_notes: true
+          body_path: release-body.md
           files: |
             artifacts/*.tar.gz
             artifacts/*.zip
             artifacts/*.sbom.json
-          body: |
-            ## Docker
-
-            ```bash
-            docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
-            ```
-
-            ## Binaries (`az-ai`)
-
-            All archives extract to `az-ai-<version>-<rid>/` containing the
-            NativeAOT `az-ai` binary plus `LICENSE`, `NOTICE`,
-            `THIRD_PARTY_NOTICES.md`, and `README.md`.
-
-            | Platform | File |
-            |----------|------|
-            | Linux (glibc) | `az-ai-${{ github.ref_name }}-linux-x64.tar.gz` |
-            | Linux (musl/Alpine) | `az-ai-${{ github.ref_name }}-linux-musl-x64.tar.gz` |
-            | Windows | `az-ai-${{ github.ref_name }}-win-x64.zip` |
-            | macOS (Apple Silicon) | `az-ai-${{ github.ref_name }}-osx-arm64.tar.gz` |
-
-            ## Provenance
-
-            Every artifact is attested via Sigstore keyless signing
-            (`actions/attest-build-provenance`). Verify with:
-
-            ```bash
-            gh attestation verify az-ai-${{ github.ref_name }}-linux-x64.tar.gz \
-                --owner ${{ github.repository_owner }}
-            ```
-
-            SBOMs (CycloneDX JSON) are attached alongside each archive.
-
-            ## Package manager install
-
-            - Homebrew (latest): `brew install schwartzkamel/tap/az-ai`
-            - Homebrew (pinned): `brew install schwartzkamel/tap/az-ai@${{ github.ref_name }}`
-            - Scoop:   `scoop install schwartzkamel/az-ai`
-            - Nix:     `nix run github:SchwartzKamel/azure-openai-cli?dir=packaging/nix`
-
-            Manifest hashes are filled by Lippman post-publish per
-            `packaging/README.md` §Tag-time ritual.
+            digests.txt
