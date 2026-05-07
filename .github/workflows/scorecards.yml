@@ -11,10 +11,15 @@ on:
 # Least-privilege defaults; steps that need more must request explicitly.
 permissions: read-all
 
+concurrency:
+  group: scorecards-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analysis:
     name: Scorecard analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       # Needed for Code Scanning alerts upload.
       security-events: write
