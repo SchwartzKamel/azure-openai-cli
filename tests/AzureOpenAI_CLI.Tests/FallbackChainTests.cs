@@ -281,6 +281,60 @@ public class FallbackChainTests
         Assert.False(FallbackPolicy.IsKnownPreset("bogus"));
     }
 
+    // ── S03E30 ordering-contract tests ───────────────────────────────────
+    // These assert that FallbackPolicy.Resolve is purely syntactic: it never
+    // inspects AZUREOPENAIENDPOINT, AZUREOPENAIAPI, or AZUREOPENAIMODEL.
+    // A malformed --fallback flag must error (HasError=true) regardless of
+    // whether creds are present or absent -- no env masking required.
+
+    [Fact]
+    public void FallbackParser_UnknownPreset_HasErrorWithNoCreds()
+    {
+        // Simulate the binary being invoked with no creds in the environment.
+        // Resolve must report the parse error independent of creds.
+        var argv = new[] { "az-ai", "--fallback", "bogus", "--", "hi" };
+        var p = FallbackPolicy.Resolve(argv, name => name switch
+        {
+            // Explicitly absent: endpoint, key, model -- the "no creds" scenario.
+            "AZUREOPENAIENDPOINT" => null,
+            "AZUREOPENAIAPI" => null,
+            "AZUREOPENAIMODEL" => null,
+            _ => null,
+        });
+        Assert.True(p.HasError, "Unknown preset must be a parse error even with no creds set");
+        Assert.Contains("Unknown fallback provider preset 'bogus'", p.ErrorMessage);
+        Assert.Contains("openai", p.ErrorMessage);
+    }
+
+    [Fact]
+    public void FallbackParser_DepthExceeded_HasErrorWithNoCreds()
+    {
+        var argv = new[] { "az-ai", "--fallback", "openai,groq,together,cloudflare", "--", "hi" };
+        var p = FallbackPolicy.Resolve(argv, _ => null);
+        Assert.True(p.HasError, "Depth > MaxDepth must be a parse error even with no creds set");
+        Assert.Contains("exceeds the maximum", p.ErrorMessage);
+    }
+
+    [Fact]
+    public void FallbackParser_DuplicatePreset_HasErrorWithNoCreds()
+    {
+        var argv = new[] { "az-ai", "--fallback", "openai,openai", "--", "hi" };
+        var p = FallbackPolicy.Resolve(argv, _ => null);
+        Assert.True(p.HasError, "Duplicate preset must be a parse error even with no creds set");
+        Assert.Contains("more than once", p.ErrorMessage);
+    }
+
+    [Fact]
+    public void FallbackParser_ValidPreset_NotAnErrorEvenWithNoCreds()
+    {
+        // A valid --fallback should parse cleanly (no HasError) regardless of
+        // whether creds exist -- the creds check happens after the parse.
+        var argv = new[] { "az-ai", "--fallback", "openai", "--", "hi" };
+        var p = FallbackPolicy.Resolve(argv, _ => null);
+        Assert.False(p.HasError, "Valid --fallback must not be a parse error");
+        Assert.True(p.IsActive);
+    }
+
     // ── 11+. FallbackChain.Wrap behaviour ────────────────────────────────
 
     [Fact]

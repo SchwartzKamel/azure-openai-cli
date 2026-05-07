@@ -1446,16 +1446,9 @@ SWEOF
     fi
 
     # 2. unknown preset -> exit 2 + lists known presets on stderr.
-    # Provide dummy creds so the env-check passes and the fallback parser
-    # is what fires (CI has no AZUREOPENAIENDPOINT).
-    fb_dummy_env() {
-        AZUREOPENAIENDPOINT="https://example.invalid/" \
-        AZUREOPENAIAPI="dummy-key-not-used" \
-        AZUREOPENAIMODEL="gpt-test" \
-        "$@"
-    }
-    fb_unknown_out=$(fb_dummy_env "$BIN" --fallback bogus -- "hi" 2>&1 1>/dev/null || true)
-    fb_unknown_rc=$(fb_dummy_env "$BIN" --fallback bogus -- "hi" >/dev/null 2>&1; echo $?)
+    # No dummy creds needed: fallback parsing fires before the creds check.
+    fb_unknown_out=$("$BIN" --fallback bogus -- "hi" 2>&1 1>/dev/null || true)
+    fb_unknown_rc=$("$BIN" --fallback bogus -- "hi" >/dev/null 2>&1; echo $?)
     if [ "$fb_unknown_rc" = "2" ] && \
        printf '%s' "$fb_unknown_out" | grep -qi "unknown fallback provider" && \
        printf '%s' "$fb_unknown_out" | grep -q "openai"; then
@@ -1465,8 +1458,8 @@ SWEOF
     fi
 
     # 3. depth >3 -> exit 2 + "exceeds max" message.
-    fb_depth_out=$(fb_dummy_env "$BIN" --fallback openai,groq,together,cloudflare -- "hi" 2>&1 1>/dev/null || true)
-    fb_depth_rc=$(fb_dummy_env "$BIN" --fallback openai,groq,together,cloudflare -- "hi" >/dev/null 2>&1; echo $?)
+    fb_depth_out=$("$BIN" --fallback openai,groq,together,cloudflare -- "hi" 2>&1 1>/dev/null || true)
+    fb_depth_rc=$("$BIN" --fallback openai,groq,together,cloudflare -- "hi" >/dev/null 2>&1; echo $?)
     if [ "$fb_depth_rc" = "2" ] && printf '%s' "$fb_depth_out" | grep -qi "exceeds the maximum"; then
         pass "S03E22 fallback: depth>3 exits 2 with max-depth message"
     else
@@ -1474,8 +1467,8 @@ SWEOF
     fi
 
     # 4. duplicate preset -> exit 2 + "duplicate" message.
-    fb_dup_out=$(fb_dummy_env "$BIN" --fallback openai,openai -- "hi" 2>&1 1>/dev/null || true)
-    fb_dup_rc=$(fb_dummy_env "$BIN" --fallback openai,openai -- "hi" >/dev/null 2>&1; echo $?)
+    fb_dup_out=$("$BIN" --fallback openai,openai -- "hi" 2>&1 1>/dev/null || true)
+    fb_dup_rc=$("$BIN" --fallback openai,openai -- "hi" >/dev/null 2>&1; echo $?)
     if [ "$fb_dup_rc" = "2" ] && printf '%s' "$fb_dup_out" | grep -qi "more than once"; then
         pass "S03E22 fallback: duplicate preset exits 2"
     else

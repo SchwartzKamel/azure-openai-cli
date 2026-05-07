@@ -399,6 +399,19 @@ internal class Program
             return await SetupWizard.RunAsync();
         }
 
+        // S03E22/S03E30 -- parse --fallback BEFORE the credential check so a
+        // malformed flag always exits 2 regardless of whether creds are set.
+        // Resolve is purely syntactic (argv scan + env read, no network, no
+        // creds) so lifting it here is safe and removes the S03E29 band-aid.
+        var fbPolicy = AzureOpenAI_CLI.Resilience.FallbackPolicy.Resolve(
+            Environment.GetCommandLineArgs(),
+            Environment.GetEnvironmentVariable);
+        if (fbPolicy.HasError)
+        {
+            Console.Error.WriteLine($"Error: --fallback: {fbPolicy.ErrorMessage}");
+            return 2;
+        }
+
         if (string.IsNullOrWhiteSpace(endpoint))
         {
             return ErrorAndExit("AZUREOPENAIENDPOINT environment variable not set. Run 'az-ai --setup' for guided configuration.", 1, jsonMode: opts.Json);
@@ -742,20 +755,11 @@ internal class Program
             }
 
             // S03E22 *The Fallback* (Frank Costanza) -- opt-in chain wrap.
-            // Resolve the policy from --fallback (CLI wins) or AZ_AI_FALLBACK.
-            // When inactive, Wrap returns the primary unchanged: zero overhead
-            // and zero behaviour change for users who don't opt in. Validation
-            // errors print to stderr and exit 2 (parse-time, before any I/O).
+            // fbPolicy was resolved and validated pre-creds (S03E30 ordering
+            // fix). When inactive, Wrap returns the primary unchanged: zero
+            // overhead and zero behaviour change for users who don't opt in.
             // Production factory currently always returns Skipped("no-fallback-creds")
             // -- per-preset alternate cred discovery is finding frank-2026-05-FB-1.
-            var fbPolicy = AzureOpenAI_CLI.Resilience.FallbackPolicy.Resolve(
-                Environment.GetCommandLineArgs(),
-                Environment.GetEnvironmentVariable);
-            if (fbPolicy.HasError)
-            {
-                Console.Error.WriteLine($"Error: --fallback: {fbPolicy.ErrorMessage}");
-                return 2;
-            }
             if (fbPolicy.IsActive)
             {
                 AzureOpenAI_CLI.Resilience.AlternateChatClientFactory altFactory =
