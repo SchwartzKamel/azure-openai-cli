@@ -17,14 +17,14 @@ If relevant, include a short checklist of steps to implement the guidance.
 
 Cite sources where applicable.
 
-If the question is ambiguous, ask 1–2 clarifying questions before answering.
+If the question is ambiguous, ask 1-2 clarifying questions before answering.
 ```
 
 ### Expected Output Format
 
-1. **Clarifications** (if needed): 1–2 questions to disambiguate
+1. **Clarifications** (if needed): 1-2 questions to disambiguate
 2. **Answer**: Concise, Azure-specific response
-3. **Implementation Checklist** (optional): 3–5 bullet points
+3. **Implementation Checklist** (optional): 3-5 bullet points
 4. **References**: Links or citations (if applicable)
 
 ### Example Scenario
@@ -59,12 +59,12 @@ Then provide a compact implementation plan with milestones.
 
 ### Expected Output Format
 
-1. **Plan**: 1–2 paragraph summary of the approach
+1. **Plan**: 1-2 paragraph summary of the approach
 2. **Architecture Components**: List of services, purpose, configuration notes
 3. **Data Flow Diagram** (textual): ASCII or prose description of flow
 4. **Security & Compliance Notes**: Key safeguards, audit trails, data residency
 5. **Rough Cost Estimate**: Cost ranges for each component, optimization tips
-6. **Implementation Milestones**: 4–6 numbered phases with success criteria
+6. **Implementation Milestones**: 4-6 numbered phases with success criteria
 
 ### Example Scenario
 
@@ -75,7 +75,7 @@ Then provide a compact implementation plan with milestones.
 - Components: Storage, Functions, OpenAI, Search, monitoring
 - Data flow: Upload → Queue → Function processes → Store embeddings → Index → Query
 - Security: Managed identity, VNet integration, encryption at rest
-- Cost: ~$50–200/month depending on volume
+- Cost: ~$50-200/month depending on volume
 - Milestones: Infrastructure setup, function code, testing, production deployment
 
 ---
@@ -190,7 +190,7 @@ Include:
 2. **Cost Model**: Breakdown by component, monthly/annual ranges
 3. **Revenue/Benefit Model** (if applicable): Savings or revenue impact
 4. **Break-Even Analysis**: Timeline to ROI (if relevant)
-5. **Optimization Options**: 3–5 techniques with estimated savings
+5. **Optimization Options**: 3-5 techniques with estimated savings
 6. **Decision Criteria**: Trade-offs (cost vs. performance, time-to-market)
 
 ### Example Scenario
@@ -275,11 +275,11 @@ Respond with:
 **Example**:
 > **User**: "Build me an AI solution for customer support."
 >
-> **Response**: "To design the right solution, do you want to automate 1) first-response triage (classify and route), 2) full ticket resolution (generate draft responses), or 3) a hybrid agent that can handle common issues end-to-end? I'll recommend option 3 if you're starting fresh — it balances coverage with human oversight."
+> **Response**: "To design the right solution, do you want to automate 1) first-response triage (classify and route), 2) full ticket resolution (generate draft responses), or 3) a hybrid agent that can handle common issues end-to-end? I'll recommend option 3 if you're starting fresh -- it balances coverage with human oversight."
 
 ### Multi-Step Tasks (Plan-Then-Execute Flow)
 
-1. **Confirm Requirements**: Ask 1–2 questions to lock down scope
+1. **Confirm Requirements**: Ask 1-2 questions to lock down scope
 2. **Propose Design**: Show architecture or approach
 3. **Implement & Verify**: Execute with tests/validation
 4. **Review & Iterate**: Solicit feedback before finalizing

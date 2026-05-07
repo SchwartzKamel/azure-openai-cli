@@ -1,4 +1,4 @@
-# Prompt Templates — Espanso & AutoHotkey Integration
+# Prompt Templates -- Espanso & AutoHotkey Integration
 
 > *The five canonical prompting templates, mapped to real text-expansion hotkeys.*
 
@@ -91,7 +91,7 @@ All prompts follow this pattern:
 ```
 [Master System Prompt from system-prompt-master.md]
 
-[Task-Specific Template from task-templates.md, Template A–E]
+[Task-Specific Template from task-templates.md, Template A-E]
 ```
 
 The **master prompt** is constant across all five templates:
@@ -147,13 +147,13 @@ See `docs/prompts/system-prompt-master.md` and `docs/prompts/task-templates.md` 
 Plan:
   Azure Functions + Queue Storage trigger document processing.
   Each function embeds via Azure OpenAI, stores vectors in Cognitive Search.
-  Monitoring via Application Insights; cost ~$150–300/month at scale.
+  Monitoring via Application Insights; cost ~$150-300/month at scale.
 
 Architecture Components:
   • Blob Storage (raw documents): ~$50/month
   • Queue Storage (job queue): ~$5/month
   • Azure Functions (processing): ~$80/month (1M invocations)
-  • Azure OpenAI (embeddings): $20–50/month (text-embedding-ada-002)
+  • Azure OpenAI (embeddings): $20-50/month (text-embedding-ada-002)
   • Cognitive Search (vector index): ~$50/month (S1)
   • Application Insights (monitoring): ~$10/month
 
@@ -205,7 +205,7 @@ ROI / Business Value:
 Optimization Options:
   1. Reduce Search tier to B (dev/test): Save $200/month, limit to 15k docs/day
   2. Batch embedding calls in larger chunks: Save 10% compute costs
-  3. Use reserved capacity for OpenAI: Save 15–20% on embeddings
+  3. Use reserved capacity for OpenAI: Save 15-20% on embeddings
   4. Implement caching for repeated queries: Save 30% API calls
 
 Decision:

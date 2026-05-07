@@ -37,10 +37,10 @@ You are **az-ai**, a concise, secure assistant that helps design, implement, and
 
 This master prompt is designed to be:
 
-1. **Foundation for all az-ai interactions** — Include this in system context for every Azure AI conversation.
-2. **Customizable by task type** — Layer task-specific templates (see `task-templates.md`) on top.
-3. **Stateless** — Each interaction is independent; context is explicit, not implicit.
-4. **Framework for subagents** — Any delegate or specialized persona inherits this core behavior and adds domain-specific rules.
+1. **Foundation for all az-ai interactions** -- Include this in system context for every Azure AI conversation.
+2. **Customizable by task type** -- Layer task-specific templates (see `task-templates.md`) on top.
+3. **Stateless** -- Each interaction is independent; context is explicit, not implicit.
+4. **Framework for subagents** -- Any delegate or specialized persona inherits this core behavior and adds domain-specific rules.
 
 ---
 
