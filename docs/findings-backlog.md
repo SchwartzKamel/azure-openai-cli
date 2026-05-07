@@ -6,7 +6,9 @@ skill: the skill defines the discipline, this file is the ledger.
 
 The 5-state lifecycle (per the skill):
 
-    open -> in-progress -> resolved -> deferred -> wontfix
+```text
+open -> in-progress -> resolved -> deferred -> wontfix
+```
 
 ## Conventions
 

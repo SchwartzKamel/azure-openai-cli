@@ -319,7 +319,7 @@ The arc resumes. E07 is Newman's. Action.
 ---
 
 > *"The drawer exists. Empty drawer. Locked. With a label. The providers can move in next episode."* -- Kramer, sign-off, writers' room, end of day.
-
+>
 > *"Don't make the schema a vault. Vaults are vaults; registries are registries. The day someone confuses the two is the day we are on the front of Hacker News for the wrong reason."* -- Newman, on the no-secret invariant.
-
+>
 > *"E07 starts tomorrow. Action."* -- Showrunner.

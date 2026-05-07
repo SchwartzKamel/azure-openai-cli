@@ -5,7 +5,7 @@
 > `release-notes-v2.2.0.md` and re-reviewed against the final CHANGELOG
 > entry. Do not link external announcements at this filename until the
 > rename lands.
-
+>
 > A minor bump on the v2 line. No breaking changes -- v2.0.x and v2.1.x
 > users upgrade in place. v1.x users start with
 > [`docs/migration-v1-to-v2.md`](migration-v1-to-v2.md) and the
@@ -39,7 +39,7 @@ codes or `--raw` / `--json` output bytes.
 - **Bash injection surface is closed where it can be closed, documented
   where it cannot.** Form triggers that previously concatenated user
   input into bash `--system '...'` arguments now route through `WSLENV`
-  + environment variables. The residual `'@` here-string risk on
+  - environment variables. The residual `'@` here-string risk on
   multi-line free-form prompts is documented in the trust-model header
   rather than papered over.
 - **Lt. Bookman runs the brevity desk.** The new tier doctrine
@@ -88,7 +88,7 @@ Full machine-readable list lives in
   (same secret-egress class as `:aicommit`); `:aireply` ships email
   bodies; `:aitr` ships source text; `:aiyml` writes generated YAML to
   the clipboard, design prompt egresses to Azure. Multi-line free-form
-  prompt fields (`:ai `, `:aiweb `, `:aiimg`) carry a residual PS
+  prompt fields (`:ai`, `:aiweb`, `:aiimg`) carry a residual PS
   here-string `'@` boundary risk that cannot be closed without
   abandoning Espanso template substitution -- documented honestly in
   the header.
@@ -126,8 +126,8 @@ Full machine-readable list lives in
   -> 120 with explicit `<=300 chars total` cap.
 - **Mirror-tier triggers intentionally NOT capped.** `:aifix`,
   `:airw`, `:aitone`, `:aitr`, `:aishrink`, `:aiflip`, `:aianon` --
-  output length must track input. Free-tier triggers (`:ai `,
-  `:aiweb `, `:aiimg`) untouched per design.
+  output length must track input. Free-tier triggers (`:ai`,
+  `:aiweb`, `:aiimg`) untouched per design.
 
 ### Espanso ergonomics (S03E01 + S03E02)
 
@@ -136,7 +136,7 @@ Full machine-readable list lives in
   `:aishrink` (~50% length), `:aireply` (email/message reply with
   intent + tone form), `:aicommit` (Conventional Commit message from
   clipboard diff), `:airegex` (explain-or-generate regex), `:aianon`
-  (PII redaction), `:aiq ` (one-line quick question). Plus two new
+  (PII redaction), `:aiq` (one-line quick question). Plus two new
   in S03E02: `:aishort` (snap-tier free-form, 60 max-tokens, ~150
   char target) and `:aiyml` (form-input trigger that generates a new
   Espanso YAML block from a natural-language description, places it

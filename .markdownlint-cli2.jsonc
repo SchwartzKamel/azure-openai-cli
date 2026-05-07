@@ -56,6 +56,10 @@
     "docs/archive/**",
     "docs/audits/**",
     "docs/announce/archive/**",
+    "tests/fixtures/**",
+    "tests/chaos/**",
+    "dist/**",
+    "artifacts/**",
     "THIRD_PARTY_NOTICES.md",
     "NOTICE-assets.md",
     "CHANGELOG.md"

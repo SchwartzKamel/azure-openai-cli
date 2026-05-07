@@ -27,23 +27,23 @@ The pattern across the three CRITICAL/MAJOR clusters is the one Elaine has been 
 Mr. Pitt's number on the wall: **5/24 episodes complete, two of them off-blueprint, arc 1 not started**. The pitch from the room was straightforward -- before the Provider Abstraction Seam arc kicks back up at E06, we re-baseline. Three audits, three episodes, three different lenses. Elaine first, because the docs are the front door and the front door is where new contributors land.
 
 > **MR. PITT** *(precise, like a man eating a Snickers bar with a fork)*: "The original blueprint had E03 as *The Schema*. E04 as *The Redactor*. E05 as *The Pick*. All three are now displaced. *The Schema* moves to E06. *The Redactor* moves to E07. *The Pick* moves to E08. The seasons-roadmap document needs the renumber and the writers' room arc plan needs the rewrite. I have done neither. I am waiting for the audit triple to land first because if we renumber before the triple, the cross-references in the new episodes will point at episode numbers that do not yet exist."
-
+>
 > **LARRY:** "Right. Land the triple, then renumber."
-
+>
 > **MR. PITT:** "Confirmed. The blueprint-renumber is queued; it executes after E05 ships."
-
+>
 > **LARRY:** "Pretty pretty pretty good."
-
+>
 > **MR. PITT:** "I would also note that the writers' room cast-balance audit at E06 will flag Costanza as behind on lead quota. He is not in this triple. He gets E08 minimum or we have a casting failure logged on the mid-season checkpoint."
-
+>
 > **LARRY:** "Costanza gets *The Pick*. Confirmed. Move on."
 
 The casting question for the sweep was who consolidates. The 2026-04-22 audit was a 12-cast-member fleet sweep -- Jerry, Newman, Babu, Morty, Bania, Mickey, Jackie, Keith, Maestro, Puddy, Lippman, plus Elaine consolidating. That was a season-pivot move. This audit is a six-week refresh, not a season pivot, so the brief was tighter: **Elaine solo, with cross-checks against the supporting cast's existing work products, but no new sub-agent fleet**. She owned scope, severity scale, and the consolidation. The findings rollup below has 22 entries because Elaine landed 22. We are not editorializing the count.
 
 > **ELAINE** *(reviewing the brief, clicking a pen)*: "I want it on the record that 'agent count drift' shows up in three separate files this time. README, persona-guide, copilot-instructions. Three. The number rolls every season and we keep pinning it as if it won't."
-
+>
 > **LARRY:** "So drop the count."
-
+>
 > **ELAINE:** "I am suggesting exactly that."
 
 The other planning decision was scope boundaries. We carved out three things up front: SECURITY.md deep review (Newman's E04), THIRD_PARTY_NOTICES.md and license attribution (Jackie's quarterly), and the per-mode use-case body content (only top-level structure was checked). Those are not negligence -- they are explicit hand-offs. Elaine's report says so on line 18-21 of the audit; this episode echoes that boundary and does not retro-claim coverage.
@@ -51,35 +51,35 @@ The other planning decision was scope boundaries. We carved out three things up 
 The fourth carve-out was deliberate underscope on `docs/espanso-ahk-integration.md`. That file is 1359 lines, demonstrably two episodes behind the kit it documents, and a hand-edit pass to bring it current would itself be a 200-300 line diff -- which is a separate episode by any reasonable definition of episode. So the audit's instruction was: **flag it as M7, name the structural gaps (no Bookman, no prompt-templates, no brevity tier doctrine, stale 16-trigger enumeration when the kit ships 22+6), recommend a co-owned Babu/Maestro rewrite as its own episode candidate, do not attempt to hand-edit it inside this audit's fix wave.** Carving discipline matters: an audit that grows a fix-wave bigger than the audit itself stops being an audit.
 
 > **ELAINE** *(annotating the carved-out list)*: "I will not write a partial pass on espanso-ahk-integration. A partial pass implies the rest is current. The rest is not current."
-
+>
 > **LARRY:** "Carve it. Babu and Maestro pick up the rewrite when there's a slot. Don't touch it here."
-
+>
 > **ELAINE:** "Confirmed."
 
 The running joke -- and it is genuinely funny if you have been on this show long enough -- is C1. It is the second time that exact finding has been filed. Same file (README install table), same shape (version pin in a hand-maintained block), same fix (parameterize, or add a release-cut hook). The 2026-04-22 audit's recommendation was option (b): bump the rows on each release. We did not add the hook. So six story-weeks later, the rows say `2.0.5` and the tag says `2.2.0`, and a reader copy-pasting the suggested filenames into `curl -LO` gets a 404.
 
 > **LARRY:** "So this time we do option (a). Placeholder. `<version>` in the table, link to Releases, done. The next person who pins a literal version in that table buys lunch."
-
+>
 > **ELAINE:** "Pretty pretty pretty good."
-
+>
 > **LARRY:** "That's my line."
 
 C2 is the new one, and it is mine. The showrunner's. S03E02 shipped `:aishort` and `:aiyml` cleanly. The prompt-templates feat in `905515e` -- a different stream of work that *also* lives in the Espanso kit -- introduced `:aiquestion`, `:aiarch`, `:aicode`, `:aidata`, `:aicost`, `:aiprompts`. Both YAMLs are documented in the kit README. The kit README tells operators to install whichever they want, including both. **The operator who installs both gets two `:aidata` triggers with different bodies and no warning.** Elaine spotted it in the cross-cutting check; Bookman had already flagged it from the brevity tier cheatsheet because the prompt-templates `:aidata` doesn't fit cleanly into the tier table.
 
 > **LT. BOOKMAN** *(arms crossed, accusatory, leaning against the doorframe like he has somewhere else to be)*: "Two yaml files. Same trigger. Different tier. I didn't write the doctrine for fun, you know."
-
+>
 > **LARRY:** "Yeah, I know."
-
+>
 > **BOOKMAN:** "I caught this one off the cheatsheet. Three weeks ago. I don't write the doctrine, then read tier collisions out of espanso loadlogs, then come back to a writers' room to explain why a discipline I codified is a discipline."
-
+>
 > **LARRY:** "It's getting fixed."
-
+>
 > **BOOKMAN:** "Thursday."
-
+>
 > **LARRY:** "Thursday."
-
+>
 > **BOOKMAN:** "I want to see it on the wire by Thursday or I want a written extension. The doctrine has dates. The dates are not optional. *You* hired me for that."
-
+>
 > **LARRY:** *(beat)* "Pretty pretty pretty good. Thursday."
 
 The fix is mechanical: rename the prompt-templates `:aidata` to `:aidataflow` (matching its task name in `task-templates.md`), update the AHK companion (Ctrl+Shift+D mapping), update the kit README, update `PROMPT-TEMPLATES-INTEGRATION.md`, append the change to the CHANGELOG `[Unreleased]`. Add a trigger-name uniqueness check to the espanso-yml-lint target so this class of bug stops being possible. **None of that lands in this episode.** This episode is the audit. The fix ships as a stewardship PR -- we will batch C1 + C2 + the agent-count drift triple (M1/M2/M3) into a single small commit and push it on E04 morning before Newman's sweep airs.
@@ -87,7 +87,7 @@ The fix is mechanical: rename the prompt-templates `:aidata` to `:aidataflow` (m
 M5 is the one that needs to leave the room with someone other than Elaine. The CHANGELOG `[Unreleased]` block on `main` is empty. Commit `905515e` (the prompt-templates feat) is not recorded under it. The `changelog-append` skill exists specifically to prevent this; the exec-report-check gate is supposed to catch a push that touches code without an exec-report; both should have made the empty `[Unreleased]` impossible. Either the gate has a hole or the push opted out. **That is not Elaine's finding to fix.** That is Mr. Wilhelm's beat.
 
 > **LARRY:** "Wilhelm. E05. *Audit the auditors.* Forensic on M5, root-cause the bypass, write the gate-fix as part of the episode."
-
+>
 > **MR. WILHELM** *(absent from the room, but the action item gets carded onto the wall)*: cast for E05.
 
 ### Act II -- Fleet dispatch
@@ -203,8 +203,6 @@ Six story-weeks is enough time to retrospect. The 2026-04-22 audit produced 206 
 
 **Net status:** the high-severity drift from 04-22 is closed. The medium-severity drift is regenerating on a six-week cadence and will keep regenerating until the release-cut hook lands. The low-severity work (i18n, layout, security posture) held. **Three for four**, with the one open class being the one we predicted six weeks ago.
 
-
-
 1. **C1 is the one we have to actually fix this time.** The 2026-04-22 audit's recommendation was "either parameterize or add a release-cut hook." We did neither. So we paid the same finding in the same file two patch releases later, and we will pay it again in the next minor cut unless one of the two paths actually lands. **Decision in this episode: option (a), parameterize the table to use `<version>` placeholders + a "see Releases" link, and stop pinning literal versions in maintained prose.** The hook is still desirable -- file as Lippman + Jerry FR -- but parameterization is the immediate payoff.
 2. **Two YAMLs claiming the same trigger should be impossible by tooling, not by review.** C2 was caught by Bookman from a tier cheatsheet, and confirmed by Elaine via grep. That is the *correct* outcome of a sweep -- humans catching what tools didn't -- but the tool (espanso-yml-lint) should be the thing catching trigger-name collisions across files in the kit. Soup Nazi can own the gate, Puddy can own the test, and any future trigger collision becomes a CI hardfail instead of a six-week-window support footgun.
 3. **The exec-report-check gate has at least one hole.** Commit `905515e` shipped without a CHANGELOG `[Unreleased]` entry. Either the gate inspects exec-reports but not the CHANGELOG (likely), or the push opted out via `Skip-Exec-Report:` (auditable from the commit body). Either way, the changelog-append skill was not enforced. **This is the entire premise of E05** -- Wilhelm runs the forensic and ships the gate-fix.
@@ -223,8 +221,6 @@ Three patterns surfaced in this audit that are bigger than any single finding. R
 **2. The exec-report-check gate has a hole.** M5 is the proof: commit `905515e` shipped to `main` without a CHANGELOG `[Unreleased]` entry, and without a `Skip-Exec-Report:` trailer carving out the omission. The gate inspects exec-reports but, evidently, does not inspect the CHANGELOG `[Unreleased]` block in the same push. Either the two skills (`exec-report-format` and `changelog-append`) need to be cross-bound -- a push that triggers exec-report-check should also trigger changelog-append-check on the same diff range -- or the bypass criteria need to be tightened so an empty `[Unreleased]` cannot ride alongside a feat-tagged commit. **This is the entire premise of E05.** Wilhelm runs the forensic, ships the gate-fix, and updates the skill files so the carve-out criteria are explicit.
 
 **3. New work integrates sideways but not upward.** The prompt-templates feat is exemplary in `examples/espanso-ahk-wsl/` and in `docs/prompts/`. It is invisible from `README.md` and from `docs/espanso-ahk-integration.md`. Same shape as the v2.1 image-mode feat: `--image` is documented in the README banner and in `README.md#image-generation`, but `docs/use-cases.md` (the canonical "what can this thing do" reference) does not mention it (M6). Same shape as Bookman's brevity tier doctrine: codified in the agent file, surfaced in the kit YAML, invisible from `docs/espanso-ahk-integration.md`. **Three independent features, three independent upward-integration gaps.** Lloyd Braun's "front door" framing names the pattern; the fix is one bullet on the exec-report-format checklist asking whether the canonical README/use-cases/integration paths got a corresponding update. Cheap to add, mechanical to enforce, ships in the E04 stewardship batch.
-
-
 
 - **Diff size:** 1 new file (this episode), 0 lines deleted. The audit itself is 641 lines and was authored under `docs/audits/`, but it lands as part of Elaine's consolidator deliverable inside the same docs-only batch. Total: 2 markdown files, ~1000 lines added across the pair, 0 deletions, 0 code files touched.
 - **Test delta:** n/a (docs-only).
@@ -327,8 +323,6 @@ Eleven findings closed, "front door" checklist item added to `.github/skills/exe
 
 Four batches, three carve-outs, one FR. **22 findings, accounted for, owned, sequenced.** That is the audit's deliverable in operational form.
 
-
-
 > *Larry leans back. The whiteboard still has 22 findings on it. Elaine is already drafting the stewardship PR cover letters. Bookman has left the room -- he has a tier audit to write. Mr. Wilhelm is being paged for E05.*
 
 The job of a sweep episode is not to ship fixes. The job is to **make the queue legible**. Legible means: each finding has an ID, a severity, an evidence pointer, a proposed fix, and a named owner. All 22 have all five. The episode echoes the tally. The findings rollup names the owners. The followups section names the stewardship PRs. The retrospective names what stuck and what regenerated. The process observations section names the structural patterns. The next-episode section names what E04 and E05 cover.
@@ -338,10 +332,9 @@ If a future reader walks into this episode cold and asks "what is the state of t
 The episode that fixes most of this is not this episode. It is the next several. **What we owe the audit is the writeup, the queue, and the discipline to not drift back to "I'll get to it later."** The 2026-04-22 audit demonstrated what "I'll get to it later" looks like at the six-week mark: half the recommendations stuck, half regenerated. We can do better on this one. The release-cut hook is the structural bet. The cross-bound exec-report-check / changelog-append gate is the process bet. The "front door" checklist item is the cultural bet. Three bets. Sweeps week pays for them.
 
 > **LARRY:** "Land it. Move to E04."
-
+>
 > **ELAINE** *(off-camera, already at her desk)*: "Batch 1 ships first thing tomorrow. C1 closes by lunch."
-
+>
 > **BOOKMAN** *(from the hallway, not turning around)*: "Thursday."
-
+>
 > *Cut. End of episode.*
-

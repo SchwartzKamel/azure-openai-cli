@@ -48,7 +48,7 @@ This master prompt is designed to be:
 
 When using az-ai in code, chat, or CLI contexts:
 
-```
+```text
 [SYSTEM]
 {Master System Prompt content above}
 
@@ -62,9 +62,9 @@ When using az-ai in code, chat, or CLI contexts:
 
 ## References
 
-- **Azure Governance & Compliance**: https://learn.microsoft.com/en-us/azure/governance/
-- **Azure Security Best Practices**: https://learn.microsoft.com/en-us/azure/security/
-- **Responsible AI Principles**: https://www.microsoft.com/en-us/ai/responsible-ai
+- **Azure Governance & Compliance**: <https://learn.microsoft.com/en-us/azure/governance/>
+- **Azure Security Best Practices**: <https://learn.microsoft.com/en-us/azure/security/>
+- **Responsible AI Principles**: <https://www.microsoft.com/en-us/ai/responsible-ai>
 
 ---
 

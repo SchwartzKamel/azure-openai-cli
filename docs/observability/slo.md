@@ -208,10 +208,10 @@ the diff and opens the finding if the table moves.
 
 1. Open the canonical pricing URL for each preset:
 
-   - openai     -- https://openai.com/api/pricing
-   - groq       -- https://groq.com/pricing
-   - together   -- https://www.together.ai/pricing
-   - cloudflare -- https://developers.cloudflare.com/workers-ai/platform/pricing/
+   - openai     -- <https://openai.com/api/pricing>
+   - groq       -- <https://groq.com/pricing>
+   - together   -- <https://www.together.ai/pricing>
+   - cloudflare -- <https://developers.cloudflare.com/workers-ai/platform/pricing/>
 
 2. Identify the median anchor model named in `CompatCostRates.cs`
    (each entry's TODO comment points at the anchor).

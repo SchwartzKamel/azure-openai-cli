@@ -156,7 +156,7 @@ yet pushed -- batched with E11 per orchestrator policy.
 The bench-harness self-consistency snapshot, regenerated for this report
 under `AZ_AI_BENCH_FULL=1` on the dispatch host, looks like this:
 
-```
+```text
 === S03E12 bench-harness self-consistency snapshot ===
 ```
 

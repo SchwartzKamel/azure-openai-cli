@@ -4,7 +4,7 @@
 > Owner: Frank Costanza (SRE / observability).
 > Larry-voice exec report. ASCII only. No box-drawing.*
 
-```
+```text
 +--------------------------------------------------------------+
 |  SERENITY NOW! ... wait, I have a list. Page one of three.   |
 |  Page two: actually, the chain works. Page three: the chain  |
@@ -56,7 +56,7 @@ fallback fires). Alert thresholds: info above 5% over 1h, page above
 
 ## What shipped
 
-```
+```text
 + NEW  azureopenai-cli/Resilience/FallbackPolicy.cs   ~140 LOC
 + NEW  azureopenai-cli/Resilience/FallbackChain.cs    ~410 LOC
 + NEW  tests/AzureOpenAI_CLI.Tests/FallbackChainTests.cs   47 facts
@@ -111,7 +111,7 @@ E EDIT docs/exec-reports/s03-writers-room.md      (E22 GREEN row,
 
 ## Wave table
 
-```
+```text
 +------+----------------------+--------+----------------------------+
 | WAVE | FILE                 | KIND   | NOTE                       |
 +------+----------------------+--------+----------------------------+
@@ -132,7 +132,7 @@ E EDIT docs/exec-reports/s03-writers-room.md      (E22 GREEN row,
 
 ## Metrics
 
-```
+```text
 unit tests:        47 new facts -> 1254/1254 passing locally
 integration:        6 new assertions -> 106/106 passing (2 skipped, no-creds)
 build:              0 warnings, 0 errors (Debug + Release)
@@ -170,7 +170,7 @@ opt-in:             AZ_AI_TELEMETRY=1 strict equality (untouched)
 
 ## Tag scene -- the festivus pole
 
-```
+```text
 ~~ COLD OPEN, S03E?? *THE BUDGET* ~~
 
 INT. - GARAGE - LATE.  FRANK at a folding card table, ledger in front

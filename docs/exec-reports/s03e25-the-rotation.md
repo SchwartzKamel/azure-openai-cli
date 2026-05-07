@@ -207,32 +207,32 @@ finding, that's `jerry-2026-05-J-2` territory and a separate ticket.
 
 - `tests/AzureOpenAI_CLI.Tests/CredsRotateTests.cs` (NEW). 35 unit
   facts, `[Collection("ConsoleCapture")]`. Coverage:
-    - Happy paths: openai rotate (replaces key, takes backup, mode
+  - Happy paths: openai rotate (replaces key, takes backup, mode
       0600), azure rotate (default-section `AZUREOPENAIAPI`,
       preserves endpoint and model lines), file mode 0600 invariant
       on both rewritten file and backup.
-    - Confirm gate: y / Y / yes accept; n / empty reject (default-deny
+  - Confirm gate: y / Y / yes accept; n / empty reject (default-deny
       on confirmation -- typing nothing is a "no").
-    - Invalid-input refusals: empty key, whitespace-only key, < 8 char
+  - Invalid-input refusals: empty key, whitespace-only key, < 8 char
       key, `--raw`, unknown provider, configured-but-not-this-file
       provider.
-    - Missing-file / IO failure paths.
-    - Backup collision: pre-create `env.bak.<ts>`, assert the live
+  - Missing-file / IO failure paths.
+  - Backup collision: pre-create `env.bak.<ts>`, assert the live
       file lands at `.bak.<ts>.1` and the pre-existing file is
       preserved verbatim.
-    - Provider-arg fallback: no arg -> interactive menu (number,
+  - Provider-arg fallback: no arg -> interactive menu (number,
       name, empty -> default).
-    - Provider canonicalisation: case-insensitive, whitespace-trimmed.
-    - Pure-function tests on `DetectConfiguredProviders` and
+  - Provider canonicalisation: case-insensitive, whitespace-trimmed.
+  - Pure-function tests on `DetectConfiguredProviders` and
       `RewriteKey` (azure, openai, cloudflare's `API_TOKEN` variant,
       key-line-missing rejection, no-cross-section-bleed).
-    - Defense-in-depth: a unit fact asserts the rewriter writes the
+  - Defense-in-depth: a unit fact asserts the rewriter writes the
       new key exactly once, so a future bug that double-writes the
       value into a comment line would fail the test.
-    - Redaction smoke: `SecretRedactor.Redact` of an
+  - Redaction smoke: `SecretRedactor.Redact` of an
       `Authorization: Bearer ...` synthetic and an `OPENAI_API_KEY=...`
       synthetic both scrub.
-    - Backup filename format: matches `env.bak.YYYYMMDDTHHMMSSZ` --
+  - Backup filename format: matches `env.bak.YYYYMMDDTHHMMSSZ` --
       sortable, ISO-8601, UTC.
 - `tests/integration_tests.sh` (EDIT). Six new assertions in a
   dedicated S03E25 block: non-TTY refusal (`echo "" | $BIN

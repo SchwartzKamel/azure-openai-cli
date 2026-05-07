@@ -55,7 +55,7 @@ balanced on a stack of cereal boxes. KRAMER reads the writers' room
 brief out loud.
 
 KRAMER: "S03E17. *The Server*. llama.cpp's `llama-server` -- pointed at
-http://localhost:8080. They want a preset. They want a Conservative
+<http://localhost:8080>. They want a preset. They want a Conservative
 capability row. They want tests. They want the loopback gate to *say
 no*."
 
@@ -91,7 +91,7 @@ presets untouched):
 
 ### 2. `BuiltIn["llamacpp"]` added
 
-```
+```text
 new("llamacpp",
     new Uri("http://localhost:8080/v1"),
     "AZ_AI_LLAMACPP_API_KEY",
@@ -231,7 +231,7 @@ retro.
 
 ## Verification
 
-```
+```text
 DOTNET_ROOT=/usr/lib/dotnet make preflight
 ...
 Passed!  - Failed:     0, Passed:    25, Skipped:     0, Total:    25, ...

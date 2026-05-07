@@ -101,7 +101,7 @@ Other tests quoted by name from `SecretRedactorTests.cs`:
 - `QueryStringApiKey_IsMasked` -- `GET /v1/chat?api_key=SECRETXYZ123&model=gpt-4` scrubs the key, preserves `model=gpt-4`. Verifies the kv pattern's `&`-bounded match does not run away.
 - `MultipleSecretsInOneString_AllMasked` -- four secret shapes in one buffer; all four scrubbed. Verifies the six passes compose without one undoing another.
 - `LongInput_OneMegabyte_RedactsUnderBudget` -- 1 MB of text with bearer tokens sprinkled in; budget is 500ms wall clock (typical CI box is well under 100ms). Catches superlinear regression.
-- `PathologicalInput_DoesNotHang` -- 200,000 `a` characters glued onto a `Authorization: Bearer ` prefix with a trailing NUL byte. The contract is: either the bearer is masked, or the timeout path returns input unchanged within 1500ms. Hanging is the *only* failure mode the test rejects.
+- `PathologicalInput_DoesNotHang` -- 200,000 `a` characters glued onto a `Authorization: Bearer` prefix with a trailing NUL byte. The contract is: either the bearer is masked, or the timeout path returns input unchanged within 1500ms. Hanging is the *only* failure mode the test rejects.
 - `RedactException_StripsBearerFromMessage` -- throws an `InvalidOperationException` with a bearer header in the message, catches it, calls `RedactException(caught)`, asserts the secret is gone and the type name (`InvalidOperationException`) is preserved.
 - `RedactException_NullInput_ReturnsEmpty` -- the null safety case for the exception variant.
 - `MaskFormat_UsesBracketedKindLabels` -- guards the `[REDACTED:<kind>]` contract against drift to `***` or any other shape.

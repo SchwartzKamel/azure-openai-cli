@@ -207,35 +207,39 @@ pre-scan.
 - `EndpointAllowlistTests.cs`: +16 facts + 6 theory rows (S03E26
   block):
 
-      Offline_HttpsPublic_Blocked
-      Offline_HttpsPublic_BareIp_Blocked
-      Offline_HttpLocalhost_NoOptIn_StillBlockLoopback
-      Offline_HttpLocalhost_WithOptIn_Allowed
-      Offline_Loopback127_WithOptIn_Allowed
-      Offline_IPv6Loopback_WithOptIn_Allowed
-      Offline_AzureShape_Endpoint_Blocked
-      Offline_Rfc1918_StillBlockedAsPrivate
-      Offline_CloudMetadata_StillBlockedAsLinkLocal
-      Offline_DnsRebinding_MixedRecords_Blocked
-      Offline_DnsResolves_Public_Blocked
-      Offline_DnsResolves_AllLoopback_Allowed
-      Offline_OffByDefault_DoesNotChangeBehavior
-      Offline_StaticLatch_PicksUpFromTwoArgOverload
-      Offline_Describe_HasActionableText
-      OfflineEnv_StrictEqualityOnly  (Theory, 6 rows)
+```text
+  Offline_HttpsPublic_Blocked
+  Offline_HttpsPublic_BareIp_Blocked
+  Offline_HttpLocalhost_NoOptIn_StillBlockLoopback
+  Offline_HttpLocalhost_WithOptIn_Allowed
+  Offline_Loopback127_WithOptIn_Allowed
+  Offline_IPv6Loopback_WithOptIn_Allowed
+  Offline_AzureShape_Endpoint_Blocked
+  Offline_Rfc1918_StillBlockedAsPrivate
+  Offline_CloudMetadata_StillBlockedAsLinkLocal
+  Offline_DnsRebinding_MixedRecords_Blocked
+  Offline_DnsResolves_Public_Blocked
+  Offline_DnsResolves_AllLoopback_Allowed
+  Offline_OffByDefault_DoesNotChangeBehavior
+  Offline_StaticLatch_PicksUpFromTwoArgOverload
+  Offline_Describe_HasActionableText
+  OfflineEnv_StrictEqualityOnly  (Theory, 6 rows)
+```
 
 - New `tests/AzureOpenAI_CLI.Tests/OfflineModeTests.cs` (9 facts,
   `[Collection("ConsoleCapture")]`):
 
-      ParseArgs_OfflineFlag_SetsOfflineTrue
-      ParseArgs_OfflineFlag_DefaultsFalse
-      ParseArgs_OfflineEnv_StrictEqualityOnly_LiftsToOptions
-      Adapter_Build_OfflineBlocksPublicHttpsEndpoint
-      Adapter_Build_OfflinePlusOptIn_LoopbackPresetSucceeds
-      Adapter_Build_OfflineWithoutOptIn_LoopbackStillBlocked
-      Doctor_Offline_AzureProvider_ReportsBlockedOffline
-      Doctor_Offline_LocalhostProvider_NotMarkedOffline
-      WebFetchTool_OfflineRefusesAnyHttpsUrl
+```text
+  ParseArgs_OfflineFlag_SetsOfflineTrue
+  ParseArgs_OfflineFlag_DefaultsFalse
+  ParseArgs_OfflineEnv_StrictEqualityOnly_LiftsToOptions
+  Adapter_Build_OfflineBlocksPublicHttpsEndpoint
+  Adapter_Build_OfflinePlusOptIn_LoopbackPresetSucceeds
+  Adapter_Build_OfflineWithoutOptIn_LoopbackStillBlocked
+  Doctor_Offline_AzureProvider_ReportsBlockedOffline
+  Doctor_Offline_LocalhostProvider_NotMarkedOffline
+  WebFetchTool_OfflineRefusesAnyHttpsUrl
+```
 
 The Adapter / Doctor / WebFetch tests *also* assert that no
 secret-shape token (`sk-stub-not-real-redacted`, AZUREOPENAIAPI
@@ -248,13 +252,15 @@ seam.
 block with 7 hermetic assertions (every one wrapped in `env -i` so
 the host's real Azure env can never leak in):
 
-      --offline --help exits 0
-      --offline --doctor (no providers) exits 0
-      --offline --doctor reports blocked-offline (rc=1)
-      AZ_AI_OFFLINE=1 env (no flag) gates same as --offline
-      --offline --doctor --json emits blocked-offline + all_healthy=false
-      AZ_AI_OFFLINE=true does not enable (strict-equality '1' only)
-      --offline --doctor emits no Bearer/sk- secret shape
+```text
+  --offline --help exits 0
+  --offline --doctor (no providers) exits 0
+  --offline --doctor reports blocked-offline (rc=1)
+  AZ_AI_OFFLINE=1 env (no flag) gates same as --offline
+  --offline --doctor --json emits blocked-offline + all_healthy=false
+  AZ_AI_OFFLINE=true does not enable (strict-equality '1' only)
+  --offline --doctor emits no Bearer/sk- secret shape
+```
 
 All seven green on first run.
 
@@ -336,7 +342,7 @@ Docs:
 
 ## Operator-facing summary
 
-```
+```text
 $ az-ai --offline --doctor
 provider: azure
 endpoint: https://contoso.cognitiveservices.azure.com/
@@ -346,20 +352,20 @@ models_configured: 1
 healthy: false
 ```
 
-```
+```text
 $ az-ai --offline --raw "hello"
 [ERROR] blocked by --offline mode (set AZ_AI_LOCAL_PROVIDERS=1 to
 allow loopback only; non-loopback always blocked while offline)
 ```
 
-```
+```text
 # Air-gapped demo against a loopback Ollama
 $ AZ_AI_LOCAL_PROVIDERS=1 az-ai --offline --model ollama-llama3 \
     "summarize this paragraph"
 (works; talks only to 127.0.0.1:11434)
 ```
 
-```
+```text
 # Paranoid operator -- pair with kernel-level isolation
 $ unshare -n az-ai --offline --doctor
 (no syscall can reach a non-loopback socket regardless of

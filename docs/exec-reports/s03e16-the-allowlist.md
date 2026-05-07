@@ -39,23 +39,23 @@ surface), one opt-in env-var.
 
 ### New file: `azureopenai-cli/Net/EndpointAllowlist.cs`
 
-  - `enum AllowlistVerdict` with eight states: Allow, BlockPrivate,
+- `enum AllowlistVerdict` with eight states: Allow, BlockPrivate,
     BlockLoopback, BlockLinkLocal, BlockUla, BlockMulticast,
     BlockMalformed, BlockBroadcast.
-  - `static AllowlistVerdict Check(Uri uri, bool localProvidersOptIn)`
+- `static AllowlistVerdict Check(Uri uri, bool localProvidersOptIn)`
     is the public entry point. Resolves the hostname via DNS (3-second
     timeout), checks every A/AAAA record, returns the first failing
     verdict or Allow.
-  - `static AllowlistVerdict Check(Uri uri, bool optIn, IPAddress[] preResolved)`
+- `static AllowlistVerdict Check(Uri uri, bool optIn, IPAddress[] preResolved)`
     is the test/injection seam. Skips DNS and uses the supplied array
     directly. The DNS-rebinding test uses this to pin the rule "if any
     address in the answer set is in a blocked range and opt-in is off,
     reject the whole hostname."
-  - `static bool LocalProvidersOptInFromEnv()` reads
+- `static bool LocalProvidersOptInFromEnv()` reads
     `AZ_AI_LOCAL_PROVIDERS` with strict-equality "1". Mirrors the
     `AZ_AI_TELEMETRY` contract from S03E13: "true", "yes", "1 " (with
     trailing space), and "" all keep the gate closed.
-  - `static string Describe(AllowlistVerdict)` returns operator-
+- `static string Describe(AllowlistVerdict)` returns operator-
     friendly text that names the rule that fired and the env-var to
     flip if the operator intended the local target.
 
@@ -74,9 +74,11 @@ blocked even when the operator runs Ollama.
 substitution and before the `OpenAIClient` is constructed. Verdict
 other than Allow throws `ArgumentException` with the friendly text:
 
-    compat preset 'stub-private' resolves to private RFC-1918 address
-    (set AZ_AI_LOCAL_PROVIDERS=1 to allow local providers);
-    endpoint='https://10.0.0.1/v1'. Refusing to dispatch.
+```text
+compat preset 'stub-private' resolves to private RFC-1918 address
+(set AZ_AI_LOCAL_PROVIDERS=1 to allow local providers);
+endpoint='https://10.0.0.1/v1'. Refusing to dispatch.
+```
 
 The pre-existing `IsLoopback(Uri)` helper stays in place because the
 HTTPS-only-unless-loopback rule is still narrower than the allowlist
@@ -144,8 +146,10 @@ keeping the word "private" in the loopback Describe() string.
 
 Pin the format here so future agents do not drift:
 
-    compat preset '<name>' resolves to <Describe(verdict)>;
-    endpoint='<scheme>://<host>[:<port>]<path>'. Refusing to dispatch.
+```text
+compat preset '<name>' resolves to <Describe(verdict)>;
+endpoint='<scheme>://<host>[:<port>]<path>'. Refusing to dispatch.
+```
 
 The Describe text always ends with the env-var to flip when the rule
 permits opt-in (loopback, private, link-local, ULA). Multicast,
@@ -186,13 +190,13 @@ All three appended to the active findings table in
 
 ## Cast credits
 
-  - **Lead:** FDR (red team).
-  - **Co-conspirators:** Newman (security review on Describe wording),
+- **Lead:** FDR (red team).
+- **Co-conspirators:** Newman (security review on Describe wording),
     Costanza (UX of the friendly error), Kramer (Build() patch).
-  - **Off-screen:** Frank Costanza (telemetry left alone), Mickey
+- **Off-screen:** Frank Costanza (telemetry left alone), Mickey
     Abbott (a11y left alone), Lloyd Braun (his local-providers docs
     will inherit the env-var name conversation).
-  - **Showrunner:** Larry David.
+- **Showrunner:** Larry David.
 
 ## Preflight
 

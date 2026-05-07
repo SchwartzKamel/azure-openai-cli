@@ -141,7 +141,9 @@ silence the unknown-section warning under raw mode.
 The new env-var names get a dedicated `ProviderKeyEnvRx` pattern in
 `SecretRedactor.cs`:
 
-    OPENAI_API_KEY | GROQ_API_KEY | TOGETHER_API_KEY | CLOUDFLARE_API_TOKEN
+```text
+OPENAI_API_KEY | GROQ_API_KEY | TOGETHER_API_KEY | CLOUDFLARE_API_TOKEN
+```
 
 Replaced with `<NAME>=[REDACTED:provider-key]`. Distinct label from
 the Azure pattern (`[REDACTED:azure-key]`) so a redacted line that
@@ -285,6 +287,7 @@ locks. The label list grew. Nothing leaked.
 ## Preflight
 
 `DOTNET_ROOT=/usr/lib/dotnet make preflight`: green.
+
 - format-check: clean
 - build: 0 warnings, 0 errors
 - unit tests: +21 new, all pass

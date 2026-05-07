@@ -42,7 +42,7 @@ the explicit knobs the operator twisted at the command line.
 
 INT. WRITERS' ROOM. Late afternoon. The board reads:
 
-```
+```text
   E20 *The Switch*           GREEN   precedence chain codified
   E21 *The Default*          GREEN   six-rung heuristic
   E22 *The Fallback*         GREEN   chain wrap, opt-in
@@ -206,7 +206,7 @@ owns the push.
   - **`SquadConfig.Validate` gate** (8 facts, including 7 [Theory]
     rows): accepts each known provider, rejects unknown with
     actionable message, rejects whitespace-padded values, allows null
-    + empty, includes source path in error.
+    - empty, includes source path in error.
   - **`SquadConfig.Load` integration** (2 facts): rejects unknown
     provider at load time; accepts valid pin and round-trips.
   - **`SquadCoordinator.ApplyPersonaPin`** (8 facts): no-pin fast
@@ -380,7 +380,7 @@ owns the push.
 
 INT. WRITERS' ROOM. Same day, later. The board has one square left:
 
-```
+```text
   E27 *The Demo*       ???  Larry David, solo, season finale
 ```
 

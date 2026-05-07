@@ -178,7 +178,7 @@ Precedence (highest → lowest): **CLI flag > environment variable > user config
 
 The binary also auto-loads `~/.config/az-ai/env` at startup (shell `export KEY="value"` format, written by `make setup-secrets`). Existing env vars are not overwritten, so your shell profile still wins. This is critical for non-login-shell contexts like Espanso, AHK, and cron where your profile isn't sourced.
 
-#### Per-provider sections (S03E10 *The Keychain*)
+### Per-provider sections (S03E10 *The Keychain*)
 
 The env file accepts optional INI-style section headers so credentials for each provider live in their own namespace and cannot accidentally cross-contaminate. The default (unsectioned) content keeps working unchanged -- existing files do **not** need to be edited.
 

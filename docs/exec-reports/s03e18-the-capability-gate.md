@@ -63,10 +63,12 @@ LARRY: One episode.
 CUT TO: *az-ai --agent --model llama-3.1-8b-instant "hi"* on a
 terminal. The error reads:
 
-    [ERROR] groq:llama-3.1-8b-instant does not support tool_calls.
-    Pick a model with capability or set
-    AZ_AI_CAPABILITY_OVERRIDES=groq:llama-3.1-8b-instant:tool_calls=true
-    to override.
+```text
+[ERROR] groq:llama-3.1-8b-instant does not support tool_calls.
+Pick a model with capability or set
+AZ_AI_CAPABILITY_OVERRIDES=groq:llama-3.1-8b-instant:tool_calls=true
+to override.
+```
 
 COSTANZA: (off-camera) That's a sentence. *That* is a sentence.
 
@@ -176,21 +178,27 @@ Example: a user reports that Together's `meta-llama-3.1-70b-instruct`
 deployment *does* speak tools today. The conservative default refuses.
 The user does not need to wait for a release:
 
-    export AZ_AI_CAPABILITY_OVERRIDES=together:meta-llama-3.1-70b-instruct:tool_calls=true
+```text
+export AZ_AI_CAPABILITY_OVERRIDES=together:meta-llama-3.1-70b-instruct:tool_calls=true
+```
 
 Multiple entries work the same way:
 
-    export AZ_AI_CAPABILITY_OVERRIDES="together:m1:tool_calls=true,together:m2:vision=true,cloudflare:@cf/x:json_mode=true"
+```text
+export AZ_AI_CAPABILITY_OVERRIDES="together:m1:tool_calls=true,together:m2:vision=true,cloudflare:@cf/x:json_mode=true"
+```
 
 Malformed entries warn to stderr (silent under `--raw` / `--json`)
 and are skipped. A typo never breaks dispatch. Examples that warn
 and skip:
 
-    no-equals-sign                           # missing '='
-    too:few=true                             # only 2 colon parts
-    a:b:c=notabool                           # bad value
-    a:b:unknown_cap=true                     # unknown capability name
-    openai:m:tool_calls=                     # empty value
+```text
+no-equals-sign                           # missing '='
+too:few=true                             # only 2 colon parts
+a:b:c=notabool                           # bad value
+a:b:unknown_cap=true                     # unknown capability name
+openai:m:tool_calls=                     # empty value
+```
 
 The warn-and-skip policy is deliberate: a user who intends to
 override `groq:llama-70b:tool_calls=true` and accidentally types
@@ -204,20 +212,22 @@ cannot diagnose.
 
 `Program.cs` line ~595 (the BuildChatClient site in `RunAsync`):
 
-    var chatClient = BuildChatClient(endpoint, apiKey, model, opts.Json);
-    if (chatClient == null) return 1;
+```text
+var chatClient = BuildChatClient(endpoint, apiKey, model, opts.Json);
+if (chatClient == null) return 1;
 
-    // S03E18 -- The Capability Gate.
-    var capsCheck = ProviderCapabilities.Get(telProvider, model);
-    bool needsTools = opts.AgentMode || opts.RalphMode
-        || (activePersona != null && activePersona.Tools.Count > 0);
-    if (needsTools && !capsCheck.ToolCalls)
-    {
-        var ex = ProviderCapabilities.Mismatch(telProvider, model, "tool_calls");
-        telScope.SetOutcome("client_error", CapabilityMismatchException.ErrorClass);
-        telScope.Emit();
-        return ErrorAndExit(ex.Message, 2, jsonMode: opts.Json);
-    }
+// S03E18 -- The Capability Gate.
+var capsCheck = ProviderCapabilities.Get(telProvider, model);
+bool needsTools = opts.AgentMode || opts.RalphMode
+    || (activePersona != null && activePersona.Tools.Count > 0);
+if (needsTools && !capsCheck.ToolCalls)
+{
+    var ex = ProviderCapabilities.Mismatch(telProvider, model, "tool_calls");
+    telScope.SetOutcome("client_error", CapabilityMismatchException.ErrorClass);
+    telScope.Emit();
+    return ErrorAndExit(ex.Message, 2, jsonMode: opts.Json);
+}
+```
 
 `telProvider` is the existing `ResolveDispatchInfo` output -- the
 gate reuses the telemetry-side preset resolution rather than
@@ -287,7 +297,7 @@ Five integration assertions in `tests/integration_tests.sh`:
    a different exit code, proving the gate let it through.
 4. The refusal message names `AZ_AI_CAPABILITY_OVERRIDES` so the
    user can self-rescue.
-5. The refusal path emits no `Bearer ` or `sk-` token shape (Newman
+5. The refusal path emits no `Bearer` or `sk-` token shape (Newman
    leak-guard, ported from S03E26).
 
 ---

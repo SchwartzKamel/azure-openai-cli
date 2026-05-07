@@ -53,8 +53,8 @@ with `:ai`), the tier is wrong. File a finding. Bookman re-tiers it.
 
 | Trigger | Max-tokens | Description | Example input | Example output |
 |---------|-----------:|-------------|---------------|----------------|
-| `:aiq ` `[S03E01]`     | 60 | Free-form one-shot question via form. No clipboard. | `capital of Vermont` | `Montpelier.` |
-| `:aishort ` `[S03E02]` | 60 | Snap-tier free-form -- faster `:ai` for chat replies. | `is bash arithmetic 0-indexed` | `Yes, bash arrays are 0-indexed.` |
+| `:aiq` `[S03E01]`     | 60 | Free-form one-shot question via form. No clipboard. | `capital of Vermont` | `Montpelier.` |
+| `:aishort` `[S03E02]` | 60 | Snap-tier free-form -- faster `:ai` for chat replies. | `is bash arithmetic 0-indexed` | `Yes, bash arrays are 0-indexed.` |
 
 **Total: 2 triggers.**
 
@@ -111,7 +111,7 @@ header table. Bookman flagged it. It lives here by token-count gravity.
 | `:aishrink` `[S03E01]`         | 1000 | Compress clipboard to ~half length, preserve every key fact. | clipboard: 4-paragraph note | 2-paragraph version. |
 | `:aitone` `[S03E01]`           | 1000 | Rewrite clipboard in a chosen tone (form: 8 tones, whitelisted). | clipboard + tone="ELI5" | Plainspoken rewrite. |
 | `:aitr` `[S03E01]`             | 1500 | Translate clipboard to a chosen language (form choice). | clipboard EN + tone="Japanese" | Idiomatic JA translation. |
-| `:aiyml ` `[S03E02]`           | 1500 | Generate a new espanso YAML trigger block from a description. Output is NOT auto-typed -- manual paste. | form: `:aithesaurus -- synonyms for clipboard word` | Valid YAML block matching the project pattern. |
+| `:aiyml` `[S03E02]`           | 1500 | Generate a new espanso YAML trigger block from a description. Output is NOT auto-typed -- manual paste. | form: `:aithesaurus -- synonyms for clipboard word` | Valid YAML block matching the project pattern. |
 
 **Total: 11 triggers.** The four `905515e` template triggers were authored before
 the tier audit; they exceed the strict Mirror definition (length tracks input)
@@ -125,9 +125,9 @@ but fit by token budget. Slated for re-tier review.
 
 | Trigger | Max-tokens | Description | Example input | Example output |
 |---------|-----------:|-------------|---------------|----------------|
-| `:ai ` `[S03E01]`     | 4096 | Open prompt via multi-line form. The escape valve. | form prompt | Whatever you asked for. |
+| `:ai` `[S03E01]`     | 4096 | Open prompt via multi-line form. The escape valve. | form prompt | Whatever you asked for. |
 | `:aiimg` `[S03E01]`   | n/a  | Image generation via `--image` mode. Output goes to clipboard as PNG. | form prompt | PNG on clipboard. |
-| `:aiweb ` `[S03E01]`  | 2000 | Agent-mode prompt with `web_fetch` tool, 5 rounds, citation-bearing answer. | form prompt | Synthesized answer with `[Source](URL)` citations. |
+| `:aiweb` `[S03E01]`  | 2000 | Agent-mode prompt with `web_fetch` tool, 5 rounds, citation-bearing answer. | form prompt | Synthesized answer with `[Source](URL)` citations. |
 
 **Total: 3 triggers.**
 

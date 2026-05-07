@@ -148,7 +148,7 @@ CI state at push: green.
   joined to the `ConsoleCapture` collection (env-var + stderr-redirect
   serialization). 29 facts/theory rows total: 13 IsEnabled negatives +
   1 IsEnabled positive, 22 bucket-edge cases including every boundary
-  + the negative-clamp + the long.MaxValue +inf case, 5 schema
+  - the negative-clamp + the long.MaxValue +inf case, 5 schema
   round-trips per outcome class, 1 key-order snapshot, 4 redactor
   cases (bearer / api-key / overlong / null), 2 emit-side gates
   (disabled = silent, enabled = exactly one line, no ANSI), 4
@@ -183,7 +183,7 @@ CI state at push: green.
   Frank's standing rules.
 - `README.md` -- new "Telemetry (opt-in)" subsection between the
   v2 upgrade note and the Performance section. Five lines: env var
-  + strict-equality clarification, sample event JSON, link to the
+  - strict-equality clarification, sample event JSON, link to the
   SLO doc.
 - `CHANGELOG.md` `[Unreleased]` -- one feat(observability) entry,
   S03E13 *The Telemetry*: opt-in `AZ_AI_TELEMETRY=1`, schema, never-

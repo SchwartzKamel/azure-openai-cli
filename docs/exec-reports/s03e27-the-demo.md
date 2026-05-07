@@ -331,7 +331,7 @@ LARRY: (writing) Season four. Lock-in for v3.0.
 - **Cloud setup-steps integration.** A `copilot-setup-steps.yml` for
   cloud-agent users that pre-installs az-ai, configures a known-good
   preferences.json, and warms the local Ollama runtime. Bob Sacamano
-  + Jerry. Lloyd Braun owns the onboarding doc.
+  - Jerry. Lloyd Braun owns the onboarding doc.
 
 - **Recorded asciinema cast.** The actual playback artefact this
   finale's script *enables*. Peterman + Keith Hernandez own the

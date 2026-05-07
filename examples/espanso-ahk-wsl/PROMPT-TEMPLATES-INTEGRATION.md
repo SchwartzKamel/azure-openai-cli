@@ -14,11 +14,12 @@ This directory contains the prompt framework from `docs/prompts/task-templates.m
 
 The prompt templates file is already in your Espanso config:
 
-```
+```text
 %APPDATA%\espanso\match\ai-prompts.yml
 ```
 
 Restart Espanso to activate:
+
 - Right-click Espanso tray icon → Restart
 
 Or copy manually if needed:
@@ -47,6 +48,7 @@ Now in any text field, type one of these triggers:
 | `:aiprompts` | Reference Card | Show all available templates and triggers |
 
 Each trigger:
+
 1. **Pops a form** for you to enter task-specific parameters (goal, constraints, language, etc.)
 2. **Constructs a system prompt** = master prompt + task template
 3. **Sends to az-ai** via stdin with `--raw --system` flags
@@ -75,6 +77,7 @@ Now use these hotkeys anywhere:
 | `Ctrl+Shift+T` | Reference Card | Show all templates and hotkeys |
 
 Each hotkey:
+
 1. **Pops an InputBox** for task-specific parameters
 2. **Constructs a system prompt** = master prompt + task template
 3. **Sends to WSL az-ai** (same as existing AHK hotkeys)
@@ -88,18 +91,20 @@ Example: In VS Code, press `Ctrl+Shift+R`, describe your goal → get full archi
 
 All prompts follow this pattern:
 
-```
+```text
 [Master System Prompt from system-prompt-master.md]
 
 [Task-Specific Template from task-templates.md, Template A-E]
 ```
 
 The **master prompt** is constant across all five templates:
+
 - Defines tone (clear, precise, actionable)
 - Sets safety guardrails (no secrets, no PII)
 - Specifies output structure (plan → details → risks → next steps)
 
 The **task template** is specific to each use case:
+
 - Template A: Knowledge Q&A
 - Template B: Architecture Design
 - Template C: Code Generation
@@ -117,7 +122,8 @@ See `docs/prompts/system-prompt-master.md` and `docs/prompts/task-templates.md` 
 **Input**: "How should I monitor Azure OpenAI latency?"
 
 **Output**:
-```
+
+```text
 1. Clarifying Question:
    What's your acceptable latency threshold (SLA)?
 
@@ -143,7 +149,8 @@ See `docs/prompts/system-prompt-master.md` and `docs/prompts/task-templates.md` 
 **Input**: "Design a solution for batch processing 10k documents daily with Azure OpenAI embeddings."
 
 **Output**:
-```
+
+```text
 Plan:
   Azure Functions + Queue Storage trigger document processing.
   Each function embeds via Azure OpenAI, stores vectors in Cognitive Search.
@@ -181,7 +188,8 @@ Milestones:
 **Input**: "Estimate cost for batch processing 10k documents/day with embeddings. Budget is $500/month."
 
 **Output**:
-```
+
+```text
 Assumptions:
   • 10,000 documents per day (300k/month)
   • Average 500 tokens per document

@@ -277,4 +277,3 @@ None are urgent. All are filed.
 -- Jerry, signing off. The good ones end with a shrug and a merge. This is one of those.
 
 *What's the deal with first-run experiences? You spend three episodes building a CLI that talks to four clouds, and the part that matters most is the ninety seconds the user spends typing answers into a terminal. Get those ninety seconds right and nobody ever thinks about the wizard again. That is the goal. We are, on this evidence, there.*
-

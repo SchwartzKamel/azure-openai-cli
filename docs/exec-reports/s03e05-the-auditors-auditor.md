@@ -27,11 +27,11 @@ The audit triple closes here. The blueprint renumber unblocks. E06 starts the Pr
 ### Act I -- The numbers
 
 > *Cold open. The writers' room. Mr. Wilhelm stands at the whiteboard. He has not written a verdict. He has written one number, in red marker, three times the size of anything else on the board: **50%**. The cast files in. Wilhelm does not turn around.*
-
+>
 > **MR. WILHELM:** "Of thirty-six top-three findings sampled across last spring's sweep, thirteen shipped. Eighteen were buried. Five deferred. Fifty percent. ...You're on top of that, aren't you, Costanza?"
-
+>
 > **COSTANZA** *(after a beat, with the precise enthusiasm of a man who has not been on top of it):* "Yes! ...Yes."
-
+>
 > **LARRY:** "Walk me through it."
 
 Wilhelm walks. The methodology is in section 2 of `docs/audits/audit-process-meta-2026-05.md` and the reader can take the inventory at face value: 12 per-agent reports from 2026-04-22, top-three findings extracted by stated severity (or section order where severity was not stated), each classified as **shipped** (evidence in CHANGELOG, an exec report, an ADR, or an extant artifact named in the finding), **deferred** (punted to a named episode or to the findings-backlog with all required fields), or **buried** (no commit, no exec report, no CHANGELOG bullet, no backlog entry, no artifact).
@@ -55,13 +55,13 @@ The cardinal sin the skill exists to prevent has been committed at scale. The sk
 This is the comedy beat of the episode and it is funnier on the second read than the first. While Wilhelm was inventorying the audit corpus and writing W-03 ("we have no template"), a separate sub-agent dispatched against the `audit-template` todo was concurrently authoring `docs/audits/_template.md` (244 lines, frontmatter spec, severity scale, findings table shape, remediation backlog, ASCII grep at the bottom). They shipped to the same working tree on the same afternoon without speaking. Wilhelm's left hand and his right hand were both writing solutions to the same problem. The right hand finished first.
 
 > **WILHELM:** "I am ...pleased the template exists."
-
+>
 > **LARRY:** "But."
-
+>
 > **WILHELM:** "But I would have liked to have been informed that the audit I was running ...had pre-resolved one of its own findings. I think we talked about this. Did we? Let me check the ADR."
-
+>
 > **LARRY:** "We didn't."
-
+>
 > **WILHELM:** "Well. The gate is the gate."
 
 The template is good. It cites the findings-backlog skill, it pins the ASCII grep, it specifies a severity scale that is wider than what any of the 2026-04-22 audits used. Future audits land against it. W-03 is therefore filed and provisionally closed inside the same sweep -- a record that we should not pretend to be embarrassed about, but should be honest about. **The orchestration that produced this outcome was parallel sub-agent dispatch, not Wilhelm's audit cadence.** Section 2 below lives on that observation.
@@ -91,15 +91,15 @@ The remaining five Wilhelm findings:
 The full audit lives at `docs/audits/audit-process-meta-2026-05.md` (552 lines). This episode does not re-litigate the methodology or the section-by-section evidence. What this episode *does* is name the pattern Wilhelm could not name from inside his own audit -- because he is, by his own design, read-only -- and assign it owners.
 
 > **NEWMAN** *(arms folded, leaning against the back wall, hostile in the way that only an evidence-driven inspector can be):* "Hello, Larry."
-
+>
 > **LARRY:** "Hello, Newman."
-
+>
 > **NEWMAN:** "Two RED audits in three sweeps. Mine. F-2 from the 2026-04-22 set is in your bottom-three sample as buried -- `UnsafeReplaceSecrets` undocumented, no commit, no ADR, no SECURITY.md update. Six weeks later I shipped F-1 against `905515e` and your *first* response was that the lint script returned twenty-five unrelated structural failures and you dismissed them. Specifically. I am asking. Is this a process problem, or a discipline problem?"
-
+>
 > **WILHELM:** "It is both. The discipline failure is what produced the buried finding. The process failure is what allowed the discipline failure to recur six weeks later in a different file. The findings-backlog skill exists *for the discipline failure*. The CI gate that does not yet exist is what would catch the process failure. Both are mine to fix. Or rather -- mine to recommend, and the showrunner's to schedule."
-
+>
 > **NEWMAN:** "Schedule it. Specifically."
-
+>
 > **LARRY:** "Newman, you got a point."
 
 The pattern Newman is naming is real: the v1.8 security audit's 2026-04 RED verdict produced fixes that landed (release-pipeline) and findings that didn't (`UnsafeReplaceSecrets` doc gap, SECURITY.md staleness). Six story-weeks later the v2.1 security audit produced another RED verdict against a *different* file, with a different finding class, but identical follow-through risk. The buried-findings rate on past RED audits is the project's most expensive recurring data point. **Wilhelm's data confirms it. Newman's E04 will or will not be the third RED in five sweeps depending entirely on whether W-01 ships.**
@@ -132,21 +132,21 @@ This is the meta-finding Wilhelm filed inside his own report: showrunner-orchest
 Wilhelm's second extended monologue, delivered in front of the dispatch table and the whiteboard, transcribed because it is the structural argument the audit closes with:
 
 > **MR. WILHELM:** "Cadence has two jobs. The first is to make sure the work happens at all. The second is to make sure the work happens at the right *interval* -- not too rare, not too dense, not bunched up at the end of a season the way ours has been bunched up at the end of this one. Parallel dispatch is excellent at the first job. It is a single afternoon and the work appears, fully formed, eight artifacts at a time. It is bad at the second job, because parallel dispatch is event-triggered -- it fires when the showrunner notices the gap, which is by definition late. The cadence I wrote in `retrospective-cadence.md` is calendar-triggered, which is on time, but produces a bullet list rather than a 552-line audit. The synthesis is not 'pick one.' The synthesis is 'cadence sets the schedule; parallel dispatch executes the schedule at volume.' I will be updating the doc to say that. The recommendation is W-05, but the broader lesson is W-05 *plus* a sentence in section 1 that tells the reader what cadence is *for*. ...The gate is the gate. The gate is there for a reason. Now I have a clearer reason."
-
+>
 > **LARRY:** "Pretty good monologue."
-
+>
 > **WILHELM:** "Thank you. I rehearsed it once."
 
 The dispatch-and-cadence synthesis is filed as a doc-edit follow-up bundled with W-05. The point of naming it on-air in the episode is that the showrunner-orchestrated wave that produced this audit is also the wave that the audit recommends formalising into the cadence document. The discipline closes the loop on itself. Wilhelm reading his own data and deciding to update the doc he wrote is the meta-of-the-meta, and it is the cleanest possible signal that the process owner is not married to the version of the doc he shipped two seasons ago.
 
 > **LLOYD BRAUN** *(from the doorway, holding a printed copy of `findings-backlog.md`, polite, with the precise tone of a junior who has read everything and trusts none of it):* "I'm sorry -- can I ask. What is a findings backlog? Where is it? I followed the link in the skill file and it points to `s02-writers-room.md` and the section it names is full of prose bullets that don't match the format the skill describes. So I went looking for an `s03-writers-room.md` and there isn't one. I'm trying to log a finding from this morning and I genuinely cannot tell where it goes."
-
+>
 > *Beat.*
-
+>
 > **WILHELM:** "...That. That is W-01 and W-02. In one sentence. With evidence."
-
+>
 > **LLOYD:** "Sorry. I just wanted to know."
-
+>
 > **LARRY:** "Don't apologise. That's the entire indictment."
 
 Lloyd's question is the indictment because Lloyd is doing the right thing -- reading the skill, following the link, looking for the artifact, finding nothing, and asking. The skill is well-written. The link is correct. The artifact does not exist. Every piece of the chain works *except* the one that produces a findable backlog at the end. A junior contributor who follows the documented procedure cannot complete it. That is the failure mode the skill exists to *prevent*; that is the failure mode the project has shipped, twice over, since S02E24.
@@ -162,17 +162,17 @@ Wilhelm's eight Process Recommendations (section 11 of the meta-audit) collapse 
 3. **Schedule meta-audits at every season finale.** S03E24, S04E24, ... Owned by Wilhelm. Filed as `docs/audits/audit-process-meta-sNN.md`, cited from the finale exec report. Target: S03E24 first instance. (W-08.)
 
 > **LARRY:** "All three. Approved. With one quibble on number two."
-
+>
 > **WILHELM:** "Yes."
-
+>
 > **LARRY:** "Fine. I'll do it. After we ship the actual season."
-
+>
 > **WILHELM:** "...When?"
-
+>
 > **LARRY:** "Before the renumber. Before E06. Tonight or tomorrow morning. *Before the renumber.*"
-
+>
 > **WILHELM:** "Pretty pretty pretty good."
-
+>
 > **LARRY:** "That's my line, too."
 
 The five LOW/MEDIUM recommendations (W-04 through W-07, plus W-05 calendar policy) bundle as a single off-roster doc-only one-pager owned by Wilhelm + Lippman. Doc edits to `commit.md`, `adr-stewardship.md`, and `retrospective-cadence.md`. No code. No tests. Ships when the cadence policy author wants it to ship; not gating on E06.
@@ -180,7 +180,7 @@ The five LOW/MEDIUM recommendations (W-04 through W-07, plus W-05 calendar polic
 The precedent the season takes from this episode: when the audit triple shows that audits without gates rot at 50%, the project does not respond by writing a fourth audit. The project responds by **building the gate**. W-01 is the gate. Everything else is paperwork. Larry approves paperwork; Larry insists on gates.
 
 > **WILHELM:** "Status: complete. Read-only. No commits, no patches, no edits to orchestrator-owned files. The system is recoverable. The audits are good. The pipeline between them is the work."
-
+>
 > **LARRY** *(into the room, signing the cut):* "We're done with sweeps. E06 is *The Adapter*. Costanza in the room with Kramer. We start the actual season tomorrow."
 
 ---
@@ -253,9 +253,9 @@ The second reading is *system working at maximum throughput*: two independent su
 Wilhelm's exact response to the showrunner explaining this trade-off:
 
 > **WILHELM:** "...I take the point. The trade-off is real. I would still like to be informed when my audit's findings are being pre-resolved by parallel work. Not as a process gate. As a courtesy. I think that's reasonable."
-
+>
 > **LARRY:** "It's reasonable."
-
+>
 > **WILHELM:** "Thank you."
 
 The courtesy, in operational terms, is a one-line note in the dispatch table when a sub-agent is intentionally aimed at an audit's pending finding. This is a doc-edit follow-up to the `fleet-dispatch` skill, not a CI gate. Bundled with the off-roster one-pager.
@@ -368,7 +368,6 @@ The episode closes on the unspoken phrase because the closing beat -- showrunner
 
 ## Credits
 
-
 - **Mr. Wilhelm** -- lead. Authored `docs/audits/audit-process-meta-2026-05.md` (552 lines) as a read-only audit; provided the headline 50% number, W-01 through W-08, and the meta-finding on parallel-dispatch throughput that points at the showrunner's own orchestration model.
 - **Costanza** -- one line. Confirmed the agent-file beat without lying about being on top of it.
 - **Elaine** -- one line, cross-arc. Connected M5 (CHANGELOG empty for `905515e`) to the buried-finding pattern and to the C2 collision that turned out to live in the same YAML as Newman's F-1 / F-2.
@@ -382,7 +381,7 @@ The episode closes on the unspoken phrase because the closing beat -- showrunner
 ---
 
 > *"Status: complete. Read-only. No commits, no patches, no edits to orchestrator-owned files. The system is recoverable. The audits are good. The pipeline between them is the work."* -- Mr. Wilhelm, sign-off, `audit-process-meta-2026-05.md` line 549.
-
+>
 > *"E06 is The Adapter. Tomorrow."* -- Showrunner, this room, this afternoon.
 
 -- Larry David

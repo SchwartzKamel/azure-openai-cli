@@ -195,7 +195,7 @@ intervening episodes since the brief was drafted)**, **51 -> 57 integration
 | 9 | Azure SDK error message format       | `\u2014` em-dash    | `--`        | fixed  |
 |10 | Cost-estimator unknown-model message | `\u2014` em-dash    | `--`        | fixed  |
 |11 | `UnwrapException` error-chain joiner | `\u2192` arrow      | `->`        | fixed  |
-|12 | `--current-model` default-marker     | `\u2192` arrow      | `* `        | fixed  |
+|12 | `--current-model` default-marker     | `\u2192` arrow      | `*`        | fixed  |
 |13 | `--set-model` save confirmation      | `\u2713 \u2192`     | `[ok] ->`   | fixed  |
 |14 | `--config set` save confirmation     | `\u2713`            | `[ok]`      | fixed  |
 |15 | `--config reset` deletion notice     | `\u2713`            | `[ok]`      | fixed  |

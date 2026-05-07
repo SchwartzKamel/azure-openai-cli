@@ -294,6 +294,7 @@ calendar.**
 **Are we there yet? No. We are roughly one-fifth of the way there.**
 
 Specifically:
+
 - **5 of 24 episodes in the can or imminent (20.8 percent).**
 - **0 of 6 arcs complete.** Arc 1 has not started in earnest;
   E03/E04 audit triple touches arc 1 surfaces but does not
