@@ -466,7 +466,7 @@ for the marketing-grade season retrospective.
 ### Architecture & decisions
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- system design, tool registry, squad internals
-- [AGENTS.md](AGENTS.md) -- fleet dispatch pattern and the 25-agent roster
+- [AGENTS.md](AGENTS.md) -- fleet dispatch pattern and the 28-agent roster
 - [docs/adr/](docs/adr/) -- Architecture Decision Records
 
 ### Operating the CLI

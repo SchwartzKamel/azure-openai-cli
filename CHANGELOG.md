@@ -8,6 +8,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **ci(release):** S03E30 *The Audit Trilogy* -- expanded release matrix
+  to 7 legs (linux-x64, **linux-arm64** via `ubuntu-24.04-arm`, osx-x64
+  on `macos-13`, osx-arm64, win-x64, **win-arm64** cross-published).
+  Release notes are now extracted from `CHANGELOG.md` `[Unreleased]`
+  via awk into `release-body.md` (replaces `generate_release_notes`).
+  Per-asset SHA256 digests aggregated into `digests.txt`, attached to
+  the release, and embedded in the body for offline verification.
+- **ci(security):** New `.github/workflows/codeql.yml` CodeQL SAST
+  workflow for csharp -- push + PR + weekly schedule, SHA-pinned
+  actions, manual `dotnet build` (no autobuild for AOT/trim project),
+  `security-events: write` + concurrency + 30-min timeout.
+- **build(reproducibility):** `<Deterministic>true</>` plus
+  `<ContinuousIntegrationBuild>` (gated on `CI`/`GITHUB_ACTIONS` env)
+  in `azureopenai-cli/AzureOpenAI_CLI.csproj` for reproducible AOT
+  output.
+- **docs(process):** New `docs/process/release.md` 6-section release
+  runbook (precheck, promote `[Unreleased]`, tag+push, CI takeover,
+  post-release verification, open next `[Unreleased]`).
+- **build(make):** `make release-precheck` (5 gates: clean tree,
+  `[Unreleased]` non-empty, csproj > latest tag, README version
+  reference, no open CRITICAL/HIGH findings) and
+  `make release-notes-preview` -- both wired into `.PHONY` and
+  `make help`.
+- **test(fallback):** 4 new `FallbackParser_*` unit facts in
+  `FallbackChainTests.cs` asserting `--fallback` parser exits with
+  the right `HasError` *before* requiring credentials.
+
+### Changed
+- **ci(security):** SHA-pinned `actions/checkout@11bd71901bbe...` (v4.2.2)
+  and `actions/setup-node@49933ea52888...` (v4.4.0) in
+  `.github/workflows/docs-lint.yml`.
+- **ci(security):** Added `concurrency:` block + 15-min `timeout-minutes`
+  to `.github/workflows/scorecards.yml` (was unbounded).
+- **fix(cli):** S03E30 `--fallback` parser now fires alongside
+  `--help`/`--version`/`--doctor`, *before* the `AZUREOPENAIENDPOINT`
+  creds gate. Approach (a) -- lift `FallbackPolicy.Resolve` (purely
+  syntactic, no shim needed). The S03E29 `fb_dummy_env` integration
+  test workaround is removed; tests 2/3/4 in the S03E22 fallback
+  block now run with no creds in env. 111/111 integration tests green.
+- **docs:** Agent count drift in `README.md`: `25` -> `28`
+  (1 showrunner + 5 main + 22 supporting per AGENTS.md).
+- **docs(security):** `SECURITY.md` supported-versions table corrected
+  -- 2.2.x active / 2.1.x maintenance / 2.0.x EOL / <2.0 unsupported
+  (was incorrectly listing 2.0.x as active).
+
 - **feat(squad):** S03E23 *The Persona, Multi-Provider* (Kramer; file slot
   s03e28) -- per-persona `provider` and/or `model` pins in `.squad.json`.
   When a persona is invoked AND it declares a `provider` and/or `model`

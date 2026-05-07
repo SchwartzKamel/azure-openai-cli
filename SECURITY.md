@@ -544,9 +544,10 @@ will be accepted. Older lines are unsupported.
 
 | Version | Status | Support policy |
 |---|---|---|
-| `2.0.x` (current -- v2.0.4, v2.0.5 rolling) | ✅ Active | Full security + feature support. All new fixes land here first. |
-| `1.8.x` | ⚠️ Maintenance | Security-only patches through **2026-10-22**. No new features. Critical fixes backported on a best-effort basis. |
-| `< 1.8` | ❌ Unsupported | Please upgrade. No patches will be issued. |
+| `2.2.x` (current -- v2.2.0 rolling) | ✅ Active | Full security + feature support. All new fixes land here first. |
+| `2.1.x` | ⚠️ Maintenance | Security-only patches through **2026-10-22**. No new features. Critical fixes backported on a best-effort basis. |
+| `2.0.x` | ❌ End of life | Please upgrade. No patches will be issued. |
+| `< 2.0` | ❌ Unsupported | Please upgrade. No patches will be issued. |
 
 After 2026-10-22, v1 moves to end-of-life and will receive no further
 patches, regardless of severity. Migration guide:
