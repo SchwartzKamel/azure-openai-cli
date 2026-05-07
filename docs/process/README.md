@@ -22,6 +22,7 @@ support from **The Soup Nazi** (style and merge gates) and **Jerry**
 | [`adr-stewardship.md`](adr-stewardship.md) | When a change earns an ADR vs. a backlog entry, the ADR template, supersession rules, and the index discipline. |
 | [`cab-lite.md`](cab-lite.md) | Lightweight "Change Advisory Board" -- when a change needs cross-cast review (Newman + Jackie + Frank, etc.), how the consult is requested, and how the decision is recorded. |
 | [`retrospective-cadence.md`](retrospective-cadence.md) | Season-finale retro format, monthly mini-retros, post-incident retros, and the carry-forward path into the next season's writers' room. |
+| [`release.md`](release.md) | Step-by-step release-cut procedure: precheck, CHANGELOG promotion, tag + push, CI takeover, post-release verification, and opening the next cycle. |
 
 ## How these relate to the rest of the repo
 

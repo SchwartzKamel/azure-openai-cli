@@ -46,7 +46,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight exec-report-check findings-backlog-test install-hooks publish publish-fast publish-aot publish-r2r setup setup-secrets \
+.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight exec-report-check findings-backlog-test install-hooks publish publish-fast publish-aot publish-r2r release-precheck release-notes-preview setup setup-secrets \
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
@@ -103,6 +103,10 @@ help:
 	@echo "  make publish-win-x64         - Windows x64"
 	@echo "  make publish-win-arm64       - Windows ARM64"
 	@echo "  make publish-all             - Build all 7 cross-platform binaries (local-dev; release ships 4)"
+	@echo ""
+	@echo "Release (see docs/process/release.md for the full runbook):"
+	@echo "  make release-precheck        - Read-only sanity checks before cutting a release tag"
+	@echo "  make release-notes-preview   - Print the [Unreleased] CHANGELOG section to stdout"
 	@echo ""
 	@echo "Native-install & benchmark (drop Docker for speed — ideal for Espanso/AHK):"
 	@echo "  make install      - Install host-AOT binary to ~/.local/bin/az-ai (Linux/macOS/WSL)"
@@ -337,6 +341,98 @@ publish-aot:
 
 ## Default `make publish` now builds the AOT binary.
 publish: publish-aot
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Release helpers (see docs/process/release.md for the full runbook)
+# ─────────────────────────────────────────────────────────────────────────────
+
+## Release-precheck: read-only sanity checks before cutting a tag.
+## Exits non-zero on the first failure; prints a PASS/FAIL summary.
+## Does NOT run `dotnet build` or tests -- those belong to `make preflight`.
+## Checks:
+##   1. Working tree is clean (no uncommitted changes).
+##   2. CHANGELOG [Unreleased] block is non-empty (has at least one bullet).
+##   3. csproj <Version> is greater than the most recent git tag.
+##   4. README download table references the csproj version or "latest".
+##   5. No CRITICAL or HIGH findings in docs/findings-backlog.md are open.
+release-precheck:
+	@echo "==> release-precheck"
+	@PASS=1; \
+	\
+	echo ""; \
+	echo "--- [1/5] Working tree clean"; \
+	if [ -n "$$(git status --porcelain)" ]; then \
+		echo "  FAIL: working tree has uncommitted changes -- commit or stash first"; \
+		PASS=0; \
+	else \
+		echo "  PASS: tree clean"; \
+	fi; \
+	\
+	echo ""; \
+	echo "--- [2/5] CHANGELOG [Unreleased] is non-empty"; \
+	UNRELEASED_BULLET=$$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## /{exit} found && /^\s*[-*+]/{print; exit}' CHANGELOG.md); \
+	if [ -z "$$UNRELEASED_BULLET" ]; then \
+		echo "  FAIL: [Unreleased] block is empty -- add release notes before tagging"; \
+		PASS=0; \
+	else \
+		echo "  PASS: [Unreleased] contains at least one bullet"; \
+	fi; \
+	\
+	echo ""; \
+	echo "--- [3/5] csproj <Version> is greater than latest git tag"; \
+	CSPROJ_VER=$$(grep -oP '(?<=<Version>)[^<]+' azureopenai-cli/AzureOpenAI_CLI.csproj | head -1 | sed 's/-.*//'); \
+	LATEST_TAG=$$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -1 | sed 's/^v//'); \
+	if [ -z "$$LATEST_TAG" ]; then \
+		echo "  PASS: no existing semver tag found -- first release"; \
+	else \
+		GREATER=$$(printf '%s\n%s' "$$CSPROJ_VER" "$$LATEST_TAG" | sort -V | tail -1); \
+		if [ "$$GREATER" = "$$CSPROJ_VER" ] && [ "$$CSPROJ_VER" != "$$LATEST_TAG" ]; then \
+			echo "  PASS: csproj $$CSPROJ_VER > latest tag v$$LATEST_TAG"; \
+		else \
+			echo "  FAIL: csproj <Version> ($$CSPROJ_VER) must be greater than latest tag (v$$LATEST_TAG)"; \
+			PASS=0; \
+		fi; \
+	fi; \
+	\
+	echo ""; \
+	echo "--- [4/5] README references csproj version or 'latest'"; \
+	CSPROJ_FULL=$$(grep -oP '(?<=<Version>)[^<]+' azureopenai-cli/AzureOpenAI_CLI.csproj | head -1); \
+	CSPROJ_BASE=$$(echo "$$CSPROJ_FULL" | sed 's/-.*//'); \
+	if grep -qE "(v?$$CSPROJ_BASE|latest)" README.md; then \
+		echo "  PASS: README references $$CSPROJ_BASE or 'latest'"; \
+	else \
+		echo "  FAIL: README does not reference $$CSPROJ_BASE or 'latest' -- update the download table"; \
+		PASS=0; \
+	fi; \
+	\
+	echo ""; \
+	echo "--- [5/5] No open CRITICAL/HIGH findings in docs/findings-backlog.md"; \
+	if [ ! -f docs/findings-backlog.md ]; then \
+		echo "  PASS: docs/findings-backlog.md not found -- skip"; \
+	else \
+		BLOCKERS=$$(grep -cE '^\|.*\| *(CRITICAL|HIGH) *\|.*\| *open' docs/findings-backlog.md 2>/dev/null || true); \
+		if [ "$$BLOCKERS" -gt 0 ] 2>/dev/null; then \
+			echo "  FAIL: $$BLOCKERS open CRITICAL/HIGH finding(s) in docs/findings-backlog.md -- resolve or defer before tagging"; \
+			grep -E '^\|.*\| *(CRITICAL|HIGH) *\|.*\| *open' docs/findings-backlog.md | sed 's/^/    /'; \
+			PASS=0; \
+		else \
+			echo "  PASS: no open CRITICAL/HIGH findings"; \
+		fi; \
+	fi; \
+	\
+	echo ""; \
+	if [ "$$PASS" -eq 1 ]; then \
+		echo "==> release-precheck: PASS -- safe to tag"; \
+		exit 0; \
+	else \
+		echo "==> release-precheck: FAIL -- fix the items above before tagging"; \
+		exit 1; \
+	fi
+
+## Release-notes-preview: print the [Unreleased] section of CHANGELOG.md.
+## Eyeball what would land in the next release before promoting it.
+release-notes-preview:
+	@awk '/^## \[Unreleased\]/{found=1; print; next} found && /^## \[/{exit} found{print}' CHANGELOG.md
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Per-OS cross-builds (portable ReadyToRun self-contained, dist/<rid>/)
