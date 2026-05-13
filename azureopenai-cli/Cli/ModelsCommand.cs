@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -146,7 +145,7 @@ internal static class ModelsCommand
                 IsAllowlisted(e.Name, allowed) ? AllowMarker : "",
             });
         }
-        RenderTableInternal(columns, rowsTbl);
+        RenderTable(columns, rowsTbl);
         return 0;
     }
 
@@ -286,7 +285,7 @@ internal static class ModelsCommand
             }
             rows.Add(new[] { cap, cell });
         }
-        RenderTableInternal(new[] { "Capability", "Models" }, rows);
+        RenderTable(new[] { "Capability", "Models" }, rows);
         return 0;
     }
 
@@ -427,53 +426,22 @@ internal static class ModelsCommand
         Console.Out.WriteLine(json);
     }
 
-    // -- output: table (interim renderer; Mickey replaces) ------------------
+    // -- output: table (Mickey's TableRenderer + Babu's EastAsianWidth) ------
 
-    // INTERIM: ASCII column alignment using string.Length for width. Mickey's
-    // TableRenderer.Render(columns, rows, options) lands in Wave 1 and uses
-    // Babu's EastAsianWidth.DisplayWidth for CJK / combining-mark / ZWJ
-    // accuracy. The embedded seed registry is ASCII-only today, so this
-    // stand-in produces correct output for every shipped registry entry.
-    // ADR-014 records the migration plan.
-    private static void RenderTableInternal(string[] columns, IReadOnlyList<string[]> rows)
+    // S04E04 W2.5 (Elaine, A11Y-MR-03): inline stub deleted. We now delegate
+    // to Cli.TableRenderer.Render, which measures display width via Babu's
+    // EastAsianWidth helper so CJK / combining-mark / ZWJ cells align. The
+    // call site builds Mickey's Column / RenderOptions records from this
+    // file's local string-array column model; no public API additions.
+    private static void RenderTable(string[] headers, IReadOnlyList<string[]> rows)
     {
-        var widths = new int[columns.Length];
-        for (int c = 0; c < columns.Length; c++) widths[c] = columns[c].Length;
-        foreach (var r in rows)
+        var columns = new TableRenderer.Column[headers.Length];
+        for (int i = 0; i < headers.Length; i++)
         {
-            for (int c = 0; c < columns.Length && c < r.Length; c++)
-            {
-                if (r[c].Length > widths[c]) widths[c] = r[c].Length;
-            }
+            columns[i] = new TableRenderer.Column(headers[i]);
         }
-
-        var sb = new StringBuilder();
-        // Header row.
-        for (int c = 0; c < columns.Length; c++)
-        {
-            sb.Append(columns[c].PadRight(widths[c]));
-            if (c < columns.Length - 1) sb.Append("  ");
-        }
-        sb.AppendLine();
-        // Underline.
-        for (int c = 0; c < columns.Length; c++)
-        {
-            sb.Append(new string('-', widths[c]));
-            if (c < columns.Length - 1) sb.Append("  ");
-        }
-        sb.AppendLine();
-        // Body.
-        foreach (var r in rows)
-        {
-            for (int c = 0; c < columns.Length; c++)
-            {
-                var cell = c < r.Length ? r[c] : "";
-                sb.Append(cell.PadRight(widths[c]));
-                if (c < columns.Length - 1) sb.Append("  ");
-            }
-            sb.AppendLine();
-        }
-        Console.Out.Write(sb.ToString());
+        var options = new TableRenderer.RenderOptions();
+        Console.Out.WriteLine(TableRenderer.Render(columns, rows, options));
     }
 
     // -- failure paths -------------------------------------------------------

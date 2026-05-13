@@ -133,7 +133,11 @@ internal class Program
         // the endpoint is unreachable, env vars are missing, or init throws.
         // This runs before DotEnv, Telemetry, or any code that can touch the
         // network. The user must always be able to reach help text.
-        if (args.Any(a => a is "--help" or "-h" or "help"))
+        // S04E04 W2.5 (Elaine, A11Y-MR-01): defer to the `models` subcommand
+        // router when present so its HelpRoot text reaches the user instead of
+        // the global help. ModelsCommand.Run handles --help / -h / help itself.
+        var isModelsSub = args.Length > 0 && string.Equals(args[0], "models", StringComparison.Ordinal);
+        if (!isModelsSub && args.Any(a => a is "--help" or "-h" or "help"))
         {
             ShowHelp();
             return 0;
