@@ -85,6 +85,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **docs(s04e03):** Episode brief for S04E03 *The Capabilities*
   drafted (Bookman) -- DRAFT status, awaiting showrunner greenlight.
 
+### Changed
+- **docs(release):** S04SP2 *The Stenographer* -- release-hygiene
+  audit on top of SP1's matrix-drop retag. Verified the matrix-driven
+  artifact table in `.github/workflows/release.yml` (lines 216-223)
+  enumerates only the six shipping legs (`linux-x64`, `linux-musl-x64`,
+  `linux-arm64`, `win-x64`, `win-arm64`, `osx-arm64`) -- no
+  `macOS Intel` row, no `osx-x64` artifact path. Confirmed README.md
+  line 435 still directs Intel-Mac users to the Docker image or
+  source build per the v2.0.4 policy. No code or workflow changes;
+  audit-only special. See `docs/exec-reports/s04sp2-the-stenographer.md`.
+
 ### Security
 - **fix(--doctor):** Terminal-injection guard on registry output.
   User-supplied `Name`, `Provider`, and capability tag strings from
