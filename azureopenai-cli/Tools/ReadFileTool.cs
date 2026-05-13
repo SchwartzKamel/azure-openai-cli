@@ -27,8 +27,8 @@ internal static class ReadFileTool
         "/etc/sudoers",
         "/etc/hosts",
         "/root/.ssh",
-        "/proc/self/environ",
-        "/proc/self/cmdline",
+        "/proc",
+        "/sys",
         "/var/run/secrets",        // Kubernetes / systemd service-account tokens
         "/run/secrets",            // Docker/Podman secret mount point
         "/var/run/docker.sock",
