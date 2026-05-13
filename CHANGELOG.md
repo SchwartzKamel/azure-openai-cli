@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(resolution):** S04E05 *The Picker* (Wave 1) -- pure-function
+  default model picker `ResolveSmartDefault.Pick`. Four locked reason
+  codes (`EXPLICIT`, `PREFER_AXIS`, `ALLOWLIST_HEAD`, `FALLBACK`),
+  ASCII-only `HumanReason` capped at 120 chars, deterministic over
+  100 iterations, capability-gate blind by design. Wired into
+  `Program.cs` at the single `AZUREOPENAIMODEL[0]` resolution site
+  with a `AZ_AI_TRACE=1`-gated trace line. New nullable
+  `LatencyTier` / `QualityTier` fields on `ModelRegistryEntry`
+  (default null; no breaking change to existing positional callers
+  or the embedded seed). 18 new xUnit facts; corpus factored into
+  `ResolverTestCorpus` for E11 *The Corpus* reuse. `--prefer` flag
+  itself lands in E09.
 - **feat(cli):** S04E04 *Reading Room* -- new `az-ai models`
   subcommand surface with three subcommands: `list` (tabular index),
   `show <name>` (full card), `capabilities` (inverted index). Each

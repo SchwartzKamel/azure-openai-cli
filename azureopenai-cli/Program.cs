@@ -479,7 +479,32 @@ internal class Program
         //   "gpt-5.4-nano,gpt-4o,gpt-4o-mini"
         // First entry = default model. All entries = allowed set.
         // When an allowed set is configured, the resolved model must be in it.
-        var (envDefaultModel, allowedModels) = ParseModelEnv();
+        var (_, allowedModels) = ParseModelEnv();
+
+        // S04E05 -- The Picker. Replace the bare AZUREOPENAIMODEL[0] read
+        // with the pure ResolveSmartDefault resolver. PreferAxis stays null
+        // for Wave 1 (E09 wires --prefer). Empty-result FALLBACK still
+        // translates to a null envDefaultModel so the existing chain
+        // (profile -> smart default -> hardcoded fallback) is preserved.
+        var pickerAllowlistRaw = Environment.GetEnvironmentVariable("AZUREOPENAIMODEL");
+        var pickerAllowlist = string.IsNullOrWhiteSpace(pickerAllowlistRaw)
+            ? Array.Empty<string>()
+            : pickerAllowlistRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var pickerResult = AzureOpenAI_CLI.Resolution.ResolveSmartDefault.Pick(
+            new AzureOpenAI_CLI.Resolution.ArrayModelRegistry(RegistryEntries ?? Array.Empty<Registry.ModelRegistryEntry>()),
+            new AzureOpenAI_CLI.Resolution.ResolverInputs(
+                ExplicitModel: null,
+                PreferAxis: null,
+                Allowlist: pickerAllowlist));
+        if (string.Equals(Environment.GetEnvironmentVariable("AZ_AI_TRACE"), "1", StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine(
+                "[TRACE] resolver model=" + pickerResult.Model
+                + " reason_code=" + pickerResult.ReasonCode
+                + " allowlist_size=" + pickerAllowlist.Length
+                + " human_reason=" + pickerResult.HumanReason);
+        }
+        var envDefaultModel = string.IsNullOrEmpty(pickerResult.Model) ? null : pickerResult.Model;
 
         // S03E20 -- The Switch (Costanza). Run the centralized precedence
         // resolver to (a) honor --profile / --provider when set, (b) surface
