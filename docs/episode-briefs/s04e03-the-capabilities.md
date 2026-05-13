@@ -1,4 +1,4 @@
-**Status:** DRAFT (Larry David greenlights separately)
+**Status:** GREENLIT (Larry David, 2026-05-13)
 
 **Date:** 2026-05-21
 **Lead:** Lt. Bookman -- error-message wording, brevity discipline on rejections
