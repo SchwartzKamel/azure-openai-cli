@@ -133,6 +133,15 @@ internal record ProviderDoctorEntry(
 // ── S04E01 The Registry --------------------------------------------------
 [JsonSerializable(typeof(ModelRegistryEntry))]
 [JsonSerializable(typeof(ModelRegistryEntry[]))]
+// ── S04E04 Reading Room (Elaine) ----------------------------------------
+// Three DTOs supporting `az-ai models {list,show,capabilities} --json`.
+// JSON property names are pinned with [JsonPropertyName] on the records so
+// the CamelCase default policy does not creep in and break the shape.
+[JsonSerializable(typeof(AzureOpenAI_CLI.Cli.ModelListEntryJson))]
+[JsonSerializable(typeof(AzureOpenAI_CLI.Cli.ModelListEntryJson[]))]
+[JsonSerializable(typeof(AzureOpenAI_CLI.Cli.ModelShowJson))]
+[JsonSerializable(typeof(Dictionary<string, string[]>))]
+[JsonSerializable(typeof(string[]))]
 // ── Squad types ─────────────────────────────────────────────────
 [JsonSerializable(typeof(SquadConfig))]
 [JsonSerializable(typeof(TeamConfig))]

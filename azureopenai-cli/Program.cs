@@ -211,6 +211,16 @@ internal class Program
             // cached in RegistryEntries for the --doctor handler.
             RegistryEntries = Registry.ModelRegistry.Load(isRaw: preRaw);
 
+            // S04E04 (Elaine) -- `az-ai models <list|show|capabilities>`.
+            // Routed before ParseArgs because the sub-command tree has its
+            // own flag dialect (`--json`, `--raw`, `--no-color`, positional
+            // <name>) and shares no semantics with the standard prompt path.
+            // See azureopenai-cli/Cli/ModelsCommand.cs and ADR-014.
+            if (args.Length > 0 && string.Equals(args[0], "models", StringComparison.Ordinal))
+            {
+                return AzureOpenAI_CLI.Cli.ModelsCommand.Run(args);
+            }
+
             var opts = ParseArgs(args);
 
             // Initialize OpenTelemetry if --otel/--metrics/--telemetry flags (or AZ_TELEMETRY env) are set.
