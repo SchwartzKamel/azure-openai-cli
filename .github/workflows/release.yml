@@ -61,9 +61,6 @@ jobs:
           - rid: linux-arm64
             os: ubuntu-24.04-arm
             ext: tar.gz
-          - rid: osx-x64
-            os: macos-13
-            ext: tar.gz
           - rid: win-arm64
             # Cross-publish from win-x64 runner; MSVC ARM64 cross-toolchain
             # is available in the Visual Studio installation on windows-latest.
@@ -224,7 +221,6 @@ jobs:
             printf '| Windows x64 | `az-ai-%s-win-x64.zip` |\n' "$REF"
             printf '| Windows ARM64 | `az-ai-%s-win-arm64.zip` |\n' "$REF"
             printf '| macOS Apple Silicon | `az-ai-%s-osx-arm64.tar.gz` |\n' "$REF"
-            printf '| macOS Intel | `az-ai-%s-osx-x64.tar.gz` |\n' "$REF"
             printf '\n'
             printf '## Provenance\n\n'
             printf 'Every artifact is attested via Sigstore keyless signing\n'
