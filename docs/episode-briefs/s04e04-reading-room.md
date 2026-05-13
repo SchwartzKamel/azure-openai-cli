@@ -1,5 +1,4 @@
-**Status:** DRAFT (E03 still filming -- this brief unblocks casting only;
-greenlight pending E03 wrap)
+**Status:** GREENLIT (S04E03 closed at dcf2e9a; E04 cleared to film)
 
 **Date:** 2026-05-22
 **Target episode:** S04E04
