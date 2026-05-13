@@ -498,11 +498,24 @@ public class ModelsCommandTests
         var header = lines[0].TrimEnd('\r');
         var underline = lines[1].TrimEnd('\r');
         Assert.Equal(header.Length, underline.Length);
-        // Body rows are padded to at least the header width.
+        // Body rows align under the header. TableRenderer invariant 10
+        // strips trailing whitespace from every line, so the last column
+        // may be shorter than the header overall width. Structural checks:
+        //   1. Each body row starts with the model name at column 0
+        //   2. No body row exceeds the header width (no overflow)
+        //   3. Both body rows are well-formed lines (non-empty after trim)
+        // See finding elaine-2026-05-MR-T15: Wave 2.5 wired TableRenderer,
+        // exposing invariant 10 vs. this test's old absolute-width contract.
         var bodyA = Array.Find(lines, l => l.Contains("alpha", StringComparison.Ordinal))!.TrimEnd('\r');
         var bodyB = Array.Find(lines, l => l.Contains("a-much-longer-model-name", StringComparison.Ordinal))!.TrimEnd('\r');
-        Assert.Equal(header.Length, bodyA.Length);
-        Assert.Equal(header.Length, bodyB.Length);
+        Assert.StartsWith("alpha", bodyA, StringComparison.Ordinal);
+        Assert.StartsWith("a-much-longer-model-name", bodyB, StringComparison.Ordinal);
+        Assert.True(bodyA.Length <= header.Length,
+            "alpha row should not exceed header width: " + bodyA.Length + " vs " + header.Length);
+        Assert.True(bodyB.Length <= header.Length,
+            "long-name row should not exceed header width: " + bodyB.Length + " vs " + header.Length);
+        Assert.True(bodyA.Length > "alpha".Length,
+            "alpha row should have additional columns after the name");
     }
 
     // -- Test 16: empty/missing field renders 'unknown', never '-' or 'n/a' -
