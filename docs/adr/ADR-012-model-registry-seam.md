@@ -4,6 +4,19 @@
 
 Accepted -- 2026-05-13 (S04E01)
 
+## What is a "seam"?
+
+A **seam** is a deliberate boundary in the code where one part of the system
+can be changed -- or a new part plugged in -- without reopening the parts on
+the other side. In this ADR the seam is the `ModelRegistry` loader and its
+typed `ModelRegistryEntry` record: later episodes (smart defaults, the
+`--capabilities` query, routing rules) read from the registry through that
+boundary, so they do not have to know how registry data is stored, validated,
+or overridden. The term is borrowed from Michael Feathers, *Working
+Effectively with Legacy Code* (2004), and is used in the same sense by Mark
+Seemann, *Dependency Injection in .NET* (2011): a place where behaviour can
+vary without editing the call site.
+
 ## Context
 
 S03 (*Local & Multi-Provider*) broke the implicit assumption that `az-ai` talks to

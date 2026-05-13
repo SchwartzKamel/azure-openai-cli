@@ -63,6 +63,13 @@ The following H2 sections must appear in this order after the front matter:
 4. Add a `cardPath` entry to `azureopenai-cli/Registry/registry.json` pointing to
    the new file (path relative to the repo root, e.g.,
    `"docs/model-cards/azure-gpt-4o-mini.md"`).
+
+   > [!IMPORTANT]
+   > **You must also add the new card's `cardPath` entry to
+   > `azureopenai-cli/Registry/registry.json`, or the model will silently fail
+   > to load.** Forgetting this is the #1 reason a freshly-authored card never
+   > shows up under `az-ai --doctor`. The card file alone is not enough -- the
+   > registry is what makes the model visible to the CLI.
 5. Add a row to the Index table above.
 6. Run the ASCII validation grep and markdownlint before committing:
 
@@ -70,3 +77,41 @@ The following H2 sections must appear in this order after the front matter:
 grep -nP '[\x{2018}\x{2019}\x{201C}\x{201D}\x{2013}\x{2014}]' docs/model-cards/<new-file>.md
 NODE_OPTIONS="--max-old-space-size=4096" npx markdownlint-cli2 "docs/model-cards/<new-file>.md"
 ```
+
+## Glossary
+
+Plain-English definitions of terms used across these cards, the registry, and
+[ADR-012](../adr/ADR-012-model-registry-seam.md). One-stop reference so a
+first-time contributor does not have to triangulate across files.
+
+- **Embedded resource** -- a file (here, `registry.json`) compiled *into* the
+  `az-ai` binary rather than shipped alongside it. The binary reads the JSON
+  from its own compiled data, which is what lets a fresh install work offline
+  and with zero configuration. See ADR-012 Decision section.
+- **Capability tags** -- the closed vocabulary that describes what a model can
+  do: `tool_calls`, `vision_in`, `vision_out`, `json_mode`, `streaming`,
+  `system_prompt`. Defined in `ModelCapability.AllowedTags`. Any tag outside
+  this set causes the registry loader to exit with `rc=99`. See ADR-012
+  Decision section.
+- **GGUF** -- a single-file model format used by `llama.cpp` to store local
+  LLM weights, tokenizer, and metadata together. Relevant only to local-provider
+  cards (e.g., `local-llama.md`).
+- **Quantisation** -- the precision at which a local model's weights are stored
+  (e.g., 4-bit, 5-bit, 8-bit). Lower precision means a smaller file and faster
+  inference, at the cost of some output quality. Cards describe the *default
+  expectation*; actual behaviour depends on the specific GGUF and quantisation
+  the user loads. (British spelling preserved for consistency with existing
+  cards.)
+- **Chat template** -- the prompt format that tells a local LLM how to delimit
+  system, user, and assistant turns (and tool calls, when supported). Loading a
+  model without the correct chat template typically produces malformed output;
+  on Azure providers the template is handled server-side and is not the
+  author's concern.
+- **Espanso** -- a cross-platform text expander
+  (<https://espanso.org>). Together with AutoHotkey (AHK) on Windows, it is the
+  primary headless use case for `az-ai`: a keystroke trigger pipes a snippet
+  through the CLI and pastes the model's response into whatever app has focus.
+- **Streaming** -- delivering the model's output one token at a time as it is
+  generated, instead of waiting for the full response. Listed as a capability
+  tag because some models or modes (notably image generation) do not stream;
+  cards note streaming behaviour when it materially affects latency.
