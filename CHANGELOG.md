@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- _(no changes yet)_
+
+## [2.3.0] -- 2026-05-13
+
+### Added
 - **ci(release):** S03E30 *The Audit Trilogy* -- expanded release matrix
   to 7 legs (linux-x64, **linux-arm64** via `ubuntu-24.04-arm`, osx-x64
   on `macos-13`, osx-arm64, win-x64, **win-arm64** cross-published).

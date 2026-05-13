@@ -423,7 +423,7 @@ all 2 provider(s) healthy
 
 ### Pre-built binaries
 
-Download for your platform from [Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases). Filenames follow the `az-ai-<version>-<rid>` scheme (v2.2.0 shown):
+Download for your platform from [Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases). Filenames follow the `az-ai-<version>-<rid>` scheme (v2.3.0 shown):
 
 | Platform | Artifact |
 |----------|----------|
