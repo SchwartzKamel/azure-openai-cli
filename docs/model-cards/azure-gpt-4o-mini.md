@@ -1,6 +1,8 @@
 ---
 model: gpt-4o-mini
 provider: azure
+description: "Cheap, fast workhorse for tool-calling and JSON mode"
+status: active
 version_noted: "2024-07-18"
 capabilities: [tool_calls, json_mode, streaming, system_prompt]
 context_window: 128000

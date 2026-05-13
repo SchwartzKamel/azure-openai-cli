@@ -1,6 +1,8 @@
 ---
 model: llama-local
 provider: local
+description: "Local llama.cpp deployment; chat + streaming only"
+status: active
 version_noted: "2025-01-01"
 capabilities: [tool_calls, streaming]
 context_window: 8192

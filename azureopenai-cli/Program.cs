@@ -3642,15 +3642,27 @@ complete -c az-ai -w az-ai
     // is suppressed entirely (consistent with raw mode's purpose of clean
     // stdout for LLM response piping).
     //
-    // Normal output format (matches brief spec):
-    //   [registry] 3 known models
-    //     gpt-4o-mini     azure    configured   tool_calls json_mode streaming system_prompt
-    //     llama-local     local    NOT SET      tool_calls streaming
+    // S04E02 Wave 2 (Russell) -- registry rows now include the model card's
+    // human-readable description and lifecycle status. The card is loaded
+    // via Kramer's ModelRegistry.LoadCards. Layout (column starts):
     //
-    // "configured" = provider's primary env-vars are all non-empty:
-    //   azure   -> AZUREOPENAIENDPOINT + AZUREOPENAIAPI
-    //   foundry -> AZURE_FOUNDRY_ENDPOINT + AZURE_FOUNDRY_KEY
-    //   local   -> AZ_AI_LLAMACPP_ENDPOINT (TODO: finalize local provider name in E02+)
+    //   col  0:   "  "                       (2-space indent)
+    //   col  2:   name        width 16
+    //   col 18:   provider    width  9
+    //   col 27:   env-status  width 13       ("configured" | "NOT SET")
+    //   col 40:   card-status width 14       ("active" | "preview" | "(no card)")
+    //   col 54:   description (truncated to 60 chars w/ "..." ellipsis)
+    //
+    // When a card is present, the capability tags wrap onto a second line
+    // indented to col 54 with a "caps: " prefix so the description stays
+    // readable on a 120-col terminal. When NO card resolves, we keep the
+    // legacy single-line behaviour and print capability tags inline at
+    // col 54 -- power users running from an installed binary without
+    // shipped cards still see the capabilities at a glance.
+    //
+    // NO_COLOR: this section never emits ANSI; nothing to gate.
+    // SanitizeForTerminal: applied to every card-derived string so a hostile
+    // user override card can't smuggle CSI escapes into --doctor output.
     private static void WriteRegistrySection(TextWriter stdout, bool isRaw)
     {
         if (isRaw) return;
@@ -3659,16 +3671,116 @@ complete -c az-ai -w az-ai
         stdout.WriteLine(
             $"[registry] {entries.Length} known model{(entries.Length == 1 ? "" : "s")}");
 
+        // Resolve once per --doctor invocation. Resolver never throws and
+        // never crashes --doctor: a null result just means every card
+        // shows "(no card)" and the section degrades gracefully.
+        var registryDir = ResolveRegistryDir();
+        var cards = registryDir is not null
+            ? Registry.ModelRegistry.LoadCards(entries, registryDir, isRaw: isRaw)
+            : new Dictionary<string, Registry.ModelCard?>(StringComparer.Ordinal);
+
+        const int capsIndent = 54;
+        const int descMax = 60;
+        var capsPad = new string(' ', capsIndent);
+
         foreach (var e in entries)
         {
-            var status = IsProviderConfigured(e.Provider) ? "configured" : "NOT SET";
+            var envStatus = IsProviderConfigured(e.Provider) ? "configured" : "NOT SET";
+            cards.TryGetValue(e.Name, out var card);
             var caps = string.Join(" ", (e.Capabilities ?? []).Select(SanitizeForTerminal));
-            var line = "  "
+
+            if (card is null)
+            {
+                // Missing-card path: keep capabilities inline so power
+                // users on installed binaries (no shipped cards) still
+                // see them. Documented in WriteRegistrySection comment.
+                var line = "  "
+                    + Pad(SanitizeForTerminal(e.Name), 16)
+                    + Pad(SanitizeForTerminal(e.Provider), 9)
+                    + Pad(envStatus, 13)
+                    + Pad("(no card)", 14)
+                    + caps;
+                stdout.WriteLine(line.TrimEnd());
+                continue;
+            }
+
+            var cardStatus = SanitizeForTerminal(card.Status);
+            var description = TruncateDescription(
+                SanitizeForTerminal(card.Description), descMax);
+
+            var head = "  "
                 + Pad(SanitizeForTerminal(e.Name), 16)
                 + Pad(SanitizeForTerminal(e.Provider), 9)
-                + Pad(status, 13)
-                + caps;
-            stdout.WriteLine(line);
+                + Pad(envStatus, 13)
+                + Pad(cardStatus, 14)
+                + description;
+            stdout.WriteLine(head.TrimEnd());
+
+            // Indented caps line under the description for readability.
+            // Skip the second line entirely if there are no capabilities.
+            if (caps.Length > 0)
+                stdout.WriteLine(capsPad + "caps: " + caps);
+        }
+    }
+
+    // Trim a description to <max> visible characters with an ASCII "..."
+    // ellipsis. Russell explicitly chose ASCII over the Unicode ellipsis
+    // so the output stays grep-friendly and copy-pastes cleanly into
+    // issue templates / changelogs.
+    private static string TruncateDescription(string description, int max)
+    {
+        if (string.IsNullOrEmpty(description)) return string.Empty;
+        if (description.Length <= max) return description;
+        if (max <= 3) return description[..max];
+        return description[..(max - 3)] + "...";
+    }
+
+    // Resolve the directory whose registry.json paths are anchored against.
+    // Order (S04E02 Wave 2 brief):
+    //   1. AZ_AI_REGISTRY_DIR env-var (operator escape hatch).
+    //   2. ~/.config/az-ai/registry.json -> its containing directory.
+    //   3. Repo root, detected by walking up from AppContext.BaseDirectory
+    //      and CWD looking for azureopenai-cli/Registry/registry.json.
+    //   4. AppContext.BaseDirectory (last resort -- installed binaries
+    //      without shipped cards land here and gracefully show "(no card)").
+    //
+    // Returns null only when every probe throws; --doctor then falls back
+    // to the no-card rendering path. Never crashes the process.
+    private static string? ResolveRegistryDir()
+    {
+        try
+        {
+            var envDir = Environment.GetEnvironmentVariable("AZ_AI_REGISTRY_DIR");
+            if (!string.IsNullOrEmpty(envDir) && Directory.Exists(envDir))
+                return envDir;
+
+            var userOverride = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".config", "az-ai", "registry.json");
+            if (File.Exists(userOverride))
+                return Path.GetDirectoryName(userOverride);
+
+            // Walk up looking for the in-repo registry.json. Probe from
+            // both AppContext.BaseDirectory (covers `dotnet run`) and
+            // CWD (covers `dotnet test` from any subdir).
+            foreach (var start in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory })
+            {
+                var dir = new DirectoryInfo(start);
+                for (int i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
+                {
+                    var probe = Path.Combine(dir.FullName, "azureopenai-cli", "Registry", "registry.json");
+                    if (File.Exists(probe))
+                        return dir.FullName;
+                }
+            }
+
+            return AppContext.BaseDirectory;
+        }
+        catch
+        {
+            // Filesystem races / permission denied / weirdness: degrade
+            // silently. --doctor stays alive; cards just show "(no card)".
+            return null;
         }
     }
 

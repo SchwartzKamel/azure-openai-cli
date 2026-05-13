@@ -1,6 +1,8 @@
 ---
 model: gpt-5.4-nano
 provider: azure
+description: "Smaller-context preview tier; structured-outputs only"
+status: preview
 version_noted: "2025-01-01"
 capabilities: [tool_calls, json_mode, streaming, system_prompt]
 context_window: 128000
