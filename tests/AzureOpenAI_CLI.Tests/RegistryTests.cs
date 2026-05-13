@@ -287,4 +287,144 @@ public class RegistryTests
             }
         }
     }
+
+    // ── S04E02 Wave 1 -- ReadCard / Embedded Cards (Kramer) ───────────────
+    //
+    // Five tests, one per FDR S04E01 Wave 2 finding plus a happy path and a
+    // missing-file null contract. The rc=99 surfaces use the internal
+    // ReadCardOrThrow seam (typed ModelCardException) rather than the public
+    // ReadCard which calls Environment.Exit -- same predicate, no process
+    // isolation needed. Documented in ModelRegistry.cs.
+
+    private static string FindRepoRoot()
+    {
+        // Tests run from bin/.../net10.0; walk up to the repo root by looking
+        // for the .sln file. Keeps tests robust against future test-host churn.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "azure-openai-cli.sln")))
+            dir = dir.Parent;
+        Assert.NotNull(dir);
+        return dir!.FullName;
+    }
+
+    [Fact]
+    public void ReadCard_HappyPath_ReturnsParsedFields()
+    {
+        var repoRoot = FindRepoRoot();
+
+        var card = ModelRegistry.ReadCard(
+            cardPath: "docs/model-cards/azure-gpt-4o-mini.md",
+            registryDir: repoRoot,
+            isRaw: true);
+
+        Assert.NotNull(card);
+        // Seed card uses 'model:' alias for name; provider is 'azure'.
+        Assert.Equal("gpt-4o-mini", card!.Name, StringComparer.Ordinal);
+        Assert.Equal("azure", card.Provider, StringComparer.Ordinal);
+        // Defaults applied (seed cards predate description/status/notes keys).
+        Assert.Equal("active", card.Status, StringComparer.Ordinal);
+        Assert.NotNull(card.Notes);
+    }
+
+    [Fact]
+    public void ReadCard_PathTraversal_ExitsRc99()
+    {
+        // Use a freshly-minted temp registry dir so the traversal escape is
+        // unambiguous: ../../../etc/passwd from /tmp/<rand>/ cannot possibly
+        // resolve back under /tmp/<rand>/.
+        var tempDir = Path.Combine(Path.GetTempPath(), "az-ai-kramer-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var ex = Assert.Throws<ModelCardException>(() =>
+                ModelRegistry.ReadCardOrThrow(
+                    cardPath: "../../../etc/passwd",
+                    registryDir: tempDir,
+                    isRaw: true));
+            Assert.Contains("../../../etc/passwd", ex.Message, StringComparison.Ordinal);
+            Assert.Contains("escapes", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ReadCard_OversizeFile_ExitsRc99()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "az-ai-kramer-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            // 300 KB > 256 KB cap.
+            var cardFile = Path.Combine(tempDir, "fat-card.md");
+            File.WriteAllBytes(cardFile, new byte[300 * 1024]);
+
+            var ex = Assert.Throws<ModelCardException>(() =>
+                ModelRegistry.ReadCardOrThrow(
+                    cardPath: "fat-card.md",
+                    registryDir: tempDir,
+                    isRaw: true));
+            Assert.Contains("256 KB", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ReadCard_FifoOrDevice_ExitsRc99()
+    {
+        // Linux-only: needs mkfifo. Early-return on Windows / macOS CI shards
+        // that don't ship the binary (no Xunit.SkippableFact in this project).
+        if (!OperatingSystem.IsLinux())
+            return;
+        var mkfifo = new[] { "/usr/bin/mkfifo", "/bin/mkfifo" }.FirstOrDefault(File.Exists);
+        if (mkfifo is null)
+            return;
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "az-ai-kramer-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var fifoPath = Path.Combine(tempDir, "card.fifo");
+            using (var p = System.Diagnostics.Process.Start(mkfifo!, fifoPath))
+            {
+                p.WaitForExit();
+                Assert.Equal(0, p.ExitCode);
+            }
+
+            var ex = Assert.Throws<ModelCardException>(() =>
+                ModelRegistry.ReadCardOrThrow(
+                    cardPath: "card.fifo",
+                    registryDir: tempDir,
+                    isRaw: true));
+            Assert.Contains("not a regular file", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ReadCard_MissingFile_ReturnsNull()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "az-ai-kramer-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var card = ModelRegistry.ReadCard(
+                cardPath: "nope-does-not-exist.md",
+                registryDir: tempDir,
+                isRaw: true);
+            Assert.Null(card);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
 }
