@@ -36,6 +36,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (29 round-trip facts across ja/zh/es/ko; validates UTF-8 console +
   `<InvariantGlobalization>true</>` + NFKC path normalization).
 
+- **feat(registry):** S04E02 *Embedded Cards* -- `ModelCard` reader.
+  New `azureopenai-cli/Registry/ModelCard.cs` typed record. New
+  `ModelRegistry.ReadCard(cardPath, registryDir)` and `LoadCards(...)`
+  bulk API parse YAML-style front matter (manual parser -- no YAML
+  dependency, AOT-safe) from `docs/model-cards/*.md`. Three safety
+  guards inline: F-01 path-prefix (rejects `..` traversal after
+  canonicalisation), F-03 size cap (256 KB max), F-04 stream-type
+  via `libc stat()` P/Invoke (.NET `FileAttributes` does not flag
+  FIFOs/devices on Linux). Five new unit tests in `RegistryTests.cs`.
+- **feat(--doctor):** S04E02 -- registry section now shows description
+  + status columns. Each model row gets a card status (`active`,
+  `preview`, `deprecated`, or `(no card)`) and a description (truncated
+  to 60 chars with ASCII `...`). Capability tags wrap to a second line
+  (`caps: ...`) when a description is present; inlined when not. New
+  `AZ_AI_REGISTRY_DIR` env-var as operator escape hatch for card
+  resolution. All user-supplied strings pass through `SanitizeForTerminal`.
+  `--raw` still suppresses the entire section. Three seed cards now
+  carry `description` + `status` front matter.
+- **docs(model-cards):** S04E02 -- Lloyd Braun top-3 onboarding
+  fix-forward: ADR-012 gains a "What is a seam?" sidebar; README.md
+  step 4 gains a `> [!IMPORTANT]` admonition warning that new cards
+  must also be registered in `registry.json`; new `## Glossary`
+  section in README.md defining 7 jargon terms (embedded resource,
+  capability tags, GGUF, quantisation, chat template, Espanso,
+  streaming) with ADR cross-references. Sweeps 7 of 27 remaining
+  Lloyd findings beyond the top 3.
+- **docs(adr):** ADR-012 gains a Wave 2 adversarial review appendix
+  (FDR, S04E02): 10 findings (1 critical CLOSED, 1 high, 4 medium,
+  2 low, 2 nit). Critical F-EE-01 closed in this same release; the
+  rest are filed for S04E03+ triage.
+- **test(doctor):** New `tests/AzureOpenAI_CLI.Tests/DoctorRegistryTests.cs`
+  (Puddy, S04E02) -- 5 integration facts covering the `--doctor`
+  registry section: description-per-seed-card, `--raw` suppression,
+  terminal-injection scrubbing via crafted override, override-replaces-
+  seed for cards too, missing-card renders `(no card)` without crash.
+- **test(a11y):** New `tests/AzureOpenAI_CLI.Tests/DoctorRegistryAccessibilityTests.cs`
+  (Mickey, S04E02) -- 4 a11y facts: `NO_COLOR` honored (zero ANSI
+  escapes), zero tab characters in the registry block, every model
+  row leads with the model name (screen-reader-friendly), capability
+  tags ASCII-only (braille-display-safe). Mickey's polish observations
+  for E04 *Reading Room* filed in `docs/model-cards/REVIEW-onboarding.md`.
+- **docs(s04):** S04 living running-order published in
+  `docs/exec-reports/s04-blueprint.md` (Mr. Pitt) -- reconciles
+  blueprint episode numbering with shipped reality (E01+E02 of original
+  numbering collapsed into shipped E01) and projects E03-E09 cast
+  assignments with cast-balance ledger.
+- **docs(s04e03):** Episode brief for S04E03 *The Capabilities*
+  drafted (Bookman) -- DRAFT status, awaiting showrunner greenlight.
+
 ### Security
 - **fix(--doctor):** Terminal-injection guard on registry output.
   User-supplied `Name`, `Provider`, and capability tag strings from
