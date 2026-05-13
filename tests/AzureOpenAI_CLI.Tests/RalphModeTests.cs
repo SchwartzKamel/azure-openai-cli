@@ -546,4 +546,46 @@ public class RalphModeTests
             try { Directory.Delete(testDir, recursive: true); } catch { }
         }
     }
+
+    [Fact]
+    public void CheckpointManager_WriteCheckpoint_RotatesLargeLog()
+    {
+        // Arrange
+        var testDir = Path.Combine(Path.GetTempPath(), "ralph-test-" + Guid.NewGuid());
+        Directory.CreateDirectory(testDir);
+        var origDir = Directory.GetCurrentDirectory();
+        Directory.SetCurrentDirectory(testDir);
+
+        try
+        {
+            // Create a file just over 1 MiB
+            var largeContent = new string('A', 1048577);
+            File.WriteAllText(".ralph-log", largeContent);
+
+            // Act
+            AzureOpenAI_CLI.Ralph.CheckpointManager.WriteCheckpoint(
+                iteration: 1,
+                prompt: "test prompt",
+                agentExitCode: 0,
+                agentResponse: "test response",
+                validationCommand: null,
+                validationExitCode: null,
+                validationOutput: null
+            );
+
+            // Assert
+            Assert.True(File.Exists(".ralph-log.1"));
+            var rotatedContent = File.ReadAllText(".ralph-log.1");
+            Assert.Equal(largeContent, rotatedContent);
+
+            var newContent = File.ReadAllText(".ralph-log");
+            Assert.Contains("# Ralph Loop Log", newContent);
+            Assert.Contains("## Iteration 1", newContent);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(origDir);
+            try { Directory.Delete(testDir, recursive: true); } catch { }
+        }
+    }
 }

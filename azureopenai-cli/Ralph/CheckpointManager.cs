@@ -11,6 +11,35 @@ namespace AzureOpenAI_CLI.Ralph;
 internal static class CheckpointManager
 {
     private const string LogFilePath = ".ralph-log";
+    private const int MaxLogSizeBytes = 1048576; // 1 MiB
+
+    /// <summary>
+    /// Rotates the log file if it exceeds the maximum size limit.
+    /// Renames .ralph-log to .ralph-log.1.
+    /// </summary>
+    private static void RotateIfNeeded()
+    {
+        try
+        {
+            if (!File.Exists(LogFilePath)) return;
+
+            var fi = new FileInfo(LogFilePath);
+            if (fi.Length > MaxLogSizeBytes)
+            {
+                var rotatedPath = LogFilePath + ".1";
+                if (File.Exists(rotatedPath))
+                {
+                    File.Delete(rotatedPath);
+                }
+                File.Move(LogFilePath, rotatedPath);
+                File.WriteAllText(LogFilePath, "# Ralph Loop Log\n\n");
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ralph] log rotation failed: {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// Appends an iteration record to the .ralph-log file.
@@ -42,6 +71,7 @@ internal static class CheckpointManager
 
             entry.AppendLine();
 
+            RotateIfNeeded();
             // Append to log (create if missing)
             File.AppendAllText(LogFilePath, entry.ToString());
         }
@@ -67,6 +97,7 @@ internal static class CheckpointManager
             entry.AppendLine($"**Timestamp:** {DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)}");
             entry.AppendLine();
 
+            RotateIfNeeded();
             File.AppendAllText(LogFilePath, entry.ToString());
         }
         catch (Exception ex)
@@ -86,6 +117,10 @@ internal static class CheckpointManager
             if (!File.Exists(LogFilePath))
             {
                 File.WriteAllText(LogFilePath, "# Ralph Loop Log\n\n");
+            }
+            else
+            {
+                RotateIfNeeded();
             }
         }
         catch (Exception ex)
