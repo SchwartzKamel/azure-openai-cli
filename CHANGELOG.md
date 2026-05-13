@@ -140,6 +140,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the right `HasError` *before* requiring credentials.
 
 ### Changed
+- **ci(release):** S04SP1 *The Reruns* -- dropped `osx-x64/macos-13`
+  leg from `release.yml` matrix (and matching artifact-table row).
+  Re-establishes the v2.0.4 policy after the leg was silently re-added
+  in a later PR. macOS Intel hardware is EOL; users on legacy hardware
+  fall back to the Docker image or local source build (README line 435
+  has documented this path since v2.0.4). v2.3.0 tag force-moved from
+  `493c21b` to `ffd2c1a` (cherry-picked matrix fix on top of the
+  original commit) -- no published Release object existed at the old
+  SHA, so no artifact contract was broken. See
+  `docs/exec-reports/s04sp1-the-reruns.md`.
+- **docs(exec-reports):** S04SP1 fix-forward on three bullet-style
+  errors (`MD004/MD032`) in already-shipped exec-reports
+  (`s04e01-the-registry.md`, `s04e02-embedded-cards.md`) -- `+ ` prose
+  continuations (English word "plus") were being parsed as
+  unordered-list bullets of the wrong style, reddening `docs-lint` on
+  every push since 2026-05-13 S04E01 close.
 - **ci(security):** SHA-pinned `actions/checkout@11bd71901bbe...` (v4.2.2)
   and `actions/setup-node@49933ea52888...` (v4.4.0) in
   `.github/workflows/docs-lint.yml`.
