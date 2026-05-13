@@ -46,7 +46,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight exec-report-check findings-backlog-test install-hooks publish publish-fast publish-aot publish-r2r release-precheck release-notes-preview setup setup-secrets \
+.PHONY: all build dotnet-build run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight exec-report-check docs-lint ascii-check findings-backlog-test install-hooks publish publish-fast publish-aot publish-r2r release-precheck release-notes-preview setup setup-secrets \
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
@@ -256,10 +256,46 @@ format:
 format-check:
 	$(DOTNET) format --verify-no-changes azure-openai-cli.sln
 
-## Preflight: format-check + dotnet-build + test + integration (skill: .github/skills/preflight.md)
+## Preflight: format-check + docs-lint + ascii-check + dotnet-build + test + integration (skill: .github/skills/preflight.md)
 ## Uses `dotnet-build` (not `build`) — Docker rebuilds are too slow for a pre-commit gate.
-preflight: format-check color-contract-lint dotnet-build test integration-test exec-report-check
+## `docs-lint` and `ascii-check` slot between format-check and build: cheap, fail-fast,
+## and they mirror the server-side `.github/workflows/docs-lint.yml` gates that were
+## silently red on every push from 2026-05-13 (S04E01 close) onward. See S04SP3.
+preflight: format-check color-contract-lint docs-lint ascii-check dotnet-build test integration-test exec-report-check
 	@echo "[preflight] all gates green — safe to commit"
+
+## Docs-lint: run markdownlint-cli2 locally with the exact args CI uses.
+## Mirrors `.github/workflows/docs-lint.yml` step `markdownlint-cli2`. The
+## NODE_OPTIONS bump is a recurring quirk on hosts with many translation
+## units; harmless when not needed.
+docs-lint:
+	@echo "[docs-lint] markdownlint-cli2 (NODE_OPTIONS=--max-old-space-size=4096)"
+	@NODE_OPTIONS=--max-old-space-size=4096 npx --yes markdownlint-cli2
+	@echo "[docs-lint] clean."
+
+## Ascii-check: smart-quote / en-dash / em-dash scan over committed *.md files.
+## Mirrors the `Smart-quote detection` step in `.github/workflows/docs-lint.yml`.
+## Bans U+2018 U+2019 U+201C U+201D U+2013 U+2014. See .github/skills/ascii-validation.md
+## for ASCII replacements.
+ascii-check:
+	@echo "[ascii-check] scanning *.md for smart quotes / en-em dashes ..."
+	@hits=$$(grep -rnP '[\x{2018}\x{2019}\x{201C}\x{201D}\x{2013}\x{2014}]' \
+		--include='*.md' \
+		--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.smith \
+		--exclude-dir=bin --exclude-dir=obj --exclude-dir=archive \
+		--exclude-dir=artifacts --exclude-dir=dist \
+		--exclude-dir=perf --exclude-dir=benchmarks --exclude-dir=demos \
+		--exclude-dir=launch --exclude-dir=announce --exclude-dir=talks \
+		--exclude-dir=audits \
+		--exclude=README.md --exclude=CHANGELOG.md \
+		. 2>/dev/null || true); \
+	if [ -n "$$hits" ]; then \
+		echo "[ascii-check] FAIL: smart quote or en/em dash detected" >&2; \
+		echo "$$hits" >&2; \
+		echo "[ascii-check] fix-it cheatsheet: .github/skills/ascii-validation.md" >&2; \
+		exit 1; \
+	fi
+	@echo "[ascii-check] clean."
 
 ## Exec-report-check: enforce that every push range adds a new
 ## docs/exec-reports/sNNeMM-*.md (skill: .github/skills/exec-report-format.md).
@@ -275,13 +311,14 @@ exec-report-check:
 findings-backlog-test:
 	@bash tests/findings-backlog-lint-test.sh
 
-## Install the project's git hooks (pre-push runs exec-report-check).
+## Install the project's git hooks (pre-push runs scripts/pre-push.sh which
+## chains exec-report-check + docs-lint + ascii-check on the push range).
 ## Idempotent. Re-run after cloning or when the hook script is updated.
 install-hooks:
 	@mkdir -p .git/hooks
-	@printf '#!/usr/bin/env bash\n# Auto-installed by `make install-hooks`. Runs exec-report-check.\n# Override per-push with: git push --no-verify\nexec bash scripts/exec-report-check.sh\n' > .git/hooks/pre-push
+	@printf '#!/usr/bin/env bash\n# Auto-installed by `make install-hooks`.\n# Chains exec-report-check + docs-lint + ascii-check on the push range.\n# Override per-push with: git push --no-verify\nexec bash scripts/pre-push.sh "$$@"\n' > .git/hooks/pre-push
 	@chmod +x .git/hooks/pre-push
-	@echo "✓ Installed .git/hooks/pre-push (runs scripts/exec-report-check.sh)"
+	@echo "✓ Installed .git/hooks/pre-push (runs scripts/pre-push.sh)"
 
 ## Audit: check for vulnerable NuGet packages
 audit:

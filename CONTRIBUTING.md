@@ -84,16 +84,28 @@ describing what you'd like to work on. We will point you at something.
 ## The preflight gate
 
 **Non-negotiable.** Read [`.github/skills/preflight.md`](.github/skills/preflight.md)
-and run all four checks locally before `git commit` on any change that
-touches:
+and run all gates locally before `git commit` on any change that touches:
 
 - `*.cs`, `*.csproj`, `*.sln`, `.editorconfig`
 - `.github/workflows/*.yml`
 - `Dockerfile` or integration test scripts
+- Any `*.md` file outside `docs/exec-reports/`
 
-Docs-only PRs (`*.md`) can skip it. If you skip it on a code change, CI will
-catch you and the PR will sit red until you fix it -- the skill file exists
-because we already paid for the lesson (`180d64f`, five red runs on `main`).
+`make preflight` runs the full gate chain: format-check, color-contract,
+**docs-lint**, **ascii-check**, build, unit tests, integration tests,
+exec-report-check. Two of those (docs-lint + ascii-check, wired in S04SP3
+*The Pre-Push*) mirror `.github/workflows/docs-lint.yml` server-side so
+red CI is no longer reachable by pushing. `make install-hooks` installs
+a pre-push hook that re-runs the markdown checks against the push range;
+opt out per-commit with a `Skip-Docs-Lint: <reason>` trailer (parallel to
+`Skip-Exec-Report:`) for legitimate bulk-rename / import cases.
+
+Docs-only PRs (`*.md`) can skip the .NET portion but must still pass
+`make docs-lint` and `make ascii-check`. If you skip preflight on a code
+change, CI will catch you and the PR will sit red until you fix it -- the
+skill file exists because we already paid for the lesson (`180d64f`, five
+red runs on `main`; and S04E01..S04SP1, ten consecutive red docs-lint runs
+because the gate was server-only).
 
 ---
 
