@@ -318,6 +318,34 @@ public class ToolHardeningTests
         Assert.True(ReadFileTool.IsBlockedPath(path));
     }
 
+    // Proves: the whole procfs/sysfs trees are blocked, not just two /proc/self files.
+    // Before the prefix change, another PID's environ, a thread's environ and
+    // /proc/self/maps or mem were all readable by the read_file tool.
+    [Theory]
+    [InlineData("/proc/self/environ")]
+    [InlineData("/proc/self/cmdline")]
+    [InlineData("/proc/1/environ")]
+    [InlineData("/proc/self/task/1/environ")]
+    [InlineData("/proc/thread-self/environ")]
+    [InlineData("/proc/self/maps")]
+    [InlineData("/proc/self/mem")]
+    [InlineData("/sys/kernel/notes")]
+    public void IsBlockedPath_ProcAndSysTrees_Blocked(string path)
+    {
+        Assert.True(ReadFileTool.IsBlockedPath(path));
+    }
+
+    // Proves: the prefix match respects a path-segment boundary, so the broader
+    // /proc and /sys entries do not over-block unrelated siblings.
+    [Theory]
+    [InlineData("/process-notes.txt")]
+    [InlineData("/system/readme.txt")]
+    [InlineData("/procedures/handbook.md")]
+    public void IsBlockedPath_ProcSysLookalikeSiblings_NotBlocked(string path)
+    {
+        Assert.False(ReadFileTool.IsBlockedPath(path));
+    }
+
     [Fact]
     public void IsBlockedPath_AwsCredentials_Blocked()
     {
