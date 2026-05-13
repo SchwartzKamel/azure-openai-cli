@@ -352,3 +352,399 @@ findings backlog.
 
 **Newman's triage queue (priority order):** F-01 (E02 blocker note), F-02,
 F-06, F-04, F-03, F-05, F-07, F-08, F-09.
+
+## Adversarial review (FDR, S04E02 Wave 2)
+
+**Date:** 2026-05-13
+**Scope:** ModelCard reader (`ReadCard`, `ReadCardOrThrow`, `LoadCards`,
+front-matter parser, `IsRegularFile` libc shim) and the Wave 2 wiring of
+`LoadCards` into `WriteRegistrySection` / `ResolveRegistryDir`.
+**Findings:** 10 (1 CRITICAL, 1 HIGH, 4 MEDIUM, 2 LOW, 2 NIT)
+
+> **FIX-NOW (block episode close):** F-EE-01 -- a parent-directory symlink
+> inside `registryDir` defeats the F-01 prefix guard. Verified end-to-end
+> with a 30-line PoC. Read-arbitrary-file primitive on any path the
+> `az-ai` process can open. Newman owns the fix.
+
+### Top findings
+
+**1. F-EE-01 (CRITICAL, verified) -- the prefix guard only canonicalises
+`..`, it does not resolve symlinks.** `Path.GetFullPath` collapses
+`./` and `..` segments lexically; it never calls `realpath(3)`. And
+`File.ResolveLinkTarget(resolved, returnFinalTarget: false)` only
+inspects the leaf -- it returns null when the file itself is a regular
+file even if a parent directory in `resolved` is a symlink. Ship a
+symlink at `<registryDir>/sub -> /etc` and a card entry with
+`cardPath: "sub/passwd"` and the read goes through. Reproduced in 5
+seconds outside the test harness; PoC noted in detailed findings.
+
+**2. F-EE-04 (HIGH, partial) -- `AZ_AI_REGISTRY_DIR` is honoured with
+no canonicalisation, no allowlist, and no symlink rejection.** Combined
+with F-EE-01 the env-var becomes a one-step "anchor anywhere" knob:
+attacker exports `AZ_AI_REGISTRY_DIR=/some/dir/they/wrote`, drops a
+`docs/model-cards/azure-gpt-4o-mini.md` symlink under it, and `--doctor`
+reads whatever the symlink targets. Even without F-EE-01, the env-var
+re-anchors all card lookups silently -- there is no `[INFO] using card
+anchor /some/path` line, so a user invoked through Espanso with a poisoned
+environment cannot tell their cards came from a foreign tree. Operator
+escape hatch should at minimum log when it fires.
+
+**3. F-EE-02 / F-EE-03 (MEDIUM, partial) -- two TOCTOU windows between
+the guards and the read.** `info.Length` is captured at FileInfo
+construction; `ReadAllText` opens the file later and reads to EOF. A
+file that passed at 100 KB can grow to 4 GB before `open(2)` and the
+256 KB cap is bypassed. Same shape for `IsRegularFile` -- stat happens
+in the syscall shim, then `ReadAllText` opens the path again, so a
+swap to a FIFO between the two calls hangs the process indefinitely
+(exactly the failure mode F-04 was meant to prevent). Both require
+write access to `registryDir`, which limits practical exploitability,
+but the FIFO swap is the one Russell will hit first when his
+`AZ_AI_REGISTRY_DIR` lands in user hands.
+
+### Findings table
+
+| ID | Severity | Title | Verified | Disposition |
+|----|----------|-------|----------|-------------|
+| F-EE-01 | CRITICAL | Parent-dir symlink defeats prefix guard | verified | FIX-NOW |
+| F-EE-02 | MEDIUM | Size-cap TOCTOU between FileInfo.Length and ReadAllText | partial | S04E03 backlog |
+| F-EE-03 | MEDIUM | Type-check TOCTOU: stat then open allows FIFO swap | partial | S04E03 backlog |
+| F-EE-04 | HIGH | AZ_AI_REGISTRY_DIR re-anchor with no canonicalisation/log | partial | FIX-NOW (lite) |
+| F-EE-05 | MEDIUM | IsRegularFile returns true unconditionally on macOS | speculative | S04E03 backlog |
+| F-EE-06 | LOW | Notes list allocates N strings, only bounded by 256 KB cap | verified | S04E03 backlog |
+| F-EE-07 | LOW | Card front-matter `name` never compared to registry entry name | verified | S04E03 backlog |
+| F-EE-08 | LOW | Duplicate front-matter keys silently last-wins | verified | WONT-FIX (document) |
+| F-EE-09 | NIT | Lone-CR (classic Mac) line endings not normalised | verified | WONT-FIX |
+| F-EE-10 | NIT | StripQuotes does not validate paired quote types | verified | WONT-FIX |
+
+### Detailed findings
+
+#### F-EE-01 -- Parent-directory symlink defeats prefix guard -- [CRITICAL] [verified]
+
+**Surface:** `ReadCardOrThrow` lines 200-210 (the F-01 prefix guard) and
+lines 225-228 (the symlink rejection).
+
+**Attack payload:**
+
+```text
+mkdir -p /tmp/reg /tmp/victim
+echo -e '---\nname: pwned\nprovider: evil\n---' > /tmp/victim/secret.md
+ln -s /tmp/victim /tmp/reg/sub
+# Then any caller:
+ModelRegistry.ReadCard("sub/secret.md", "/tmp/reg")
+```
+
+**Observed behaviour:** `Path.GetFullPath(Path.Combine("/tmp/reg", "sub/secret.md"))`
+returns `/tmp/reg/sub/secret.md`, which lexically starts with the
+canonical registry directory plus separator; the prefix guard passes.
+`File.ResolveLinkTarget("/tmp/reg/sub/secret.md", returnFinalTarget: false)`
+returns null because the leaf is a regular file -- only `/tmp/reg/sub`
+is a symlink, and the .NET API only inspects the leaf. `IsRegularFile`
+calls `stat(2)` (which follows symlinks) and reports the eventual
+`/tmp/victim/secret.md` is regular. ReadAllText then reads from
+`/tmp/victim/secret.md`, which is outside `registryDir`. End-to-end
+PoC confirmed:
+
+```text
+regFull   = /tmp/reg
+resolved  = /tmp/reg/sub/secret.md
+prefix-ok? True
+ResolveLinkTarget(file)=(null)
+-> bypasses guard: True
+```
+
+**Expected behaviour:** Any path component being a symlink that points
+outside `registryDir` should be rejected with rc=99.
+
+**Recommended fix:** Resolve symlinks before the prefix check. The
+.NET-portable form is `File.ResolveLinkTarget(resolved, returnFinalTarget: true)`
+applied to each parent directory and the leaf, then re-running the
+`StartsWith(registryWithSep, Ordinal)` test against the realpath. On
+Linux/macOS the simpler call is `realpath(3)` via the existing libc
+P/Invoke seam (`LibcStat` already P/Invokes libc -- add a
+`LibcRealpath` sibling). Either approach closes both directly-symlinked
+files (already rejected by the leaf check) and parent-dir symlinks
+(currently bypassed) under one rule.
+
+**Blast radius:** Read-arbitrary-file as the `az-ai` process user.
+Triggered by anyone who can drop a symlinked subdirectory inside
+`registryDir`. The default `registryDir` is `~/.config/az-ai/` (when
+the user override exists) or the repo root (when running from the
+repo) -- neither is normally writable by a non-owner. But:
+`AZ_AI_REGISTRY_DIR` (F-EE-04) lets an attacker who controls the
+environment point at any directory; combined with this finding, that
+is a full read primitive without ever needing to write to `~/.config`.
+
+**Disposition:** **FIX-NOW**. Block S04E02 episode close on this. The
+fix is one P/Invoke or one `ResolveLinkTarget(returnFinalTarget: true)`
+loop -- well within Kramer's wave-3 scope.
+
+---
+
+#### F-EE-02 -- Size-cap TOCTOU between FileInfo.Length and ReadAllText -- [MEDIUM] [partial]
+
+**Surface:** `ReadCardOrThrow` lines 212-248. `info.Length` is read at
+FileInfo construction; `File.ReadAllText` reopens the path on line 253.
+
+**Attack scenario:** Concurrent writer keeps a file at 100 KB while the
+guard runs, then `truncate(2)` or appends to make it 4 GB before the
+`open(2)` inside ReadAllText. ReadAllText reads the file to EOF with no
+further size check. The 256 KB cap (F-03) is bypassed.
+
+**Observed/expected:** Cap should hold against a racing writer. Today
+it does not.
+
+**Recommended fix:** Open the file once with a `FileStream`, run
+`fstat(2)` on the open fd (avoids TOCTOU because fstat consults the
+inode the fd already holds), then read at most `MaxCardBytes` bytes via
+a length-bounded loop. The same fd also services the type check (use
+`fstat`'s `st_mode`) -- folds F-EE-03 into the same fix.
+
+**Blast radius:** Memory exhaustion / OOM on the host running `az-ai`.
+Requires a race-window writer with write access to `registryDir`.
+
+**Disposition:** S04E03 backlog. The fd-then-fstat refactor is the
+right shape for both F-EE-02 and F-EE-03 and deserves its own commit.
+
+---
+
+#### F-EE-03 -- Type-check TOCTOU: stat then open allows FIFO swap -- [MEDIUM] [partial]
+
+**Surface:** `ReadCardOrThrow` lines 230-260. `IsRegularFile` calls
+libc `stat(2)` on the path; ReadAllText calls `open(2)` on the same
+path moments later.
+
+**Attack scenario:** Attacker watches `registryDir` with `inotify`.
+On the read of the card path's stat, the file is a regular file and
+passes. Before `open(2)` runs, the attacker swaps the path: `unlink`
+the regular file and `mkfifo` in its place. ReadAllText opens the
+FIFO; with no writer attached, the read blocks indefinitely. Identical
+failure mode to the FIFO-hang the F-04 guard was meant to prevent.
+
+**Observed/expected:** Type guard should bind to the file actually read.
+
+**Recommended fix:** Same as F-EE-02 -- open once, `fstat` on the open
+fd, then read. Eliminates the swap window entirely.
+
+**Blast radius:** Process hang during `--doctor` (and any future
+caller of `ReadCard` / `LoadCards`). Requires write access to
+`registryDir`. Compounds with F-EE-04: an attacker who controls
+`AZ_AI_REGISTRY_DIR` and the directory it points at can hang every
+non-raw `--doctor` invocation Espanso makes.
+
+**Disposition:** S04E03 backlog (paired with F-EE-02).
+
+---
+
+#### F-EE-04 -- AZ_AI_REGISTRY_DIR re-anchor with no canonicalisation/log -- [HIGH] [partial]
+
+**Surface:** `ResolveRegistryDir` in Program.cs lines 3749-3784.
+
+**Attack scenario:** Espanso / AHK / cron contexts inherit the user's
+environment. A second-tier attacker who can set environment variables
+in those contexts (e.g., a malicious `~/.profile` snippet, a poisoned
+Espanso package, a Windows registry shell-environment write) sets
+`AZ_AI_REGISTRY_DIR=/path/they/control`. Every subsequent `--doctor`
+call resolves cards under that path. There is no banner, no `[INFO]`,
+nothing in stdout or stderr telling the user the anchor moved. Combined
+with F-EE-01 (parent-dir symlink) the attacker reads any file the
+process can open. Even without F-EE-01, the silent re-anchor breaks
+the principle of least surprise documented in `ResolveRegistryDir`'s
+own doc-comment ("operator escape hatch") -- escape hatches for
+operators should be loud, not quiet.
+
+The `Directory.Exists(envDir)` test is not a guard -- it returns true
+for any directory the process can stat, including symlinked ones, and
+performs no canonicalisation against an allowlist.
+
+**Observed/expected:** Either reject the env-var unless it is itself
+a real directory under `$HOME` or a small allowlist, or emit a single
+`[INFO] registry anchor overridden via AZ_AI_REGISTRY_DIR=...` line
+on stderr the first time it fires per process.
+
+**Recommended fix:** Two-line patch: canonicalise via
+`Path.GetFullPath(envDir)` and reject if the canonical path is not
+prefixed by `$HOME` or `/etc/az-ai`; AND emit a single `[INFO]` line
+unless `isRaw`.
+
+**Blast radius:** As above -- multiplier on F-EE-01 for read-anywhere,
+multiplier on F-EE-03 for hang-anywhere. On its own: surprise/UX gap
+with security-relevant consequences in shared-env contexts.
+
+**Disposition:** **FIX-NOW (lite)**. The `[INFO]` log is one line, no
+behaviour change. Allowlist can wait for S04E03. Ship the log now so
+operators discover misconfigurations.
+
+---
+
+#### F-EE-05 -- IsRegularFile returns true unconditionally on macOS -- [MEDIUM] [speculative]
+
+**Surface:** `IsRegularFile` lines 424-431. The early-return short-circuits
+all non-Linux paths to `true`.
+
+**Attack scenario:** macOS host with a card path that resolves to a
+FIFO: `mkfifo ~/.config/az-ai/card.fifo` and a registry entry pointing
+at it. The Linux-only stat shim is skipped, so only the .NET
+`ReparsePoint` check runs. FIFOs are not reparse points and Linux/macOS
+`FileAttributes` does not flag them as `Device` reliably -- the same
+gap that motivated the libc shim on Linux exists on macOS but is
+unguarded. ReadAllText hangs.
+
+**Observed/expected:** macOS users should get the same FIFO/device
+guard as Linux users.
+
+**Recommended fix:** Add a macOS branch: `struct stat` on Darwin places
+`st_mode` at offset 4 (per the comment block in ModelRegistry.cs:412).
+Repeat the existing Linux pattern with `LinuxStatModeOffset = 4`
+when `OperatingSystem.IsMacOS()`. Or call `lstat` via P/Invoke with
+the `__DARWIN_64_BIT_INO_T` variant -- one shim per platform.
+
+**Blast radius:** Process hang on macOS. Same exposure model as F-EE-03
+without needing a TOCTOU swap.
+
+**Disposition:** S04E03 backlog. CI does not run macOS today; defer
+behind a tracked issue so we do not ship a guard we cannot test.
+
+---
+
+#### F-EE-06 -- Notes list allocates N strings, only bounded by 256 KB cap -- [LOW] [verified]
+
+**Surface:** `ParseBracketedList` lines 357-376.
+
+**Attack payload:** A `notes:` value of `[a,a,a,...]` repeated until the
+file is just under 256 KB -- approximately 80,000 entries at 3 bytes
+each. `ParseBracketedList` allocates a `List<string>` plus N pinned
+`string` instances and returns them as a `string[]` on the heap.
+
+**Observed/expected:** Per-card cost should be bounded by something
+tighter than file size -- a card with 80,000 notes is not a card.
+
+**Recommended fix:** Cap at e.g. 64 entries; truncate with a `[WARN]`.
+One-line change in `ParseBracketedList` after `parts.Length` is known.
+
+**Blast radius:** ~5-10 MB heap pressure per malicious card during
+`LoadCards`. Negligible at one card; non-trivial if every card in a
+poisoned override registry pulls the trick.
+
+**Disposition:** S04E03 backlog. Pair with the dedup work in F-05.
+
+---
+
+#### F-EE-07 -- Card front-matter `name` never compared to registry entry name -- [LOW] [verified]
+
+**Surface:** `LoadCards` lines 384-398. Result is keyed by
+`entry.Name`; `card.Name` is stored verbatim and never validated
+against the registry entry that pointed at the card file.
+
+**Attack scenario:** Registry entry says `name: "gpt-4o-mini"`,
+its card front matter says `name: "../../etc"`. `WriteRegistrySection`
+today uses `e.Name` (registry side) for display, so the bogus card name
+is unused -- safe in S04E02. But any future caller that switches to
+`card.Name` (smart-defaults engine, capability lookup, persona
+manifest) inherits a confused-deputy primitive: the registry promised
+a model named X, the card claims to be Y. Russell explicitly aliases
+`model` to `name` in the front matter (ModelRegistry.cs:319-322), so
+seed cards already exercise the alias path -- a subtle drift where the
+two diverge would land without a test.
+
+**Observed/expected:** When `card.Name` is non-empty and unequal
+(ordinal) to `entry.Name`, emit `[WARN] card '<path>' declares
+name='<X>' but registry entry is '<Y>'`.
+
+**Recommended fix:** One block in `LoadCards` after `ReadCard`
+returns, comparing `card?.Name` to `entry.Name`. WARN-only, no
+behavioural change.
+
+**Blast radius:** Currently zero (display uses registry side). Latent
+once any consumer trusts `card.Name`.
+
+**Disposition:** S04E03 backlog. The fix is small but the fix-without-a-consumer
+is hard to test meaningfully; defer until E05 (smart-defaults) needs it.
+
+---
+
+#### F-EE-08 -- Duplicate front-matter keys silently last-wins -- [LOW] [verified]
+
+**Surface:** `ParseFrontMatter` line 309: `keys[key] = value;` overwrites
+without checking for prior insertion.
+
+**Attack scenario:** A card with two `provider:` lines (one `azure`,
+one `evil`). Last-wins means the second value clobbers the first
+silently. A user copy-pasting two front-matter blocks together gets
+no signal that the first block's keys were dropped.
+
+**Observed/expected:** Either reject the card (rc=99 is too harsh for
+a doc fidelity issue; null+WARN is right) or merge with `[WARN] card
+'<path>' has duplicate key '<k>'`.
+
+**Recommended fix:** `if (keys.ContainsKey(key)) WARN; else keys[key] = value;`.
+
+**Blast radius:** Confusion only -- last-wins is a defensible default
+and there is no privilege boundary crossed.
+
+**Disposition:** WONT-FIX (document the behaviour in ADR-012's card
+contract section). Adding the WARN is fine if Russell wants it; not
+worth a fix-forward.
+
+---
+
+#### F-EE-09 -- Lone-CR (classic Mac) line endings not normalised -- [NIT] [verified]
+
+**Surface:** `ParseFrontMatter` line 275 only normalises `\r\n` to `\n`.
+
+**Attack scenario:** A card saved with classic-Mac line endings
+(`\r` only) is treated as one giant line. `lines[0]` is the entire
+file; `Trim() == "---"` is false; the parser returns null with a
+"missing opening fence" WARN. Author is confused, file looks fine in
+their editor.
+
+**Recommended fix:** Replace lone `\r` with `\n` before the existing
+`\r\n -> \n` normalisation. Two extra lines.
+
+**Disposition:** WONT-FIX. Classic Mac line endings have not been
+emitted by default by any editor in twenty years. Document and move on.
+
+---
+
+#### F-EE-10 -- StripQuotes does not validate paired quote types -- [NIT] [verified]
+
+**Surface:** `StripQuotes` lines 347-355.
+
+**Attack scenario:** A value of `"abc'` (open double, close single) is
+NOT stripped (the type check is `(s[0]=='"' && s[^1]=='"') || (s[0]=='\'' && s[^1]=='\'')`,
+which correctly rejects mismatched). But `"\""` (a single escaped
+quote inside double quotes) is stripped to `\` -- there is no escape
+handling, by design. This is the documented YAML-ish contract; the
+NIT is that the contract is undocumented in the public XML doc on
+ModelRegistry.
+
+**Recommended fix:** Add a sentence to the front-matter contract
+comment in `ModelCard.cs` explicitly stating that backslash escapes
+are not honoured inside quoted values.
+
+**Disposition:** WONT-FIX (Elaine doc tweak only).
+
+---
+
+### Closing assessment
+
+One CRITICAL (F-EE-01) and one HIGH (F-EE-04) demand fixes before the
+S04E02 episode close -- the parent-dir symlink bypass turns Russell's
+clean `--doctor` row formatter into an arbitrary-file primitive when
+`AZ_AI_REGISTRY_DIR` is set, which the env-var's "operator escape
+hatch" framing actively encourages people to do.
+
+The two TOCTOU findings (F-EE-02, F-EE-03) are right-shaped to fix
+together with one open-once-then-fstat refactor; defer to S04E03
+unless Newman wants them rolled in with the F-EE-01 patch.
+
+Everything else is backlog or doc-only. The hand-rolled YAML parser is
+genuinely small and surprisingly resilient -- BOM handling works
+(verified), CRLF works (verified), the F-01/F-03/F-04 guards do their
+intended jobs against the attacks they were specified for. The
+findings here are the gaps between what the guards specify and what
+attackers can actually do once a parent symlink or an env-var enters
+the picture.
+
+**Newman's triage queue (priority order):** F-EE-01 (FIX-NOW),
+F-EE-04 (FIX-NOW lite), F-EE-02, F-EE-03, F-EE-05, F-EE-06, F-EE-07,
+F-EE-08, F-EE-09, F-EE-10.
