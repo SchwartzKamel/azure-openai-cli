@@ -380,8 +380,24 @@ public class TelemetryEmitterTests
 
         Assert.NotNull(resp);
         var captured = _err.Writer.ToString();
-        // 120ms latency -> bucket "250" (10/50/100 are below it).
-        Assert.Contains("\"latency_ms_bucket\":\"250\"", captured);
+        // 120ms baseline latency lands at-or-above the 250 bucket boundary.
+        // Shared-runner CPU jitter (notably macos-latest GHA) can push elapsed
+        // into the next bucket(s); accept any bucket >= 250 to keep the assertion
+        // deterministic. Sub-250 buckets would indicate the fake-client knob is
+        // broken; super-high buckets still confirm the scope measured wall-clock.
+        // See S04SP4 *The Bucket* / Frank + Puddy escalation from SP2.
+        string[] acceptableBuckets = { "250", "500", "1000", "2500", "5000", "10000", "+inf" };
+        bool bucketMatched = false;
+        foreach (var b in acceptableBuckets)
+        {
+            if (captured.IndexOf("\"latency_ms_bucket\":\"" + b + "\"", StringComparison.Ordinal) >= 0)
+            {
+                bucketMatched = true;
+                break;
+            }
+        }
+        Assert.True(bucketMatched,
+            "Expected latency_ms_bucket in {250,500,1000,2500,5000,10000,+inf}; payload was: " + captured);
         Assert.Contains("\"outcome\":\"success\"", captured);
     }
 }

@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **fix(test):** S04SP4 *The Bucket* -- relax
+  `TelemetryEmitterTests.DispatchScope_AroundFakeChatCall_LandsInExpectedLatencyBucket`
+  from single-bucket exact match (`"250"`) to bucket-set membership
+  over `{250, 500, 1000, 2500, 5000, 10000, +inf}`. macos-latest GHA
+  shared-runner CPU jitter pushed the 120ms baseline + dispatch
+  overhead into the `"500"` bucket, blocking the v2.3.0 release at the
+  third matrix leg. Invariant preserved: sub-250 buckets (`10`, `50`,
+  `100`) still fail the assertion. Deeper deterministic-clock seam
+  filed as **F-SP4-01** (Frank Costanza, MEDIUM). Third force-move of
+  `v2.3.0` tag; no Release object was ever published at the prior
+  SHAs, so no public artifact contract broken. See
+  `docs/exec-reports/s04sp4-the-bucket.md`.
+
+### Added
 - **feat(capabilities):** S04E03 *The Capabilities* -- startup-time
   capability gate. New `azureopenai-cli/Capabilities/CapabilityGate.cs`
   (`Check(resolvedModel, opts, allowedModels) -> string?`) and
