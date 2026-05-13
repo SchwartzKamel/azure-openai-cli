@@ -15,6 +15,56 @@ plugin registry).
 
 ---
 
+## Running order (live)
+
+> Updated post-E02 dispatch by Mr. Pitt, 2026-05-13.
+> The 24-episode candidate slate below remains the writers-room
+> bench. The list here is the *aired* and *filming* order.
+
+### Aired
+
+- **S04E01 -- *The Registry*** (collapsed original blueprint E01+E02 into one shipped episode -- card schema + registry seam + 3 seed cards). Shipped 2026-05-13. Cast: Kramer, Elaine, Puddy, FDR, Lloyd Braun.
+- **S04off1 -- *The Translation*** (off-roster i18n special, ja/zh/es/ko quick-starts). Shipped 2026-05-13. Cast: Babu Bhatt (lead), Puddy.
+
+### Filming now
+
+- **S04E02 -- *Embedded Cards*** (read card files; --doctor description column; F-EE-01 symlink hotfix). Cast: Russell (lead), Mickey (a11y co-lead), Kramer (Wave 1 reader), Elaine (Lloyd fix-forward), Newman (F-EE-01 hotfix), FDR, Puddy.
+
+### Up next (recommended order, post-E02)
+
+- **S04E03 -- *The Capabilities*** (per-model capability flag enforcement at request time). Lead candidate: Bookman + Maestro.
+- **S04E04 -- *Reading Room*** (docs episode -- promote model-cards/ into a real reading room, link from --help). Lead: Elaine.
+- **S04E05 -- *The Picker*** (ResolveSmartDefault). Lead: Costanza + Maestro.
+- **S04E06 -- Mr. Pitt cast-balance audit** (mandatory per writers-room-cast-balance skill, mid-season checkpoint). Audit-only -- I run it myself.
+- **S04E07 -- *The Fallback*** (cascading fallback). Lead: Frank.
+- **S04E08 -- *The Onboarding*** (first-run wizard, FR-023). Lead: Lloyd Braun.
+- **S04E09 -- *The Override*** (--prefer cost|latency|quality flag). Lead: Russell.
+
+### Renumbering note
+
+Original blueprint E03 (*Capabilities*) keeps its number. Original E04 (*The Reading*) becomes the new E04 *Reading Room*. Original E05+ slide forward by one slot to compensate for the E01+E02 collapse, with the inserted E06 cast-balance audit accounting for the shift. Net: blueprint still slates 24, aired total at season end will be 24 + ~3 off-roster specials.
+
+### Cast-balance ledger after E02 close (projected)
+
+| Cast member | S03 leads | S04 leads to date | S04 next slot |
+|-------------|-----------|-------------------|---------------|
+| Kramer | 5 | 0 (impl roles only) | --- |
+| Elaine | 1 | 0 (docs role in E01) | E04 lead |
+| Russell | 0 | 1 (E02 lead) | E09 lead |
+| Mickey | 1 | 1 (E02 a11y co-lead) | --- |
+| Babu | 0 | 1 (off-roster) | --- |
+| Lloyd | 1 | 1 (E01 review) | E08 lead |
+| Newman | 5 | 1 (E02 hotfix) | --- |
+| Bookman | 0 | 0 | E03 co-lead |
+| Maestro | 0 | 1 (E01 co-lead-of-record) | E03 lead |
+| Costanza | 5 | 0 | E05 lead |
+| Frank | 2 | 0 | E07 lead |
+| Mr. Pitt | 0 | 0 | E06 audit |
+| FDR | 1 | 1 (E02 adversarial) | --- |
+| Puddy | 0 | 1 (E02 regression) | --- |
+
+---
+
 ## Showrunner note
 
 S03 broke the Azure-only assumption. By the time S03 wraps, `az-ai`
@@ -100,6 +150,8 @@ readable YAML / JSON header, prose body) so that anyone who already
 publishes cards has a path to give us metadata for free.
 
 ## 24-episode candidate slate
+
+*See "Running order (live)" at top for the current shipped/filming/up-next ordering. The 24-episode slate below is the original writers-room treatment.*
 
 > Maestro anchors the eval and prompt-shaped episodes (4 leads).
 > Costanza anchors the smart-defaults UX arc (4 leads). Kramer takes
