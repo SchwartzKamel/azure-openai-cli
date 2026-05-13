@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(capabilities):** S04E03 *The Capabilities* -- startup-time
+  capability gate. New `azureopenai-cli/Capabilities/CapabilityGate.cs`
+  (`Check(resolvedModel, opts, allowedModels) -> string?`) and
+  `azureopenai-cli/Cli/CapabilityRejection.cs`
+  (`Build(flag, capability, model, suggestions) -> string`). Gate
+  fires post-model-resolution, pre-client-construction, rejecting
+  flag/capability mismatches with rc=2 and a one-line ASCII
+  suggestion list filtered by `AZUREOPENAIMODEL` allowlist
+  intersected with registered models that support the missing
+  capability. Empty intersection emits `no configured model
+  supports this; see --doctor`. First-miss-wins ordering:
+  `tool_calls` -> `json_mode` -> `streaming` (reserved) ->
+  `system_prompt`. Unregistered models pass through (documented
+  design decision). One insertion in `Program.cs` line 751-753.
+- **docs(adr):** New `docs/adr/ADR-013-capability-gate.md` with
+  Mickey's accessibility-review subsection and FDR's adversarial-
+  review appendix (11 findings -- 0 CRITICAL, 0 HIGH, 1 MEDIUM
+  deferred to S04E04).
+- **docs(model-cards):** New `docs/model-cards/REVIEW-capability-rejection.md`
+  -- screen-reader walkthrough, NO_COLOR confirmation,
+  pipe-to-grep regex analysis (Mickey).
+- **test(capabilities):** New `tests/AzureOpenAI_CLI.Tests/CapabilityGateTests.cs`
+  (19 facts -- Puddy) and `CapabilityGateAccessibilityTests.cs`
+  (7 facts -- Mickey) and `CapabilityRejectionTests.cs` (4 facts
+  -- Bookman). Suite total now 1387 passing.
+- **docs(briefs):** S04E04 *Reading Room* (Elaine, DRAFT), S04E05
+  *The Picker* (Costanza, DRAFT), S04E07 *The Fallback*
+  (Peterman, DRAFT).
+
+### Added
 - **feat(registry):** S04E01 *The Registry* -- typed model registry seam.
   New `azureopenai-cli/Registry/` namespace: `ModelCapability` (validator
   + allowed-tag set), `ModelRegistryEntry` (typed record), `ModelRegistry`
