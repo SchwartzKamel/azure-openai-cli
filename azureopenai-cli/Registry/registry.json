@@ -1,0 +1,26 @@
+[
+  {
+    "name": "gpt-4o-mini",
+    "provider": "azure",
+    "capabilities": ["tool_calls", "json_mode", "streaming", "system_prompt"],
+    "contextWindow": 128000,
+    "costTier": "low",
+    "cardPath": "docs/model-cards/azure-gpt-4o-mini.md"
+  },
+  {
+    "name": "gpt-5.4-nano",
+    "provider": "azure",
+    "capabilities": ["tool_calls", "json_mode", "streaming", "system_prompt"],
+    "contextWindow": 128000,
+    "costTier": "low",
+    "cardPath": "docs/model-cards/azure-gpt-5.4-nano.md"
+  },
+  {
+    "name": "llama-local",
+    "provider": "local",
+    "capabilities": ["tool_calls", "streaming"],
+    "contextWindow": 8192,
+    "costTier": "unknown",
+    "cardPath": "docs/model-cards/local-llama.md"
+  }
+]

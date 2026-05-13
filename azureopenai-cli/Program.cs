@@ -41,6 +41,12 @@ internal class Program
     /// </summary>
     internal const string DefaultModelFallback = "gpt-4o-mini";
 
+    // S04E01 -- The Registry. Cached after Load() runs in Main() so the
+    // --doctor handler can read it without reloading. Set once at startup;
+    // never mutated after that.
+    internal static Registry.ModelRegistryEntry[] RegistryEntries { get; private set; }
+        = [];
+
     // SECURITY-AUDIT-001 MEDIUM-001: Bound stdin reads to 1 MB to prevent
     // unbounded memory allocation from a malicious/unbounded pipe. Ported
     // from v1 Program.cs:23 — must stay in sync with v1 cap.
@@ -200,6 +206,10 @@ internal class Program
                 AzureOpenAI_CLI.Net.EndpointAllowlist.OfflineMode = true;
             }
             LoadConfigEnv(preRaw);
+            // S04E01 -- The Registry. Load once at startup; unknown capability
+            // tags cause Environment.Exit(99) inside Load(). The result is
+            // cached in RegistryEntries for the --doctor handler.
+            RegistryEntries = Registry.ModelRegistry.Load(isRaw: preRaw);
 
             var opts = ParseArgs(args);
 
@@ -1352,11 +1362,21 @@ internal class Program
                     // which honors the env-var latch Mickey set up in
                     // S03E14. NEVER issues an authenticated API call and
                     // NEVER emits credential values.
-                    Environment.Exit(Cli.ProviderDoctor.Run(
-                        jsonMode: Array.Exists(args, a => string.Equals(a, "--json", StringComparison.Ordinal)),
-                        plain: Plain.IsActive(),
-                        Console.Out,
-                        Console.Error));
+                    // S04E01 -- registry section appended after provider table.
+                    {
+                        var doctorJson = Array.Exists(
+                            args, a => string.Equals(a, "--json", StringComparison.Ordinal));
+                        var doctorRaw = Array.Exists(
+                            args, a => string.Equals(a, "--raw", StringComparison.Ordinal));
+                        var doctorRc = Cli.ProviderDoctor.Run(
+                            jsonMode: doctorJson,
+                            plain: Plain.IsActive(),
+                            Console.Out,
+                            Console.Error);
+                        if (!doctorJson)
+                            WriteRegistrySection(Console.Out, isRaw: doctorRaw);
+                        Environment.Exit(doctorRc);
+                    }
                     break;
                 case "--plain":
                     // S03E14 (Mickey): plain-output mode -- suppress banner,
@@ -3616,6 +3636,58 @@ complete -c az-ai -w az-ai
         if (s.Length >= width) return s;
         return s + new string(' ', width - s.Length);
     }
+
+    // S04E01 -- The Registry. Writes the [registry] section to stdout after
+    // the provider table printed by ProviderDoctor. In raw mode the section
+    // is suppressed entirely (consistent with raw mode's purpose of clean
+    // stdout for LLM response piping).
+    //
+    // Normal output format (matches brief spec):
+    //   [registry] 3 known models
+    //     gpt-4o-mini     azure    configured   tool_calls json_mode streaming system_prompt
+    //     llama-local     local    NOT SET      tool_calls streaming
+    //
+    // "configured" = provider's primary env-vars are all non-empty:
+    //   azure   -> AZUREOPENAIENDPOINT + AZUREOPENAIAPI
+    //   foundry -> AZURE_FOUNDRY_ENDPOINT + AZURE_FOUNDRY_KEY
+    //   local   -> AZ_AI_LLAMACPP_ENDPOINT (TODO: finalize local provider name in E02+)
+    private static void WriteRegistrySection(TextWriter stdout, bool isRaw)
+    {
+        if (isRaw) return;
+
+        var entries = RegistryEntries;
+        stdout.WriteLine(
+            $"[registry] {entries.Length} known model{(entries.Length == 1 ? "" : "s")}");
+
+        foreach (var e in entries)
+        {
+            var status = IsProviderConfigured(e.Provider) ? "configured" : "NOT SET";
+            var caps = string.Join(" ", e.Capabilities ?? []);
+            var line = "  "
+                + Pad(e.Name, 16)
+                + Pad(e.Provider, 9)
+                + Pad(status, 13)
+                + caps;
+            stdout.WriteLine(line);
+        }
+    }
+
+    private static bool IsProviderConfigured(string provider) =>
+        provider switch
+        {
+            "azure" => !string.IsNullOrWhiteSpace(
+                           Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT"))
+                       && !string.IsNullOrWhiteSpace(
+                           Environment.GetEnvironmentVariable("AZUREOPENAIAPI")),
+            "foundry" => !string.IsNullOrWhiteSpace(
+                              Environment.GetEnvironmentVariable("AZURE_FOUNDRY_ENDPOINT"))
+                         && !string.IsNullOrWhiteSpace(
+                              Environment.GetEnvironmentVariable("AZURE_FOUNDRY_KEY")),
+            // TODO: finalize local provider env-var name (E02+); placeholder is AZ_AI_LLAMACPP_ENDPOINT
+            "local" => !string.IsNullOrWhiteSpace(
+                            Environment.GetEnvironmentVariable("AZ_AI_LLAMACPP_ENDPOINT")),
+            _ => false,
+        };
 
     /// <summary>
     /// Handles <c>--config export-env</c> — resolves Azure OpenAI credentials

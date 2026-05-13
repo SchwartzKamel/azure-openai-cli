@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AzureOpenAI_CLI.Cache;
+using AzureOpenAI_CLI.Registry;
 using AzureOpenAI_CLI.Squad;
 
 namespace AzureOpenAI_CLI;
@@ -129,6 +130,9 @@ internal record ProviderDoctorEntry(
 [JsonSerializable(typeof(ProviderDoctorReport))]
 [JsonSerializable(typeof(ProviderDoctorEntry))]
 [JsonSerializable(typeof(List<ProviderDoctorEntry>))]
+// ── S04E01 The Registry --------------------------------------------------
+[JsonSerializable(typeof(ModelRegistryEntry))]
+[JsonSerializable(typeof(ModelRegistryEntry[]))]
 // ── Squad types ─────────────────────────────────────────────────
 [JsonSerializable(typeof(SquadConfig))]
 [JsonSerializable(typeof(TeamConfig))]

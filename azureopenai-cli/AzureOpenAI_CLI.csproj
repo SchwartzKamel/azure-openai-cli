@@ -59,6 +59,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- S04E01 The Registry: seed model registry embedded in the binary -->
+    <EmbeddedResource Include="Registry\registry.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- S03E22 The Fallback: tests reach into Resilience.* internals. -->
     <InternalsVisibleTo Include="AzureOpenAI_CLI.Tests" />
   </ItemGroup>
