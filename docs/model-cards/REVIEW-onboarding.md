@@ -317,3 +317,74 @@ Could I add a fourth model card from just these docs? **Mostly yes, but with fou
 2. **Add a bold warning to README.md step 4: "Do not forget to add the `cardPath` entry to `registry.json`, or the model card will not be loaded."** This is the most likely silent failure a junior will encounter. Make it impossible to miss.
 
 3. **Add a "Glossary" or "Key terms" section to README.md with brief one-sentence definitions for: embedded resource, capability tags, GGUF, quantisation, chat template, Espanso, streaming.** Or create `docs/model-cards/GLOSSARY.md` and link to it from the README. This centralizes the tribal knowledge.
+
+---
+
+## Accessibility review (Mickey, S04E02 Wave 2b)
+
+Reviewed Russell's `--doctor` `[registry]` rendering (commit `57f21ec`) from
+the screen-reader / NO_COLOR / braille-display lens. Regression-locked by
+`tests/AzureOpenAI_CLI.Tests/DoctorRegistryAccessibilityTests.cs` (this
+episode) alongside Puddy's existing registry coverage in `RegistryTests.cs`.
+
+### What works (no action needed)
+
+- **NO_COLOR=1 produces zero ANSI bytes** in the `[registry]` block. The
+  section never colorizes anything, so the no-color.org contract is met by
+  construction. Locked in by `RegistrySection_NoColor_ContainsZeroAnsiEscapes`.
+- **Spaces, not tabs.** Column alignment uses padding spaces. A screen
+  reader will not announce "tab tab tab" between provider / env-status /
+  card-status. Locked in by `RegistrySection_ContainsZeroTabCharacters`.
+- **Model name leads each row** once leading whitespace is stripped. A user
+  listening line-by-line hears the most identifying token first
+  (`gpt-4o-mini ...`), not an empty padding column. Locked in by
+  `RegistrySection_EachModelRow_LeadsWithModelName`.
+- **ASCII-only output.** No `\u2026` ellipsis (Russell uses ASCII `...`),
+  no box-drawing, no pictographs. Braille displays render cleanly. Locked
+  in by `RegistrySection_NoColor_IsAsciiOnly`.
+- **C0/C1 sanitization** of user-supplied card fields (`SanitizeForTerminal`)
+  means a hostile override card cannot smuggle CSI escapes into the audit
+  surface. Already covered by Newman's hardening in `Registry/*`.
+- **`--raw` suppression** removes the entire section, preserving the
+  scriptable contract for stdout consumers.
+
+### What needs follow-up (low-priority a11y polish for E04 *Reading Room*)
+
+- **60-char description truncation can cut mid-word.** Example: a card
+  whose description ends in "structured-outputs only" might be sliced as
+  `"... structured-out..."`. Not a bug -- the contract is "<= 60 visible
+  chars + ASCII ellipsis" -- but a screen reader reading the partial token
+  is mildly hostile. **Suggestion for E04:** truncate at the last word
+  boundary at-or-before the limit, then append `...`. File as
+  backlog-grade observation, not a blocker.
+- **`(no card)` token in the card-status column** is a parenthesized
+  English fragment in a column where the other values are bare status
+  words (`active`, `preview`). Screen readers will announce
+  "open-paren no card close-paren" which is louder than the data warrants.
+  **Suggestion:** rename to `unknown` (single bare word, parallels the
+  sibling values, scans the same in audio and on a braille line). Backlog
+  item for Elaine to confirm copy-direction in E04.
+
+### Concrete recommendations for E04+ (Reading Room -- Elaine)
+
+- Document the `[registry]` column contract (offsets, widths, name-leads-row
+  invariant) in `docs/accessibility.md` so future presenters do not break
+  the screen-reader read-order.
+- Add `docs/accessibility.md` if it does not yet exist; backfill the S03E14
+  Plain / NO_COLOR / TERM=dumb commitments alongside the new registry
+  contract so we have one canonical a11y page.
+- When E04 ships card-rendering surfaces (likely a `--card <name>` flag),
+  apply the same five rules up front: no ANSI, no tabs, ASCII-only,
+  identifying token first, `--raw` clean.
+- Annual a11y audit (per Mickey's deliverables list) should cover both the
+  audit surfaces (`--doctor`, `--card`) and any future TUI -- coordinate
+  with Russell on visual and Elaine on docs.
+
+### Citations
+
+- Russell's layout: commit `57f21ec` (`feat(--doctor): registry section
+  shows card description + status`).
+- Puddy's registry regression suite: `tests/AzureOpenAI_CLI.Tests/RegistryTests.cs`
+  (Newman is currently extending; commit will land alongside this push).
+- Mickey's a11y assertions: this commit, file
+  `tests/AzureOpenAI_CLI.Tests/DoctorRegistryAccessibilityTests.cs`.
