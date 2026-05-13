@@ -142,7 +142,7 @@ internal sealed class PersonaMemory
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(ReadTimeoutSeconds));
             try
             {
-                var body = ReadSeekableTail(fs, len, MaxHistoryBytes, cts.Token);
+                var body = ReadSeekableTailAsync(fs, len, MaxHistoryBytes, cts.Token).GetAwaiter().GetResult();
                 // K-5 (2.0.1): surface the truncation marker when a rotated
                 // <name>.md.old sibling exists, so readers still see the
                 // "there was earlier history" signal the pre-rotation,
@@ -175,7 +175,7 @@ internal sealed class PersonaMemory
     /// Extracted into a testable helper so the 5 s cancellation path can be
     /// exercised without relying on platform-specific blocking device files.
     /// </summary>
-    internal static string ReadSeekableTail(Stream stream, long totalLength, int maxBytes, CancellationToken ct)
+    internal static async Task<string> ReadSeekableTailAsync(Stream stream, long totalLength, int maxBytes, CancellationToken ct)
     {
         bool truncated = totalLength > maxBytes;
         long seekOffset = truncated ? totalLength - maxBytes : 0;
@@ -186,7 +186,7 @@ internal sealed class PersonaMemory
             SkipUtf8ContinuationBytes(stream);
 
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 4096, leaveOpen: true);
-        string body = reader.ReadToEndAsync(ct).GetAwaiter().GetResult();
+        string body = await reader.ReadToEndAsync(ct);
 
         if (body.Length > maxBytes)
             body = body[^maxBytes..];
