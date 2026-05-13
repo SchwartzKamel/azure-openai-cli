@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(cli):** S04E04 *Reading Room* -- new `az-ai models`
+  subcommand surface with three subcommands: `list` (tabular index),
+  `show <name>` (full card), `capabilities` (inverted index). Each
+  supports `--json` (machine-readable via `AppJsonContext`) and
+  `--raw` (no decorative chars). New files:
+  `azureopenai-cli/Cli/ModelsCommand.cs` (Elaine, 553 lines),
+  `azureopenai-cli/Cli/TableRenderer.cs` (Mickey, 486 lines, 10 a11y
+  invariants -- no ANSI, no tabs, ASCII marker glyphs, display-width
+  measurement via Babu, no trailing whitespace),
+  `azureopenai-cli/Localization/EastAsianWidth.cs` (Babu, grapheme-
+  cluster aware `MeasureDisplayWidth(string?)`),
+  `docs/adr/ADR-014-output-formatting-standard.md` (Elaine, 248
+  lines). `ModelRegistry` gains `EnumerateInOrder()`, `TryFind()`,
+  and load-time shell-hostile-name reject (rc=99) (Kramer, closes
+  A11Y-CG-01). `--help` routing fixed: `az-ai models --help` no
+  longer hijacked by global help (closes A11Y-MR-01). Suite total
+  now **1408 passing** (21 new in `ModelsCommandTests.cs` -- Puddy;
+  CJK width fixtures included).
+- **docs(model-cards):** Mickey's `REVIEW-models-output.md` a11y
+  walkthrough of all three subcommands -- screen-reader
+  pronouncibility, ANSI-free verification, pipe-grep safety. 6
+  findings filed; 2 BLOCKER-CANDIDATE (MR-01 + MR-03) burned down
+  in Wave 2.5; 4 backlog items rolled to E05+.
+
+### Added
 - **fix(test):** S04SP4 *The Bucket* -- relax
   `TelemetryEmitterTests.DispatchScope_AroundFakeChatCall_LandsInExpectedLatencyBucket`
   from single-bucket exact match (`"250"`) to bucket-set membership
