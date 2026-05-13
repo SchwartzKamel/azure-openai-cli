@@ -431,35 +431,19 @@ public static class TableRenderer
 
     /// <summary>
     /// Measure the terminal display width of <paramref name="s"/> in cells.
+    /// Delegates to Babu's <c>EastAsianWidth.MeasureDisplayWidth</c> which is
+    /// grapheme-cluster aware (ZWJ emoji families, combining marks). See
+    /// invariant 6.
     /// </summary>
-    /// <remarks>
-    /// Invariant 6: prefer Babu's <c>EastAsianWidth.MeasureDisplayWidth</c>.
-    /// Until <c>azureopenai-cli/Localization/EastAsianWidth.cs</c> lands in
-    /// S04E04 Wave 1 (Babu), we fall back to <see cref="string.Length"/>,
-    /// which is wrong for CJK and combining marks but at least deterministic.
-    /// </remarks>
-    // TODO Babu: replace fallback with EastAsianWidth.MeasureDisplayWidth(s)
-    // once azureopenai-cli/Localization/EastAsianWidth.cs lands.
     private static int MeasureDisplayWidth(string s)
-    {
-        if (string.IsNullOrEmpty(s))
-        {
-            return 0;
-        }
+        => AzureOpenAI_CLI.Localization.EastAsianWidth.MeasureDisplayWidth(s);
 
-        // Fallback heuristic: count runes, not UTF-16 code units, so a
-        // surrogate-pair emoji counts as 1 (still wrong, but less wrong than
-        // .Length which counts it as 2). Babu's helper supersedes this.
-        int w = 0;
-        foreach (var rune in s.EnumerateRunes())
-        {
-            w += MeasureRuneWidth(rune);
-        }
-
-        return w;
-    }
-
-    // TODO Babu: replace with EastAsianWidth-aware per-rune measurement.
+    // Per-rune width fallback used only by TakePrefixByWidth to enumerate
+    // a prefix one rune at a time during truncation. Babu's helper measures
+    // by grapheme cluster (correct for combining marks and ZWJ sequences);
+    // this per-rune approximation is acceptable here because truncation
+    // budgets are coarse and the last-space rewind in Truncate snaps back
+    // to a word boundary anyway.
     private static int MeasureRuneWidth(System.Text.Rune rune)
     {
         // Combining marks and zero-width chars: width 0.
