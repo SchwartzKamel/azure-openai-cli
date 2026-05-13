@@ -148,7 +148,7 @@ public class PersonaMemoryHardeningTests : IDisposable
     }
 
     [Fact]
-    public void F2_ReadSeekableTail_CancellationTokenFires_OnSlowStream()
+    public void F2_ReadSeekableTailAsync_CancellationTokenFires_OnSlowStream()
     {
         // Unit-test the 5 s cancellation path directly on the extracted
         // ReadSeekableTail helper. Stream length < maxBytes so the skip-
@@ -161,11 +161,11 @@ public class PersonaMemoryHardeningTests : IDisposable
 
         // TaskCanceledException derives from OperationCanceledException.
         Assert.ThrowsAny<OperationCanceledException>(() =>
-            PersonaMemory.ReadSeekableTail(slow, slow.Length, 32_768, cts.Token));
+            PersonaMemory.ReadSeekableTailAsync(slow, slow.Length, 32_768, cts.Token).GetAwaiter().GetResult());
 
         sw.Stop();
         Assert.True(sw.Elapsed < TimeSpan.FromSeconds(2),
-            $"ReadSeekableTail didn't honor cancellation — took {sw.Elapsed.TotalSeconds:F2}s");
+            $"ReadSeekableTailAsync didn't honor cancellation — took {sw.Elapsed.TotalSeconds:F2}s");
     }
 
     /// <summary>
