@@ -748,6 +748,10 @@ internal class Program
             }
         }
 
+        // S04E03 The Capabilities -- startup gate for flag/capability mismatches.
+        var capGateMsg = AzureOpenAI_CLI.Capabilities.CapabilityGate.Check(model, opts, allowedModels);
+        if (capGateMsg is not null) return ErrorAndExit(capGateMsg, 2, opts.Json);
+
         // Build chat client — dispatches to Azure OpenAI or Foundry/GitHub Models
         // based on endpoint env vars. See ADR-005.
         // S03E13 -- opt-in telemetry. The DispatchScope captures start time

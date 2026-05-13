@@ -65,6 +65,26 @@ internal static class ModelRegistry
         return entries;
     }
 
+    /// <summary>
+    /// Returns the names of all registered model entries whose Capabilities
+    /// array contains <paramref name="tag"/>. Returns empty array if no
+    /// registry has been loaded or no entries match. Lookup is case-sensitive
+    /// (capability tags are intentionally lowercase canonical, per ADR-012).
+    /// </summary>
+    /// <remarks>
+    /// S04E03 -- consumed by CapabilityGate.Check to build rejection-message
+    /// suggestion lists.
+    /// </remarks>
+    public static string[] ModelsWithCapability(string tag)
+    {
+        var entries = Program.RegistryEntries;
+        if (entries is null || entries.Length == 0) return Array.Empty<string>();
+        return entries
+            .Where(e => e.Capabilities is not null && e.Capabilities.Contains(tag, StringComparer.Ordinal))
+            .Select(e => e.Name)
+            .ToArray();
+    }
+
     // -- private helpers -------------------------------------------------
 
     private static ModelRegistryEntry[] LoadEmbedded()

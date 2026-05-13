@@ -89,7 +89,7 @@ in the glossary (J-04, J-05, J-07, J-08, J-10, J-11, J-12, P-04, P-05).
 episode numbering with shipped reality (the original blueprint had
 E01 = "The Card" and E02 = "The Inventory"; we collapsed both into
 shipped E01 = "The Registry"). Projects the E03-E09 cast assignments
-+ a cast-balance ledger forward through E12 -- flags Kramer's lead
+plus a cast-balance ledger forward through E12 -- flags Kramer's lead
 drought, Bookman's overdue chair, and 13 supporting players still
 bench-warming.
 
@@ -287,7 +287,7 @@ audit.
 - `docs/exec-reports/s04-blueprint.md` (live running-order section)
 - `docs/exec-reports/s04e01-the-registry.md` (predecessor exec-report)
 - `docs/adr/ADR-012-model-registry-seam.md` (Wave 2 FDR appendix
-  + F-EE-01 CLOSED block)
+  plus F-EE-01 CLOSED block)
 - `docs/model-cards/REVIEW-onboarding.md` (Mickey a11y appendix)
 - `docs/model-cards/README.md` (Lloyd top-3 fix-forward + Glossary)
 - `azureopenai-cli/Registry/ModelCard.cs` (NEW, Kramer)

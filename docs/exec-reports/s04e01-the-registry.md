@@ -215,7 +215,7 @@ Kramer+Elaine (impl+docs), FDR+Puddy (red-team+regression).
 - **S04E02 *Embedded Cards*:** Lead Russell (UX/output formatting),
   co-lead Mickey (a11y for `--doctor` registry output). Scope: read
   card files at startup, populate `[registry]` section with description
-  + status, with F-01/F-03/F-04 prefix/size/stream guards in prologue.
+  plus status, with F-01/F-03/F-04 prefix/size/stream guards in prologue.
 - **S04E03 *The Capabilities*:** Lead Bookman (output economy),
   co-lead Maestro. Scope: enforce capability tags at request time
   (reject `--tools` on a model lacking `tool_calls`, etc).
