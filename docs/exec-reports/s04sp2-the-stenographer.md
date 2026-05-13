@@ -209,11 +209,39 @@ audit surface is a security or reliability defect.
   docs-lint (markdownlint-cli2) clean on `docs/exec-reports/s04sp2-
   the-stenographer.md` and `CHANGELOG.md`; ASCII grep clean on the
   exec-report; `make exec-report-check` clean.
-- CI status at push time: release run `25829203297` (tag `v2.3.0`)
-  was in-progress -- six-leg matrix, no `macos-13` leg present.
-  Final conclusion recorded on the GitHub Release page; if it
-  failed, fix-forward owned by Jerry under the `ci-triage` skill.
-  SP2 did not retouch the workflow.
+- CI status at push time: release run `25829203297` (tag `v2.3.0`,
+  SP1 base) failed at the `Build release body` step on the `printf`
+  bug (root cause of the v2.2.0 -> silence gap). SP2 fix-forward
+  retagged `v2.3.0` -> `c6185b6` (run `25829942927`); the printf
+  step now passes, all six matrix legs build green, but a
+  pre-existing single-test flake in
+  `AzureOpenAI_CLI.V2.Tests.TelemetryEmitterTests.DispatchScope_AroundFakeChatCall_LandsInExpectedLatencyBucket`
+  failed on `ci / build-and-test (macos-latest)` -- the same job
+  was green on run `25829203297` against effectively identical
+  test sources. Failure: `Assert.Contains: "latency_ms_bucket":"250"`
+  not present in the emitted telemetry JSON. Wall-clock budget
+  drift on the shared Apple Silicon GHA runner. Escalated below;
+  SP2's printf fix is verified-correct (the step ran past its
+  prior break-point). Re-tagging will not deflake the test --
+  it needs Frank Costanza / Puddy ownership.
+
+## Escalations
+
+- **Frank Costanza** (telemetry / SLO owner): `TelemetryEmitterTests
+  .DispatchScope_AroundFakeChatCall_LandsInExpectedLatencyBucket`
+  asserts on a specific latency bucket (`"250"`) emitted from a
+  fake-chat scope. On the GHA macos-latest (Apple Silicon shared)
+  runner, the dispatch scope landed in a different bucket. Either
+  the bucket boundaries are too tight for shared-runner CPU jitter,
+  or the fake-chat fixture needs a deterministic clock seam.
+  Cannot block v2.3.0 indefinitely on this -- it was green on the
+  immediately-prior run with the same test source.
+- **David Puddy** (flake triage): file a regression suite item to
+  quarantine the bucket assertion on macos-latest pending Frank's
+  fix, or convert the assertion from a single-bucket exact-match
+  to a bucket-set membership check.
+- **No security finding to Newman** -- audit surface was clean
+  on all live-contract surfaces.
 
 ## Credits
 
