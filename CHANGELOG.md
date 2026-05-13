@@ -22,8 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/exec-reports/s04sp4-the-bucket.md`.
 
 ### Added
-- **feat(capabilities):** S04E03 *The Capabilities* -- startup-time
-  capability gate. New `azureopenai-cli/Capabilities/CapabilityGate.cs`
+- **build(preflight):** S04SP3 *The Pre-Push* -- wired `make docs-lint`
+  + `make ascii-check` into `make preflight` and into the pre-push
+  hook (`scripts/pre-push.sh`, installed via `make install-hooks`).
+  Closes the gap that allowed 10+ consecutive `docs-lint` CI failures
+  to ship to `main` (commits with bad MD004 bullets or smart quotes
+  reached origin because `make preflight` did not lint markdown).
+  Local cost: ~4s on warm caches, ~30-45s cold-start. Skip override:
+  `Skip-Docs-Lint: <reason>` trailer for legacy CHANGELOG history
+  rows that pre-date the gate. See
+  `docs/exec-reports/s04sp3-the-pre-push.md`.
+
+### Added
   (`Check(resolvedModel, opts, allowedModels) -> string?`) and
   `azureopenai-cli/Cli/CapabilityRejection.cs`
   (`Build(flag, capability, model, suggestions) -> string`). Gate
