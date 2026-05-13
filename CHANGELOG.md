@@ -8,7 +8,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- _(no changes yet)_
+- **feat(registry):** S04E01 *The Registry* -- typed model registry seam.
+  New `azureopenai-cli/Registry/` namespace: `ModelCapability` (validator
+  + allowed-tag set), `ModelRegistryEntry` (typed record), `ModelRegistry`
+  (loader). Embedded `registry.json` seed (3 entries: `gpt-4o-mini`,
+  `gpt-5.4-nano`, `llama-local`). User override at
+  `~/.config/az-ai/registry.json` *replaces* the seed (does not merge --
+  intentional: keeps offline behavior deterministic). Unknown capability
+  tags fail at startup with rc=99 and a list of allowed tags. Card paths
+  with no file emit `[WARN]` but are non-fatal. `--doctor` gains a new
+  `[registry]` section listing each model with provider + configuration
+  status + capability tags. `--raw` suppresses the section.
+- **docs(model-cards):** New `docs/model-cards/` -- card format spec,
+  three seed cards (`azure-gpt-4o-mini`, `azure-gpt-5.4-nano`,
+  `local-llama`), plus a junior-lens onboarding review
+  (`REVIEW-onboarding.md`, 30 observations).
+- **docs(adr):** New `docs/adr/ADR-012-model-registry-seam.md` with
+  adversarial review appendix (9 findings -- 0 critical, 1 high latent,
+  4 medium, 3 low, 1 nit).
+- **docs(i18n):** New `docs/i18n/` -- Japanese, Chinese (Simplified),
+  Spanish, and Korean quick-starts. Off-roster episode brief at
+  `docs/episode-briefs/s04off1-the-translation.md`.
+- **test(registry):** New `tests/AzureOpenAI_CLI.Tests/RegistryTests.cs`
+  (7 facts: happy-path, unknown-tag rc=99, missing-cardPath warn, empty
+  override, override-replaces-seed, serialization round-trip, no-fetch).
+- **test(i18n):** New `tests/AzureOpenAI_CLI.Tests/I18n/CjkRoundTripTests.cs`
+  (29 round-trip facts across ja/zh/es/ko; validates UTF-8 console +
+  `<InvariantGlobalization>true</>` + NFKC path normalization).
+
+### Security
+- **fix(--doctor):** Terminal-injection guard on registry output.
+  User-supplied `Name`, `Provider`, and capability tag strings from
+  `~/.config/az-ai/registry.json` are now scrubbed of C0/C1 control
+  characters (incl. ESC/CSI/OSC) before being printed by `--doctor`.
+  Printable Unicode (CJK, emoji, accented chars) passes through
+  unchanged. Closes FDR finding F-02 (S04E01 Wave 2 adversarial review).
 
 ## [2.3.0] -- 2026-05-13
 

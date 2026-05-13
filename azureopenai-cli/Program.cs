@@ -3662,14 +3662,37 @@ complete -c az-ai -w az-ai
         foreach (var e in entries)
         {
             var status = IsProviderConfigured(e.Provider) ? "configured" : "NOT SET";
-            var caps = string.Join(" ", e.Capabilities ?? []);
+            var caps = string.Join(" ", (e.Capabilities ?? []).Select(SanitizeForTerminal));
             var line = "  "
-                + Pad(e.Name, 16)
-                + Pad(e.Provider, 9)
+                + Pad(SanitizeForTerminal(e.Name), 16)
+                + Pad(SanitizeForTerminal(e.Provider), 9)
                 + Pad(status, 13)
                 + caps;
             stdout.WriteLine(line);
         }
+    }
+
+    // S04E01 Wave 2 -- FDR F-02 fix. User-supplied registry fields (Name,
+    // Provider, Capabilities from ~/.config/az-ai/registry.json) are echoed
+    // to the terminal by --doctor. Strip C0/C1 control characters (incl. ESC,
+    // OSC, CSI) to neutralize ANSI/terminal injection attacks. Printable
+    // Unicode is preserved (CJK, emoji, accented chars all pass through).
+    private static string SanitizeForTerminal(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        var sb = new System.Text.StringBuilder(value.Length);
+        foreach (var ch in value)
+        {
+            if (ch < 0x20 || (ch >= 0x7F && ch <= 0x9F))
+            {
+                sb.Append('?');
+            }
+            else
+            {
+                sb.Append(ch);
+            }
+        }
+        return sb.ToString();
     }
 
     private static bool IsProviderConfigured(string provider) =>
