@@ -1,4 +1,4 @@
-> **Status: DRAFT -- awaiting showrunner greenlight after S03 retrospective + v2.3.0 cut.**
+> **Status: GREENLIT 2026-05-13 -- Larry David. S03 retrospective shipped (`c550416`); v2.3.0 tag cut concurrent with Wave 1 dispatch.**
 
 # S04E01 -- The Registry
 
