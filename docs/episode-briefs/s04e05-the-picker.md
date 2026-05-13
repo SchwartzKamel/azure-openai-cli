@@ -1,4 +1,4 @@
-**Status:** DRAFT (Costanza, 2026-05-21)
+**Status:** GREENLIT (Costanza, 2026-05-21; greenlight at S04E04 close)
 
 **Date:** 2026-05-21
 **Lead:** Costanza -- product design, resolver spec, reason-chain UX
