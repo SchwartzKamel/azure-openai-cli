@@ -191,7 +191,7 @@ public class DoctorRegistryTests
                 + "\"cardPath\":\"\"}]";
             File.WriteAllText(Path.Combine(cfgDir, "registry.json"), json, Encoding.UTF8);
 
-            var (stdout, _, rc) = RunCli(
+            var (stdout, stderr, rc) = RunCli(
                 new[] { "--doctor" },
                 new Dictionary<string, string>
                 {
@@ -203,19 +203,31 @@ public class DoctorRegistryTests
                     ["AZ_AI_REGISTRY_DIR"] = cfgDir,
                 });
 
-            Assert.Equal(0, rc);
-            Assert.Contains("[registry]", stdout);
-            // ESC (0x1B) byte must not appear anywhere in stdout. Use
-            // IndexOf<char> rather than Assert.DoesNotContain(string) --
-            // xUnit's substring formatter renders a lone C0 needle as ""
-            // (false-positive failure) and the char overload is unambiguous.
-            var escAt = stdout.IndexOf('\u001B');
-            Assert.True(escAt < 0,
-                "ESC byte leaked into stdout at index " + escAt);
-            // Sanitized form: ESC -> '?', remaining payload "[31mRED" stays
-            // because '[' is printable.
-            Assert.Contains("evil?", stdout);
-            Assert.Contains("[31mRED", stdout);
+            // S04E04 Kramer (3bd7f8d): shell-hostile names are now rejected
+            // at registry-load time with rc=99, BEFORE display. The old
+            // path (rc=0 + display-time ESC -> '?' scrub) is superseded;
+            // the new defense is strictly stronger because the offending
+            // bytes never enter the rendering pipeline. The display
+            // sanitizer remains in place for other surfaces (e.g. card
+            // fields) where load-time rejection is not appropriate.
+            // See ADR-012 (load-time reject bullet) and FINDING-P-S04E04-03.
+            Assert.Equal(99, rc);
+            Assert.Contains("registry rejected", stderr, StringComparison.Ordinal);
+            Assert.Contains("shell-hostile character", stderr, StringComparison.Ordinal);
+            // ESC (0x1B) byte must not appear in stdout. stdout is empty on
+            // load-time reject (rc=99 fires before doctor renders), so this
+            // is effectively trivial -- kept as a regression sentinel in
+            // case future routing puts anything on stdout in this path.
+            //
+            // NOTE: stderr currently DOES contain the raw ESC byte because
+            // Kramer's reject message format echoes the offending name
+            // verbatim ('[ERROR] registry rejected: model name \u001b[31m...').
+            // Filed as FINDING-S04E04-04 for Kramer to scrub the name in
+            // the rejection message before this assertion can be tightened.
+            // Use IndexOf<char> rather than Assert.DoesNotContain(string)
+            // (xUnit substring formatter renders lone C0 needles as "").
+            Assert.True(stdout.IndexOf('\u001B') < 0,
+                "ESC byte leaked into stdout");
         }
         finally
         {
