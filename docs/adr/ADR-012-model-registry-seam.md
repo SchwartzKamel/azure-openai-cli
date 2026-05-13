@@ -73,6 +73,14 @@ Key design points:
 - **Load happens after `LoadConfigEnvFrom()` at startup:** provider env-var status
   in `--doctor` is evaluated against the loaded environment, so auto-config must run
   first.
+- **Shell-hostile model names rejected at load (S04E04, A11Y-CG-01):** any
+  `Name` containing a single quote (`'`), double quote (`"`), backslash (`\`),
+  or a C0/C1 control codepoint (`U+0000`-`U+001F`, `U+007F`-`U+009F`) fails
+  the load with `rc=99` and an `[ERROR] registry rejected: model name '...'
+  contains shell-hostile character at offset N` message. Names flow into
+  rendered tables, screen-reader output, and shell-quoted command examples;
+  filtering at the seam keeps every downstream surface safe. Closes Mickey's
+  A11Y-CG-01 finding from S04E03.
 
 ## Alternatives considered
 

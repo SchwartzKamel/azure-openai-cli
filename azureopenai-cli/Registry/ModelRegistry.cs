@@ -85,6 +85,50 @@ internal static class ModelRegistry
             .ToArray();
     }
 
+    /// <summary>
+    /// Enumerates all loaded registry entries in their original registry-file
+    /// order. Returns an empty list if no registry has been loaded. Stable
+    /// across invocations -- the order matches the JSON source (embedded
+    /// seed, or the user override that replaced it).
+    /// </summary>
+    /// <remarks>
+    /// S04E04 -- consumed by <c>ModelsCommand</c> for <c>az-ai models list</c>
+    /// and as the tie-break source for the alphabetical sort (registration
+    /// order breaks ties; see brief acceptance criterion 9).
+    /// </remarks>
+    public static IReadOnlyList<ModelRegistryEntry> EnumerateInOrder()
+    {
+        return Program.RegistryEntries ?? Array.Empty<ModelRegistryEntry>();
+    }
+
+    /// <summary>
+    /// Case-sensitive name lookup against the loaded registry. Returns
+    /// <c>true</c> and the matching entry, or <c>false</c> and <c>null</c>
+    /// when no registry is loaded, the name is null/empty, or no entry
+    /// matches. Use this to back <c>az-ai models show &lt;name&gt;</c>.
+    /// </summary>
+    /// <remarks>
+    /// S04E04 -- ordinal comparison only, consistent with
+    /// <see cref="ModelsWithCapability"/> and ADR-012's case-sensitive
+    /// capability-tag stance.
+    /// </remarks>
+    public static bool TryFind(string name, out ModelRegistryEntry? entry)
+    {
+        if (string.IsNullOrEmpty(name)) { entry = null; return false; }
+        var entries = Program.RegistryEntries;
+        if (entries is null) { entry = null; return false; }
+        foreach (var e in entries)
+        {
+            if (string.Equals(e.Name, name, StringComparison.Ordinal))
+            {
+                entry = e;
+                return true;
+            }
+        }
+        entry = null;
+        return false;
+    }
+
     // -- private helpers -------------------------------------------------
 
     private static ModelRegistryEntry[] LoadEmbedded()
@@ -131,10 +175,41 @@ internal static class ModelRegistry
         }
     }
 
+    /// <summary>
+    /// Validates every entry returned by <see cref="LoadEmbedded"/> /
+    /// <see cref="ApplyUserOverride"/>. Two fatal classes (both rc=99):
+    /// (1) any capability tag outside <see cref="ModelCapability.AllowedTags"/>;
+    /// (2) any <c>Name</c> containing a shell-hostile character -- single
+    /// quote, double quote, backslash, or a C0/C1 control codepoint
+    /// (0x00-0x1F or 0x7F-0x9F). The shell-hostile-name reject closes
+    /// Mickey's A11Y-CG-01 from S04E03 (terminal-injection / screen-reader
+    /// noise in suggestion lists). Missing <c>CardPath</c> remains a WARN.
+    /// </summary>
     private static void ValidateEntries(ModelRegistryEntry[] entries, bool isRaw)
     {
         foreach (var entry in entries)
         {
+            // A11Y-CG-01 -- reject shell-hostile chars in model names at load
+            // time so they never reach the renderer, suggestion lists, or
+            // shell-quoted command examples. Fatal (rc=99) -- consistent with
+            // unknown-capability-tag handling above.
+            if (!string.IsNullOrEmpty(entry.Name))
+            {
+                for (int i = 0; i < entry.Name.Length; i++)
+                {
+                    var c = entry.Name[i];
+                    if (c == '\'' || c == '"' || c == '\\'
+                        || c <= '\u001F'
+                        || (c >= '\u007F' && c <= '\u009F'))
+                    {
+                        Console.Error.WriteLine(
+                            $"[ERROR] registry rejected: model name '{entry.Name}' contains shell-hostile character at offset {i}");
+                        Environment.Exit(99);
+                        return; // unreachable; satisfies compiler
+                    }
+                }
+            }
+
             // Validate capability tags -- unknown tag is fatal (rc=99).
             foreach (var tag in entry.Capabilities ?? [])
             {
