@@ -231,10 +231,10 @@ jobs:
             printf '```\n\n'
             printf 'SBOMs (CycloneDX JSON) are attached alongside each archive.\n\n'
             printf '## Package Manager Install\n\n'
-            printf '- Homebrew (latest): `brew install schwartzkamel/tap/az-ai`\n'
-            printf '- Homebrew (pinned): `brew install schwartzkamel/tap/az-ai@%s`\n' "$REF"
-            printf '- Scoop:   `scoop install schwartzkamel/az-ai`\n'
-            printf '- Nix:     `nix run github:SchwartzKamel/azure-openai-cli?dir=packaging/nix`\n\n'
+            printf -- '- Homebrew (latest): `brew install schwartzkamel/tap/az-ai`\n'
+            printf -- '- Homebrew (pinned): `brew install schwartzkamel/tap/az-ai@%s`\n' "$REF"
+            printf -- '- Scoop:   `scoop install schwartzkamel/az-ai`\n'
+            printf -- '- Nix:     `nix run github:SchwartzKamel/azure-openai-cli?dir=packaging/nix`\n\n'
             printf '## SHA-256 Checksums\n\n'
             printf '```\n'
             printf '%s\n' "$DIGEST_BLOCK"

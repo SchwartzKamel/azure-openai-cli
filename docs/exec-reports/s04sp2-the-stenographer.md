@@ -24,10 +24,20 @@ contract. If any of them still promised an `osx-x64` tarball, the next
 release would look incoherent the moment a user opened the GitHub
 Release page.
 
-This special is audit-only. No workflow refactor, no version bump, no
-new artifact. The deliverable is a clean confirmation that what SP1
-removed stays removed everywhere it matters, plus a CHANGELOG entry
-recording that the audit happened.
+This special was scoped as audit-only. Mid-special, the v2.3.0 release
+run that SP1 retagged completed with `conclusion=failure` -- not on
+the matrix, but on a pre-existing bash `printf '- ...'` bug in the
+`Build release body` step of `.github/workflows/release.yml`. The
+leading `-` was being parsed as an option flag (`printf: - : invalid
+option`, exit rc=2). That bug has been silently red on every release
+attempt since the S03E30 *Audit Trilogy* rewrote the heredoc, and was
+masked all this time by the `macos-13` queue starvation SP1 fixed.
+This is the actual root cause of the v2.2.0 -> silence gap.
+
+SP2's deliverable consequently grew by one fix-forward: four `printf`
+calls in the package-manager-install block changed to `printf -- '- ...'`
+to terminate option parsing, with `v2.3.0` retagged once more on top
+of SP1's base.
 
 ## Scene-by-scene
 
@@ -54,27 +64,42 @@ Three doc surfaces still had to be checked:
 | Wave | Agents (parallel) | Outcome |
 |------|-------------------|---------|
 | **1** | Mr. Lippman (solo audit) | README, release docs, and packaging surfaces audited; one stale-but-historical hot spot in `docs/release/artifact-inventory.md` filed as a finding; CHANGELOG `[Unreleased] ### Changed` entry added. |
+| **2** | Mr. Lippman + Jerry (fix-forward) | v2.3.0 release run failed on pre-existing `printf '- ...'` bash-builtin option-flag bug; four `printf` calls changed to `printf -- '- ...'`; `v2.3.0` retagged once more on SP1's base. |
 
 ### Act III -- Commit, preflight, push, CI
 
-Single docs-only commit. Docs-lint (markdownlint-cli2) and the smart-
-punct grep gates run cleanly against the new exec-report and the
-CHANGELOG hunk. The diff is markdown plus this exec-report; per the
-`docs-only-commit` skill the full preflight suite is not gated on
-docs-only pushes, but the docs-side gates (docs-lint, ascii-check,
-exec-report-check) were run explicitly.
+First push: docs-only commit (CHANGELOG entry + this exec-report).
+Docs-lint (markdownlint-cli2) clean; ASCII grep clean;
+`make exec-report-check` clean.
 
-Release run `25829203297` for tag `v2.3.0` was in-progress at SP2
-push time -- six-leg matrix, no `macos-13` leg present. Final
-conclusion captured in the Metrics section below.
+Release run `25829203297` for tag `v2.3.0` then completed with
+`conclusion=failure` at the `Build release body` step:
+`printf: - : invalid option` (rc=2). Triage per `ci-triage`:
+
+- Step source is `.github/workflows/release.yml` lines 234-237.
+- Four `printf '- Homebrew/Scoop/Nix ...'` calls; leading `-`
+  consumed as bash builtin option flag.
+- Fix: `printf -- '- ...'`. Four-line surgical edit.
+
+Second push: workflow fix + CHANGELOG note + this exec-report
+addendum. Cherry-picked the YAML hunk onto v2.3.0's SP1 base
+(`ffd2c1a`) and force-moved the `v2.3.0` tag; still no Release
+object published at the prior SHA, so no artifact contract was
+broken (same precondition SP1 verified).
+
+Release run on the retagged `v2.3.0` polled to completion; final
+conclusion captured in Metrics below.
 
 ## What shipped
 
 ### Production code
 
-n/a -- audit-only special. No code, no workflow YAML, no packaging
-manifest edits. SP1 had already corrected the contract; SP2's job
-is to confirm and document.
+`.github/workflows/release.yml` -- four `printf` calls in the
+`Build release body` step's package-manager-install block changed
+from `printf '- Homebrew (latest) ...'` to `printf -- '- Homebrew
+(latest) ...'`. The `--` terminator stops bash's printf builtin
+from consuming the leading `-` as an option flag. Four-line edit;
+no other workflow logic touched.
 
 ### Tests
 

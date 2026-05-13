@@ -86,6 +86,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drafted (Bookman) -- DRAFT status, awaiting showrunner greenlight.
 
 ### Changed
+- **ci(release):** S04SP2 fix-forward -- `printf '- Homebrew ...'` in
+  the `Build release body` step of `.github/workflows/release.yml` was
+  parsing the leading `-` as a bash-builtin printf option flag,
+  exiting rc=2 with `printf: - : invalid option` and failing every
+  release run since the S03E30 *Audit Trilogy* rewrite. This was the
+  real cause of the v2.2.0 -> silence gap; the `macos-13` queue
+  starvation that SP1 hit was masking it. Four `printf` calls in the
+  package-manager-install block now use `printf -- '- ...'` to
+  terminate option parsing. Re-tagged `v2.3.0` once more on top of
+  the SP1 base (`ffd2c1a`) to pick up the fix; still no published
+  Release object at the prior SHA so no artifact contract was broken.
 - **docs(release):** S04SP2 *The Stenographer* -- release-hygiene
   audit on top of SP1's matrix-drop retag. Verified the matrix-driven
   artifact table in `.github/workflows/release.yml` (lines 216-223)
