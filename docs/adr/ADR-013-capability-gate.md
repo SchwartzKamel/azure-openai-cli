@@ -179,6 +179,34 @@ downstream episode to either query both surfaces or pick the wrong
 one. Documenting the dual surface and deferring reconciliation is
 cheaper than building E03 on the surface we plan to retire.
 
+## Accessibility review (Mickey Abbott, S04E03 Wave 2)
+
+The rejection message reaches users through Espanso popups, screen readers,
+AHK tooltips, pipe-to-grep workflows, and CI logs. Full a11y walkthrough --
+JAWS/NVDA/VoiceOver/Orca read-aloud transcript, NO_COLOR confirmation,
+colorblind-safe analysis, keyboard-only path, pipe contracts, truncation
+behavior -- lives in
+[docs/model-cards/REVIEW-capability-rejection.md](../model-cards/REVIEW-capability-rejection.md).
+
+Headline: NO_COLOR is honored **by construction** (Bookman's `Scrub`
+whitelists `0x20..0x7E`, which excludes every C0/C1 byte including ESC), no
+color is used so colorblind-safety is N/A, the message is single-line plain
+ASCII so the screen-reader / keyboard-only / piped paths are identical.
+
+Open findings (both low severity, deferred):
+
+- **A11Y-CG-01** -- the printable-ASCII whitelist permits `'` (0x27), so a
+  hostile registry name containing an apostrophe would break shell-quoted
+  propagation of the rejection string. Recommended fix: reject `'` at
+  registry load time. Overlaps thematically with FDR's Wave 3 registry
+  hostile-input findings; route to E04.
+- **A11Y-CG-02** -- the suggestion tail is unbounded; word-boundary
+  truncation deferred to S04E04 *Reading Room*. Overlaps with
+  F-EE-AR-09 (Bookman's brevity budget covers prefix only).
+
+Regression guards: 7 assertions in
+`tests/AzureOpenAI_CLI.Tests/CapabilityGateAccessibilityTests.cs`.
+
 ## Adversarial review (FDR, S04E03 Wave 3)
 
 **Date:** 2026-05-21
