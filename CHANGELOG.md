@@ -43,6 +43,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   characters (incl. ESC/CSI/OSC) before being printed by `--doctor`.
   Printable Unicode (CJK, emoji, accented chars) passes through
   unchanged. Closes FDR finding F-02 (S04E01 Wave 2 adversarial review).
+- **fix(registry):** S04E02 hotfix -- close F-EE-01 parent-directory
+  symlink prefix bypass in `ModelRegistry.ReadCard` (CRITICAL, FDR
+  S04E02 Wave 2). `Path.GetFullPath` collapses `..` segments lexically
+  only and does not resolve symlinks anywhere along the path; an
+  attacker who could drop a symlink at any *parent* directory of a
+  card path (e.g. `<registryDir>/sub -> /etc`) defeated the F-01
+  prefix guard and gained a read-arbitrary-file primitive as the
+  `az-ai` user. Mitigation: canonicalise both `registryFull` and
+  `resolved` through `realpath(3)` on Linux (new `LibcRealpath`
+  P/Invoke alongside the existing `LibcStat` seam) -- with a per-
+  ancestor `Directory.ResolveLinkTarget(returnFinalTarget: true)`
+  walk as the cross-platform fallback -- before re-running
+  `StartsWith(canonicalRegistryDir)`. macOS via the ancestor walk
+  is best-effort (tracked as F-EE-05 in ADR-012). New regression
+  tests: `ReadCard_ParentDirectorySymlink_ExitsRc99`,
+  `ReadCard_LeafSymlinkOutsideDir_ExitsRc99`.
 
 ## [2.3.0] -- 2026-05-13
 

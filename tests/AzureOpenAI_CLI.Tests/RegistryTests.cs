@@ -427,4 +427,96 @@ public class RegistryTests
             Directory.Delete(tempDir, recursive: true);
         }
     }
+
+    // ── F-EE-01 (FDR S04E02 Wave 2, CRITICAL) regression coverage ─────
+    // Threat: Path.GetFullPath collapses ".." segments lexically only --
+    // it does NOT call realpath(3) and does NOT resolve symlinks anywhere
+    // in the path. File.ResolveLinkTarget(returnFinalTarget:false) only
+    // inspects the leaf. An attacker who can drop a symlink at any
+    // *parent directory* of a card path (e.g. <registryDir>/sub -> /etc)
+    // therefore defeats the F-01 prefix guard entirely and gains a
+    // read-arbitrary-file primitive as the az-ai user. Mitigation:
+    // canonicalise both registryFull and resolved through realpath(3)
+    // before re-running StartsWith.
+    [Fact]
+    public void ReadCard_ParentDirectorySymlink_ExitsRc99()
+    {
+        // CreateSymbolicLink on Windows requires the SeCreateSymbolicLink
+        // privilege (developer mode or admin). Skip there -- Linux/macOS
+        // exercise the regression cleanly.
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var registryDir = Path.Combine(Path.GetTempPath(), "az-ai-newman-reg-" + Guid.NewGuid().ToString("N"));
+        var victimDir = Path.Combine(Path.GetTempPath(), "az-ai-newman-victim-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(registryDir);
+        Directory.CreateDirectory(victimDir);
+        try
+        {
+            // Card-shaped file inside a directory we own but that lives
+            // OUTSIDE registryDir -- equivalent to /etc/passwd in the PoC
+            // without needing root to set up the test fixture.
+            File.WriteAllText(
+                Path.Combine(victimDir, "secret.md"),
+                "---\nname: pwned\nprovider: evil\n---\n");
+
+            // Drop the parent-directory symlink: <registryDir>/sub -> <victimDir>.
+            Directory.CreateSymbolicLink(Path.Combine(registryDir, "sub"), victimDir);
+
+            var ex = Assert.Throws<ModelCardException>(() =>
+                ModelRegistry.ReadCardOrThrow(
+                    cardPath: "sub/secret.md",
+                    registryDir: registryDir,
+                    isRaw: true));
+            Assert.Contains("escapes registry directory", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            try { Directory.Delete(registryDir, recursive: true); } catch (IOException) { }
+            try { Directory.Delete(victimDir, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    // Regression: leaf-symlink rejection still fires post-F-EE-01 fix.
+    // The new symlink-aware prefix check would also catch this (the
+    // canonical resolved path lives outside registryDir), but the
+    // existing leaf-only ResolveLinkTarget guard remains in place as
+    // defense in depth -- this test pins both.
+    [Fact]
+    public void ReadCard_LeafSymlinkOutsideDir_ExitsRc99()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var registryDir = Path.Combine(Path.GetTempPath(), "az-ai-newman-reg-" + Guid.NewGuid().ToString("N"));
+        var victimDir = Path.Combine(Path.GetTempPath(), "az-ai-newman-victim-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(registryDir);
+        Directory.CreateDirectory(victimDir);
+        try
+        {
+            var victimFile = Path.Combine(victimDir, "real-card.md");
+            File.WriteAllText(victimFile, "---\nname: pwned\nprovider: evil\n---\n");
+
+            // Leaf is the symlink; parents are real directories.
+            File.CreateSymbolicLink(Path.Combine(registryDir, "card-link.md"), victimFile);
+
+            var ex = Assert.Throws<ModelCardException>(() =>
+                ModelRegistry.ReadCardOrThrow(
+                    cardPath: "card-link.md",
+                    registryDir: registryDir,
+                    isRaw: true));
+            // Either the leaf-symlink guard or the new canonical prefix
+            // guard fires first depending on order; both are correct
+            // rejections, so accept either message shape.
+            Assert.True(
+                ex.Message.Contains("symlink", StringComparison.OrdinalIgnoreCase)
+                    || ex.Message.Contains("escapes", StringComparison.OrdinalIgnoreCase),
+                $"Unexpected rejection message: {ex.Message}");
+        }
+        finally
+        {
+            try { Directory.Delete(registryDir, recursive: true); } catch (IOException) { }
+            try { Directory.Delete(victimDir, recursive: true); } catch (IOException) { }
+        }
+    }
 }

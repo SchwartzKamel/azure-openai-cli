@@ -213,6 +213,30 @@ internal static class ModelRegistry
         if (!info.Exists)
             return null;
 
+        // ── F-EE-01: symlink-aware prefix re-check ────────────────────
+        // Path.GetFullPath collapses ".." LEXICALLY only -- it does not
+        // call realpath(3) and does not resolve symlinks anywhere along
+        // the path. An attacker who can drop a symlink at any *parent*
+        // directory of the resolved path (e.g. <registryDir>/sub -> /etc)
+        // defeats the lexical prefix check above and File.ResolveLinkTarget
+        // (which only inspects the leaf) misses the bypass entirely.
+        // Mitigation: canonicalise BOTH registryFull and resolved through
+        // realpath(3) on Linux (preferred) or a per-ancestor
+        // Directory.ResolveLinkTarget walk elsewhere, then re-run the
+        // StartsWith check. macOS via the ancestor walk is best-effort
+        // (tracked as F-EE-05 in ADR-012). FDR S04E02 Wave 2 / F-EE-01.
+        var canonicalRegistry = Canonicalize(registryFull);
+        var canonicalResolved = Canonicalize(resolved);
+        var canonicalRegistryWithSep = canonicalRegistry.EndsWith(Path.DirectorySeparatorChar)
+            ? canonicalRegistry
+            : canonicalRegistry + Path.DirectorySeparatorChar;
+        if (!canonicalResolved.StartsWith(canonicalRegistryWithSep, StringComparison.Ordinal)
+            && !string.Equals(canonicalResolved, canonicalRegistry, StringComparison.Ordinal))
+        {
+            throw new ModelCardException(
+                $"Card path '{cardPath}' escapes registry directory after symlink resolution.");
+        }
+
         // ── F-04 + symlink: regular files only ────────────────────────
         // FileAttributes.Device is unreliable on Linux (.NET 10 reports
         // 'Normal' for FIFOs), so we cannot use the brief's literal
@@ -420,6 +444,86 @@ internal static class ModelRegistry
 
     [DllImport("libc", EntryPoint = "stat", CharSet = CharSet.Ansi, ExactSpelling = true)]
     private static extern int LibcStat([MarshalAs(UnmanagedType.LPUTF8Str)] string path, byte[] statbuf);
+
+    // realpath(3) -- canonicalises a path by resolving every symlink along
+    // its length (NOT what Path.GetFullPath does; see F-EE-01). POSIX
+    // signature: char *realpath(const char *path, char *resolved_path).
+    // We pass a 4096-byte buffer (Linux PATH_MAX) so glibc/musl never
+    // malloc -- no free needed, no IntPtr ownership games. Returns the
+    // resolved_path pointer on success, NULL on failure (errno set).
+    private const int LinuxPathMax = 4096;
+
+    [DllImport("libc", EntryPoint = "realpath", CharSet = CharSet.Ansi, ExactSpelling = true)]
+    private static extern IntPtr LibcRealpath([MarshalAs(UnmanagedType.LPUTF8Str)] string path, byte[] resolved);
+
+    // Canonicalise an absolute path so that EVERY symlink along its
+    // length is resolved. Used by the F-EE-01 mitigation: a parent
+    // directory symlink (e.g. <registryDir>/sub -> /etc) defeats the
+    // lexical Path.GetFullPath prefix check, so we have to walk the
+    // path through realpath(3) (or a per-ancestor ResolveLinkTarget
+    // fallback) before re-running StartsWith.
+    private static string Canonicalize(string fullPath)
+    {
+        if (OperatingSystem.IsLinux())
+        {
+            try
+            {
+                var buf = new byte[LinuxPathMax];
+                if (LibcRealpath(fullPath, buf) != IntPtr.Zero)
+                {
+                    int len = Array.IndexOf(buf, (byte)0);
+                    if (len < 0) len = buf.Length;
+                    return Encoding.UTF8.GetString(buf, 0, len);
+                }
+                // realpath failed (target missing, EACCES, ELOOP). Fall
+                // through to the .NET ancestor walk -- it can still resolve
+                // most cases without the syscall.
+            }
+            catch (DllNotFoundException) { /* fall through */ }
+            catch (EntryPointNotFoundException) { /* fall through */ }
+        }
+        return CanonicalizeViaAncestors(fullPath);
+    }
+
+    // Cross-platform fallback: walk the path component by component and
+    // call Directory/File.ResolveLinkTarget(returnFinalTarget: true) on
+    // each ancestor so intermediate-directory symlinks ARE resolved
+    // (Path.GetFullPath alone does not). Best-effort on macOS where
+    // /tmp itself is a symlink to /private/tmp -- documented as F-EE-05.
+    private static string CanonicalizeViaAncestors(string fullPath)
+    {
+        var components = new List<string>();
+        string? cursor = fullPath;
+        while (true)
+        {
+            var parent = Path.GetDirectoryName(cursor);
+            if (string.IsNullOrEmpty(parent) || string.Equals(parent, cursor, StringComparison.Ordinal))
+            {
+                components.Add(cursor!); // root, e.g. "/" or "C:\"
+                break;
+            }
+            components.Add(Path.GetFileName(cursor!));
+            cursor = parent;
+        }
+        components.Reverse();
+
+        string accum = components[0];
+        for (int i = 1; i < components.Count; i++)
+        {
+            accum = Path.Combine(accum, components[i]);
+            try
+            {
+                FileSystemInfo? target = i < components.Count - 1
+                    ? Directory.ResolveLinkTarget(accum, returnFinalTarget: true)
+                    : File.ResolveLinkTarget(accum, returnFinalTarget: true);
+                if (target is not null)
+                    accum = target.FullName;
+            }
+            catch (IOException) { /* component missing or not a link -- leave lexical */ }
+            catch (UnauthorizedAccessException) { /* not readable -- leave lexical */ }
+        }
+        return accum;
+    }
 
     private static bool IsRegularFile(string path)
     {

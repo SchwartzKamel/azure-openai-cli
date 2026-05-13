@@ -405,7 +405,7 @@ but the FIFO swap is the one Russell will hit first when his
 
 | ID | Severity | Title | Verified | Disposition |
 |----|----------|-------|----------|-------------|
-| F-EE-01 | CRITICAL | Parent-dir symlink defeats prefix guard | verified | FIX-NOW |
+| F-EE-01 | CRITICAL | Parent-dir symlink defeats prefix guard | verified | **CLOSED** (S04E02 hotfix) |
 | F-EE-02 | MEDIUM | Size-cap TOCTOU between FileInfo.Length and ReadAllText | partial | S04E03 backlog |
 | F-EE-03 | MEDIUM | Type-check TOCTOU: stat then open allows FIFO swap | partial | S04E03 backlog |
 | F-EE-04 | HIGH | AZ_AI_REGISTRY_DIR re-anchor with no canonicalisation/log | partial | FIX-NOW (lite) |
@@ -477,6 +477,16 @@ is a full read primitive without ever needing to write to `~/.config`.
 **Disposition:** **FIX-NOW**. Block S04E02 episode close on this. The
 fix is one P/Invoke or one `ResolveLinkTarget(returnFinalTarget: true)`
 loop -- well within Kramer's wave-3 scope.
+
+**Status: CLOSED in S04E02 hotfix** (Newman). Mitigation: canonicalise
+both `registryFull` and `resolved` through `realpath(3)` on Linux
+(new `LibcRealpath` P/Invoke alongside the existing `LibcStat` seam),
+with a per-ancestor `Directory.ResolveLinkTarget(returnFinalTarget:
+true)` walk as the cross-platform fallback, before re-running the
+`StartsWith` prefix check. macOS via the ancestor walk is best-effort
+and tracked as F-EE-05. Regression tests:
+`ReadCard_ParentDirectorySymlink_ExitsRc99` and
+`ReadCard_LeafSymlinkOutsideDir_ExitsRc99` in `RegistryTests.cs`.
 
 ---
 
