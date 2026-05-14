@@ -329,6 +329,55 @@ internal static class TelemetryEmitter
         return Encoding.UTF8.GetString(ms.ToArray());
     }
 
+    // -- S04E05 *The Picker* W3 resolver-decision surface ------------------
+    // One event shape, emit-only. Fires once per process invocation at the
+    // ResolveSmartDefault.Pick(...) site in Program.cs. Strict-equality opt-in
+    // (AZ_AI_TELEMETRY=1, no new env var). Fields are non-PII by construction:
+    // model is a deployment name (already surfaced in --doctor), reason_code
+    // is one of four constants (EXPLICIT / PREFER_AXIS / ALLOWLIST_HEAD /
+    // FALLBACK), human_reason is ASCII-bounded at 120 chars (ResolveSmartDefault
+    // HumanReasonCap), and ts_ms is a Unix-millisecond integer. Closes
+    // F-PICKER-TRACE-01 (Frank's W2 review) -- one telemetry gate, one
+    // NDJSON wire format, no AZ_AI_TRACE.
+
+    /// <summary>One row per Pick() call. Emitted at the Program.cs call site after Pick returns.</summary>
+    public sealed record ResolverDecisionEvent(
+        [property: JsonPropertyName("event")] string Event,
+        [property: JsonPropertyName("model")] string Model,
+        [property: JsonPropertyName("reason_code")] string ReasonCode,
+        [property: JsonPropertyName("human_reason")] string HumanReason,
+        [property: JsonPropertyName("ts_ms")] long TsMs);
+
+    /// <summary>Emit a resolver_decision row. No-op when telemetry disabled.</summary>
+    public static void EmitResolverDecision(string model, string reasonCode, string humanReason)
+    {
+        if (!IsEnabled()) return;
+        var ev = new ResolverDecisionEvent(
+            Event: "resolver_decision",
+            Model: model ?? string.Empty,
+            ReasonCode: reasonCode ?? string.Empty,
+            HumanReason: humanReason ?? string.Empty,
+            TsMs: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        WriteLine(SerializeResolverDecision(ev));
+    }
+
+    /// <summary>Stable-key-order serialization for resolver_decision (test contract).</summary>
+    public static string SerializeResolverDecision(ResolverDecisionEvent ev)
+    {
+        using var ms = new MemoryStream(192);
+        using (var w = new Utf8JsonWriter(ms, new JsonWriterOptions { Indented = false }))
+        {
+            w.WriteStartObject();
+            w.WriteString("event", ev.Event);
+            w.WriteString("model", ev.Model);
+            w.WriteString("reason_code", ev.ReasonCode);
+            w.WriteString("human_reason", ev.HumanReason);
+            w.WriteNumber("ts_ms", ev.TsMs);
+            w.WriteEndObject();
+        }
+        return Encoding.UTF8.GetString(ms.ToArray());
+    }
+
     /// <summary>Stable-key-order serialization for fallback_outcome (test contract).</summary>
     public static string SerializeFallbackOutcome(FallbackOutcomeEvent ev)
     {

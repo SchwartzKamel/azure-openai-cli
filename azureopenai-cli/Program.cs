@@ -496,14 +496,13 @@ internal class Program
                 ExplicitModel: null,
                 PreferAxis: null,
                 Allowlist: pickerAllowlist));
-        if (string.Equals(Environment.GetEnvironmentVariable("AZ_AI_TRACE"), "1", StringComparison.Ordinal))
-        {
-            Console.Error.WriteLine(
-                "[TRACE] resolver model=" + pickerResult.Model
-                + " reason_code=" + pickerResult.ReasonCode
-                + " allowlist_size=" + pickerAllowlist.Length
-                + " human_reason=" + pickerResult.HumanReason);
-        }
+        // S04E05 W3 -- emit resolver decision through the existing
+        // TelemetryEmitter NDJSON surface (AZ_AI_TELEMETRY=1). Pick() stays
+        // pure; the emit lives at the call site. Closes F-PICKER-TRACE-01.
+        AzureOpenAI_CLI.Observability.TelemetryEmitter.EmitResolverDecision(
+            pickerResult.Model,
+            pickerResult.ReasonCode,
+            pickerResult.HumanReason);
         var envDefaultModel = string.IsNullOrEmpty(pickerResult.Model) ? null : pickerResult.Model;
 
         // S03E20 -- The Switch (Costanza). Run the centralized precedence

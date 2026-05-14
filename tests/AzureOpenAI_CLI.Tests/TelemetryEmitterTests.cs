@@ -400,4 +400,50 @@ public class TelemetryEmitterTests
             "Expected latency_ms_bucket in {250,500,1000,2500,5000,10000,+inf}; payload was: " + captured);
         Assert.Contains("\"outcome\":\"success\"", captured);
     }
+
+    // -- S04E05 W3 *The Picker* resolver_decision surface ---------------------
+    // Closes F-PICKER-TRACE-01. EmitResolverDecision shares the same gate
+    // (AZ_AI_TELEMETRY=1, strict-equality) as the rest of TelemetryEmitter.
+
+    [Fact]
+    public void EmitResolverDecision_EnabledGate_WritesSingleNDJSONLineWithStableKeyOrder()
+    {
+        using var _env = new EnvScope("1");
+        using var _err = new StderrScope();
+
+        TelemetryEmitter.EmitResolverDecision(
+            model: "gpt-4o-mini",
+            reasonCode: "ALLOWLIST_HEAD",
+            humanReason: "model 'gpt-4o-mini' chosen as head of AZUREOPENAIMODEL");
+
+        var captured = _err.Writer.ToString().TrimEnd('\r', '\n');
+        Assert.DoesNotContain("\n", captured);
+        Assert.DoesNotContain("\r", captured);
+
+        int iEvent = captured.IndexOf("\"event\":\"resolver_decision\"", StringComparison.Ordinal);
+        int iModel = captured.IndexOf("\"model\":\"gpt-4o-mini\"", StringComparison.Ordinal);
+        int iReason = captured.IndexOf("\"reason_code\":\"ALLOWLIST_HEAD\"", StringComparison.Ordinal);
+        int iHuman = captured.IndexOf("\"human_reason\":", StringComparison.Ordinal);
+        int iTs = captured.IndexOf("\"ts_ms\":", StringComparison.Ordinal);
+
+        Assert.True(iEvent >= 0, "missing event key in: " + captured);
+        Assert.True(iModel > iEvent, "model key not after event in: " + captured);
+        Assert.True(iReason > iModel, "reason_code key not after model in: " + captured);
+        Assert.True(iHuman > iReason, "human_reason key not after reason_code in: " + captured);
+        Assert.True(iTs > iHuman, "ts_ms key not after human_reason in: " + captured);
+    }
+
+    [Fact]
+    public void EmitResolverDecision_DisabledGate_WritesNothing()
+    {
+        using var _env = new EnvScope(null);
+        using var _err = new StderrScope();
+
+        TelemetryEmitter.EmitResolverDecision(
+            model: "gpt-4o-mini",
+            reasonCode: "EXPLICIT",
+            humanReason: "model 'gpt-4o-mini' chosen because user passed --model");
+
+        Assert.Equal(string.Empty, _err.Writer.ToString());
+    }
 }

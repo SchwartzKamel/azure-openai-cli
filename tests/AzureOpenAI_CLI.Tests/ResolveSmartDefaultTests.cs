@@ -769,4 +769,34 @@ public class ResolveSmartDefaultTests
         Assert.Contains("unknown axis", r.HumanReason);
         Assert.Contains("foobar", r.HumanReason);
     }
+
+    // S04E05 W3 -- F-PICKER-TRACE-01 close-out. Pick is documented as pure
+    // (no I/O, no env reads, no statics). Re-call N times across all four
+    // reason codes and assert byte-equal results -- if Pick had any hidden
+    // side channel (cached state, clock skew leaking into HumanReason),
+    // determinism would break. Stderr emission moved to the Program.cs call
+    // site; this fact pins the Pick contract.
+    [Fact]
+    public void Pick_IsPure_RepeatedCallsYieldIdenticalResultsAcrossAllReasonCodes()
+    {
+        var reg = ResolverTestCorpus.MixedRegistry();
+        var inputSets = new[]
+        {
+            ResolverTestCorpus.Inputs(explicitModel: "user-pick"),
+            ResolverTestCorpus.Inputs(preferAxis: "cost", allowlist: ResolverTestCorpus.MixedAllowlist),
+            ResolverTestCorpus.Inputs(allowlist: new[] { "balanced", "cheap-fast" }),
+            ResolverTestCorpus.Inputs(allowlist: System.Array.Empty<string>()),
+        };
+        foreach (var inputs in inputSets)
+        {
+            var first = ResolveSmartDefault.Pick(reg, inputs);
+            for (int i = 0; i < 25; i++)
+            {
+                var r = ResolveSmartDefault.Pick(reg, inputs);
+                Assert.Equal(first.Model, r.Model);
+                Assert.Equal(first.ReasonCode, r.ReasonCode);
+                Assert.Equal(first.HumanReason, r.HumanReason);
+            }
+        }
+    }
 }
