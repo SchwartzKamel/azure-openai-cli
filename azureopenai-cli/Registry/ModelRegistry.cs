@@ -203,7 +203,7 @@ internal static class ModelRegistry
                         || (c >= '\u007F' && c <= '\u009F'))
                     {
                         Console.Error.WriteLine(
-                            $"[ERROR] registry rejected: model name '{entry.Name}' contains shell-hostile character at offset {i}");
+                            $"[ERROR] registry rejected: model name '{ScrubForDisplay(entry.Name)}' contains shell-hostile character at offset {i}");
                         Environment.Exit(99);
                         return; // unreachable; satisfies compiler
                     }
@@ -216,7 +216,7 @@ internal static class ModelRegistry
                 if (!ModelCapability.IsValid(tag))
                 {
                     Console.Error.WriteLine(
-                        $"[ERROR] Unknown capability tag '{tag}' in registry entry '{entry.Name}'. "
+                        $"[ERROR] Unknown capability tag '{ScrubForDisplay(tag)}' in registry entry '{ScrubForDisplay(entry.Name)}'. "
                         + "Allowed tags: "
                         + string.Join(", ", ModelCapability.AllowedTags)
                         + ". rc=99.");
@@ -229,9 +229,32 @@ internal static class ModelRegistry
             if (string.IsNullOrEmpty(entry.CardPath) && !isRaw)
             {
                 Console.Error.WriteLine(
-                    $"[WARN] Registry entry '{entry.Name}' has no cardPath.");
+                    $"[WARN] Registry entry '{ScrubForDisplay(entry.Name)}' has no cardPath.");
             }
         }
+    }
+
+    // F-S04E04-04 -- scrub user-controlled names before interpolating into
+    // stderr. Any byte outside printable ASCII (0x20-0x7E) becomes '?'. This
+    // closes the terminal-injection surface re-introduced by the S04E04
+    // load-time reject, which echoed the raw offending name verbatim and
+    // therefore propagated ESC (0x1B) and other C0/C1 bytes straight to the
+    // user's terminal. Printable-but-shell-unsafe bytes (e.g. ';', '|') are
+    // preserved so entries like 'gpt-4o;rm' stay debuggable.
+    private static string ScrubForDisplay(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value ?? string.Empty;
+        }
+
+        var buf = new char[value.Length];
+        for (int i = 0; i < value.Length; i++)
+        {
+            var c = value[i];
+            buf[i] = (c < '\u0020' || c == '\u007F' || c > '\u007E') ? '?' : c;
+        }
+        return new string(buf);
     }
 
     // ── S04E02 Wave 1 -- Embedded Cards ─────────────────────────────────

@@ -219,15 +219,15 @@ public class DoctorRegistryTests
             // is effectively trivial -- kept as a regression sentinel in
             // case future routing puts anything on stdout in this path.
             //
-            // NOTE: stderr currently DOES contain the raw ESC byte because
-            // Kramer's reject message format echoes the offending name
-            // verbatim ('[ERROR] registry rejected: model name \u001b[31m...').
-            // Filed as FINDING-S04E04-04 for Kramer to scrub the name in
-            // the rejection message before this assertion can be tightened.
-            // Use IndexOf<char> rather than Assert.DoesNotContain(string)
-            // (xUnit substring formatter renders lone C0 needles as "").
+            // F-S04E04-04 (closed): the reject message now runs the raw
+            // name through ScrubForDisplay before interpolation, so stderr
+            // must also be ESC-free. Use IndexOf<char> rather than
+            // Assert.DoesNotContain(string) (xUnit substring formatter
+            // renders lone C0 needles as "" -> false-pass).
             Assert.True(stdout.IndexOf('\u001B') < 0,
                 "ESC byte leaked into stdout");
+            Assert.True(stderr.IndexOf('\u001B') < 0,
+                "ESC byte leaked into stderr reject message");
         }
         finally
         {
@@ -236,6 +236,52 @@ public class DoctorRegistryTests
     }
 
     // -- Test 4 --------------------------------------------------------
+    [Fact]
+    public void Doctor_Registry_RejectMessage_ScrubsEscByteAtReportedOffset()
+    {
+        // F-S04E04-04: reject message must scrub the raw name. ESC at
+        // offset 2 in 'gp\u001Bt-4o' -> rendered as 'gp?t-4o' with the
+        // offset preserved for debuggability.
+        var home = Path.Combine(
+            Path.GetTempPath(), "kramer-reject-scrub-" + Guid.NewGuid().ToString("N"));
+        var cfgDir = Path.Combine(home, ".config", "az-ai");
+        Directory.CreateDirectory(cfgDir);
+        try
+        {
+            var json =
+                "[{\"name\":\"gp\\u001Bt-4o\","
+                + "\"provider\":\"local\","
+                + "\"capabilities\":[\"streaming\"],"
+                + "\"contextWindow\":1024,"
+                + "\"costTier\":\"unknown\","
+                + "\"cardPath\":\"\"}]";
+            File.WriteAllText(Path.Combine(cfgDir, "registry.json"), json, Encoding.UTF8);
+
+            var (_, stderr, rc) = RunCli(
+                new[] { "--doctor" },
+                new Dictionary<string, string>
+                {
+                    ["HOME"] = home,
+                    ["AZ_AI_REGISTRY_DIR"] = cfgDir,
+                });
+
+            Assert.Equal(99, rc);
+            Assert.Contains("registry rejected", stderr, StringComparison.Ordinal);
+            Assert.Contains("at offset 2", stderr, StringComparison.Ordinal);
+            // The reported name should be the scrubbed form, not the raw.
+            Assert.Contains("'gp?t-4o'", stderr, StringComparison.Ordinal);
+            // IndexOf<char> -- xUnit substring formatter false-passes on
+            // lone C0 needles via Assert.DoesNotContain(string).
+            Assert.True(stderr.IndexOf('\u001B') < 0,
+                "ESC byte leaked into stderr reject message");
+        }
+        finally
+        {
+            try { Directory.Delete(home, recursive: true); } catch { }
+        }
+    }
+
+    // -- Test 5 --------------------------------------------------------
     [Fact]
     public void Doctor_Registry_OverrideReplacesSeedNotMerges()
     {
@@ -274,7 +320,7 @@ public class DoctorRegistryTests
         }
     }
 
-    // -- Test 5 --------------------------------------------------------
+    // -- Test 6 --------------------------------------------------------
     [Fact]
     public void Doctor_Registry_MissingCard_RendersNoCard()
     {
