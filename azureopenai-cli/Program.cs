@@ -865,6 +865,26 @@ internal class Program
             // System prompt for agent: persona override > opts.SystemPrompt.
             var baseSystem = effectiveSystemPrompt ?? opts.SystemPrompt;
 
+            // S04E07 *The Fallback* (Frank Costanza) -- retry envelope. Wraps
+            // the constructed chat client with a same-model retry loop
+            // (transient classifier: 408, 425, 429, 5xx, connect resets),
+            // full-jitter exponential backoff, and a wall-clock budget. Both
+            // dials live in the environment: AZ_AI_FALLBACK_RETRIES (retries
+            // beyond the first call, [0,10], default 2) and
+            // AZ_AI_FALLBACK_BUDGET_MS (total wall-clock ms, [0,60000],
+            // default 5000; 0 disables and forces a single attempt).
+            // Composes with S03E22's provider-switcher: the retry envelope
+            // wraps each candidate independently. WARN suppressed when --raw
+            // or --json so headless callers retain their output contract.
+            var retryPolicy = AzureOpenAI_CLI.Resilience.ChainPolicy.FromEnvironment(
+                Environment.GetEnvironmentVariable);
+            if (retryPolicy.IsActive)
+            {
+                Action<string>? retryWarnSink = (opts.Raw || opts.Json) ? null : Console.Error.WriteLine;
+                chatClient = AzureOpenAI_CLI.Resilience.RetryEnvelope.Wrap(
+                    chatClient, retryPolicy, telProvider, model, retryWarnSink);
+            }
+
             // Wire the in-process delegate_task tool (Kramer audit H2): supplies
             // the shared IChatClient + system instructions so nested agents run
             // in-process instead of via Process.Start re-launch.

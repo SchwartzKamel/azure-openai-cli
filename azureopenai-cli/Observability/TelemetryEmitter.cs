@@ -288,6 +288,35 @@ internal static class TelemetryEmitter
         WriteLine(SerializeFallbackAttempt(ev));
     }
 
+    /// <summary>
+    /// S04E07 -- emit a fallback_hop row. One per attempt against a single
+    /// model under the retry envelope (RetryEnvelope.Wrap). Distinct from
+    /// EmitFallbackAttempt (S03E22) which fires per provider-preset alternate
+    /// in the chain switcher. No-op when telemetry disabled.
+    /// </summary>
+    public static void EmitFallbackHop(
+        string provider, string model, int attempt, string outcome, string? errorClass)
+    {
+        if (!IsEnabled()) return;
+        using var ms = new MemoryStream(192);
+        using (var w = new Utf8JsonWriter(ms, new JsonWriterOptions { Indented = false }))
+        {
+            w.WriteStartObject();
+            w.WriteString("event_type", "fallback_hop");
+            w.WriteString("event_id", Guid.NewGuid().ToString("D"));
+            w.WriteString("ts", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
+            w.WriteString("provider", provider);
+            w.WriteString("model", model);
+            w.WriteNumber("attempt", attempt);
+            w.WriteString("outcome", outcome);
+            var ec = FormatErrorClass(errorClass);
+            if (ec is null) w.WriteNull("error_class");
+            else w.WriteString("error_class", ec);
+            w.WriteEndObject();
+        }
+        WriteLine(Encoding.UTF8.GetString(ms.ToArray()));
+    }
+
     /// <summary>Emit a fallback_outcome row. No-op when telemetry disabled.</summary>
     public static void EmitFallbackOutcome(
         string primaryPreset, string policySource, System.Collections.Generic.IReadOnlyList<string> chain,

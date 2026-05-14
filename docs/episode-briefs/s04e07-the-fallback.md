@@ -1,4 +1,4 @@
-**Status:** DRAFT (Peterman, brief author -- awaiting Larry David greenlight)
+**Status:** GREENLIT (Larry David sign-off at S04E07 Wave 1 dispatch)
 
 **Date:** 2026-06-04 (target film date; Frank Costanza leads when GREENLIT)
 **Lead:** Frank Costanza -- SRE; owns the fallback policy and the streaming invariant
