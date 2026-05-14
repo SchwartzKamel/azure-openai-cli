@@ -353,3 +353,116 @@ authored, it links back here.
 
 These are not blockers for the Wave 1 deliverable; they are the
 exact set of decisions Frank owns at Wave 2 sign-off.
+
+## Cost amplification appendix (Morty)
+
+A single user keystroke -- one `az-ai "..."` invocation from
+Espanso, AHK, cron, or a shell prompt -- is the budgetary unit
+this appendix accounts for. Without fallback, one keystroke
+produces exactly one provider call. With the fallback chain,
+one keystroke can produce up to N provider calls, where N is
+bounded by the env-clamped policy in
+`azureopenai-cli/Resilience/RetryEnvelope.cs` (`RETRIES` clamped
+to `[0, 10]`, `BUDGET_MS` clamped to `[0, 60000]`).
+
+### Default-bounded worst case
+
+With the shipped default `AZ_AI_FALLBACK_RETRIES=2` (= 3 attempts
+per candidate) and a candidate allowlist of length K, the worst
+case is:
+
+```text
+calls_per_keystroke = (RETRIES + 1) * K = 3 * K
+```
+
+For the canonical configuration
+`AZUREOPENAIMODEL=gpt-5.4,gpt-4o,gpt-4o-mini` (K = 3), that is
+**9 calls per keystroke** in the absolute worst case (every
+attempt on every candidate exhausts retries before the chain
+fails out).
+
+### Per-keystroke cost formula
+
+For a representative cheap input model -- gpt-4o-mini at a
+placeholder list price of `$0.15` per million tokens (note:
+exact published rates drift; this section is structure, not
+pricing-of-record -- substitute the current rate when budgeting)
+-- and a representative 200-token prompt + 200-token completion
+(400 tokens billable per call):
+
+```text
+worst_case_cost = calls * (tokens_per_call / 1_000_000) * rate
+                = 9 * (400 / 1_000_000) * $0.15
+                = $0.00054 per keystroke
+```
+
+At a sustained 1000 keystrokes/day (heavy Espanso macro user),
+that is `$0.54/day` or roughly `$16/month` -- and that is the
+**worst case**, assuming every fallback exhausts. The realistic
+steady-state (see below) is one to two orders of magnitude
+cheaper.
+
+### Env-clamp absolute worst case
+
+The clamps in `RetryPolicy.FromEnvironment` permit
+`AZ_AI_FALLBACK_RETRIES=10` (the max), and nothing in the policy
+caps K -- an unusually long allowlist of K = 10 is permitted.
+That yields:
+
+```text
+calls_per_keystroke_max = (10 + 1) * 10 = 110 calls
+```
+
+This is the absolute ceiling the env clamps allow per
+keystroke. At the same per-call rate above, that is
+`110 * 0.0000600 = $0.0066 per keystroke` worst case. Operators
+who set both knobs to the maximum should know what they signed
+up for.
+
+### Practical realism
+
+The amplification factor in steady state is **1.0**, not 3K or
+110. Most invocations succeed on attempt 1 of candidate 1, which
+means the fallback chain adds zero billable overhead in the
+success case -- the additional candidates and retries are never
+called. Bania's Wave 2 latency tail bench confirms the
+performance side of the same observation: success-path latency
+is unchanged from pre-fallback. The cost amplification only
+materializes during incidents (provider 429/503 bursts), which
+is precisely when the fallback chain is earning its keep -- the
+alternative is keystroke loss.
+
+### Recommendations by caller tier
+
+- **Default (`RETRIES=2`)** is conservative but correct for
+  general use. One retry covers the typical transient 429/503
+  hiccup; the second retry covers the rarer back-to-back miss
+  before falling over to the next candidate.
+- **High-volume automation users** (Espanso macros, AHK
+  hotkeys, shell completion hooks) should set
+  `AZ_AI_FALLBACK_RETRIES=0` to disable retries entirely. These
+  callers re-issue the keystroke themselves on failure (the user
+  just types again), so per-call retry buys nothing and
+  multiplies the worst-case bill by 3x.
+- **Long-running agent loops** (E08 ralph, S05 multi-step
+  workflows) should keep the default. The loop cannot
+  cheaply re-issue a failed step, and the exponential backoff
+  inside the retry envelope naturally smooths bursty
+  rate-limit responses without operator intervention.
+- **Paranoid cost-cap operators** should clamp at the wrapper
+  level (a daily token budget enforced before `az-ai` is
+  invoked). In-process cost caps are out of scope for E07; the
+  S05 cost-cap episode will revisit whether to add a
+  `AZ_AI_DAILY_TOKEN_CAP`-style hard stop.
+
+### Observability hook
+
+Every fallback hop emits a TelemetryEmitter NDJSON line. Frank's
+Wave 3 work (per AC#10) will add a `_fallback_chain` payload to
+JSON-mode output summarizing the hops for that invocation. The
+operator can sum hops across the NDJSON stream (or the JSON
+payload) to compute the **actual** per-invocation amplification
+factor for their workload, rather than relying on the worst-case
+math above. Empirical amplification is the number FinOps
+should budget against once telemetry is wired; this appendix
+is the upper bound that bookends it.
