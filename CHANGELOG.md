@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(resolution):** S04E05 *The Picker* -- new
+  `azureopenai-cli/Resolution/ResolveSmartDefault.cs` lands the
+  capability-aware default model picker. Pure function, no I/O.
+  Four reason codes EXPLICIT, PREFER_AXIS, ALLOWLIST_HEAD, FALLBACK.
+  Single insertion in `Program.cs` replaces the `AZUREOPENAIMODEL[0]`
+  default-resolution line; emit moved to a structured NDJSON
+  `TelemetryEmitter.EmitResolverDecision(...)` sibling (gated by
+  `AZ_AI_TELEMETRY=1`). `ModelRegistryEntry` gains nullable
+  `LatencyTier` and `QualityTier` (null defaults; non-breaking).
+  `ResolverTestCorpus` factored into its own file for E11 reuse.
+  Suite **1408 -> 1462** (+54: W1 +18, W2 +33, W3 +3). Closes
+  F-PICKER-TRACE-01 in 66e8cf8.
+
+### Added
 - **feat(resolution):** S04E05 *The Picker* (Wave 1) -- pure-function
   default model picker `ResolveSmartDefault.Pick`. Four locked reason
   codes (`EXPLICIT`, `PREFER_AXIS`, `ALLOWLIST_HEAD`, `FALLBACK`),
