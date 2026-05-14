@@ -466,3 +466,281 @@ factor for their workload, rather than relying on the worst-case
 math above. Empirical amplification is the number FinOps
 should budget against once telemetry is wired; this appendix
 is the upper bound that bookends it.
+
+## Adversarial scenarios appendix (FDR)
+
+Newman wrote the security frame; Morty bounded the bill. This
+appendix catalogues the *failure modes* the fallback chain has to
+absorb without operator surprise. Each entry maps an attack or
+chaos scenario to the **current behaviour** of the W1 executor +
+W2 chaos-tested envelope, the **blast radius** an operator should
+expect, and a **mitigation status** (mitigated / accepted residual
+/ open). Coverage in Puddy's W2 chaos suite
+(`tests/AzureOpenAI_CLI.Tests/FallbackChainChaosTests.cs`, commit
+`ecb23ad`) is flagged inline; uncovered scenarios are tagged
+**TEST GAP** for a Wave-4 or S04E08 follow-up.
+
+### 1. Total 429 mob -- every candidate rate-limited
+
+- **Mechanism:** All K candidates in the chain return HTTP 429
+  simultaneously (regional rate-limit storm, tenant-wide quota hit,
+  or an upstream incident burning quota across providers).
+- **Current behaviour:** Each candidate exhausts its
+  `RETRIES+1` attempts with exponential backoff, then the chain
+  advances. After the last candidate the user sees the final
+  429 surfaced as the underlying error.
+- **Blast radius:** Up to `(RETRIES+1) * K` upstream calls per
+  invocation -- the worst case Morty bounded at 9x for default
+  settings (3 candidates * 3 attempts). User-visible latency
+  approaches `BUDGET_MS` if backoff is unbounded by the budget.
+- **Mitigation:** Tenant/key visibility through `TelemetryEmitter`
+  WARN lines (one per hop) lets the operator detect a
+  cross-candidate quota storm and stop re-trying. Env clamp
+  `BUDGET_MS<=60000` caps the worst-case wall-clock.
+- **Status:** Accepted residual. Single-candidate variant is
+  covered by `AllAttemptsTransient_SurfacesUnderlyingError`
+  (line 142). **TEST GAP:** no multi-candidate "total 429"
+  test in the W2 suite -- the chaos suite is single-`IChatClient`
+  scoped; the FallbackChain integration test that exercises
+  multiple candidates lives in a separate fixture and does not
+  drive every candidate into 429 at once. Flag for Puddy's W4
+  pickup.
+
+### 2. Connection-phase hang
+
+- **Mechanism:** One candidate hangs indefinitely on DNS resolution,
+  TCP SYN, or TLS handshake -- the canonical "black hole" failure
+  mode (silently dropped packets, mid-handshake stall, captive
+  portal). No exception fires; the call just never returns.
+- **Current behaviour:** The wall-clock `BUDGET_MS` budget check
+  in the retry envelope terminates the entire chain when the
+  budget is exceeded. The hanging candidate is abandoned via
+  the `CancellationToken` plumbed into the envelope's
+  per-attempt call.
+- **Blast radius:** Up to `BUDGET_MS` (default 5000ms) burned on
+  one candidate before the chain gives up. All later candidates
+  in the chain are starved -- the operator sees a budget-exhausted
+  error, not a fallback.
+- **Mitigation:** Open. A per-call HTTP timeout (separate from
+  `BUDGET_MS`) would let the chain abandon one bad candidate
+  faster and still try the next one within the same budget.
+  This is the W2 open question Frank flagged in his
+  RetryEnvelope review.
+- **Status:** **Open** -- tracked as the W2 open question. Partial
+  coverage by `BudgetExhausted_ThrowsFallbackBudgetExhaustedException`
+  (line 285), which proves the budget *terminates* the chain but
+  uses a `Status(503)` failure mode rather than a true connection
+  hang. **TEST GAP:** no chaos-suite mode that simulates a
+  DNS/TCP/TLS-phase hang (e.g. a `FailureMode.Hang(TimeSpan)`).
+
+### 3. Mid-stream connection reset
+
+- **Mechanism:** Candidate streams 50 tokens of a response, then the
+  TCP connection is reset (server crash, load balancer drain,
+  intermediate proxy timeout).
+- **Current behaviour:** Per the streaming pre-first-token retry
+  invariant (W1 acceptance criterion): once a token has been
+  surfaced to the user, no retry fires. The partial response is
+  emitted; the exception terminates the stream.
+- **Blast radius:** User sees a truncated output. No double-billing
+  for re-prompting the model with a prefix.
+- **Mitigation:** Documented as **feature, not bug** -- the
+  alternative (silently retrying after partial output) would
+  double-bill the user for prefix tokens and risk emitting two
+  distinct completions concatenated.
+- **Status:** Mitigated by design. Fully covered by
+  `Streaming_PostFirstTokenFailure_DoesNotRetry_PartialSurfaced`
+  (line 258) and its pre-first-token sibling
+  `Streaming_PreFirstTokenFailure_Retries` (line 239).
+
+### 4. Capability-gate hot-reload race
+
+- **Mechanism:** Registry reloads between the resolver's
+  capability-gate check and the chain's chat call. A candidate
+  that satisfied the gate at startup (e.g. claimed `tools`
+  capability) is hot-reloaded to a definition that drops the
+  capability. The chain still attempts it.
+- **Current behaviour:** The capability gate is checked at chain
+  *entry*, not per attempt. The now-invalid candidate is called;
+  the provider returns a 400 (or 422) for the unsupported
+  capability; the W2 classifier treats 4xx-except-429 as
+  non-transient; the chain advances to the next candidate.
+- **Blast radius:** One wasted call to the now-invalid candidate
+  per invocation while the stale gate persists. No retries (4xx
+  is non-transient), so the cost is bounded at one round-trip.
+- **Mitigation:** A per-attempt gate re-check would close the
+  race but doubles the gate latency on every hop. **Backlog
+  item** -- not worth the latency tax for a race window measured
+  in seconds (the registry hot-reload debounce is on the order
+  of the file-watcher quanta).
+- **Status:** **Open / accepted residual.** **TEST GAP:** no
+  chaos-suite test simulates a registry mutation between
+  `Pick(...)` and `GetResponseAsync(...)`. The
+  `HardError400_NoRetry_SurfacesImmediately` test (line 166)
+  covers the *outcome* (one wasted call, chain advances) but
+  not the *mechanism* (mid-flight registry mutation).
+
+### 5. Backoff-pumping DoS
+
+- **Mechanism:** An attacker who controls the upstream's responses
+  (e.g. via prompt injection in a previous step of an agent loop
+  that influences which model is called next, or a compromised
+  endpoint returning crafted 503s with `Retry-After` headers)
+  drives the retry envelope into its worst-case attempt count
+  to inflate the bill and stall the loop.
+- **Current behaviour:** Env clamps enforce `RETRIES<=10` and
+  `BUDGET_MS<=60000` regardless of attacker-supplied headers.
+  The classifier ignores `Retry-After` for backoff scheduling
+  (W2 uses fixed exponential with jitter; honouring
+  `Retry-After` was rejected in the W1 design).
+- **Blast radius:** Bounded at 11 calls per candidate, 60s
+  wall-clock, total bill cap from Morty's appendix.
+- **Mitigation:** Mitigated. The clamps are belt-and-suspenders
+  against operator misconfiguration **and** adversarial input.
+- **Status:** Mitigated. Covered by
+  `EnvRetries999_ClampedToMaxRetriesAllowed` (line 386) and
+  `EnvBudgetMs999999_ClampedToMaxBudgetMs` (line 400).
+
+### 6. Header-injection via WARN
+
+- **Mechanism:** A model name (from registry, env, or CLI flag)
+  contains terminal-injection bytes -- ANSI CSI escapes, carriage
+  returns to overwrite previous output, NUL bytes -- that reach
+  the `[WARN] fallback:` stderr emission.
+- **Current behaviour:** `RetryEnvelope.EmitWarn` (lines 479-490)
+  interpolates `_model` directly into the WARN string without
+  scrubbing. The `ModelRegistry.ValidateEntries` loader
+  (lines 188-235) rejects model names containing quotes,
+  backslash, C0, or C1 bytes at load time (rc=99), so registry-fed
+  names are filtered upstream. **However** the WARN emission
+  site does not enforce its own invariant.
+- **Blast radius:** If the upstream filter is ever bypassed (a
+  future code path that sets `_model` from `ChatOptions.ModelId`
+  or a synthetic name), raw ANSI sequences hit the operator
+  terminal.
+- **Mitigation:** **Open (defense-in-depth).** Filed as
+  `F-FALLBACK-FDR-01` -- the fix is to mirror the
+  F-S04E04-04 `ScrubForDisplay` pattern at the WARN emission
+  site. The W2 test
+  `WarnLine_AsciiOnly_NoAnsi_ContainsModelAttemptsOutcome`
+  (line 443) only exercises a clean model name (`"gpt-test"`)
+  and therefore does not catch this; it validates the
+  *format string* is ASCII, not that the *inputs* are scrubbed.
+- **Status:** Open. **TEST GAP** -- no chaos-suite test feeds a
+  model name containing `\x1B[31m` and asserts the WARN line
+  emits `?` substitutes.
+
+### 7. Budget = 1ms edge case
+
+- **Mechanism:** Operator sets `AZ_AI_FALLBACK_BUDGET_MS=1`
+  (typo, debugging, or testing the lower bound).
+- **Current behaviour:** First attempt fires unconditionally
+  (the budget is checked *after* each call, not before the
+  first). Post-call budget check trips; no retry; chain
+  advances or surfaces the underlying error.
+- **Blast radius:** Equivalent to `RETRIES=0` -- one attempt per
+  candidate, no exponential ladder. Acceptable behaviour: a
+  1ms budget effectively disables retry without disabling the
+  initial call.
+- **Mitigation:** Documented behaviour. The "first attempt is
+  free" invariant is intentional (Costanza's W1 design): a
+  zero-budget operator should not be unable to make any LLM
+  call at all.
+- **Status:** Mitigated. Partial coverage by
+  `EnvBudgetMs0_DisablesEnvelope_WrapReturnsInnerUnchanged`
+  (line 365) and `BudgetExhausted_...` (line 285). **Minor
+  TEST GAP:** specifically `BUDGET_MS=1` (not 0, not 5000) is
+  not exercised; the boundary between "envelope disabled" and
+  "envelope active but starved" is one integer apart.
+
+### 8. Cross-candidate auth drift
+
+- **Mechanism:** Candidate 1 is Azure OpenAI (header
+  `api-key: <key>`); candidate 2 is Azure AI Foundry (header
+  `Authorization: Bearer <key>`). A misconfigured operator
+  sets the wrong key format for candidate 2 (e.g. paste of an
+  AOAI key into `AZURE_FOUNDRY_KEY`).
+- **Current behaviour:** Candidate 2 returns 401. The classifier
+  treats 401 as non-transient. The chain advances (or surfaces
+  401 if it was the last candidate).
+- **Blast radius:** One 401 round-trip surfaced with the Foundry
+  candidate name in the WARN line. This is **helpful diagnostic
+  output** -- the operator can grep stderr for `outcome=401
+  model=foundry-*` and identify the misconfigured provider
+  immediately.
+- **Mitigation:** Documented. The fast-fail behaviour is correct;
+  401 should not be retried (the auth header is not going to
+  spontaneously become correct).
+- **Status:** Mitigated. Covered in spirit by
+  `HardError400_NoRetry_SurfacesImmediately` (line 166), though
+  the test uses 400 rather than 401. **Minor TEST GAP:**
+  401-specific test with a cross-candidate auth swap would
+  document the diagnostic-output story explicitly.
+
+### 9. Cancellation-token poisoning
+
+- **Mechanism:** Caller passes a `CancellationToken` that is
+  already cancelled before the first attempt fires (legitimate
+  pattern -- caller bailed out during prompt assembly; not
+  malicious so much as racy).
+- **Current behaviour:** `OperationCanceledException` propagates
+  before the first attempt. No upstream call is made. No retry
+  schedule is started.
+- **Blast radius:** Zero. No tokens billed, no provider hit, no
+  WARN line emitted.
+- **Mitigation:** Correct behaviour by construction (the
+  envelope honours its caller's cancellation contract).
+- **Status:** Mitigated. Covered in spirit by
+  `ExternalCancellation_MidBackoff_ThrowsOperationCanceled_NotBudgetExhausted`
+  (line 414), which proves cancellation wins over budget
+  exhaustion mid-flight. **Minor TEST GAP:** the
+  pre-first-attempt variant (token cancelled *before* the
+  envelope is entered) is not separately asserted; the
+  mid-backoff test implies it but does not exercise it.
+
+### 10. Slow-loris streaming (creative scenario)
+
+- **Mechanism:** Candidate accepts the request and starts the
+  stream, but emits one byte every 4900ms -- just inside the
+  default `BUDGET_MS=5000` per attempt yet effectively a denial
+  of service. Each individual chunk arrives "in time"; the total
+  response takes forever and consumes all subsequent candidates'
+  budget.
+- **Current behaviour:** The first token resets the
+  pre-first-token retry gate (scenario 3); no retry fires.
+  The chain has no concept of *inter-token* timeout, only of
+  total wall-clock budget. The total budget eventually expires
+  mid-stream; the partial output is what the user sees.
+- **Blast radius:** Up to `BUDGET_MS` of stalled UX, no
+  cross-candidate fallback (stream was started). User sees a
+  truncated response with no clear signal that it was a
+  slow-loris versus a genuine truncation.
+- **Mitigation:** **Open / accepted residual.** Inter-token
+  timeout (e.g. abandon stream if no token arrives in 1000ms)
+  is out of scope for E07 and would interact subtly with
+  legitimate long-thinking-pause models. Flag for S05 cost-cap
+  episode alongside the per-call timeout (scenario 2).
+- **Status:** Open. **TEST GAP** -- no chaos-suite test
+  simulates a slow-trickle stream. Would need a
+  `FailureMode.SlowStream(TimeSpan perToken)` extension to
+  `ChaosChatClient`.
+
+### Summary -- test gaps for Puddy / Wave 4 / S04E08
+
+| #  | Scenario                       | Status     | Test gap?         |
+|----|--------------------------------|------------|-------------------|
+| 1  | Total 429 mob                  | Accepted   | Yes (multi-cand.) |
+| 2  | Connection-phase hang          | Open       | Yes               |
+| 3  | Mid-stream RST                 | Mitigated  | No                |
+| 4  | Capability-gate hot-reload     | Open       | Yes               |
+| 5  | Backoff-pumping DoS            | Mitigated  | No                |
+| 6  | Header-injection via WARN      | Open       | Yes (F-FALLBACK-FDR-01) |
+| 7  | Budget = 1ms                   | Mitigated  | Minor             |
+| 8  | Cross-candidate auth drift     | Mitigated  | Minor             |
+| 9  | Cancellation poisoning         | Mitigated  | Minor             |
+| 10 | Slow-loris streaming           | Open       | Yes               |
+
+Four open items (2, 4, 6, 10), one filed finding
+(`F-FALLBACK-FDR-01`), seven distinct test gaps. None of the
+open items are blockers for the W3 release -- they are residuals
+worth their own episodes, not regressions in W1/W2 work.
