@@ -1,4 +1,4 @@
-**Status:** DRAFT (Mr. Pitt, 2026-05-21; greenlight blocked on Larry David sign-off)
+**Status:** GREENLIT (Mr. Pitt, 2026-05-21; filmed in this commit -- audit doc landed at `docs/audits/s04-midseason-cast-balance.md`)
 
 **Date:** 2026-05-21
 **Lead:** Mr. Pitt -- mid-season cast-balance audit, findings authorship
