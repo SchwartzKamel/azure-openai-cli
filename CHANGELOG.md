@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(resilience):** S04E07 *The Fallback* -- new
+  `azureopenai-cli/Resilience/RetryEnvelope.cs` lands the same-model
+  retry+backoff+wall-clock-budget executor. Full-jitter exponential
+  backoff; transient classifier covers 408/425/429/500/502/503/504
+  plus connect resets; streaming pre-first-token invariant prevents
+  silent rebill; env overrides `AZ_AI_FALLBACK_RETRIES` (default 2,
+  clamp 0-10) and `AZ_AI_FALLBACK_BUDGET_MS` (default 5000, clamp
+  0-60000); `0` on either env opts out. WARN summary on stderr when
+  more than one attempt occurs. TelemetryEmitter NDJSON sibling for
+  TRACE. ADR-015 authored with security threat model (Newman), cost
+  amplification math (Morty), and adversarial scenarios (FDR).
+  Suite **1462 -> 1493** (+31; Frank +5, Puddy +24, Bania +2).
+  Bania p99 budget PASS (-0.0014 ms vs. 0.5 ms ceiling). AC#10
+  (`_fallback_chain` JSON payload) and AC#11 (rc=3 on chain
+  exhaustion) rolled forward to a follow-up; tracked in episode
+  backlog.
+
+### Added
 - **feat(resolution):** S04E05 *The Picker* -- new
   `azureopenai-cli/Resolution/ResolveSmartDefault.cs` lands the
   capability-aware default model picker. Pure function, no I/O.
