@@ -139,3 +139,5 @@ consolidation before S05.
   57-83 (gate semantics), 274-310 (sibling-method pattern)
 - `docs/observability/slo.md` (telemetry charter)
 - commit 0d7d303 (`feat(resolution): S04E05 W1 ResolveSmartDefault + reason codes`)
+
+**Status:** CLOSED in 66e8cf8
