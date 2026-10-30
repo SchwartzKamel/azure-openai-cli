@@ -159,8 +159,8 @@ internal static class WebFetchTool
         else if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
         {
             // ::1 is already handled by IPAddress.IsLoopback above
-            // fd00::/8 (unique local addresses)
-            if (bytes[0] == 0xfd)
+            // fc00::/7 (unique local addresses, including fc00::/8 and fd00::/8)
+            if ((bytes[0] & 0xfe) == 0xfc)
                 return true;
             // fe80::/10 (link-local)
             if (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80)
