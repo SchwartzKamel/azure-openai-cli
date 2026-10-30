@@ -18,6 +18,9 @@ public sealed class UserConfigLoadingTests
         { "empty local falls back to home", "home" },
         { "home is used when local is absent", "home" },
         { "no candidates returns defaults", "<defaults>" },
+        { "missing explicit path does not fall back", "<defaults>" },
+        { "malformed explicit path does not fall back", "<defaults>" },
+        { "empty explicit path does not fall back", "<defaults>" },
     };
 
     [Theory]
@@ -54,6 +57,20 @@ public sealed class UserConfigLoadingTests
             case "no candidates returns defaults":
                 File.Delete(homePath);
                 break;
+            case "missing explicit path does not fall back":
+                WriteConfig(localPath, "local");
+                pathArgument = explicitPath;
+                break;
+            case "malformed explicit path does not fall back":
+                WriteConfig(localPath, "local");
+                File.WriteAllText(explicitPath, "{ malformed");
+                pathArgument = explicitPath;
+                break;
+            case "empty explicit path does not fall back":
+                WriteConfig(localPath, "local");
+                File.WriteAllText(explicitPath, string.Empty);
+                pathArgument = explicitPath;
+                break;
             default:
                 throw new InvalidOperationException($"Unknown test scenario: {scenario}");
         }
@@ -77,6 +94,42 @@ public sealed class UserConfigLoadingTests
             Assert.Equal(expected, config.DefaultModel);
             Assert.Equal(expectedPath, config.LoadedFrom);
         }
+    }
+
+    [Theory]
+    [InlineData("explicit", "explicit")]
+    [InlineData("loaded", "loaded")]
+    [InlineData("default", "default")]
+    public void Save_UsesExpectedDestinationAndUpdatesLoadedFrom(string destination, string expected)
+    {
+        using var home = new TempHome();
+        using var cwd = new TempCwd();
+
+        var explicitPath = Path.Combine(Directory.GetCurrentDirectory(), "chosen.json");
+        var loadedPath = Path.Combine(Directory.GetCurrentDirectory(), "loaded.json");
+        var defaultPath = UserConfig.DefaultPath;
+        var config = new UserConfig
+        {
+            DefaultModel = "fast",
+            LoadedFrom = destination == "loaded" ? loadedPath : null,
+        };
+        config.Models["fast"] = "deployment-fast";
+
+        config.Save(destination == "explicit" ? explicitPath : null);
+
+        var expectedPath = expected switch
+        {
+            "explicit" => explicitPath,
+            "loaded" => loadedPath,
+            _ => defaultPath,
+        };
+        Assert.Equal(expectedPath, config.LoadedFrom);
+        Assert.True(File.Exists(expectedPath));
+        Assert.False(File.Exists(expectedPath == explicitPath ? loadedPath : explicitPath));
+
+        var roundTrip = UserConfig.Load(expectedPath, quiet: true);
+        Assert.Equal("fast", roundTrip.DefaultModel);
+        Assert.Equal("deployment-fast", roundTrip.Models["fast"]);
     }
 
     [Fact]
