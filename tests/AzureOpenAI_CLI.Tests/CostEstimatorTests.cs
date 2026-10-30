@@ -33,12 +33,23 @@ public class CostEstimatorTests
 
     // ── Unit-level: EstimateInputTokens ──────────────────────────────
 
-    [Fact]
-    public void EstimateInputTokens_EmptyOrWhitespace_ReturnsZero()
+    [Theory]
+    [InlineData(null, 0)]
+    [InlineData("", 0)]
+    [InlineData(" \t\r\n", 0)]
+    [InlineData("a", 1)]
+    [InlineData("abc", 1)]
+    [InlineData("abcd", 1)]
+    [InlineData("abcde", 2)]
+    [InlineData("12345678", 2)]
+    [InlineData("123456789", 3)]
+    [InlineData("123456789012", 3)]
+    [InlineData("1234567890123", 4)]
+    public void EstimateInputTokens_BoundariesUseCeilingCharsOverFour(string? prompt, int expected)
     {
-        Assert.Equal(0, CostEstimator.EstimateInputTokens(null));
-        Assert.Equal(0, CostEstimator.EstimateInputTokens(""));
-        Assert.Equal(0, CostEstimator.EstimateInputTokens("   "));
+        // Exercise both sides of each 4-character boundary. Any non-empty
+        // prompt rounds up; whitespace-only input remains the zero-token case.
+        Assert.Equal(expected, CostEstimator.EstimateInputTokens(prompt));
     }
 
     [Fact]
@@ -91,6 +102,57 @@ public class CostEstimatorTests
     {
         var r = CostEstimator.Estimate("totally-fake-model-9000", "hi", outputMaxTokens: null);
         Assert.Null(r);
+    }
+
+    [Theory]
+    [InlineData("1", true, 1)]
+    [InlineData("500", true, 500)]
+    [InlineData("2147483647", true, int.MaxValue)]
+    [InlineData("0", false, null)]
+    [InlineData("-1", false, null)]
+    [InlineData("1.5", false, null)]
+    [InlineData("not-a-number", false, null)]
+    public void ParseArgs_EstimateWithOutput_RequiresPositiveInteger(
+        string raw, bool expectedValid, int? expectedMax)
+    {
+        using var stderr = new StringWriter();
+        var originalError = Console.Error;
+        try
+        {
+            Console.SetError(stderr);
+            var opts = Program.ParseArgs(["--estimate-with-output", raw, "prompt"]);
+
+            Assert.Equal(expectedValid, !opts.ParseError);
+            Assert.Equal(expectedValid, opts.Estimate);
+            Assert.Equal(expectedMax, opts.EstimateOutputMax);
+            if (!expectedValid)
+                Assert.Contains("positive integer", stderr.ToString());
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    [Theory]
+    [InlineData("--estimate-with-output")]
+    [InlineData("--estimate-with-output", "prompt")]
+    public void ParseArgs_EstimateWithOutput_MissingOrNonNumericArgumentIsRejected(params string[] args)
+    {
+        using var stderr = new StringWriter();
+        var originalError = Console.Error;
+        try
+        {
+            Console.SetError(stderr);
+            var opts = Program.ParseArgs(args);
+
+            Assert.True(opts.ParseError);
+            Assert.Contains("--estimate-with-output requires a positive integer", stderr.ToString());
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
     }
 
     // ── End-to-end via RunEstimate ───────────────────────────────────
