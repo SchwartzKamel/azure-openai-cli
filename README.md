@@ -39,7 +39,10 @@ Pick [openai]: 1
 
 Azure OpenAI endpoint URL: https://contoso.openai.azure.com/
 Azure OpenAI API key (input hidden): ********************************
-Azure model deployment name(s), comma-separated [gpt-4o-mini]: gpt-4o,gpt-4o-mini
+
+  A deployment name is the name you gave the model in Azure.
+  The first name you list becomes your default model.
+Azure model deployment name(s), comma-separated [gpt-4o-mini]: gpt-4o-mini,gpt-5.4-nano
 
 Add another provider? [y/N] (remaining: openai, groq, together, cloudflare): y
 Which provider:
@@ -56,31 +59,37 @@ Add another provider? [y/N] (remaining: groq, together, cloudflare): n
 Configuration saved to /home/user/.config/az-ai/env
 Default provider: azure
 Providers configured: azure, openai
+
+Azure default model: gpt-4o-mini
+  Why: it is first in your list, and the first model is the default.
+  Also in your list: gpt-5.4-nano.
+  Use one for a single call with: --model <name>
+  To change the default, re-run 'az-ai --setup' and list that model first.
 ```
 
 The wizard writes `~/.config/az-ai/env` with E10-format `[provider:NAME]` sections plus a default unsectioned block carrying `AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`, and `AZ_AI_COMPAT_MODELS` for back-compat. Compat model strings are validated through `OpenAiCompatAdapter.ParseCompatModels` before the file is written, so a typo never makes it to disk. If a file already exists, the wizard prompts to back it up to `env.bak.<timestamp>` before overwriting; identical re-runs are no-ops (no spurious backup).
 
 - The wizard **auto-runs** when creds are missing *and* you're on an interactive terminal. Scripts, pipes, `--raw`, `--json`, and containers bypass it -- they fail loud with an `[ERROR]` and exit code 1, so nothing in your CI/Espanso/AHK setup loops on closed stdin.
 - Re-run it anytime with `az-ai --setup` (aliases: `--init-wizard`, bare `setup`).
+- It ends by telling you which model is your default and why. The first model you list wins; to change it, re-run `az-ai --setup` and list the one you want first.
 - **Environment variables still win.** `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` / `AZUREOPENAIMODEL` override stored config every time -- the wizard is for humans, env vars are for machines.
 
 ### Where is my key stored?
 
-| OS | Location | Backing |
+| How you set it | Location | Protection |
 |---|---|---|
-| Windows | `%USERPROFILE%\.azureopenai-cli.json` | Encrypted with DPAPI (user-scoped) |
-| macOS | `~/.azureopenai-cli.json` + login Keychain | Apple Keychain (service `az-ai`) |
-| Linux | `~/.azureopenai-cli.json` | libsecret (GNOME Keyring / KDE Wallet) when `/usr/bin/secret-tool` and a DBus session are present; otherwise plaintext, file mode `0600` |
+| `az-ai --setup` (the wizard) | `~/.config/az-ai/env` (`$XDG_CONFIG_HOME/az-ai/env`); `%APPDATA%\az-ai\env` on Windows | Plaintext. File mode `0600` on Linux and macOS. On Windows no permission change is applied, so the file relies on your user profile's default access rules. |
+| `az-ai --config set api_key=...` | `~/.azureopenai-cli.json` (`%USERPROFILE%\.azureopenai-cli.json` on Windows) | Plaintext. File mode `0600` on Linux and macOS. Redacted when listed. |
 | Docker / CI | env vars only | No on-disk storage |
 
-On Linux, `az-ai` prefers libsecret when it's available on your desktop session (GNOME Keyring, KDE Wallet via the libsecret bridge) -- no key on disk, just a non-secret fingerprint. On headless boxes, minimal installs, or containers -- anywhere `/usr/bin/secret-tool` or `DBUS_SESSION_BUS_ADDRESS` is missing -- it falls back to plaintext at `0600`, same posture as AWS CLI, GitHub CLI, and Azure CLI. Honest trade-off over security theater; the compensating control is rotation.
+`az-ai` does **not** use an OS keystore (Windows DPAPI, macOS Keychain, Linux libsecret). That design is proposed in [FR-023](docs/proposals/FR-023-first-run-wizard.md) and is not implemented. Today the key is a plaintext file readable only by your user, the same posture as the AWS CLI's `~/.aws/credentials`. On a shared machine, prefer environment variables fed from your own secret manager. Honest trade-off over security theater; the compensating control is rotation.
 
 ### Key rotation
 
 The Azure OpenAI key ring gives you two active keys per resource, which means you can rotate with **zero downtime**:
 
 1. In the Azure portal, open your resource → **Keys and Endpoint** → **Regenerate Key 2**.
-2. Swap your local config to Key 2 (`az-ai --init`, paste the new key).
+2. Swap your local config to Key 2 (`az-ai --setup`, paste the new key).
 3. Regenerate Key 1 to finish the cycle.
 
 Recommendations:
