@@ -72,6 +72,7 @@ additions (also listed in `az-ai --help`):
 
 - **Just want to prompt a model?** → [`use-cases-standard.md`](use-cases-standard.md)
 - **Need the model to run shell/file/web tools?** → [`use-cases-agent.md`](use-cases-agent.md)
+- **Building Git hooks, CI gates, custom plugins, or MCP agent workflows?** → [`use-cases-git-and-agent-interop.md`](use-cases-git-and-agent-interop.md)
 - **Building an autonomous fix-until-green loop?** → [`use-cases-ralph-squad.md`](use-cases-ralph-squad.md) Part 1
 - **Want named AI teammates with persistent memory?** → [`persona-guide.md`](persona-guide.md)
 - **Setting up Espanso, AHK, or model aliases?** → [`use-cases-config-integration.md`](use-cases-config-integration.md)
