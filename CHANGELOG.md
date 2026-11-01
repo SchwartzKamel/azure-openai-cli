@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(wizard):** S04E08 *The Onboarding* -- the setup wizard now ends with
+  a plain-language "why this model" panel (`Resolution/WizardModelExplainer.cs`)
+  that names the default model and how to change it, using the same picker the
+  runtime uses, and states the rule at the model prompt. An unregistered Azure
+  deployment name is explained as normal, not as an error. Also corrects the
+  README key-storage table, which promised DPAPI/Keychain/libsecret encryption
+  that is not implemented, and replaces a documented `az-ai --init` that failed
+  with "unknown flag" by `--setup`.
 - **docs(exec-report):** S04E06 *The Cast Balance* -- the skipped mid-season
   cast-balance audit, run against the aired reports. Finds a Rule 1
   violation already in the blueprint (back-to-back Maestro leads on E10/E11),

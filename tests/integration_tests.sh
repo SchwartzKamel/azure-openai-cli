@@ -714,6 +714,84 @@ KCEOF2
         rm -rf "$wiz_home" "$answers_file" "$script_log"
     fi
 
+    # ── S04E08 -- The Onboarding (the "why this model" panel) ───────────
+    # Drive the Azure path through a PTY and check the end-of-wizard panel
+    # names the default and says WHY, treating an unregistered deployment
+    # name ("my-gpt4") as normal rather than as an error.
+    echo "▸ S04E08 -- wizard 'why this model' panel"
+    if ! command -v script >/dev/null 2>&1; then
+        skip "S04E08 wizard: why-this-model panel" "script(1) not available"
+    else
+        local ob_home; ob_home=$(mktemp -d)
+        local ob_answers; ob_answers=$(mktemp)
+        local ob_log; ob_log=$(mktemp)
+        # provider -> endpoint -> api key -> models -> "no more providers"
+        printf '%s\n%s\n%s\n%s\nN\n' \
+            'azure' \
+            'https://example.openai.azure.com/' \
+            'sk-test-0123456789abcdef' \
+            'my-gpt4,gpt-4o' \
+            > "$ob_answers"
+        set +e
+        env -i HOME="$ob_home" PATH="$PATH" TERM=dumb \
+            DOTNET_ROOT="${DOTNET_ROOT:-}" \
+            script -qec "$BIN --setup" "$ob_log" < "$ob_answers" >/dev/null 2>&1
+        local ob_rc=$?
+        set -e
+        # Strip CR and any escape sequences so the assertions see plain text.
+        local ob_text; ob_text=$(tr -d '\r' < "$ob_log" | sed 's/\x1b\[[0-9;?]*[A-Za-z]//g')
+
+        if [ "$ob_rc" -eq 0 ] && printf '%s' "$ob_text" | grep -qF 'Azure default model: my-gpt4'; then
+            pass "S04E08 wizard: panel names the default model"
+        else
+            fail "S04E08 wizard: panel names the default model" "rc=$ob_rc tail=$(printf '%s' "$ob_text" | tail -15)"
+        fi
+        if printf '%s' "$ob_text" | grep -qF 'it is first in your list'; then
+            pass "S04E08 wizard: panel states why (first in your list)"
+        else
+            fail "S04E08 wizard: panel states why (first in your list)" "tail=$(printf '%s' "$ob_text" | tail -15)"
+        fi
+        if printf '%s' "$ob_text" | grep -qF "is not in az-ai's built-in model list"; then
+            pass "S04E08 wizard: unregistered name explained as normal"
+        else
+            fail "S04E08 wizard: unregistered name explained as normal" "tail=$(printf '%s' "$ob_text" | tail -15)"
+        fi
+        if printf '%s' "$ob_text" | grep -qF 'The first name you list becomes your default model'; then
+            pass "S04E08 wizard: rule is stated at the prompt, before the choice"
+        else
+            fail "S04E08 wizard: rule is stated at the prompt, before the choice" "tail=$(printf '%s' "$ob_text" | tail -15)"
+        fi
+        rm -rf "$ob_home" "$ob_answers" "$ob_log"
+
+        # Control case. A model that IS in the built-in registry must get no
+        # "not in built-in list" note. This is the check that proves the
+        # registry is actually loaded on the wizard path: if it were not, every
+        # name would look unregistered and the panel above would pass vacuously.
+        local oc_home; oc_home=$(mktemp -d)
+        local oc_answers; oc_answers=$(mktemp)
+        local oc_log; oc_log=$(mktemp)
+        printf '%s\n%s\n%s\n%s\nN\n' \
+            'azure' \
+            'https://example.openai.azure.com/' \
+            'sk-test-0123456789abcdef' \
+            'gpt-4o-mini' \
+            > "$oc_answers"
+        set +e
+        env -i HOME="$oc_home" PATH="$PATH" TERM=dumb \
+            DOTNET_ROOT="${DOTNET_ROOT:-}" \
+            script -qec "$BIN --setup" "$oc_log" < "$oc_answers" >/dev/null 2>&1
+        set -e
+        local oc_text; oc_text=$(tr -d '\r' < "$oc_log" | sed 's/\x1b\[[0-9;?]*[A-Za-z]//g')
+        if printf '%s' "$oc_text" | grep -qF 'Azure default model: gpt-4o-mini' \
+            && ! printf '%s' "$oc_text" | grep -qF "built-in model list"; then
+            pass "S04E08 wizard: registered model gets no custom-name note (registry loaded)"
+        else
+            fail "S04E08 wizard: registered model gets no custom-name note (registry loaded)" \
+                "tail=$(printf '%s' "$oc_text" | tail -15)"
+        fi
+        rm -rf "$oc_home" "$oc_answers" "$oc_log"
+    fi
+
     # ── S03E25 -- The Rotation (Newman BYOK rotation flow) ───────────────
     echo ""
     echo "▸ S03E25 -- creds rotate (--rotate-creds)"

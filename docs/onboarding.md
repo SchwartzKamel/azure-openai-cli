@@ -120,14 +120,14 @@ az-ai
 ```
 
 The wizard asks for endpoint, API key (input is masked), and model
-deployment name(s). It pings the service to validate, then persists
-to `~/.azureopenai-cli.json` (mode `0600`). On Windows the key is
-encrypted with DPAPI; on macOS it lives in the login Keychain; on
-Linux it goes into libsecret if available, otherwise plaintext at
-`0600`. The README's "Where is my key stored?" table is the
-canonical reference.
+deployment name(s). A deployment name is the name you gave the model in
+Azure. The first name you list becomes your default model, and the wizard
+ends by telling you which one that is and why. It saves everything to
+`~/.config/az-ai/env` (mode `0600` on Linux and macOS) as plaintext.
+`az-ai` does not use an OS keystore yet; the README's "Where is my key
+stored?" table is the canonical reference.
 
-Re-run the wizard any time with `az-ai --init`.
+Re-run the wizard any time with `az-ai --setup`.
 
 **Path B -- environment variables (recommended for CI, Docker, scripts).**
 Export the three required vars. Env vars always win over stored config.

@@ -203,6 +203,11 @@ internal static class SetupWizard
         var apiKey = PromptApiKey("Azure OpenAI API key", required: true);
         if (apiKey is null) return null;
 
+        // S04E08 -- tell the user the rule at the moment they make the choice,
+        // not only after: the first name listed becomes the default model.
+        Console.WriteLine();
+        Console.WriteLine("  A deployment name is the name you gave the model in Azure.");
+        Console.WriteLine("  The first name you list becomes your default model.");
         var models = PromptLine(
             "Azure model deployment name(s), comma-separated",
             defaultValue: "gpt-4o-mini",
@@ -373,6 +378,24 @@ internal static class SetupWizard
         }
         Console.WriteLine($"Default provider: {defaultProvider}");
         Console.WriteLine($"Providers configured: {string.Join(", ", answers.Select(a => a.Provider))}");
+
+        // S04E08 -- explain the default model using the same picker the runtime uses.
+        var azureAnswer = answers.FirstOrDefault(a => a.Provider == WizardProviders.Azure);
+        if (azureAnswer is not null)
+        {
+            var registry = new AzureOpenAI_CLI.Resolution.ArrayModelRegistry(
+                Program.RegistryEntries ?? Array.Empty<AzureOpenAI_CLI.Registry.ModelRegistryEntry>());
+            var panel = AzureOpenAI_CLI.Resolution.WizardModelExplainer.Explain(registry, azureAnswer.Models);
+            if (panel.Length > 0)
+            {
+                Console.WriteLine();
+                foreach (var line in panel)
+                {
+                    Console.WriteLine(line);
+                }
+            }
+        }
+
         Console.WriteLine();
         Console.WriteLine("You're all set. Try:");
         Console.WriteLine("  az-ai \"Hello, world\"");

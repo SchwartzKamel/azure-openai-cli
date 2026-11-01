@@ -119,7 +119,7 @@ public static class CapabilityRejection
     // ASCII by policy (ModelCapability.AllowedTags + AZUREOPENAIMODEL
     // allowlist), so a non-ASCII byte here is either a registry-override
     // attack or a typo. Either way: '?'.
-    private static string Scrub(string value)
+    internal static string Scrub(string value)
     {
         if (string.IsNullOrEmpty(value)) return string.Empty;
         var sb = new StringBuilder(value.Length);
