@@ -44,6 +44,10 @@ internal sealed class UserConfig
     [JsonPropertyName("default_model")]
     public string? DefaultModel { get; set; }
 
+    /// <summary>Default provider profile (FR-014/FR-018: azure, openai, openrouter, ollama, llamacpp, custom).</summary>
+    [JsonPropertyName("default_provider")]
+    public string? DefaultProvider { get; set; }
+
     /// <summary>User-preference defaults (FR-003).</summary>
     [JsonPropertyName("defaults")]
     public UserDefaults Defaults { get; set; } = new();
@@ -70,9 +74,22 @@ internal sealed class UserConfig
     public string? LoadedFrom { get; set; }
 
     /// <summary>Default user config path (<c>~/.azureopenai-cli.json</c>).</summary>
-    public static string DefaultPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        ConfigFileName);
+    public static string DefaultPath
+    {
+        get
+        {
+            var home = Environment.GetEnvironmentVariable("HOME");
+            if (string.IsNullOrWhiteSpace(home))
+            {
+                home = Environment.GetEnvironmentVariable("USERPROFILE");
+            }
+            if (string.IsNullOrWhiteSpace(home))
+            {
+                home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            }
+            return Path.Combine(home, ConfigFileName);
+        }
+    }
 
     /// <summary>Project-local config path (<c>./.azureopenai-cli.json</c>).</summary>
     public static string LocalPath => Path.Combine(
@@ -184,6 +201,11 @@ internal sealed class UserConfig
             case "default_model":
                 DefaultModel = value;
                 return true;
+            case "default_provider":
+                if (!AzureOpenAI_CLI.Providers.ProviderSelector.IsSupportedProvider(value))
+                    return false;
+                DefaultProvider = AzureOpenAI_CLI.Providers.ProviderSelector.NormalizeProviderName(value);
+                return true;
             case "endpoint":
                 Endpoint = value;
                 return true;
@@ -208,6 +230,7 @@ internal sealed class UserConfig
         return parts[0] switch
         {
             "default_model" => DefaultModel,
+            "default_provider" => DefaultProvider,
             "endpoint" => Endpoint,
             "api_key" => ApiKey,
             "models" when parts.Length == 2 => Models.TryGetValue(parts[1], out var v) ? v : null,
@@ -221,6 +244,8 @@ internal sealed class UserConfig
     {
         if (!string.IsNullOrEmpty(DefaultModel))
             yield return $"default_model={DefaultModel}";
+        if (!string.IsNullOrEmpty(DefaultProvider))
+            yield return $"default_provider={DefaultProvider}";
         if (!string.IsNullOrEmpty(Endpoint))
             yield return $"endpoint={Endpoint}";
         if (!string.IsNullOrEmpty(ApiKey))

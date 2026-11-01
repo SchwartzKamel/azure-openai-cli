@@ -9,6 +9,7 @@
 // override explicit operator intent).
 namespace AzureOpenAI_CLI.V2.Tests;
 
+[Collection("ConsoleCapture")]
 public class ValidationTemperatureTests
 {
     [Fact]

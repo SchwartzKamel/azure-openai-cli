@@ -27,6 +27,11 @@ internal static class CostHook
         ["Phi-4-mini-reasoning"] = new PriceEntry(0.000080, 0.000320),  // $0.080/$0.320 per 1M
         ["DeepSeek-V3.2"] = new PriceEntry(0.00058, 0.00168),     // $0.58/$1.68 per 1M
         ["o1-mini"] = new PriceEntry(0.00300, 0.01200),           // $3.00/$12.00 per 1M (estimated)
+        // FR-018 local models (Ollama / llama.cpp): $0.00 API cost
+        ["gemma3"] = new PriceEntry(0.0, 0.0),
+        ["local-model"] = new PriceEntry(0.0, 0.0),
+        ["llama3"] = new PriceEntry(0.0, 0.0),
+        ["qwen2.5-coder"] = new PriceEntry(0.0, 0.0),
     };
 
     private static Dictionary<string, PriceEntry>? _customPriceTable;

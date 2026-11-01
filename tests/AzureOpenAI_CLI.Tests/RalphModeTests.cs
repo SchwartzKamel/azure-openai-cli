@@ -19,10 +19,23 @@ public class RalphModeTests
     /// </summary>
     private static int InvokeMain(string[] args)
     {
-        var result = MainMethod.Invoke(null, new object[] { args });
-        return result is Task<int> taskResult
-            ? taskResult.GetAwaiter().GetResult()
-            : throw new InvalidOperationException($"Main returned {result?.GetType().Name ?? "null"} instead of Task<int>");
+        using var home = new AzureOpenAI_CLI.V2.Tests.TempHome();
+        var origEnd = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+        var origKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
+        try
+        {
+            Environment.SetEnvironmentVariable("AZUREOPENAIENDPOINT", null);
+            Environment.SetEnvironmentVariable("AZUREOPENAIAPI", null);
+            var result = MainMethod.Invoke(null, new object[] { args });
+            return result is Task<int> taskResult
+                ? taskResult.GetAwaiter().GetResult()
+                : throw new InvalidOperationException($"Main returned {result?.GetType().Name ?? "null"} instead of Task<int>");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AZUREOPENAIENDPOINT", origEnd);
+            Environment.SetEnvironmentVariable("AZUREOPENAIAPI", origKey);
+        }
     }
 
     /// <summary>
@@ -30,12 +43,17 @@ public class RalphModeTests
     /// </summary>
     private static (int ExitCode, string StdOut, string StdErr) InvokeMainWithOutput(string[] args)
     {
+        using var home = new AzureOpenAI_CLI.V2.Tests.TempHome();
+        var origEnd = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+        var origKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
         var origOut = Console.Out;
         var origErr = Console.Error;
         var outWriter = new StringWriter();
         var errWriter = new StringWriter();
         try
         {
+            Environment.SetEnvironmentVariable("AZUREOPENAIENDPOINT", null);
+            Environment.SetEnvironmentVariable("AZUREOPENAIAPI", null);
             Console.SetOut(outWriter);
             Console.SetError(errWriter);
             var result = MainMethod.Invoke(null, new object[] { args });
@@ -46,6 +64,8 @@ public class RalphModeTests
         }
         finally
         {
+            Environment.SetEnvironmentVariable("AZUREOPENAIENDPOINT", origEnd);
+            Environment.SetEnvironmentVariable("AZUREOPENAIAPI", origKey);
             Console.SetOut(origOut);
             Console.SetError(origErr);
         }
@@ -306,26 +326,52 @@ public class RalphModeTests
     {
         // Arrange — 1 is the minimum valid value; should parse OK
         // Will fail later (no creds) but should NOT fail at flag parsing
-        var args = new[] { "--ralph", "--max-iterations", "1", "test prompt" };
+        using var home = new AzureOpenAI_CLI.V2.Tests.TempHome();
+        var origEnd = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+        var origKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
+        try
+        {
+            Environment.SetEnvironmentVariable("AZUREOPENAIENDPOINT", null);
+            Environment.SetEnvironmentVariable("AZUREOPENAIAPI", null);
+            var args = new[] { "--ralph", "--max-iterations", "1", "test prompt" };
 
-        // Act
-        int exitCode = InvokeMain(args);
+            // Act
+            int exitCode = InvokeMain(args);
 
-        // Assert — non-zero due to missing credentials, but NOT exit code 1 from parse error
-        Assert.NotEqual(0, exitCode);
+            // Assert — non-zero due to missing credentials, but NOT exit code 1 from parse error
+            Assert.NotEqual(0, exitCode);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AZUREOPENAIENDPOINT", origEnd);
+            Environment.SetEnvironmentVariable("AZUREOPENAIAPI", origKey);
+        }
     }
 
     [Fact]
     public void Main_MaxIterations50_ParsesSuccessfully()
     {
         // Arrange — 50 is the maximum valid value; should parse OK
-        var args = new[] { "--ralph", "--max-iterations", "50", "test prompt" };
+        using var home = new AzureOpenAI_CLI.V2.Tests.TempHome();
+        var origEnd = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+        var origKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
+        try
+        {
+            Environment.SetEnvironmentVariable("AZUREOPENAIENDPOINT", null);
+            Environment.SetEnvironmentVariable("AZUREOPENAIAPI", null);
+            var args = new[] { "--ralph", "--max-iterations", "50", "test prompt" };
 
-        // Act
-        int exitCode = InvokeMain(args);
+            // Act
+            int exitCode = InvokeMain(args);
 
-        // Assert — fails due to missing creds, not flag parsing
-        Assert.NotEqual(0, exitCode);
+            // Assert — fails due to missing creds, not flag parsing
+            Assert.NotEqual(0, exitCode);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AZUREOPENAIENDPOINT", origEnd);
+            Environment.SetEnvironmentVariable("AZUREOPENAIAPI", origKey);
+        }
     }
 
     // ── --ralph + validation ────────────────────────────────────

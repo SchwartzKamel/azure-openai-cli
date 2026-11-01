@@ -102,7 +102,36 @@ internal class Program
                                      // ── Parse-error detail (Scope 3 — reject unknown flags) ─────────────
         int ParseErrorExitCode,      // Exit code for parse errors (default 1; unknown flag = 2)
         string? UnknownFlag,         // Populated when the parse error was an unknown flag
-        bool Setup                   // --setup: launch interactive configuration wizard
+        bool Setup,                  // --setup: launch interactive configuration wizard
+        bool Code = false,           // FR-005: --code: extract code blocks only on stdout
+        bool ListTools = false,      // FR-012: --list-tools: list built-in and manifest tools
+        bool NoPlugins = false,      // FR-012: --no-plugins: disable manifest tool loading
+        bool AllowLocalPlugins = false, // FR-012: --allow-local-plugins: allow ./.azureopenai-cli/tools
+        string? PluginDir = null,    // FR-012: --plugin-dir <path>: custom plugin manifest dir
+        bool McpServe = false,       // FR-013: az-ai mcp serve / --mcp-serve
+        bool AllowShell = false,     // FR-013: --allow-shell (expose shell_exec in mcp serve)
+        bool ReadOnly = false,       // FR-013: --read-only (expose only read-only tools in mcp serve)
+        bool Jsonl = false,          // --jsonl: NDJSON streaming events on stdout
+        string? Pattern = null,      // FR-015: --pattern / -p <name>: curated prompt pattern
+        bool ListPatterns = false,   // FR-015: --patterns / --list-patterns: list prompt patterns
+        IReadOnlyList<string>? McpServers = null, // FR-013: --mcp-server <spec>: external MCP stdio servers
+        string? McpSubcommand = null, // FR-013: az-ai mcp tools|call
+        string? McpTargetServer = null,
+        string? McpTargetTool = null,
+        string? McpTargetArgsJson = null,
+        string? Provider = null,     // FR-014/FR-018: --provider <azure|openai|openrouter|ollama|llamacpp|custom>
+        string? Endpoint = null,     // FR-014/FR-018: --endpoint <url>
+        string? ApiKey = null,       // FR-014/FR-018: --api-key <key>
+        bool ListProviders = false,  // FR-014/FR-018: --providers / --list-providers
+        string? QueueSubcommand = null, // Commander Work Queue: init|add|list|status|plan|run|clear
+        string? QueueFile = null,    // --queue-file <path>
+        string? TaskId = null,       // --task-id <id>
+        string? Title = null,        // --title <title>
+        string? DependsOn = null,    // --depends-on <id1,id2>
+        int Priority = 100,          // --priority <int>
+        int Concurrency = 1,         // --concurrency <1..8>
+        bool DryRun = false,         // --dry-run
+        bool RecoverStale = false    // --recover-stale
     );
 
     private static async Task<int> Main(string[] args)
@@ -230,7 +259,7 @@ internal class Program
         // --models / --list-models (FR-010)
         if (opts.ListModels)
         {
-            return ListModelsCommand(userConfig);
+            return ListModelsCommand(userConfig, opts.Json);
         }
 
         // --current-model
@@ -243,6 +272,103 @@ internal class Program
         if (!string.IsNullOrEmpty(opts.SetModelSpec))
         {
             return SetModelCommand(opts.SetModelSpec, userConfig, opts.Json);
+        }
+
+        // --list-tools (FR-012): enumerate built-in + active manifest tools and exit 0.
+        if (opts.ListTools)
+        {
+            return ListToolsCommand(opts);
+        }
+
+        // --patterns / --list-patterns (FR-015): enumerate built-in + custom patterns and exit 0.
+        if (opts.ListPatterns)
+        {
+            return ListPatternsCommand(opts);
+        }
+
+        // --providers / --list-providers (FR-014/FR-018): enumerate supported providers and exit 0.
+        if (opts.ListProviders)
+        {
+            return ListProvidersCommand(opts, userConfig);
+        }
+
+        // Commander Work Queue (`az-ai queue ...` or `az-ai commander ...`)
+        if (!string.IsNullOrEmpty(opts.QueueSubcommand))
+        {
+            return await HandleQueueSubcommandAsync(opts, userConfig);
+        }
+
+        // FR-013 Phase 1: `az-ai mcp tools <server-cmd>` or `az-ai mcp call <server-cmd> <tool> [json-args]`
+        if (!string.IsNullOrEmpty(opts.McpSubcommand))
+        {
+            return await HandleMcpClientSubcommandAsync(opts);
+        }
+
+        // Validate --pattern early if specified (before credential checks) so invalid pattern names fail fast.
+        AzureOpenAI_CLI.Patterns.PatternTemplate? activePattern = null;
+        if (!string.IsNullOrWhiteSpace(opts.Pattern))
+        {
+            activePattern = AzureOpenAI_CLI.Patterns.PatternRegistry.Resolve(opts.Pattern);
+            if (activePattern is null)
+            {
+                var available = string.Join(", ", AzureOpenAI_CLI.Patterns.PatternRegistry.ListAll().Select(p => p.Name));
+                return ErrorAndExit($"Unknown pattern '{opts.Pattern}'. Available: {available}", 1, jsonMode: opts.Json || opts.Jsonl);
+            }
+            if (opts.SystemPrompt == DEFAULT_SYSTEM_PROMPT)
+            {
+                opts = opts with { SystemPrompt = activePattern.SystemPrompt };
+            }
+            if (Math.Abs(opts.Temperature - DEFAULT_TEMPERATURE) < 0.0001f && activePattern.Temperature.HasValue)
+            {
+                opts = opts with { Temperature = activePattern.Temperature.Value };
+            }
+        }
+
+        // FR-013: `az-ai mcp serve` / `--mcp-serve` (JSON-RPC 2.0 over stdio).
+        // Optionally configures DelegateTaskTool if Azure credentials exist,
+        // but does NOT fail if credentials are absent so local tools (file,
+        // web, datetime, clipboard, manifest plugins) work offline.
+        if (opts.McpServe)
+        {
+            var mcpEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT") ?? userConfig.Endpoint;
+            var mcpApiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI") ?? userConfig.ApiKey;
+            if (!string.IsNullOrWhiteSpace(mcpEndpoint)
+                && !string.IsNullOrWhiteSpace(mcpApiKey)
+                && Uri.TryCreate(mcpEndpoint, UriKind.Absolute, out var mcpUri)
+                && mcpUri.Scheme == "https")
+            {
+                var mcpModel = userConfig.ResolveModel(opts.Model)
+                    ?? Environment.GetEnvironmentVariable("AZUREOPENAIMODEL")
+                    ?? userConfig.ResolveSmartDefault()
+                    ?? DefaultModelFallback;
+                var mcpClient = CreateAzureOpenAIClient(mcpUri, mcpApiKey);
+                var mcpChat = mcpClient.GetChatClient(mcpModel).AsIChatClient();
+                AzureOpenAI_CLI.Tools.DelegateTaskTool.Configure(
+                    mcpChat,
+                    opts.SystemPrompt + "\n\n" + SAFETY_CLAUSE,
+                    mcpModel);
+            }
+
+            var mcpPluginOptions = new AzureOpenAI_CLI.Tools.PluginLoadOptions(
+                NoPlugins: opts.NoPlugins,
+                AllowLocalPlugins: opts.AllowLocalPlugins,
+                CustomPluginDir: opts.PluginDir);
+
+            using var mcpCts = new CancellationTokenSource();
+            Console.CancelKeyPress += (_, e) =>
+            {
+                e.Cancel = true;
+                mcpCts.Cancel();
+            };
+
+            return await AzureOpenAI_CLI.Mcp.McpStdioServer.RunAsync(
+                Console.In,
+                Console.Out,
+                allowShell: opts.AllowShell,
+                readOnly: opts.ReadOnly,
+                explicitTools: opts.Tools,
+                pluginOptions: mcpPluginOptions,
+                ct: mcpCts.Token);
         }
 
         // Squad init: create .squad.json and .squad/ directory
@@ -265,29 +391,7 @@ internal class Program
         // List personas: show available personas from .squad.json
         if (opts.ListPersonas)
         {
-            WarnIfWorldWritable(
-                Path.Combine(Directory.GetCurrentDirectory(), ".squad.json"),
-                opts.Raw || opts.Json);
-            var config = AzureOpenAI_CLI.Squad.SquadConfig.Load();
-            if (config == null)
-            {
-                return ErrorAndExit("No .squad.json found. Run --squad-init first.", 1, jsonMode: opts.Json);
-            }
-
-            var personas = config.ListPersonas();
-            if (personas.Count == 0)
-            {
-                Console.WriteLine("No personas configured in .squad.json");
-                return 0;
-            }
-
-            Console.WriteLine($"Available personas ({personas.Count}):");
-            foreach (var name in personas)
-            {
-                var persona = config.GetPersona(name);
-                Console.WriteLine($"  • {name} — {persona?.Description ?? "(no description)"}");
-            }
-            return 0;
+            return ListPersonasCommand(opts);
         }
 
         // Validate --task-file exists early (before checking credentials)
@@ -303,57 +407,52 @@ internal class Program
             return RunEstimate(opts);
         }
 
-        // Resolve endpoint and API key. Precedence: env > UserConfig (set via the
-        // setup wizard or `--config set`) > error/auto-wizard. Environment variables
-        // win so a project-local .env / shell export always overrides the persisted
-        // user config (matches FR-003/FR-009 documented precedence).
-        var endpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
-        if (string.IsNullOrWhiteSpace(endpoint)) endpoint = userConfig.Endpoint;
+        // Resolve provider, endpoint, API key, and model (FR-014/FR-018).
+        // Precedence: CLI flag > env > UserConfig > provider default.
+        var rawEndpointForWizard = opts.Endpoint
+            ?? Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT")
+            ?? userConfig.Endpoint;
+        var rawApiKeyForWizard = opts.ApiKey
+            ?? Environment.GetEnvironmentVariable("AZUREOPENAIAPI")
+            ?? userConfig.ApiKey;
+        var activeProviderName = AzureOpenAI_CLI.Providers.ProviderSelector.NormalizeProviderName(
+            opts.Provider ?? Environment.GetEnvironmentVariable("AZ_PROVIDER") ?? userConfig.DefaultProvider);
 
-        var apiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
-        if (string.IsNullOrWhiteSpace(apiKey)) apiKey = userConfig.ApiKey;
-
-        // First-run wizard auto-trigger: credentials are missing, the user did
-        // not give us a prompt or task file, stdin is a TTY, and no machine-
-        // readable output flags are set. Walk them through setup instead of
-        // dumping a terse env-var error. Explicit --setup above takes precedence;
-        // this block only fires when the user simply ran bare `az-ai` with
-        // nothing configured yet. (CHANGELOG claim, restored from stash impl.)
-        if (ShouldAutoLaunchSetup(opts, endpoint, apiKey,
+        // First-run wizard auto-trigger: credentials are missing on default Azure provider,
+        // the user did not give us a prompt or task file, stdin is a TTY, and no machine-
+        // readable output flags are set.
+        if (activeProviderName == "azure" && ShouldAutoLaunchSetup(opts, rawEndpointForWizard, rawApiKeyForWizard,
                 SetupWizard.IsInteractiveTty(), Console.IsInputRedirected))
         {
             return await SetupWizard.RunAsync();
         }
 
-        if (string.IsNullOrWhiteSpace(endpoint))
+        var (resolvedProvider, providerError) = AzureOpenAI_CLI.Providers.ProviderSelector.TryResolve(
+            opts.Provider,
+            opts.Endpoint,
+            opts.ApiKey,
+            opts.Model,
+            userConfig);
+        if (resolvedProvider is null)
         {
-            return ErrorAndExit("AZUREOPENAIENDPOINT environment variable not set. Run 'az-ai --setup' for guided configuration.", 1, jsonMode: opts.Json);
+            return ErrorAndExit(providerError ?? "Failed to resolve provider configuration.", 1, jsonMode: opts.Json || opts.Jsonl);
         }
 
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            return ErrorAndExit("AZUREOPENAIAPI environment variable not set. Run 'az-ai --setup' for guided configuration.", 1, jsonMode: opts.Json);
-        }
+        var endpoint = resolvedProvider.EndpointUri.ToString();
+        var apiKey = resolvedProvider.ApiKey;
+        var model = resolvedProvider.Model;
 
         // FR-007: fire-and-forget TLS / DNS prewarm against the configured
         // endpoint. Runs concurrent with stdin read + prompt resolution so the
         // real chat request hits a warm connection pool. Silent — never touches
         // stdout/stderr. Errors swallowed: if prewarm fails, the real request
         // cold-starts normally.
-        if (opts.Prewarm)
+        if (opts.Prewarm && resolvedProvider.EndpointUri.Scheme == "https")
         {
             _ = PrewarmAsync(endpoint, apiKey);
         }
 
-        // FR-010: resolve model via alias map, then env, then UserConfig smart default,
-        // then hardcoded fallback. CLI flag always resolves through alias map first.
-        var resolvedCliModel = userConfig.ResolveModel(opts.Model);
-        var model = resolvedCliModel
-            ?? Environment.GetEnvironmentVariable("AZUREOPENAIMODEL")
-            ?? userConfig.ResolveSmartDefault()
-            ?? DefaultModelFallback;
-
-        // Resolve prompt: --task-file > positional arg > stdin if redirected > error
+        // Resolve prompt: --task-file > positional arg (+ optional piped stdin context) > stdin if redirected > error
         var prompt = opts.Prompt;
 
         // Ralph mode: --task-file takes precedence
@@ -368,14 +467,20 @@ internal class Program
                 return ErrorAndExit($"Failed to read task file: {ex.Message}", 1, jsonMode: opts.Json);
             }
         }
-        else if (string.IsNullOrWhiteSpace(prompt) && Console.IsInputRedirected)
+        else if (Console.IsInputRedirected)
         {
             // SECURITY-AUDIT-001 MEDIUM-001: Bounded stdin read (1 MB cap).
             // Ported from v1 Program.cs:578-590 to prevent unbounded allocation
             // from a malicious/unbounded pipe. Error path must match v1 verbatim.
-            int rc = TryReadBoundedStdin(out var stdinContent);
-            if (rc != 0) return rc;
-            prompt = stdinContent;
+            // Note: When a positional prompt is already provided, only read stdin
+            // if bytes are immediately available on the stream so test runners
+            // that redirect stdin as an open idle pipe don't block waiting for EOF.
+            if (string.IsNullOrWhiteSpace(prompt) || HasRedirectedStdinDataAvailable())
+            {
+                int rc = TryReadBoundedStdin(out var stdinContent);
+                if (rc != 0) return rc;
+                prompt = MergeStdinAndPrompt(stdinContent, prompt);
+            }
         }
 
         if (string.IsNullOrWhiteSpace(prompt))
@@ -469,19 +574,7 @@ internal class Program
         // Build chat client
         try
         {
-            // SECURITY-AUDIT-001 MEDIUM-002: HTTPS-only endpoint guard.
-            // Ported from v1 Program.cs:383-387 — reject non-HTTPS endpoints
-            // before client construction so API keys cannot be sent in cleartext.
-            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri)
-                || endpointUri.Scheme != "https")
-            {
-                return ErrorAndExit(
-                    $"Invalid endpoint URL: '{endpoint}'. Must be a valid HTTPS URL.",
-                    1, jsonMode: opts.Json);
-            }
-
-            var client = new AzureOpenAIClient(endpointUri, new ApiKeyCredential(apiKey));
-            var chatClient = client.GetChatClient(model).AsIChatClient();
+            var chatClient = AzureOpenAI_CLI.Providers.ProviderSelector.CreateChatClient(resolvedProvider);
 
             // System prompt for agent: persona override > opts.SystemPrompt.
             var baseSystem = effectiveSystemPrompt ?? opts.SystemPrompt;
@@ -494,191 +587,283 @@ internal class Program
                 baseSystem + "\n\n" + SAFETY_CLAUSE,
                 model);
 
-            // Ralph mode: run autonomous loop
-            if (opts.RalphMode)
+            var pluginOptions = new AzureOpenAI_CLI.Tools.PluginLoadOptions(
+                NoPlugins: opts.NoPlugins,
+                AllowLocalPlugins: opts.AllowLocalPlugins,
+                CustomPluginDir: opts.PluginDir);
+
+            var mcpClients = new List<AzureOpenAI_CLI.Mcp.McpStdioClient>();
+            var extraMcpTools = new List<AITool>();
+            try
             {
-                using var cts = new CancellationTokenSource();
-                Console.CancelKeyPress += (_, e) =>
+                if (opts.McpServers is { Count: > 0 })
                 {
-                    e.Cancel = true;
-                    cts.Cancel();
+                    foreach (var serverSpec in opts.McpServers)
+                    {
+                        var mcpClient = await AzureOpenAI_CLI.Mcp.McpStdioClient.ConnectSubprocessAsync(
+                            serverSpec,
+                            timeoutSeconds: opts.TimeoutSeconds);
+                        mcpClients.Add(mcpClient);
+                        var clientTools = await mcpClient.CreateMafToolsAsync();
+                        extraMcpTools.AddRange(clientTools);
+                    }
+                }
+
+                // Ralph mode: run autonomous loop
+                if (opts.RalphMode)
+                {
+                    using var cts = new CancellationTokenSource();
+                    Console.CancelKeyPress += (_, e) =>
+                    {
+                        e.Cancel = true;
+                        cts.Cancel();
+                    };
+
+                    return await AzureOpenAI_CLI.Ralph.RalphWorkflow.RunAsync(
+                        chatClient,
+                        taskPrompt: prompt,
+                        systemPrompt: baseSystem + "\n\n" + SAFETY_CLAUSE,
+                        validateCommand: opts.ValidateCommand,
+                        maxIterations: opts.MaxIterations,
+                        temperature: opts.Temperature,
+                        maxTokens: opts.MaxTokens,
+                        timeoutSeconds: opts.TimeoutSeconds,
+                        tools: opts.Tools ?? string.Join(",", AzureOpenAI_CLI.Tools.ToolRegistry.DefaultAgentTools),
+                        ct: cts.Token,
+                        jsonMode: opts.Json,
+                        rawMode: opts.Raw,
+                        codeMode: opts.Code,
+                        modelName: model,
+                        schema: opts.Schema,
+                        pluginOptions: pluginOptions,
+                        extraTools: extraMcpTools
+                    );
+                }
+
+                // FR-008 prompt/response cache — opt-in, only in standard mode.
+                // Never cache when: agent/ralph (tool calls), persona (memory), json
+                // (consumer pipeline), schema (structured output), raw-and-json mix.
+                // Estimate short-circuits upstream so it never reaches this point.
+                bool cacheEligible =
+                    opts.CacheEnabled
+                    && !opts.AgentMode
+                    && !opts.RalphMode
+                    && !opts.Json
+                    && string.IsNullOrEmpty(opts.Schema)
+                    && activePersona == null;
+
+                string? cacheKey = null;
+                if (cacheEligible)
+                {
+                    cacheKey = PromptCache.ComputeKey(
+                        model: model,
+                        temperature: opts.Temperature,
+                        maxTokens: opts.MaxTokens,
+                        systemPrompt: opts.SystemPrompt,
+                        userPrompt: prompt);
+
+                    var maxAge = TimeSpan.FromHours(opts.CacheTtlHours);
+                    var hit = PromptCache.TryGet(cacheKey, maxAge);
+                    if (hit != null)
+                    {
+                        if (!opts.Raw && !opts.Json && !opts.Code)
+                        {
+                            Console.Error.WriteLine("  [cache] hit");
+                        }
+                        var cachedOut = opts.Code ? ExtractCodeBlocks(hit.Response) : hit.Response;
+                        Console.Out.Write(cachedOut);
+                        if (!opts.Raw)
+                        {
+                            Console.WriteLine();
+                        }
+                        return 0;
+                    }
+
+                    if (!opts.Raw && !opts.Json && !opts.Code)
+                    {
+                        Console.Error.WriteLine("  [cache] miss");
+                    }
+                }
+
+                // Standard agent mode: wire tools if --agent is set.
+                // Agent mode appends SAFETY_CLAUSE to reduce prompt-injection risk from tool results.
+                var agentInstructions = opts.AgentMode
+                    ? baseSystem + "\n\n" + SAFETY_CLAUSE
+                    : baseSystem;
+                var agentTools = opts.AgentMode
+                    ? AzureOpenAI_CLI.Tools.ToolRegistry.CreateMafTools(
+                        opts.Tools?.Split(',', StringSplitOptions.RemoveEmptyEntries),
+                        maxRounds: opts.MaxRounds,
+                        pluginOptions: pluginOptions)
+                    : null;
+                if (agentTools != null && extraMcpTools.Count > 0)
+                {
+                    foreach (var et in extraMcpTools)
+                        agentTools.Add(et);
+                }
+                var agent = opts.AgentMode
+                    ? chatClient.AsAIAgent(
+                        instructions: agentInstructions,
+                        tools: agentTools!)
+                    : chatClient.AsAIAgent(instructions: agentInstructions);
+
+                // Run streaming chat
+                using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(opts.TimeoutSeconds));
+                int? inputTokens = null;
+                int? outputTokens = null;
+                bool bufferOutput = opts.Json || opts.Code;
+                var responseBuffer = (activePersona != null || cacheEligible || bufferOutput || opts.Jsonl) ? new StringBuilder() : null;
+
+                // FR-017 + schema/temperature/max-tokens wiring:
+                var runOpts = new ChatClientAgentRunOptions
+                {
+                    ChatOptions = BuildModernChatOptions(opts.Temperature, opts.MaxTokens, opts.Schema)
                 };
 
-                return await AzureOpenAI_CLI.Ralph.RalphWorkflow.RunAsync(
-                    chatClient,
-                    taskPrompt: prompt,
-                    systemPrompt: baseSystem + "\n\n" + SAFETY_CLAUSE,
-                    validateCommand: opts.ValidateCommand,
-                    maxIterations: opts.MaxIterations,
-                    temperature: opts.Temperature,
-                    maxTokens: opts.MaxTokens,
-                    timeoutSeconds: opts.TimeoutSeconds,
-                    tools: opts.Tools ?? string.Join(",", AzureOpenAI_CLI.Tools.ToolRegistry.DefaultAgentTools),
-                    ct: cts.Token
-                );
-            }
+                // Phase 5 observability: start span around the chat/agent request.
+                // Zero overhead when no listener is registered (Telemetry.Initialize off).
+                using var chatActivity = Observability.Telemetry.ActivitySource.StartActivity(
+                    opts.AgentMode ? "az.agent.request" : "az.chat.request",
+                    System.Diagnostics.ActivityKind.Client);
+                chatActivity?.SetTag("az.model", model);
+                chatActivity?.SetTag("az.mode", opts.AgentMode ? "agent" : "standard");
+                chatActivity?.SetTag("az.raw", opts.Raw);
 
-            // FR-008 prompt/response cache — opt-in, only in standard mode.
-            // Never cache when: agent/ralph (tool calls), persona (memory), json
-            // (consumer pipeline), schema (structured output), raw-and-json mix.
-            // Estimate short-circuits upstream so it never reaches this point.
-            bool cacheEligible =
-                opts.CacheEnabled
-                && !opts.AgentMode
-                && !opts.RalphMode
-                && !opts.Json
-                && string.IsNullOrEmpty(opts.Schema)
-                && activePersona == null;
+                var chatStart = System.Diagnostics.Stopwatch.StartNew();
 
-            string? cacheKey = null;
-            if (cacheEligible)
-            {
-                cacheKey = PromptCache.ComputeKey(
-                    model: model,
-                    temperature: opts.Temperature,
-                    maxTokens: opts.MaxTokens,
-                    systemPrompt: opts.SystemPrompt,
-                    userPrompt: prompt);
-
-                var maxAge = TimeSpan.FromHours(opts.CacheTtlHours);
-                var hit = PromptCache.TryGet(cacheKey, maxAge);
-                if (hit != null)
+                await foreach (var update in agent.RunStreamingAsync(prompt, options: runOpts, cancellationToken: cts2.Token))
                 {
-                    if (!opts.Raw)
+                    if (!string.IsNullOrEmpty(update.Text))
                     {
-                        Console.Error.WriteLine("  [cache] hit");
-                    }
-                    Console.Out.Write(hit.Response);
-                    if (!opts.Raw)
-                    {
-                        Console.WriteLine();
-                    }
-                    return 0;
-                }
-
-                if (!opts.Raw)
-                {
-                    Console.Error.WriteLine("  [cache] miss");
-                }
-            }
-
-            // Standard agent mode: wire tools if --agent is set.
-            // Agent mode appends SAFETY_CLAUSE to reduce prompt-injection risk from tool results.
-            var agentInstructions = opts.AgentMode
-                ? baseSystem + "\n\n" + SAFETY_CLAUSE
-                : baseSystem;
-            var agent = opts.AgentMode
-                ? chatClient.AsAIAgent(
-                    instructions: agentInstructions,
-                    tools: AzureOpenAI_CLI.Tools.ToolRegistry.CreateMafTools(
-                        opts.Tools?.Split(',', StringSplitOptions.RemoveEmptyEntries)))
-                : chatClient.AsAIAgent(instructions: agentInstructions);
-
-            // Run streaming chat
-            using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(opts.TimeoutSeconds));
-            int? inputTokens = null;
-            int? outputTokens = null;
-            var responseBuffer = (activePersona != null || cacheEligible) ? new StringBuilder() : null;
-
-            // FR-017: opt into `max_completion_tokens` serialization so reasoning /
-            // Responses-API models (o1, o3, gpt-5.x) accept the token cap. The Chat
-            // Completions SDK still defaults to legacy `max_tokens` for back-compat,
-            // which those deployments reject. Safe to always enable. Ported from v1
-            // Program.cs (SetNewMaxCompletionTokensPropertyEnabled call sites).
-            var runOpts = new ChatClientAgentRunOptions { ChatOptions = BuildModernChatOptions() };
-
-            // Phase 5 observability: start span around the chat/agent request.
-            // Zero overhead when no listener is registered (Telemetry.Initialize off).
-            using var chatActivity = Observability.Telemetry.ActivitySource.StartActivity(
-                opts.AgentMode ? "az.agent.request" : "az.chat.request",
-                System.Diagnostics.ActivityKind.Client);
-            chatActivity?.SetTag("az.model", model);
-            chatActivity?.SetTag("az.mode", opts.AgentMode ? "agent" : "standard");
-            chatActivity?.SetTag("az.raw", opts.Raw);
-
-            var chatStart = System.Diagnostics.Stopwatch.StartNew();
-
-            await foreach (var update in agent.RunStreamingAsync(prompt, options: runOpts, cancellationToken: cts2.Token))
-            {
-                if (!string.IsNullOrEmpty(update.Text))
-                {
-                    Console.Out.Write(update.Text);
-                    responseBuffer?.Append(update.Text);
-                }
-
-                // Capture token usage from MAF streaming updates (one UsageContent per final chunk).
-                if (update.Contents != null)
-                {
-                    foreach (var c in update.Contents)
-                    {
-                        if (c is Microsoft.Extensions.AI.UsageContent uc && uc.Details != null)
+                        if (opts.Jsonl)
                         {
-                            if (uc.Details.InputTokenCount is long inTok) inputTokens = (inputTokens ?? 0) + (int)inTok;
-                            if (uc.Details.OutputTokenCount is long outTok) outputTokens = (outputTokens ?? 0) + (int)outTok;
+                            Console.Out.WriteLine(FormatJsonlDeltaEvent(update.Text));
+                            Console.Out.Flush();
+                        }
+                        else if (!bufferOutput)
+                        {
+                            Console.Out.Write(update.Text);
+                        }
+                        responseBuffer?.Append(update.Text);
+                    }
+
+                    // Capture token usage from MAF streaming updates (one UsageContent per final chunk).
+                    if (update.Contents != null)
+                    {
+                        foreach (var c in update.Contents)
+                        {
+                            if (c is Microsoft.Extensions.AI.UsageContent uc && uc.Details != null)
+                            {
+                                if (uc.Details.InputTokenCount is long inTok) inputTokens = (inputTokens ?? 0) + (int)inTok;
+                                if (uc.Details.OutputTokenCount is long outTok) outputTokens = (outputTokens ?? 0) + (int)outTok;
+                            }
                         }
                     }
                 }
-            }
 
-            Console.Out.Flush();
+                chatStart.Stop();
 
-            chatStart.Stop();
-            if (Observability.Telemetry.IsEnabled)
-            {
-                Observability.Telemetry.ChatDuration.Record(
-                    chatStart.Elapsed.TotalSeconds,
-                    new KeyValuePair<string, object?>("model", model));
-                if (inputTokens.HasValue || outputTokens.HasValue)
+                if (opts.Jsonl && responseBuffer != null)
                 {
-                    Observability.Telemetry.RecordRequest(
-                        model,
-                        inputTokens.GetValueOrDefault(),
-                        outputTokens.GetValueOrDefault(),
-                        opts.AgentMode ? "agent" : "standard");
+                    var finalContent = opts.Code ? ExtractCodeBlocks(responseBuffer.ToString()) : responseBuffer.ToString();
+                    var modeLabel = activePersona != null ? $"persona:{activePersona.Name}" : (opts.AgentMode ? "agent" : "standard");
+                    Console.Out.WriteLine(FormatJsonlDoneEvent(
+                        response: finalContent,
+                        model: model,
+                        mode: modeLabel,
+                        inputTokens: inputTokens,
+                        outputTokens: outputTokens,
+                        durationMs: chatStart.ElapsedMilliseconds));
+                }
+                else if (opts.Json && responseBuffer != null)
+                {
+                    var finalContent = opts.Code ? ExtractCodeBlocks(responseBuffer.ToString()) : responseBuffer.ToString();
+                    var modeLabel = activePersona != null ? $"persona:{activePersona.Name}" : (opts.AgentMode ? "agent" : "standard");
+                    Console.Out.WriteLine(FormatChatJsonResponse(
+                        response: finalContent,
+                        model: model,
+                        mode: modeLabel,
+                        inputTokens: inputTokens,
+                        outputTokens: outputTokens,
+                        durationMs: chatStart.ElapsedMilliseconds,
+                        cached: false));
+                }
+                else if (opts.Code && responseBuffer != null)
+                {
+                    var extracted = ExtractCodeBlocks(responseBuffer.ToString());
+                    Console.Out.Write(extracted);
+                    if (!opts.Raw && !extracted.EndsWith('\n'))
+                    {
+                        Console.WriteLine();
+                    }
+                }
+
+                Console.Out.Flush();
+
+                if (Observability.Telemetry.IsEnabled)
+                {
+                    Observability.Telemetry.ChatDuration.Record(
+                        chatStart.Elapsed.TotalSeconds,
+                        new KeyValuePair<string, object?>("model", model));
+                    if (inputTokens.HasValue || outputTokens.HasValue)
+                    {
+                        Observability.Telemetry.RecordRequest(
+                            model,
+                            inputTokens.GetValueOrDefault(),
+                            outputTokens.GetValueOrDefault(),
+                            opts.AgentMode ? "agent" : "standard");
+                    }
+                }
+
+                // Token usage on stderr (only when NOT --raw, NOT --json, NOT --jsonl, and NOT --code)
+                if (!opts.Raw && !opts.Json && !opts.Jsonl && !opts.Code && !Console.IsErrorRedirected && inputTokens.HasValue)
+                {
+                    var total = inputTokens.Value + outputTokens.GetValueOrDefault();
+                    Console.Error.WriteLine($"  [tokens: {inputTokens}→{outputTokens}, {total} total]");
+                }
+
+                // Trailing newline (NOT in raw/json/jsonl/code mode)
+                if (!opts.Raw && !opts.Json && !opts.Jsonl && !opts.Code)
+                {
+                    Console.WriteLine();
+                }
+
+                // Persist persona memory (H4): append session summary to history.
+                if (activePersona != null && personaMemory != null && responseBuffer != null)
+                {
+                    try
+                    {
+                        var summary = responseBuffer.Length > 500
+                            ? responseBuffer.ToString(0, 500) + "…"
+                            : responseBuffer.ToString();
+                        personaMemory.AppendHistory(activePersona.Name, prompt, summary);
+                    }
+                    catch { /* best-effort — don't fail a successful completion */ }
+                }
+
+                // FR-008: write to cache on successful completion (miss path only).
+                // Best-effort: IO failures never fail a completed request.
+                if (cacheEligible && cacheKey != null && responseBuffer != null && responseBuffer.Length > 0)
+                {
+                    var entry = new CachedResponse(
+                        Response: responseBuffer.ToString(),
+                        CachedAt: DateTime.UtcNow,
+                        TtlHours: opts.CacheTtlHours,
+                        Model: model,
+                        InputTokens: inputTokens,
+                        OutputTokens: outputTokens);
+                    PromptCache.Put(cacheKey, entry);
+                }
+
+                return 0;
+            }
+            finally
+            {
+                foreach (var c in mcpClients)
+                {
+                    try { c.Dispose(); } catch { }
                 }
             }
-
-            // Token usage on stderr (only when NOT --raw)
-            if (!opts.Raw && !Console.IsErrorRedirected && inputTokens.HasValue)
-            {
-                var total = inputTokens.Value + outputTokens.GetValueOrDefault();
-                Console.Error.WriteLine($"  [tokens: {inputTokens}→{outputTokens}, {total} total]");
-            }
-
-            // Trailing newline (NOT in raw mode)
-            if (!opts.Raw)
-            {
-                Console.WriteLine();
-            }
-
-            // Persist persona memory (H4): append session summary to history.
-            if (activePersona != null && personaMemory != null && responseBuffer != null)
-            {
-                try
-                {
-                    var summary = responseBuffer.Length > 500
-                        ? responseBuffer.ToString(0, 500) + "…"
-                        : responseBuffer.ToString();
-                    personaMemory.AppendHistory(activePersona.Name, prompt, summary);
-                }
-                catch { /* best-effort — don't fail a successful completion */ }
-            }
-
-            // FR-008: write to cache on successful completion (miss path only).
-            // Best-effort: IO failures never fail a completed request.
-            if (cacheEligible && cacheKey != null && responseBuffer != null && responseBuffer.Length > 0)
-            {
-                var entry = new CachedResponse(
-                    Response: responseBuffer.ToString(),
-                    CachedAt: DateTime.UtcNow,
-                    TtlHours: opts.CacheTtlHours,
-                    Model: model,
-                    InputTokens: inputTokens,
-                    OutputTokens: outputTokens);
-                PromptCache.Put(cacheKey, entry);
-            }
-
-            return 0;
         }
         catch (OperationCanceledException)
         {
@@ -862,6 +1047,35 @@ internal class Program
         bool cacheEnabled = false;
         int? cacheTtlHours = null;
         bool setup = false;
+        bool code = false;
+        bool listTools = false;
+        bool noPlugins = false;
+        bool allowLocalPlugins = false;
+        string? pluginDir = null;
+        bool mcpServe = false;
+        bool allowShell = false;
+        bool readOnly = false;
+        bool jsonl = false;
+        string? pattern = null;
+        bool listPatterns = false;
+        var mcpServers = new List<string>();
+        string? mcpSubcommand = null;
+        string? mcpTargetServer = null;
+        string? mcpTargetTool = null;
+        string? mcpTargetArgsJson = null;
+        string? provider = null;
+        string? endpointFlag = null;
+        string? apiKeyFlag = null;
+        bool listProviders = false;
+        string? queueSubcommand = null;
+        string? queueFile = null;
+        string? taskId = null;
+        string? title = null;
+        string? dependsOn = null;
+        int priority = 100;
+        int concurrency = 1;
+        bool dryRun = false;
+        bool recoverStale = false;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -914,6 +1128,54 @@ internal class Program
                     if (i + 1 < args.Length) { model = args[++i]; }
                     else { Fail("--model requires a model name or alias"); }
                     break;
+                case "--provider":
+                    if (i + 1 < args.Length) { provider = args[++i]; }
+                    else { Fail("--provider requires a provider name (azure|openai|openrouter|ollama|llamacpp|custom)"); }
+                    break;
+                case "--providers":
+                case "--list-providers":
+                    listProviders = true;
+                    break;
+                case "--endpoint":
+                    if (i + 1 < args.Length) { endpointFlag = args[++i]; }
+                    else { Fail("--endpoint requires a URL"); }
+                    break;
+                case "--api-key":
+                    if (i + 1 < args.Length) { apiKeyFlag = args[++i]; }
+                    else { Fail("--api-key requires a value"); }
+                    break;
+                case "--queue-file":
+                    if (i + 1 < args.Length) { queueFile = args[++i]; }
+                    else { Fail("--queue-file requires a file path"); }
+                    break;
+                case "--task-id":
+                    if (i + 1 < args.Length) { taskId = args[++i]; }
+                    else { Fail("--task-id requires an ID value"); }
+                    break;
+                case "--title":
+                    if (i + 1 < args.Length) { title = args[++i]; }
+                    else { Fail("--title requires a value"); }
+                    break;
+                case "--depends-on":
+                    if (i + 1 < args.Length) { dependsOn = args[++i]; }
+                    else { Fail("--depends-on requires comma-separated task IDs"); }
+                    break;
+                case "--priority":
+                    if (i + 1 < args.Length && int.TryParse(args[i + 1], out int pri))
+                    { priority = pri; i++; }
+                    else { Fail("--priority requires an integer"); }
+                    break;
+                case "--concurrency":
+                    if (i + 1 < args.Length && int.TryParse(args[i + 1], out int conc) && conc >= 1 && conc <= 8)
+                    { concurrency = conc; i++; }
+                    else { Fail("--concurrency requires an integer between 1 and 8"); }
+                    break;
+                case "--dry-run":
+                    dryRun = true;
+                    break;
+                case "--recover-stale":
+                    recoverStale = true;
+                    break;
                 case "--temperature":
                 case "-t":
                     if (i + 1 < args.Length && float.TryParse(args[i + 1],
@@ -963,6 +1225,39 @@ internal class Program
                     if (i + 1 < args.Length) { tools = args[++i]; }
                     else { Fail("--tools requires a comma-separated list"); }
                     break;
+                case "--list-tools":
+                    listTools = true;
+                    break;
+                case "--no-plugins":
+                    noPlugins = true;
+                    break;
+                case "--allow-local-plugins":
+                    allowLocalPlugins = true;
+                    break;
+                case "--plugin-dir":
+                    if (i + 1 < args.Length) { pluginDir = args[++i]; }
+                    else { Fail("--plugin-dir requires a directory path"); }
+                    break;
+                case "--mcp-serve":
+                    mcpServe = true;
+                    break;
+                case "--mcp-server":
+                    if (i + 1 < args.Length)
+                    {
+                        mcpServers.Add(args[++i]);
+                        agentMode = true; // --mcp-server implies --agent
+                    }
+                    else { Fail("--mcp-server requires a server command or <name>=<command>"); }
+                    break;
+                case "--stdio":
+                    // Accepted as an explicit transport flag for `az-ai mcp serve --stdio` (FR-013 §6.2)
+                    break;
+                case "--allow-shell":
+                    allowShell = true;
+                    break;
+                case "--read-only":
+                    readOnly = true;
+                    break;
                 case "--squad-init":
                     squadInit = true;
                     break;
@@ -972,6 +1267,15 @@ internal class Program
                     break;
                 case "--personas":
                     listPersonas = true;
+                    break;
+                case "--pattern":
+                case "-p":
+                    if (i + 1 < args.Length) { pattern = args[++i]; }
+                    else { Fail("--pattern requires a pattern name (run --patterns to list)"); }
+                    break;
+                case "--patterns":
+                case "--list-patterns":
+                    listPatterns = true;
                     break;
                 case "--ralph":
                     ralphMode = true;
@@ -1097,6 +1401,12 @@ internal class Program
                 case "--json":
                     json = true;
                     break;
+                case "--jsonl":
+                    jsonl = true;
+                    break;
+                case "--code":
+                    code = true;
+                    break;
                 case "--prewarm":
                     prewarm = true;
                     break;
@@ -1133,6 +1443,69 @@ internal class Program
                     if (string.Equals(arg, "setup", StringComparison.OrdinalIgnoreCase) && !afterDoubleDash)
                     {
                         setup = true;
+                        break;
+                    }
+                    if (string.Equals(arg, "mcp", StringComparison.OrdinalIgnoreCase) && !afterDoubleDash)
+                    {
+                        if (i + 1 < args.Length)
+                        {
+                            var mcpVerb = args[i + 1].ToLowerInvariant();
+                            if (mcpVerb == "serve")
+                            {
+                                mcpServe = true;
+                                i++;
+                                break;
+                            }
+                            if (mcpVerb == "tools")
+                            {
+                                i++;
+                                if (i + 1 < args.Length)
+                                {
+                                    mcpSubcommand = "tools";
+                                    mcpTargetServer = args[++i];
+                                }
+                                else
+                                {
+                                    Fail("'mcp tools' requires a server command (usage: az-ai mcp tools \"<server-command>\" [--json])");
+                                }
+                                break;
+                            }
+                            if (mcpVerb == "call")
+                            {
+                                i++;
+                                if (i + 2 < args.Length)
+                                {
+                                    mcpSubcommand = "call";
+                                    mcpTargetServer = args[++i];
+                                    mcpTargetTool = args[++i];
+                                    if (i + 1 < args.Length && !args[i + 1].StartsWith("-", StringComparison.Ordinal))
+                                    {
+                                        mcpTargetArgsJson = args[++i];
+                                    }
+                                }
+                                else
+                                {
+                                    Fail("'mcp call' requires <server-command> and <tool-name> (usage: az-ai mcp call \"<server-command>\" <tool> ['{\"arg\":\"val\"}'])");
+                                }
+                                break;
+                            }
+                        }
+                        Fail("'mcp' subcommand requires 'serve', 'tools', or 'call' (usage: az-ai mcp serve | az-ai mcp tools <cmd> | az-ai mcp call <cmd> <tool> [json])");
+                        break;
+                    }
+                    if ((string.Equals(arg, "queue", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(arg, "commander", StringComparison.OrdinalIgnoreCase))
+                        && !afterDoubleDash
+                        && string.IsNullOrEmpty(queueSubcommand))
+                    {
+                        var queueVerbs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                            { "init", "add", "list", "status", "plan", "run", "clear" };
+                        if (i + 1 < args.Length && queueVerbs.Contains(args[i + 1]))
+                        {
+                            queueSubcommand = args[++i].ToLowerInvariant();
+                            break;
+                        }
+                        Fail($"'{arg}' subcommand requires one of: init, add, list, status, plan, run, clear");
                         break;
                     }
                     positionalArgs.Add(args[i]);
@@ -1349,7 +1722,596 @@ internal class Program
             CacheEnabled = cacheEnabled,
             CacheTtlHours = cacheTtlHours ?? PromptCache.DefaultTtlHours,
             Setup = setup,
+            Code = code,
+            ListTools = listTools,
+            NoPlugins = noPlugins,
+            AllowLocalPlugins = allowLocalPlugins || Environment.GetEnvironmentVariable("AZ_ALLOW_LOCAL_PLUGINS") == "1",
+            PluginDir = pluginDir,
+            McpServe = mcpServe,
+            AllowShell = allowShell,
+            ReadOnly = readOnly,
+            Jsonl = jsonl,
+            Pattern = pattern,
+            ListPatterns = listPatterns,
+            McpServers = mcpServers.Count > 0 ? mcpServers : null,
+            McpSubcommand = mcpSubcommand,
+            McpTargetServer = mcpTargetServer,
+            McpTargetTool = mcpTargetTool,
+            McpTargetArgsJson = mcpTargetArgsJson,
+            Provider = provider,
+            Endpoint = endpointFlag,
+            ApiKey = apiKeyFlag,
+            ListProviders = listProviders,
+            QueueSubcommand = queueSubcommand,
+            QueueFile = queueFile,
+            TaskId = taskId,
+            Title = title,
+            DependsOn = dependsOn,
+            Priority = priority,
+            Concurrency = concurrency,
+            DryRun = dryRun,
+            RecoverStale = recoverStale,
         };
+    }
+
+    /// <summary>
+    /// Dispatches <c>az-ai queue &lt;init|add|list|status|plan|run|clear&gt;</c>
+    /// (and alias <c>az-ai commander ...</c>).
+    /// </summary>
+    internal static async Task<int> HandleQueueSubcommandAsync(CliOptions opts, UserConfig userConfig)
+    {
+        var qPath = AzureOpenAI_CLI.Commander.WorkQueue.ResolvePath(opts.QueueFile);
+        var verb = (opts.QueueSubcommand ?? string.Empty).ToLowerInvariant();
+
+        try
+        {
+            switch (verb)
+            {
+                case "init":
+                    {
+                        var q = AzureOpenAI_CLI.Commander.WorkQueue.LoadOrCreate(qPath);
+                        AzureOpenAI_CLI.Commander.WorkQueue.SaveAtomic(q, qPath);
+                        if (opts.Json)
+                        {
+                            var summary = AzureOpenAI_CLI.Commander.WorkQueue.Summarize(q, qPath);
+                            Console.WriteLine(JsonSerializer.Serialize(summary, AppJsonContext.Default.QueueStatusSummary));
+                        }
+                        else
+                        {
+                            Console.WriteLine($"✓ Commander Work Queue initialized at {qPath} ({q.Tasks.Count} task(s)).");
+                        }
+                        return 0;
+                    }
+
+                case "clear":
+                    {
+                        var q = new AzureOpenAI_CLI.Commander.WorkQueueFile();
+                        AzureOpenAI_CLI.Commander.WorkQueue.SaveAtomic(q, qPath);
+                        if (opts.Json)
+                        {
+                            var summary = AzureOpenAI_CLI.Commander.WorkQueue.Summarize(q, qPath);
+                            Console.WriteLine(JsonSerializer.Serialize(summary, AppJsonContext.Default.QueueStatusSummary));
+                        }
+                        else
+                        {
+                            Console.WriteLine($"✓ Commander Work Queue cleared at {qPath}.");
+                        }
+                        return 0;
+                    }
+
+                case "add":
+                    {
+                        var prompt = opts.Prompt;
+                        if (!string.IsNullOrWhiteSpace(opts.TaskFile))
+                        {
+                            prompt = await File.ReadAllTextAsync(opts.TaskFile);
+                        }
+                        else if (string.IsNullOrWhiteSpace(prompt) && Console.IsInputRedirected && HasRedirectedStdinDataAvailable())
+                        {
+                            int rc = TryReadBoundedStdin(out var stdinText);
+                            if (rc != 0) return rc;
+                            prompt = stdinText;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(prompt))
+                        {
+                            return ErrorAndExit("queue add requires a task prompt (argument, --task-file, or stdin)", 1, jsonMode: opts.Json);
+                        }
+
+                        var q = AzureOpenAI_CLI.Commander.WorkQueue.LoadOrCreate(qPath);
+                        var deps = string.IsNullOrWhiteSpace(opts.DependsOn)
+                            ? new List<string>()
+                            : opts.DependsOn.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+                        var item = new AzureOpenAI_CLI.Commander.QueueTaskItem
+                        {
+                            Id = opts.TaskId ?? string.Empty,
+                            Title = opts.Title ?? string.Empty,
+                            Prompt = prompt,
+                            Priority = opts.Priority,
+                            DependsOn = deps,
+                            Provider = opts.Provider,
+                            Model = opts.Model,
+                            Persona = opts.Persona,
+                            Pattern = opts.Pattern,
+                            Tools = opts.Tools,
+                            ValidateCommand = opts.ValidateCommand,
+                            MaxIterations = opts.MaxIterations,
+                        };
+
+                        var added = AzureOpenAI_CLI.Commander.WorkQueue.AddTask(q, item);
+                        var dagErr = AzureOpenAI_CLI.Commander.WorkQueue.ValidateDag(q);
+                        if (dagErr is not null)
+                        {
+                            return ErrorAndExit(dagErr, 1, jsonMode: opts.Json);
+                        }
+
+                        AzureOpenAI_CLI.Commander.WorkQueue.SaveAtomic(q, qPath);
+                        if (opts.Json)
+                        {
+                            Console.WriteLine(JsonSerializer.Serialize(added, AppJsonContext.Default.QueueTaskItem));
+                        }
+                        else
+                        {
+                            Console.WriteLine($"✓ Added task {added.Id} ({added.Title}) to {qPath}");
+                        }
+                        return 0;
+                    }
+
+                case "plan":
+                    {
+                        string? rawPlan = opts.Prompt;
+                        if (!string.IsNullOrWhiteSpace(opts.TaskFile))
+                        {
+                            rawPlan = await File.ReadAllTextAsync(opts.TaskFile);
+                        }
+                        else if (string.IsNullOrWhiteSpace(rawPlan) && Console.IsInputRedirected && HasRedirectedStdinDataAvailable())
+                        {
+                            int rc = TryReadBoundedStdin(out var stdinPlan);
+                            if (rc != 0) return rc;
+                            rawPlan = stdinPlan;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(rawPlan))
+                        {
+                            return ErrorAndExit("queue plan requires a JSON array of tasks (via --task-file, argument, or stdin)", 1, jsonMode: opts.Json);
+                        }
+
+                        var items = JsonSerializer.Deserialize(rawPlan, AppJsonContext.Default.ListQueueTaskItem);
+                        if (items is null || items.Count == 0)
+                        {
+                            return ErrorAndExit("queue plan JSON contained no tasks.", 1, jsonMode: opts.Json);
+                        }
+
+                        var q = AzureOpenAI_CLI.Commander.WorkQueue.LoadOrCreate(qPath);
+                        foreach (var it in items)
+                        {
+                            AzureOpenAI_CLI.Commander.WorkQueue.AddTask(q, it);
+                        }
+
+                        var dagErr = AzureOpenAI_CLI.Commander.WorkQueue.ValidateDag(q);
+                        if (dagErr is not null)
+                        {
+                            return ErrorAndExit(dagErr, 1, jsonMode: opts.Json);
+                        }
+
+                        AzureOpenAI_CLI.Commander.WorkQueue.SaveAtomic(q, qPath);
+                        var summary = AzureOpenAI_CLI.Commander.WorkQueue.Summarize(q, qPath);
+                        if (opts.Json)
+                        {
+                            Console.WriteLine(JsonSerializer.Serialize(summary, AppJsonContext.Default.QueueStatusSummary));
+                        }
+                        else
+                        {
+                            Console.WriteLine($"✓ Planned {items.Count} task(s) into {qPath} (total: {q.Tasks.Count}).");
+                        }
+                        return 0;
+                    }
+
+                case "list":
+                case "status":
+                    {
+                        var q = AzureOpenAI_CLI.Commander.WorkQueue.LoadOrCreate(qPath);
+                        var summary = AzureOpenAI_CLI.Commander.WorkQueue.Summarize(q, qPath);
+                        if (opts.Json)
+                        {
+                            Console.WriteLine(JsonSerializer.Serialize(summary, AppJsonContext.Default.QueueStatusSummary));
+                            return 0;
+                        }
+
+                        Console.WriteLine($"Commander Queue ({qPath}) — total: {summary.Total} (pending: {summary.Pending}, running: {summary.Running}, done: {summary.Done}, failed: {summary.Failed}, blocked: {summary.Blocked})");
+                        foreach (var t in q.Tasks)
+                        {
+                            var deps = t.DependsOn.Count > 0 ? $" [depends: {string.Join(",", t.DependsOn)}]" : "";
+                            Console.WriteLine($"  • [{t.Status,-7}] {t.Id,-6} (p={t.Priority}) {t.Title}{deps}");
+                        }
+                        return 0;
+                    }
+
+                case "run":
+                    {
+                        var q = AzureOpenAI_CLI.Commander.WorkQueue.LoadOrCreate(qPath);
+                        var pluginOpts = new AzureOpenAI_CLI.Tools.PluginLoadOptions(
+                            NoPlugins: opts.NoPlugins,
+                            AllowLocalPlugins: opts.AllowLocalPlugins,
+                            CustomPluginDir: opts.PluginDir);
+
+                        var (exitCode, executed, runErr) = await AzureOpenAI_CLI.Commander.CommanderRunner.RunQueueAsync(
+                            queue: q,
+                            queueFilePath: qPath,
+                            userConfig: userConfig,
+                            defaultProviderFlag: opts.Provider,
+                            defaultModelFlag: opts.Model,
+                            concurrency: opts.Concurrency,
+                            dryRun: opts.DryRun,
+                            recoverStale: opts.RecoverStale,
+                            quiet: opts.Raw || opts.Json,
+                            pluginOptions: pluginOpts);
+
+                        if (runErr is not null)
+                        {
+                            return ErrorAndExit(runErr, exitCode, jsonMode: opts.Json);
+                        }
+
+                        var summary = AzureOpenAI_CLI.Commander.WorkQueue.Summarize(q, qPath, executed);
+                        if (opts.Json)
+                        {
+                            Console.WriteLine(JsonSerializer.Serialize(summary, AppJsonContext.Default.QueueStatusSummary));
+                        }
+                        else if (!opts.Raw)
+                        {
+                            Console.WriteLine($"✓ Commander run finished: {executed} task(s) executed (done: {summary.Done}/{summary.Total}, failed: {summary.Failed}, blocked: {summary.Blocked}).");
+                        }
+                        return exitCode;
+                    }
+
+                default:
+                    return ErrorAndExit($"Unknown queue subcommand '{verb}'.", 1, jsonMode: opts.Json);
+            }
+        }
+        catch (Exception ex)
+        {
+            return ErrorAndExit($"Queue error: {ex.Message}", 1, jsonMode: opts.Json);
+        }
+    }
+
+    /// <summary>
+    /// FR-014/FR-018: <c>--providers</c> / <c>--list-providers</c> (supports <c>--json</c>).
+    /// </summary>
+    internal static int ListProvidersCommand(CliOptions opts, UserConfig userConfig)
+    {
+        var providers = AzureOpenAI_CLI.Providers.ProviderSelector.DescribeProviders(userConfig).ToList();
+        if (opts.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(providers, AppJsonContext.Default.ListProviderDescriptor));
+            return 0;
+        }
+
+        Console.WriteLine($"Supported model providers ({providers.Count}):");
+        foreach (var p in providers)
+        {
+            var status = p.Configured ? "ready" : $"set {p.ApiKeyEnv ?? p.EndpointEnv}";
+            Console.WriteLine($"  • {p.Name,-12} [{p.Kind}] default={p.DefaultModel} ({status})");
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// FR-013 Phase 1: handles <c>az-ai mcp tools &lt;cmd&gt;</c> and
+    /// <c>az-ai mcp call &lt;cmd&gt; &lt;tool&gt; [json-args]</c>.
+    /// </summary>
+    internal static async Task<int> HandleMcpClientSubcommandAsync(CliOptions opts)
+    {
+        if (string.IsNullOrWhiteSpace(opts.McpTargetServer))
+        {
+            return ErrorAndExit("MCP server command is required.", 1, jsonMode: opts.Json);
+        }
+
+        try
+        {
+            using var client = await AzureOpenAI_CLI.Mcp.McpStdioClient.ConnectSubprocessAsync(
+                opts.McpTargetServer,
+                timeoutSeconds: opts.TimeoutSeconds);
+
+            if (string.Equals(opts.McpSubcommand, "tools", StringComparison.OrdinalIgnoreCase))
+            {
+                var tools = (await client.ListToolsAsync()).ToList();
+                if (opts.Json)
+                {
+                    Console.WriteLine(JsonSerializer.Serialize(tools, AppJsonContext.Default.ListMcpToolInfo));
+                    return 0;
+                }
+
+                Console.WriteLine($"MCP server '{client.ServerName}' tools ({tools.Count}):");
+                foreach (var t in tools)
+                {
+                    Console.WriteLine($"  • {t.Name} — {t.Description}");
+                }
+                return 0;
+            }
+
+            if (string.Equals(opts.McpSubcommand, "call", StringComparison.OrdinalIgnoreCase))
+            {
+                var argsDict = new Dictionary<string, object?>(StringComparer.Ordinal);
+                if (!string.IsNullOrWhiteSpace(opts.McpTargetArgsJson))
+                {
+                    using var doc = JsonDocument.Parse(opts.McpTargetArgsJson);
+                    if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                    {
+                        return ErrorAndExit("MCP tool arguments must be a JSON object.", 1, jsonMode: opts.Json);
+                    }
+                    foreach (var p in doc.RootElement.EnumerateObject())
+                    {
+                        argsDict[p.Name] = p.Value.Clone();
+                    }
+                }
+
+                var callResult = await client.CallToolAsync(opts.McpTargetTool ?? string.Empty, argsDict);
+                if (opts.Json)
+                {
+                    Console.WriteLine(JsonSerializer.Serialize(callResult, McpJsonContext.Default.McpCallToolResult));
+                    return callResult.IsError ? 1 : 0;
+                }
+
+                var text = string.Join("\n", callResult.Content.Select(c => c.Text));
+                if (callResult.IsError)
+                {
+                    return ErrorAndExit(text, 1, jsonMode: false);
+                }
+                Console.WriteLine(text);
+                return 0;
+            }
+
+            return ErrorAndExit($"Unknown MCP subcommand '{opts.McpSubcommand}'.", 1, jsonMode: opts.Json);
+        }
+        catch (Exception ex)
+        {
+            return ErrorAndExit($"MCP client error: {ex.Message}", 1, jsonMode: opts.Json);
+        }
+    }
+
+    /// <summary>
+    /// FR-015: <c>--patterns</c> / <c>--list-patterns</c> (supports <c>--json</c>).
+    /// </summary>
+    internal static int ListPatternsCommand(CliOptions opts)
+    {
+        var patterns = AzureOpenAI_CLI.Patterns.PatternRegistry.ListAll().ToList();
+        if (opts.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(patterns, AppJsonContext.Default.ListPatternTemplate));
+            return 0;
+        }
+
+        Console.WriteLine($"Available prompt patterns ({patterns.Count}):");
+        foreach (var p in patterns)
+        {
+            Console.WriteLine($"  • {p.Name,-18} [{p.Source}] — {p.Description}");
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Lists personas from <c>.squad.json</c> (supports <c>--json</c> for machine discovery).
+    /// </summary>
+    internal static int ListPersonasCommand(CliOptions opts)
+    {
+        WarnIfWorldWritable(
+            Path.Combine(Directory.GetCurrentDirectory(), ".squad.json"),
+            opts.Raw || opts.Json || opts.Jsonl);
+        var config = AzureOpenAI_CLI.Squad.SquadConfig.Load();
+        if (config == null)
+        {
+            return ErrorAndExit("No .squad.json found. Run --squad-init first.", 1, jsonMode: opts.Json || opts.Jsonl);
+        }
+
+        if (opts.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(config.Personas, AppJsonContext.Default.ListPersonaConfig));
+            return 0;
+        }
+
+        var personas = config.ListPersonas();
+        if (personas.Count == 0)
+        {
+            Console.WriteLine("No personas configured in .squad.json");
+            return 0;
+        }
+
+        Console.WriteLine($"Available personas ({personas.Count}):");
+        foreach (var name in personas)
+        {
+            var persona = config.GetPersona(name);
+            Console.WriteLine($"  • {name} — {persona?.Description ?? "(no description)"}");
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Serializes a single-line <c>delta</c> NDJSON event for <c>--jsonl</c>.
+    /// </summary>
+    internal static string FormatJsonlDeltaEvent(string text)
+    {
+        var ev = new JsonlStreamEvent(Type: "delta", Text: text);
+        return JsonSerializer.Serialize(ev, McpJsonContext.Default.JsonlStreamEvent);
+    }
+
+    /// <summary>
+    /// Serializes the final single-line <c>done</c> NDJSON event for <c>--jsonl</c>.
+    /// </summary>
+    internal static string FormatJsonlDoneEvent(
+        string response,
+        string model,
+        string mode,
+        int? inputTokens,
+        int? outputTokens,
+        long durationMs)
+    {
+        int? totalTokens = (inputTokens.HasValue || outputTokens.HasValue)
+            ? inputTokens.GetValueOrDefault() + outputTokens.GetValueOrDefault()
+            : null;
+        var ev = new JsonlStreamEvent(
+            Type: "done",
+            Response: response,
+            Model: model,
+            Mode: mode,
+            InputTokens: inputTokens,
+            OutputTokens: outputTokens,
+            TotalTokens: totalTokens,
+            DurationMs: durationMs);
+        return JsonSerializer.Serialize(ev, McpJsonContext.Default.JsonlStreamEvent);
+    }
+
+    /// <summary>
+    /// FR-012: <c>--list-tools</c> (and <c>--list-tools --json</c>) introspection.
+    /// Prints all built-in tools plus active manifest plugins and their source.
+    /// </summary>
+    internal static int ListToolsCommand(CliOptions opts)
+    {
+        var pluginOptions = new AzureOpenAI_CLI.Tools.PluginLoadOptions(
+            NoPlugins: opts.NoPlugins,
+            AllowLocalPlugins: opts.AllowLocalPlugins,
+            CustomPluginDir: opts.PluginDir);
+
+        var tools = AzureOpenAI_CLI.Tools.ToolRegistry.DescribeAllTools(pluginOptions).ToList();
+        if (opts.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(tools, AppJsonContext.Default.ListToolDescriptor));
+            return 0;
+        }
+
+        Console.WriteLine($"Available tools ({tools.Count}):");
+        foreach (var t in tools)
+        {
+            var aliasPart = !string.IsNullOrEmpty(t.Alias) ? $" (alias: {t.Alias})" : "";
+            var dangerPart = t.Dangerous ? " [requires --allow-shell in MCP]" : "";
+            Console.WriteLine($"  • {t.Name}{aliasPart} [{t.Source}]{dangerPart} — {t.Description}");
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// FR-001 combined mode: merges piped <paramref name="stdinContent"/> and
+    /// positional <paramref name="promptArg"/> when both are present.
+    /// </summary>
+    internal static string? MergeStdinAndPrompt(string? stdinContent, string? promptArg)
+    {
+        bool hasStdin = !string.IsNullOrWhiteSpace(stdinContent);
+        bool hasPrompt = !string.IsNullOrWhiteSpace(promptArg);
+        if (hasStdin && hasPrompt)
+        {
+            return $"<context>\n{stdinContent!.TrimEnd()}\n</context>\n\n{promptArg}";
+        }
+        if (hasStdin)
+        {
+            return stdinContent;
+        }
+        return promptArg;
+    }
+
+    /// <summary>
+    /// FR-005: Extracts fenced code blocks (<c>```lang ... ```</c>) from a model
+    /// response. If no fenced code blocks are found, returns the trimmed response.
+    /// Multiple code blocks are joined with a blank line.
+    /// </summary>
+    internal static string ExtractCodeBlocks(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        var blocks = new List<string>();
+        var lines = text.Replace("\r\n", "\n").Split('\n');
+        bool inBlock = false;
+        var current = new StringBuilder();
+
+        foreach (var line in lines)
+        {
+            var trimmed = line.TrimStart();
+            if (trimmed.StartsWith("```", StringComparison.Ordinal))
+            {
+                if (!inBlock)
+                {
+                    inBlock = true;
+                    current.Clear();
+                }
+                else
+                {
+                    inBlock = false;
+                    blocks.Add(current.ToString().TrimEnd('\n'));
+                    current.Clear();
+                }
+                continue;
+            }
+
+            if (inBlock)
+            {
+                if (current.Length > 0)
+                    current.Append('\n');
+                current.Append(line);
+            }
+        }
+
+        // If an opening ``` was never closed, still capture the content inside it
+        if (inBlock && current.Length > 0)
+        {
+            blocks.Add(current.ToString().TrimEnd('\n'));
+        }
+
+        if (blocks.Count > 0)
+        {
+            return string.Join("\n\n", blocks);
+        }
+
+        return text.Trim();
+    }
+
+    /// <summary>
+    /// Serializes the happy-path <c>--json</c> completion envelope via source-generated
+    /// <see cref="AppJsonContext"/> (AOT-safe).
+    /// </summary>
+    internal static string FormatChatJsonResponse(
+        string response,
+        string model,
+        string mode,
+        int? inputTokens,
+        int? outputTokens,
+        long durationMs,
+        bool cached)
+    {
+        int? totalTokens = (inputTokens.HasValue || outputTokens.HasValue)
+            ? inputTokens.GetValueOrDefault() + outputTokens.GetValueOrDefault()
+            : null;
+        var payload = new ChatJsonResponse(
+            Response: response,
+            Model: model,
+            Mode: mode,
+            InputTokens: inputTokens,
+            OutputTokens: outputTokens,
+            TotalTokens: totalTokens,
+            DurationMs: durationMs,
+            Cached: cached);
+        return JsonSerializer.Serialize(payload, AppJsonContext.Default.ChatJsonResponse);
+    }
+
+    /// <summary>
+    /// Checks whether redirected <c>Console.In</c> actually has data ready to read
+    /// without blocking on an idle pipe attached by a test runner or CI daemon
+    /// when a positional prompt was already supplied on the command line.
+    /// </summary>
+    internal static bool HasRedirectedStdinDataAvailable()
+    {
+        try
+        {
+            var peekTask = Task.Run(() =>
+            {
+                try { return Console.In.Peek() != -1; }
+                catch { return false; }
+            });
+            return peekTask.Wait(TimeSpan.FromMilliseconds(15)) && peekTask.Result;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -1410,11 +2372,14 @@ internal class Program
                 return ErrorAndExit($"Failed to read task file: {ex.Message}", 1, jsonMode: opts.Json);
             }
         }
-        else if (string.IsNullOrWhiteSpace(prompt) && Console.IsInputRedirected)
+        else if (Console.IsInputRedirected)
         {
-            int rc = TryReadBoundedStdin(out var stdinContent);
-            if (rc != 0) return rc;
-            prompt = stdinContent;
+            if (string.IsNullOrWhiteSpace(prompt) || HasRedirectedStdinDataAvailable())
+            {
+                int rc = TryReadBoundedStdin(out var stdinContent);
+                if (rc != 0) return rc;
+                prompt = MergeStdinAndPrompt(stdinContent, prompt);
+            }
         }
 
         if (string.IsNullOrWhiteSpace(prompt))
@@ -1577,6 +2542,40 @@ internal class Program
     /// SDK-coupling risk.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Shared <see cref="System.Net.Http.SocketsHttpHandler"/> used by both
+    /// <see cref="PrewarmAsync"/> and <see cref="CreateAzureOpenAIClient"/> so
+    /// connection prewarming warms the exact TCP/TLS/HTTP2 socket pool used by
+    /// chat completions (FR-007).
+    /// </summary>
+    internal static readonly System.Net.Http.SocketsHttpHandler SharedSocketsHandler = new()
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+        EnableMultipleHttp2Connections = true,
+    };
+
+    /// <summary>
+    /// Process-wide <see cref="System.Net.Http.HttpClient"/> backed by
+    /// <see cref="SharedSocketsHandler"/> for SDK transport reuse.
+    /// </summary>
+    internal static readonly System.Net.Http.HttpClient SharedHttpClient =
+        new(SharedSocketsHandler, disposeHandler: false);
+
+    /// <summary>
+    /// Builds an <see cref="AzureOpenAIClient"/> wired to <see cref="SharedHttpClient"/>
+    /// via <see cref=" System.ClientModel.Primitives.HttpClientPipelineTransport"/> so
+    /// prewarmed connections are reused immediately.
+    /// </summary>
+    internal static AzureOpenAIClient CreateAzureOpenAIClient(Uri endpointUri, string apiKey)
+    {
+        var clientOpts = new AzureOpenAIClientOptions
+        {
+            Transport = new System.ClientModel.Primitives.HttpClientPipelineTransport(SharedHttpClient),
+        };
+        return new AzureOpenAIClient(endpointUri, new ApiKeyCredential(apiKey), clientOpts);
+    }
+
     internal static async Task PrewarmAsync(string endpoint, string apiKey)
     {
         try
@@ -1584,16 +2583,15 @@ internal class Program
             if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme != "https")
                 return;
 
-            using var client = new System.Net.Http.HttpClient
-            {
-                Timeout = TimeSpan.FromSeconds(3),
-            };
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             using var req = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head, uri);
             // Azure rejects the HEAD with 401/404 — we don't care, TLS is up.
             if (!string.IsNullOrEmpty(apiKey))
                 req.Headers.TryAddWithoutValidation("api-key", apiKey);
-            using var resp = await client.SendAsync(req, System.Net.Http.HttpCompletionOption.ResponseHeadersRead)
-                .ConfigureAwait(false);
+            using var resp = await SharedHttpClient.SendAsync(
+                req,
+                System.Net.Http.HttpCompletionOption.ResponseHeadersRead,
+                cts.Token).ConfigureAwait(false);
             // Discard the response — we only wanted the handshake cost.
         }
         catch
@@ -1622,10 +2620,29 @@ internal class Program
     /// </para>
     /// Exposed internal for reuse across agent call sites (standard mode + Ralph loop).
     /// </summary>
-    internal static ChatOptions BuildModernChatOptions() => new()
+    internal static ChatOptions BuildModernChatOptions(
+        float? temperature = null,
+        int? maxTokens = null,
+        string? schema = null)
     {
-        RawRepresentationFactory = _ => new ChatCompletionOptions(),
-    };
+        var opts = new ChatOptions
+        {
+            Temperature = temperature,
+            MaxOutputTokens = maxTokens,
+            RawRepresentationFactory = _ => new ChatCompletionOptions(),
+        };
+
+        if (!string.IsNullOrWhiteSpace(schema))
+        {
+            using var doc = JsonDocument.Parse(schema);
+            opts.ResponseFormat = Microsoft.Extensions.AI.ChatResponseFormat.ForJsonSchema(
+                doc.RootElement.Clone(),
+                schemaName: "response_schema",
+                schemaDescription: "Structured output schema enforced by az-ai --schema");
+        }
+
+        return opts;
+    }
 
     private static void ShowHelp()
     {
@@ -1637,6 +2654,11 @@ Usage:
 
 Core Options:
   --model, -m <alias|name>  Model deployment or alias (env: AZUREOPENAIMODEL)
+  --provider <name>         Model provider: azure (default), openai, openrouter, ollama, llamacpp, custom
+                            (env: AZ_PROVIDER)
+  --providers               List supported model providers and status (supports --json)
+  --endpoint <url>          Override provider endpoint URL
+  --api-key <key>           Override provider API key
   --temperature, -t <float> Sampling temperature 0.0-2.0 (env: AZURE_TEMPERATURE, default: 0.55;
                             0.15 when --validate is active and neither flag nor env is set)
   --max-tokens <int>        Max completion tokens (env: AZURE_MAX_TOKENS, default: 10000)
@@ -1647,20 +2669,47 @@ Core Options:
                             Silent-by-design: no spinner, no color, no [ERROR]
                             prefix on stderr when combined with --json. See
                             .github/contracts/color-contract.md rule 6.
-  --json                    Emit machine-readable JSON (errors + estimator output)
+  --json                    Emit machine-readable JSON (chat, agent, ralph, estimator, errors)
+  --jsonl                   Emit single-line NDJSON streaming events (delta + done) on stdout
+  --code                    Extract only fenced code blocks to stdout (for piping to files)
+  --pattern, -p <name>      Apply a curated prompt pattern (summarize, fix-grammar, commit-message, etc.)
+  --patterns                List all built-in and user-defined prompt patterns (supports --json)
   --help, -h                Show this help
   --version, -v             Show version (add --short for bare semver)
 
 Agent / Tools:
   --agent                   Enable agent mode with tool calling
-  --tools <list>            Comma-separated tools (shell,file,web,clipboard,datetime,delegate)
+  --tools <list>            Comma-separated tools (shell,file,web,clipboard,datetime,delegate,<plugin>)
+  --list-tools              List all built-in and active manifest plugin tools (supports --json)
+  --plugin-dir <path>       Load custom JSON tool manifests from <path>
+  --allow-local-plugins     Allow loading repo-local ./.azureopenai-cli/tools/*.json manifests
+                            (env: AZ_ALLOW_LOCAL_PLUGINS=1)
+  --no-plugins              Disable loading all external manifest tool plugins
   --max-rounds <n>          Max tool-call rounds (default: 5, max: 20)
+
+MCP Client & Server (FR-013, stdio JSON-RPC 2.0):
+  --mcp-server <spec>       Connect to an external MCP stdio server and expose its tools
+                            in agent/ralph mode (e.g. --mcp-server ""fs=npx -y @modelcontextprotocol/server-filesystem ."")
+  az-ai mcp tools <cmd>     List tools exposed by an external MCP stdio server (supports --json)
+  az-ai mcp call <c> <t>    Invoke a tool on an external MCP stdio server (optional JSON args)
+  az-ai mcp serve           Expose az-ai tools, prompts, and resources over MCP stdio (alias: --mcp-serve)
+  --allow-shell             Allow exposing shell_exec (and dangerous plugins) over MCP
+  --read-only               Expose only read-only tools (file,web,clipboard,datetime) over MCP
 
 Ralph Mode (Autonomous Agent Loop):
   --ralph                   Enable Ralph mode (autonomous loop with validation)
   --validate <command>      Shell command to validate each iteration (exit 0 = pass)
   --task-file <path>        Read task prompt from file
   --max-iterations <n>      Maximum loop iterations (default: 10, max: 50)
+
+Commander / Work Queue Mode (DAG Orchestration):
+  az-ai queue init          Initialize .az-ai/queue.json (alias: az-ai commander ...)
+  az-ai queue add <prompt>  Enqueue a task (--task-id, --depends-on, --priority, --provider, --persona, --validate)
+  az-ai queue plan <json>   Bulk-load a JSON array of tasks into the DAG queue
+  az-ai queue status        Show queue summary and task states (supports --json; alias: list)
+  az-ai queue run           Execute ready DAG tasks in dependency/priority order
+                            (--concurrency 1..8, --dry-run, --recover-stale, --queue-file <path>)
+  az-ai queue clear         Reset the work queue
 
 Persona / Squad Mode:
   --squad-init              Initialize squad system (creates .squad.json + .squad/ dir)
@@ -1760,7 +2809,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --json --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
+    opts=""--agent --ralph --persona --personas --pattern --patterns --list-patterns --squad-init --raw --json --jsonl --code --version --help --model --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --list-tools --plugin-dir --allow-local-plugins --no-plugins --mcp-serve --allow-shell --read-only --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
 
     case ""${prev}"" in
         --completions)
@@ -1797,6 +2846,7 @@ _az-ai() {
         '--squad-init[Initialize squad]'
         '--raw[Raw text output]'
         '--json[JSON output]'
+        '--code[Extract fenced code blocks only]'
         '--version[Show version]'
         '--help[Show help]'
         '--model[Select model]:model:'
@@ -1837,6 +2887,7 @@ complete -c az-ai -l personas -d 'List personas'
 complete -c az-ai -l squad-init -d 'Initialize squad'
 complete -c az-ai -l raw -d 'Raw text output'
 complete -c az-ai -l json -d 'JSON output'
+complete -c az-ai -l code -d 'Extract code blocks only'
 complete -c az-ai -l version -s v -d 'Show version'
 complete -c az-ai -l help -s h -d 'Show help'
 complete -c az-ai -l model -s m -d 'Select model' -r
@@ -1881,9 +2932,15 @@ complete -c az-ai -w az-ai
 
     // ── Model-alias commands (FR-010) ──────────────────────────────────────────
 
-    /// <summary>--models / --list-models: print configured alias→deployment map.</summary>
-    internal static int ListModelsCommand(UserConfig config)
+    /// <summary>--models / --list-models: print configured alias→deployment map (supports --json).</summary>
+    internal static int ListModelsCommand(UserConfig config, bool jsonMode = false)
     {
+        if (jsonMode)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(config.Models, AppJsonContext.Default.DictionaryStringString));
+            return 0;
+        }
+
         if (config.Models.Count == 0)
         {
             Console.WriteLine("No model aliases configured.");

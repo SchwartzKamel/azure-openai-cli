@@ -21,6 +21,8 @@ internal static class ToolRegistry
         ["clipboard"] = "get_clipboard",
         ["datetime"] = "get_datetime",
         ["delegate"] = "delegate_task",
+        ["queue"] = "queue_add",
+        ["queue-status"] = "queue_status",
     };
 
     /// <summary>
@@ -62,21 +64,34 @@ internal static class ToolRegistry
         => ShortAliases.TryGetValue(name, out var full) ? full : name;
 
     /// <summary>
-    /// Create a list of AITool instances for MAF consumption.
-    /// Pass null to enable all tools. Accepts full tool names or short aliases —
-    /// both are canonicalized once at entry, then matched by full name only.
+    /// Returns true if <paramref name="name"/> matches a built-in tool name or
+    /// short alias (used by <see cref="ManifestLoader"/> so plugins can never
+    /// shadow built-in tools).
     /// </summary>
-    public static IList<AITool> CreateMafTools(IEnumerable<string>? enabledTools = null)
+    internal static bool IsBuiltInNameOrAlias(string name)
     {
-        var allToolFactories = new Dictionary<string, Func<AITool>>(StringComparer.OrdinalIgnoreCase)
+        if (string.IsNullOrWhiteSpace(name)) return false;
+        if (ShortAliases.ContainsKey(name)) return true;
+        foreach (var kv in ShortAliases)
         {
-            ["shell_exec"] = () => AIFunctionFactory.Create(ShellExecTool.ExecuteAsync, name: "shell_exec"),
-            ["read_file"] = () => AIFunctionFactory.Create(ReadFileTool.ReadAsync, name: "read_file"),
-            ["web_fetch"] = () => AIFunctionFactory.Create(WebFetchTool.FetchAsync, name: "web_fetch"),
-            ["get_clipboard"] = () => AIFunctionFactory.Create(GetClipboardTool.GetAsync, name: "get_clipboard"),
-            ["get_datetime"] = () => AIFunctionFactory.Create(GetDateTimeTool.GetAsync, name: "get_datetime"),
-            ["delegate_task"] = () => AIFunctionFactory.Create(DelegateTaskTool.DelegateAsync, name: "delegate_task"),
-        };
+            if (string.Equals(kv.Value, name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Create a list of AITool instances for MAF consumption.
+    /// Pass null to enable all tools (built-ins plus discovered manifest plugins).
+    /// Accepts full tool names or short aliases — both are canonicalized once at
+    /// entry, then matched by full name only.
+    /// </summary>
+    public static IList<AITool> CreateMafTools(
+        IEnumerable<string>? enabledTools = null,
+        int? maxRounds = null,
+        PluginLoadOptions? pluginOptions = null)
+    {
+        var allToolFactories = GetBuiltInToolFactories();
 
         // M4: canonicalize once. Downstream match is full-name only.
         HashSet<string>? enabled = null;
@@ -90,12 +105,141 @@ internal static class ToolRegistry
             }
         }
 
+        var counter = maxRounds.HasValue ? new ToolRoundCounter(maxRounds.Value) : null;
         var tools = new List<AITool>();
         foreach (var (name, factory) in allToolFactories)
         {
-            if (enabled is null || enabled.Contains(name))
-                tools.Add(factory());
+            // queue_add and queue_status are opt-in built-in tools (requested via
+            // --tools queue,queue-status or exposed via MCP server) so the core 6-tool
+            // default contract (V2CleanupWaveTests) remains unchanged when enabledTools is null.
+            bool isOptInQueueTool = string.Equals(name, "queue_add", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "queue_status", StringComparison.OrdinalIgnoreCase);
+
+            if ((enabled is null && !isOptInQueueTool) || (enabled is not null && enabled.Contains(name)))
+            {
+                var tool = factory();
+                if (counter is not null && tool is AIFunction fn)
+                {
+                    tool = new MaxRoundsAIFunction(fn, counter);
+                }
+                tools.Add(tool);
+            }
         }
+
+        // Append custom manifest tools (built-ins already won on collision inside ManifestLoader)
+        var manifests = ManifestLoader.LoadManifests(pluginOptions);
+        foreach (var (manifest, _) in manifests)
+        {
+            if (enabled is null || enabled.Contains(manifest.Name))
+            {
+                AITool pluginTool = new ManifestAIFunction(manifest);
+                if (counter is not null && pluginTool is AIFunction pfn)
+                {
+                    pluginTool = new MaxRoundsAIFunction(pfn, counter);
+                }
+                tools.Add(pluginTool);
+            }
+        }
+
         return tools;
+    }
+
+    /// <summary>
+    /// Enumerates all built-in and active manifest tools for <c>--list-tools</c>
+    /// and MCP server introspection.
+    /// </summary>
+    internal static IReadOnlyList<ToolDescriptor> DescribeAllTools(PluginLoadOptions? pluginOptions = null)
+    {
+        var descriptors = new List<ToolDescriptor>();
+        var reverseAliases = ShortAliases.ToDictionary(kv => kv.Value, kv => kv.Key, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (name, factory) in GetBuiltInToolFactories())
+        {
+            var tool = factory();
+            var fn = tool as AIFunction;
+            reverseAliases.TryGetValue(name, out var alias);
+            bool dangerous = string.Equals(name, "shell_exec", StringComparison.OrdinalIgnoreCase);
+            descriptors.Add(new ToolDescriptor(
+                Name: name,
+                Alias: alias,
+                Source: "builtin",
+                Description: fn?.Description ?? tool.Description ?? string.Empty,
+                Dangerous: dangerous,
+                Parameters: fn?.JsonSchema));
+        }
+
+        foreach (var (manifest, source) in ManifestLoader.LoadManifests(pluginOptions))
+        {
+            var fn = new ManifestAIFunction(manifest);
+            descriptors.Add(new ToolDescriptor(
+                Name: manifest.Name,
+                Alias: null,
+                Source: source,
+                Description: manifest.Description,
+                Dangerous: manifest.Dangerous,
+                Parameters: fn.JsonSchema));
+        }
+
+        return descriptors;
+    }
+
+    private static Dictionary<string, Func<AITool>> GetBuiltInToolFactories() => new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["shell_exec"] = () => AIFunctionFactory.Create(ShellExecTool.ExecuteAsync, name: "shell_exec"),
+        ["read_file"] = () => AIFunctionFactory.Create(ReadFileTool.ReadAsync, name: "read_file"),
+        ["web_fetch"] = () => AIFunctionFactory.Create(WebFetchTool.FetchAsync, name: "web_fetch"),
+        ["get_clipboard"] = () => AIFunctionFactory.Create(GetClipboardTool.GetAsync, name: "get_clipboard"),
+        ["get_datetime"] = () => AIFunctionFactory.Create(GetDateTimeTool.GetAsync, name: "get_datetime"),
+        ["delegate_task"] = () => AIFunctionFactory.Create(DelegateTaskTool.DelegateAsync, name: "delegate_task"),
+        ["queue_add"] = () => AIFunctionFactory.Create(QueueTools.AddAsync, name: "queue_add"),
+        ["queue_status"] = () => AIFunctionFactory.Create(QueueTools.StatusAsync, name: "queue_status"),
+    };
+}
+
+/// <summary>
+/// Thread-safe per-agent invocation counter used by <see cref="MaxRoundsAIFunction"/>
+/// to enforce <c>--max-rounds</c> in agent mode.
+/// </summary>
+internal sealed class ToolRoundCounter
+{
+    private int _used;
+    public int MaxRounds { get; }
+    public int UsedRounds => Volatile.Read(ref _used);
+
+    public ToolRoundCounter(int maxRounds)
+    {
+        MaxRounds = Math.Max(1, maxRounds);
+    }
+
+    public bool TryIncrement(out int current)
+    {
+        current = Interlocked.Increment(ref _used);
+        return current <= MaxRounds;
+    }
+}
+
+/// <summary>
+/// Decorator around <see cref="DelegatingAIFunction"/> that enforces <c>--max-rounds</c>
+/// by refusing additional tool calls once the configured cap is exceeded.
+/// </summary>
+internal sealed class MaxRoundsAIFunction : DelegatingAIFunction
+{
+    private readonly ToolRoundCounter _counter;
+
+    public MaxRoundsAIFunction(AIFunction innerFunction, ToolRoundCounter counter)
+        : base(innerFunction)
+    {
+        _counter = counter;
+    }
+
+    protected override async ValueTask<object?> InvokeCoreAsync(
+        AIFunctionArguments arguments,
+        CancellationToken cancellationToken)
+    {
+        if (!_counter.TryIncrement(out _))
+        {
+            return $"Error: maximum tool-call rounds ({_counter.MaxRounds}) reached (--max-rounds). Provide your final answer using the information gathered so far.";
+        }
+        return await base.InvokeCoreAsync(arguments, cancellationToken).ConfigureAwait(false);
     }
 }
