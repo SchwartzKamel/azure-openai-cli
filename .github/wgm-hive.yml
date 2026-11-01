@@ -1,0 +1,8 @@
+# .github/wgm-hive.yml — this project's one-time consent for wgm's Hive Growth Loop.
+consent: true
+auto_report: true
+sources:
+  - dogfood
+  - swarm
+  - issues
+  - cross-pollinate

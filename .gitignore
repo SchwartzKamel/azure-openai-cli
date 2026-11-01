@@ -105,3 +105,6 @@ UpgradeLog*.htm
 .smith/config.yaml
 .smith/config.yml
 node_modules/
+
+# wgm per-build scratch (durable .wgm/ artifacts stay tracked)
+/.wgm/memories.md

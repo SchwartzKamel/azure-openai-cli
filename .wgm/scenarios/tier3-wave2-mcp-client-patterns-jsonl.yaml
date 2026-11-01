@@ -1,0 +1,19 @@
+# Scenario — Tier 3 (Wave 2): Bidirectional MCP Client/Server, Pattern Library, and NDJSON Streaming
+name: tier3-wave2-mcp-client-patterns-jsonl
+description: Verify that az-ai can stream NDJSON events (--jsonl), expose and apply curated prompt patterns (--patterns / --pattern), expose MCP prompts/resources, and act as an MCP stdio client (--mcp-server / az-ai mcp call) talking to an MCP server (including dogfooding az-ai mcp serve).
+tier: 3
+
+target:
+  kind: cli
+  start: dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release
+
+setup:
+  - Build azureopenai-cli and test project under .NET 10
+
+steps:
+  - action: Stream a multi-chunk response with --jsonl and inspect --personas --json
+    expect: Each chunk emits a single-line JSON event {"type":"delta","text":"..."} followed by {"type":"done",...} with token counts and duration_ms; --personas --json emits a JSON array of PersonaConfig entries.
+  - action: Run az-ai --patterns --json and az-ai --pattern commit-message
+    expect: Built-in and user-defined patterns are listed in JSON and --pattern overrides the effective system prompt; az-ai mcp serve answers prompts/list, prompts/get, resources/list, and resources/read.
+  - action: Connect McpStdioClient to an external MCP stdio server (and Content-Length framed JSON-RPC) to list and call tools, and wire --mcp-server into ToolRegistry
+    expect: McpStdioClient completes initialize + notifications/initialized + tools/list + tools/call, and wraps remote tools as AITool instances usable inside az-ai --agent / --ralph.
