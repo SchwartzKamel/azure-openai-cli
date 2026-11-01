@@ -144,6 +144,7 @@ az-ai --agent --tools file,git_status_short,git_log_file --max-rounds 3 \
 ```
 
 **Security guarantees:**
+
 - Commands execute via `ProcessStartInfo.ArgumentList` (discrete argv entries, **never** `/bin/sh -c`), so `{path}` containing `; rm -rf /` cannot inject shell commands.
 - `AZUREOPENAIAPI` and other secrets are scrubbed from the child process environment by default.
 - Built-in tool names (`read_file`, `shell_exec`, etc.) can never be shadowed by a plugin.
@@ -168,6 +169,7 @@ Add `az-ai` to your host agent's MCP configuration (`~/.claude.json`, `.copilot/
 ```
 
 What the host agent immediately gains over `stdio` JSON-RPC 2.0 (supporting both newline-delimited JSON and `Content-Length` framing):
+
 - **Tools (`tools/list`, `tools/call`):** `read_file`, `web_fetch`, `get_datetime`, `get_clipboard`, `delegate_task` (in-process Azure OpenAI sub-agent), plus any custom manifest plugins. (`shell_exec` is omitted unless you explicitly pass `--allow-shell`).
 - **Prompts (`prompts/list`, `prompts/get`):** All 8 built-in patterns (`commit-message`, `code-review`, `security-audit`, `summarize`, etc.), custom user patterns, and all `.squad.json` personas (`persona:coder`, `persona:reviewer`, etc.).
 - **Resources (`resources/list`, `resources/read`):** Active `.squad.json` (`squad://config`) and per-persona persistent session memory (`squad://memory/<persona>`).
