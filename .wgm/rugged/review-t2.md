@@ -1,4 +1,5 @@
 # Review Ruggedness Record -- T2
+
 date: 2026-05-17
 phase: Review (T2)
 scope: Startup & Runtime Optimization (Shared SocketsHttpHandler Prewarm Pool & Agent --max-rounds Cap Enforcement)

@@ -1,4 +1,5 @@
 # Review Ruggedness Record -- T8
+
 date: 2026-05-17
 phase: Review (T8)
 scope: Multi-Provider Router (--provider, AZ_PROVIDER, --providers [--json], --endpoint, --api-key) with Loopback Security Guard

@@ -1,4 +1,5 @@
 # Review Ruggedness Record -- T7
+
 date: 2026-05-17
 phase: Review (T7)
 scope: Outbound MCP Stdio Client (FR-013 Phase 1 --mcp-server, az-ai mcp tools, az-ai mcp call) & Dual Framing (Content-Length + NDJSON)

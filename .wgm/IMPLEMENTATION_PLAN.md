@@ -5,11 +5,13 @@
 > Status values: `pending | in_progress | done | blocked`.
 
 ## Convergence
+
 - **Satisfaction threshold:** 95 -- overall holdout-scenario score to reach before Ship.
 - **Stratified order:** converge tier 1 → 2 → 3 (see `references/scoring.md`).
 - **Scenarios:** `.wgm/scenarios/` (judged in Validate/Review; never read in Implement).
 
 ## Ruggedness gate (required -- every track)
+
 Exactly one verdict per run; record it here, not just in a transcript.
 
 | When | Scope | Verdict | Date | Produced by | Follow-up task |
@@ -31,6 +33,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 ## Now (next up)
 
 ### T1 -- Complete Machine I/O Contract (`--json` happy-path envelope, `--schema` wire enforcement, `--code` extraction) & Combined Stdin+Args Piping
+
 - **files/areas:** `azureopenai-cli/Program.cs`, `azureopenai-cli/JsonGenerationContext.cs`, `azureopenai-cli/Ralph/RalphWorkflow.cs`, `tests/AzureOpenAI_CLI.Tests/MachineIoAndCombinedStdinTests.cs`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --filter "FullyQualifiedName~MachineIoAndCombinedStdinTests"`
 - **acceptance:**
@@ -44,6 +47,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **notes:** Implemented `ChatJsonResponse` in `AppJsonContext`, `MergeStdinAndPrompt` with `HasRedirectedStdinDataAvailable`, `ExtractCodeBlocks` (`--code`), and wired `--schema` (`ChatResponseFormat.ForJsonSchema`) + `Temperature` + `MaxOutputTokens` in `BuildModernChatOptions`. Fixed `UserConfig.DefaultPath` to honor `HOME` override in tests. 11/11 new tests + 664/664 total tests green.
 
 ### T2 -- Startup & Runtime Optimization: Shared `SocketsHttpHandler` Prewarm Pool & Agent `--max-rounds` Cap Enforcement
+
 - **files/areas:** `azureopenai-cli/Program.cs`, `azureopenai-cli/Tools/ToolRegistry.cs`, `tests/AzureOpenAI_CLI.Tests/StartupAndMaxRoundsTests.cs`, `tests/AzureOpenAI_CLI.Tests/PrewarmTests.cs`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --filter "FullyQualifiedName~StartupAndMaxRoundsTests|FullyQualifiedName~PrewarmTests"`
 - **acceptance:**
@@ -56,6 +60,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **notes:** Added `SharedSocketsHandler`, `SharedHttpClient`, and `CreateAzureOpenAIClient` using `HttpClientPipelineTransport`, plus `ToolRoundCounter` and `MaxRoundsAIFunction` in `ToolRegistry.cs`. 13/13 tests in `StartupAndMaxRoundsTests` + `PrewarmTests` green.
 
 ### T3 -- Custom Manifest Tool Plugins (FR-012) & Tool Introspection (`--list-tools [--json]`)
+
 - **files/areas:** `azureopenai-cli/Tools/ManifestTool.cs`, `azureopenai-cli/Tools/ToolRegistry.cs`, `azureopenai-cli/Program.cs`, `azureopenai-cli/JsonGenerationContext.cs`, `tests/AzureOpenAI_CLI.Tests/ManifestPluginAndIntrospectionTests.cs`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --filter "FullyQualifiedName~ManifestPluginAndIntrospectionTests"`
 - **acceptance:**
@@ -70,6 +75,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **notes:** Implemented `ToolManifest`, `ToolDescriptor`, `ManifestLoader`, and `ManifestAIFunction` in `azureopenai-cli/Tools/ManifestTool.cs`, wired into `ToolRegistry`, `AppJsonContext`, and `Program.ListToolsCommand`. 4/4 tests in `ManifestPluginAndIntrospectionTests` green.
 
 ### T4 -- MCP Stdio Server (`az-ai mcp serve` / `--mcp-serve`) & Documentation Update
+
 - **files/areas:** `azureopenai-cli/Mcp/McpStdioServer.cs`, `azureopenai-cli/Program.cs`, `azureopenai-cli/JsonGenerationContext.cs`, `README.md`, `tests/AzureOpenAI_CLI.Tests/McpStdioServerTests.cs`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --filter "FullyQualifiedName~McpStdioServerTests"`
 - **acceptance:**
@@ -84,6 +90,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **notes:** Implemented `McpStdioServer` and `McpJsonContext` (`WriteIndented = false` for NDJSON stdio framing), wired `az-ai mcp serve` / `--mcp-serve` / `--allow-shell` / `--read-only` in `Program.cs`, updated `README.md`, and verified 5/5 tests in `McpStdioServerTests`.
 
 ### T5 -- NDJSON Event Streaming (`--jsonl`) & Machine-Readable Personas (`--personas --json`, `--models --json`)
+
 - **files/areas:** `azureopenai-cli/Program.cs`, `azureopenai-cli/JsonGenerationContext.cs`, `azureopenai-cli/Ralph/RalphWorkflow.cs`, `tests/AzureOpenAI_CLI.Tests/JsonlAndMachineDiscoveryTests.cs`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --filter "FullyQualifiedName~JsonlAndMachineDiscoveryTests"`
 - **acceptance:**
@@ -95,6 +102,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **notes:** Added `JsonlStreamEvent` in `McpJsonContext`, `--jsonl` delta/done streaming in `Program.cs`, and `--personas --json` / `--models --json`. 4/4 tests in `JsonlAndMachineDiscoveryTests` green.
 
 ### T6 -- Curated Pattern Library (FR-015 `--pattern` / `-p`, `--patterns [--json]`) & MCP Prompts/Resources (`prompts/list`, `prompts/get`, `resources/list`, `resources/read`)
+
 - **files/areas:** `azureopenai-cli/Patterns/PatternRegistry.cs`, `azureopenai-cli/Mcp/McpStdioServer.cs`, `azureopenai-cli/JsonGenerationContext.cs`, `azureopenai-cli/Program.cs`, `tests/AzureOpenAI_CLI.Tests/PatternLibraryAndMcpPromptsTests.cs`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --filter "FullyQualifiedName~PatternLibraryAndMcpPromptsTests"`
 - **acceptance:**
@@ -107,6 +115,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **notes:** Implemented `PatternRegistry` (8 built-in patterns + user `~/.config/azureopenai-cli/patterns/*.json` loader), `--patterns [--json]`, `--pattern` / `-p`, and MCP `prompts/list`, `prompts/get`, `resources/list`, `resources/read`. 4/4 tests in `PatternLibraryAndMcpPromptsTests` green.
 
 ### T7 -- Outbound MCP Stdio Client (FR-013 Phase 1 `--mcp-server`, `az-ai mcp tools`, `az-ai mcp call`) & Dual Framing (`Content-Length` + NDJSON)
+
 - **files/areas:** `azureopenai-cli/Mcp/McpStdioClient.cs`, `azureopenai-cli/Mcp/McpStdioServer.cs`, `azureopenai-cli/Tools/ToolRegistry.cs`, `azureopenai-cli/Program.cs`, `README.md`, `tests/AzureOpenAI_CLI.Tests/McpStdioClientTests.cs`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --filter "FullyQualifiedName~McpStdioClientTests"`
 - **acceptance:**
@@ -120,6 +129,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **notes:** Implemented `McpStdioClient` + `McpClientAIFunction` in `azureopenai-cli/Mcp/McpStdioClient.cs`, added `Content-Length` + NDJSON dual framing in `McpStdioServer.ReadNextFrameAsync`, wired `--mcp-server`, `az-ai mcp tools`, and `az-ai mcp call` in `Program.cs` and `RalphWorkflow.cs`. 4/4 tests in `McpStdioClientTests` green.
 
 ### T8 [SUPERSEDED] -- Multi-Provider Router (`--provider`, `AZ_PROVIDER`, `--providers [--json]`, `--endpoint`, `--api-key`) with Loopback Security Guard
+
 - **superseded (2026-05-17, reconcile onto origin/main):** `origin/main` gained its own provider stack (`PreferencesResolver`, `OpenAiCompatAdapter`, `EndpointAllowlist`, `CapabilityGate`, `--provider`/`--profile`, ADR-010/011) after this task was built. `ProviderSelector`, `MultiProviderTests`, `--providers`, `--endpoint`, `--api-key` and `default_provider` were dropped rather than maintain two provider stacks. T9's queue now routes per task through `Program.BuildChatClient`, so offline mode, the endpoint allowlist and the capability gate apply to queued work. The RUGGED verdicts below describe the pre-reconcile code and are history, not current claims.
 - **files/areas:** `azureopenai-cli/Providers/ProviderSelector.cs`, `azureopenai-cli/Observability/CostHook.cs`, `azureopenai-cli/JsonGenerationContext.cs`, `azureopenai-cli/Program.cs`, `tests/AzureOpenAI_CLI.Tests/MultiProviderTests.cs`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --filter "FullyQualifiedName~MultiProviderTests"`
@@ -133,6 +143,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **notes:** Implemented `ProviderSelector` supporting `azure`, `openai`, `openrouter`, `ollama`, `llamacpp` (`local`), and `custom` with `IsLoopbackHost` security gating, `default_provider` in `UserConfig`, and $0 local model entries in `CostHook`. 10/10 tests in `MultiProviderTests` green.
 
 ### T9 -- Built-in Commander / Work Queue Mode (`az-ai queue` / `az-ai commander`: `init`, `add`, `list`, `status`, `plan`, `run`, `clear`) & MCP Queue Tools
+
 - **files/areas:** `azureopenai-cli/Commander/WorkQueue.cs`, `azureopenai-cli/Commander/CommanderRunner.cs`, `azureopenai-cli/Tools/QueueTools.cs`, `azureopenai-cli/Tools/ToolRegistry.cs`, `azureopenai-cli/JsonGenerationContext.cs`, `azureopenai-cli/Program.cs`, `tests/AzureOpenAI_CLI.Tests/CommanderQueueTests.cs`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --filter "FullyQualifiedName~CommanderQueueTests"`
 - **acceptance:**
@@ -146,6 +157,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **notes:** Implemented `WorkQueue`, `CommanderRunner`, and `QueueTools` (`queue_add`, `queue_status`), wired `az-ai queue` / `az-ai commander` (`init`, `add`, `list`, `status`, `plan`, `run`, `clear`) in `Program.cs`. 6/6 tests in `CommanderQueueTests` green.
 
 ### TZ -- Demo validation (required before Ship/Handoff)
+
 - **files/areas:** `azureopenai-cli/`, `tests/AzureOpenAI_CLI.Tests/`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --nologo && dotnet run --project azureopenai-cli/AzureOpenAI_CLI.csproj -c Release -- --list-tools --json`
 - **acceptance:** Full test suite passes (`0` failures, `0` warnings), CLI `--list-tools --json` and `az-ai mcp serve` end-to-end demo path runs green.
@@ -154,6 +166,7 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **notes:** Full suite passed 677/677 tests in 10 s; live `--list-tools --json` and `az-ai mcp serve` (`initialize`, `tools/list`, `tools/call`) verified end-to-end.
 
 ## Done
+
 - **T1** -- Complete Machine I/O Contract (`--json` happy-path envelope, `--schema` wire enforcement, `--code` extraction) & Combined Stdin+Args Piping (`MachineIoAndCombinedStdinTests` 11/11 green, full suite 664/664 green).
 - **T2** -- Startup & Runtime Optimization: Shared `SocketsHttpHandler` Prewarm Pool & Agent `--max-rounds` Cap Enforcement (`StartupAndMaxRoundsTests` + `PrewarmTests` 13/13 green).
 - **T3** -- Custom Manifest Tool Plugins (FR-012) & Tool Introspection (`--list-tools [--json]`) (`ManifestPluginAndIntrospectionTests` 4/4 green).

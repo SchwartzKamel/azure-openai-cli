@@ -3,12 +3,15 @@
 > Conforms to `.wgm/specs/CONSTITUTION.md`.
 
 ## JTBD (job to be done)
+
 When developers, shell scripts, CI pipelines, or parent AI coding agents (Claude Code, GitHub Copilot CLI, Cursor, Codex, custom orchestrators) invoke `az-ai`, they need:
+
 1. **Deterministic machine I/O** (`--json` happy-path envelope, `--schema <json>` wire enforcement, `--code` block extraction, and combined `stdin` + argument piping),
 2. **Plug-and-play agent & tool extensibility** (`az-ai mcp serve` over stdio JSON-RPC 2.0, `--list-tools [--json]` introspection, and AOT-safe JSON manifest plugins from `~/.config/azureopenai-cli/tools/*.json` or opt-in `./.azureopenai-cli/tools/*.json`), and
 3. **Lower latency & bounded agent execution** (shared `SocketsHttpHandler` connection pool between `PrewarmAsync` and `AzureOpenAIClient`, plus enforcing `--max-rounds` in agent mode).
 
 ## User-visible success criteria
+
 - Running `echo "context" | az-ai "summarize"` merges bounded piped `stdin` and the positional argument into a single combined prompt instead of discarding `stdin`.
 - Running `az-ai --json <prompt>` emits a single valid `ChatJsonResponse` JSON document on stdout (`response`, `model`, `mode`, `input_tokens`, `output_tokens`, `total_tokens`, `duration_ms`, `cached`) with zero human stderr noise.
 - Running `az-ai --schema '<json-schema>' <prompt>` wires the parsed schema into `ChatOptions.ResponseFormat` (`ChatResponseFormat.ForJsonSchema`) so the model output conforms to the schema.
@@ -19,6 +22,7 @@ When developers, shell scripts, CI pipelines, or parent AI coding agents (Claude
 - `PrewarmAsync` and `AzureOpenAIClient` share a `SocketsHttpHandler` connection pool, and `--max-rounds` is enforced on agent tool-call rounds.
 
 ## Magic moment
+
 - **The whoa:** Any external agent (or shell one-liner) can pipe JSON-RPC into `az-ai mcp serve` or run `az-ai --list-tools --json` and immediately discover and execute both built-in tools and custom manifest plugins in ~10 ms cold start -- zero reflection, single binary.
 - **Demo path:**
   1. Create a temporary plugin manifest `git_head.json` in a temp plugin dir.
@@ -52,6 +56,7 @@ When developers, shell scripts, CI pipelines, or parent AI coding agents (Claude
 - **Holdout rule:** Authored in Plan; never read during Implement; judged only in Validate/Review.
 
 ## Ruggedness (rugged gate)
+
 - **Actual operators:** Individual developers, shell/CI automation authors, and parent AI agents (Claude Code, Copilot CLI, Cursor) invoking `az-ai` unattended over pipes or `stdio` MCP.
 - **Actual environment:** Non-interactive pipes, redirected stdin/stdout, untrusted git repositories cloned locally, malformed JSON-RPC lines, hung or noisy subprocess plugins, and missing Azure credentials during offline tool introspection or local MCP tool calls.
 - **Dominant risk bucket:** **Operational stress & boundary security** -- child processes hanging or leaking secrets (`AZUREOPENAIAPI`), repo-local plugins executing without opt-in, `shell_exec` exposed over MCP without opt-in, or non-JSON text polluting stdout during `--json` / `mcp serve`.
@@ -65,9 +70,11 @@ When developers, shell scripts, CI pipelines, or parent AI coding agents (Claude
 - **Plan-exit verdict:** **RUGGED** -- 2026-05-17 · produced by inline rubric (companion skill read-only protocol applied inline).
 
 ## Assumptions
+
 - `--json` on chat/agent/ralph completions buffers the text and emits one `ChatJsonResponse` object on stdout so `jq` and callers can parse it deterministically.
 - `az-ai mcp serve` works even when Azure OpenAI credentials are not set for local tools (`read_file`, `web_fetch`, `get_datetime`, `get_clipboard`, manifest plugins); tools that require Azure OpenAI (`delegate_task`) return a structured MCP tool error (`isError: true`) if credentials are absent.
 
 ## Out of scope (this pass)
+
 - HTTP/SSE MCP transport (stdio only per FR-013 v1).
 - WASI/Wasmtime `.wasm` plugin runtime (FR-012 Option C future work).
