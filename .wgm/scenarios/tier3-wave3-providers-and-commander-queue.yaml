@@ -1,0 +1,19 @@
+# Scenario — Tier 3 (Wave 3): Multi-Provider Routing & Commander Work-Queue DAG Orchestration
+name: tier3-wave3-providers-and-commander-queue
+description: Verify that az-ai supports multi-provider routing (azure, openai, openrouter, ollama, llamacpp, custom) with strict non-loopback HTTPS enforcement, and that the built-in Commander Work Queue (az-ai queue / commander) executes multi-step DAGs with cycle detection, atomic persistence, per-task persona/provider/validator routing, and MCP tool exposure.
+tier: 3
+
+target:
+  kind: cli
+  start: dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release
+
+setup:
+  - Build azureopenai-cli and test project under .NET 10
+
+steps:
+  - action: Inspect --providers --json and resolve chat clients across azure, openai, openrouter, ollama, and llamacpp
+    expect: Loopback http://localhost:11434/v1 is accepted for ollama/llamacpp without requiring an API key, while remote http:// endpoints are rejected with a security error.
+  - action: Enqueue a multi-task DAG via az-ai queue add / plan (with depends_on, priority, persona, pattern, and validate_command) and run az-ai queue run --json
+    expect: Tasks execute in topological dependency and priority order, persist atomically to queue.json, run per-task validation commands, and emit a structured JSON summary.
+  - action: Introduce a dependency cycle (A -> B -> A) into the queue and invoke az-ai queue run
+    expect: CommanderRunner detects the cycle deterministically and returns a clear error without hanging.
