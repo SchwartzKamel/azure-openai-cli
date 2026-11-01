@@ -26,11 +26,19 @@ internal static class RalphWorkflow
         int maxTokens,
         int timeoutSeconds,
         string? tools,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        bool jsonMode = false,
+        bool rawMode = false,
+        bool codeMode = false,
+        string? modelName = null,
+        string? schema = null,
+        AzureOpenAI_CLI.Tools.PluginLoadOptions? pluginOptions = null,
+        IReadOnlyList<AITool>? extraTools = null)
     {
         CheckpointManager.InitializeLog();
+        var ralphSw = Stopwatch.StartNew();
 
-        bool showStatus = !Console.IsErrorRedirected;
+        bool showStatus = !Console.IsErrorRedirected && !jsonMode && !rawMode && !codeMode;
         if (showStatus)
         {
             Console.Error.WriteLine("🔁 Ralph mode — autonomous loop active");
@@ -42,12 +50,19 @@ internal static class RalphWorkflow
 
         // Kramer audit M1: build the agent ONCE — instructions and tools are
         // loop-invariant. Rebuilding every iteration was a v1 port artifact.
+        var ralphTools = AzureOpenAI_CLI.Tools.ToolRegistry.CreateMafTools(
+            tools?.Split(',', StringSplitOptions.RemoveEmptyEntries),
+            pluginOptions: pluginOptions);
+        if (extraTools is { Count: > 0 })
+        {
+            foreach (var et in extraTools)
+                ralphTools.Add(et);
+        }
         var agent = chatClient.AsAIAgent(
             instructions: systemPrompt + "\n\nYou are in Ralph mode (autonomous loop). " +
                 "Complete the task. If there were previous errors, fix them. " +
                 "Use tools to read files, run commands, and verify your work.",
-            tools: AzureOpenAI_CLI.Tools.ToolRegistry.CreateMafTools(
-                tools?.Split(',', StringSplitOptions.RemoveEmptyEntries)));
+            tools: ralphTools);
 
         // Kramer audit M2: use a single MAF AgentSession ("thread") across all
         // iterations. Prior art string-concatenated the task text into every
@@ -55,7 +70,10 @@ internal static class RalphWorkflow
         // session carries prior user/assistant turns automatically; retry
         // prompts now only include the *delta* (validation failure + fix ask).
         var session = await agent.CreateSessionAsync(ct);
-        var runOpts = new ChatClientAgentRunOptions { ChatOptions = Program.BuildModernChatOptions() };
+        var runOpts = new ChatClientAgentRunOptions
+        {
+            ChatOptions = Program.BuildModernChatOptions(temperature, maxTokens, schema)
+        };
 
         // FDR v2 dogfood High-severity (fdr-v2-ralph-exit-code): explicitly
         // track whether validation ever passed AND whether any iteration
@@ -66,6 +84,8 @@ internal static class RalphWorkflow
         bool validationPassed = false;
         int successfulIterations = 0;
         int completedIterations = 0;
+        int? totalInputTokens = null;
+        int? totalOutputTokens = null;
 
         // First turn uses the original task text; subsequent turns use short retry feedback.
         string iterationInput = taskPrompt;
@@ -109,6 +129,19 @@ internal static class RalphWorkflow
                     if (!string.IsNullOrEmpty(update.Text))
                     {
                         agentOutput.Append(update.Text);
+                    }
+                    if (update.Contents != null)
+                    {
+                        foreach (var c in update.Contents)
+                        {
+                            if (c is UsageContent uc && uc.Details != null)
+                            {
+                                if (uc.Details.InputTokenCount is long inTok)
+                                    totalInputTokens = (totalInputTokens ?? 0) + (int)inTok;
+                                if (uc.Details.OutputTokenCount is long outTok)
+                                    totalOutputTokens = (totalOutputTokens ?? 0) + (int)outTok;
+                            }
+                        }
                     }
                 }
             }
@@ -156,9 +189,16 @@ internal static class RalphWorkflow
                         Console.Error.WriteLine($"\n✅ Ralph complete after {iteration} iteration(s)");
                     CheckpointManager.WriteFinalEntry(
                         $"Validation passed at iteration {iteration}/{maxIterations}");
-                    Console.Write(agentResponse);
-                    if (!string.IsNullOrEmpty(agentResponse) && !agentResponse.EndsWith('\n'))
-                        Console.WriteLine();
+                    ralphSw.Stop();
+                    WriteFinalRalphOutput(
+                        agentResponse,
+                        jsonMode,
+                        rawMode,
+                        codeMode,
+                        modelName ?? Program.DefaultModelFallback,
+                        totalInputTokens,
+                        totalOutputTokens,
+                        ralphSw.ElapsedMilliseconds);
                     return 0;
                 }
 
@@ -190,9 +230,16 @@ internal static class RalphWorkflow
                 }
                 CheckpointManager.WriteFinalEntry(
                     $"Validation passed at iteration {iteration}/{maxIterations}");
-                Console.Write(agentResponse);
-                if (!string.IsNullOrEmpty(agentResponse) && !agentResponse.EndsWith('\n'))
-                    Console.WriteLine();
+                ralphSw.Stop();
+                WriteFinalRalphOutput(
+                    agentResponse,
+                    jsonMode,
+                    rawMode,
+                    codeMode,
+                    modelName ?? Program.DefaultModelFallback,
+                    totalInputTokens,
+                    totalOutputTokens,
+                    ralphSw.ElapsedMilliseconds);
                 return 0;
             }
 
@@ -224,8 +271,39 @@ internal static class RalphWorkflow
         }
         if (showStatus)
             Console.Error.WriteLine($"\n❌ {verdict}");
+        else if (jsonMode)
+            Program.ErrorAndExit(verdict, 1, jsonMode: true);
         CheckpointManager.WriteFinalEntry(verdict);
         return 1;
+    }
+
+    private static void WriteFinalRalphOutput(
+        string agentResponse,
+        bool jsonMode,
+        bool rawMode,
+        bool codeMode,
+        string modelName,
+        int? inputTokens,
+        int? outputTokens,
+        long durationMs)
+    {
+        var finalText = codeMode ? Program.ExtractCodeBlocks(agentResponse) : agentResponse;
+        if (jsonMode)
+        {
+            Console.Out.WriteLine(Program.FormatChatJsonResponse(
+                response: finalText,
+                model: modelName,
+                mode: "ralph",
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                durationMs: durationMs,
+                cached: false));
+            return;
+        }
+
+        Console.Write(finalText);
+        if (!rawMode && !string.IsNullOrEmpty(finalText) && !finalText.EndsWith('\n'))
+            Console.WriteLine();
     }
 
     /// <summary>

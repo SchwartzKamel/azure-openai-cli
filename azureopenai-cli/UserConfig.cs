@@ -70,9 +70,21 @@ internal sealed class UserConfig
     public string? LoadedFrom { get; set; }
 
     /// <summary>Default user config path (<c>~/.azureopenai-cli.json</c>).</summary>
-    public static string DefaultPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        ConfigFileName);
+    public static string DefaultPath
+    {
+        get
+        {
+            // Honor $HOME / %USERPROFILE% before SpecialFolder: on Linux .NET caches the
+            // OS user's home and ignores a runtime $HOME override, which let tests read a
+            // developer's real ~/.azureopenai-cli.json instead of an isolated TempHome.
+            var home = Environment.GetEnvironmentVariable("HOME");
+            if (string.IsNullOrWhiteSpace(home))
+                home = Environment.GetEnvironmentVariable("USERPROFILE");
+            if (string.IsNullOrWhiteSpace(home))
+                home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return Path.Combine(home, ConfigFileName);
+        }
+    }
 
     /// <summary>Project-local config path (<c>./.azureopenai-cli.json</c>).</summary>
     public static string LocalPath => Path.Combine(
