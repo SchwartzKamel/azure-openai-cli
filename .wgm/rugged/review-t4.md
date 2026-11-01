@@ -1,4 +1,5 @@
 # Review Ruggedness Record -- T4
+
 date: 2026-05-17
 phase: Review (T4)
 scope: MCP Stdio Server (az-ai mcp serve / --mcp-serve) & Documentation Update

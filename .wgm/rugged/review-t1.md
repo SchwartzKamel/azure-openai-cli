@@ -1,4 +1,5 @@
 # Review Ruggedness Record -- T1
+
 date: 2026-05-17
 phase: Review (T1)
 scope: Machine I/O Contract (--json happy-path envelope, --schema wire enforcement, --code extraction) & Combined Stdin+Args Piping

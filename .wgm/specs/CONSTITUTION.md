@@ -5,6 +5,7 @@
 > Plan-exit gate. A slice may deviate only by recording the reason in the table below.
 
 ## Principles
+
 1. **Code quality & Native AOT cleanliness** -- C# (.NET 10) must compile with `IsTrimmable=true`, `TrimMode=full`, and `PublishAot=true` with zero trim/AOT warnings. All JSON serialization and deserialization must register types in `AppJsonContext` (`System.Text.Json` source generation) -- never reflection-based `JsonSerializer`.
 2. **Testing** -- Every behavioral change, CLI flag, tool, and error path must have deterministic xUnit coverage in `tests/AzureOpenAI_CLI.Tests/`. Existing 500+ unit tests must continue to pass without regressions.
 3. **Security & privacy** -- Defense-in-depth on every automation/agent boundary:
@@ -17,6 +18,7 @@
 6. **Ruggedness** -- Built for real operators running `az-ai` inside shell pipelines, CI workflows, Espanso/AHK text expanders, and parent MCP agent hosts (Claude Code, Copilot CLI, Cursor) where malformed JSON, hung child processes, or leaked stderr noise breaks downstream parsers.
 
 ## Ruggedness gate (non-negotiable)
+
 Every plan and every reviewed diff carries **exactly one** ruggedness verdict -- produced by
 `/rugged plan` / `/rugged review` when the companion is discoverable, or by wgm's embedded five-step
 rubric run inline (recording the missing capability) when it is not. An absent verdict is a gate
@@ -32,16 +34,19 @@ Plan-exit judges plan readiness (an exact runnable field/stress/recovery check *
 judges real implementation evidence. See `SKILL.md`, "The ruggedness gate".
 
 ## Non-negotiables
+
 - Zero reflection-based JSON serialization; every serialized record must live in `AppJsonContext`.
 - Never break existing CLI flag contracts or exit code semantics (`0` success, `1` runtime/config error, `2` unknown flag/usage error, `3` timeout/cancellation).
 - Never overwrite root `AGENTS.md`.
 
 ## Tech constraints
+
 - **Must use:** .NET 10 (`net10.0`), `Azure.AI.OpenAI`, `Microsoft.Agents.AI`, `System.Text.Json` source generator (`AppJsonContext`), xUnit (`tests/AzureOpenAI_CLI.Tests`).
 - **Must avoid:** Reflection-based JSON/serialization, unescaped shell command concatenation in plugin execution, unbounded memory reads on stdin/stdout.
 - **Deployment target:** Cross-platform Native AOT single-file binary (`az-ai`) and Alpine container.
 
 ## Recording deviations
+
 When a slice must break a principle, log it here so the next agent sees the trade-off instead of
 "fixing" it back.
 

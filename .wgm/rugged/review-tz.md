@@ -1,4 +1,5 @@
 # Review Ruggedness Record -- TZ (End-to-End Demo Validation)
+
 date: 2026-05-17
 phase: Review (TZ)
 scope: Full test suite + live CLI demo path (--list-tools --json and az-ai mcp serve over stdio)

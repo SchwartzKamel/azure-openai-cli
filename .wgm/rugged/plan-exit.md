@@ -1,4 +1,5 @@
 # Plan-exit Ruggedness Record
+
 date: 2026-05-17
 phase: Plan-exit
 scope: .wgm/specs/agent-automation-interop.md + .wgm/IMPLEMENTATION_PLAN.md

@@ -1,4 +1,5 @@
 # Review Ruggedness Record -- T5
+
 date: 2026-05-17
 phase: Review (T5)
 scope: NDJSON Event Streaming (--jsonl) & Machine-Readable Personas (--personas --json, --models --json)

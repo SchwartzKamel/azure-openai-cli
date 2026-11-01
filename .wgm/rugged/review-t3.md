@@ -1,4 +1,5 @@
 # Review Ruggedness Record -- T3
+
 date: 2026-05-17
 phase: Review (T3)
 scope: Custom Manifest Tool Plugins (FR-012) & Tool Introspection (--list-tools [--json])

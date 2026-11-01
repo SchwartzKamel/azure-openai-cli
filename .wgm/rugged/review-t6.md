@@ -1,4 +1,5 @@
 # Review Ruggedness Record -- T6
+
 date: 2026-05-17
 phase: Review (T6)
 scope: Curated Pattern Library (FR-015 --pattern/-p, --patterns [--json]) & MCP Prompts/Resources (prompts/list, prompts/get, resources/list, resources/read)
