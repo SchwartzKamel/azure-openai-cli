@@ -13,8 +13,8 @@ because the [cast itself is](../../AGENTS.md).
 |---------|------------------------------------------|---------------------------------|-----------|
 | **S01** | The Pilot Years                          | Aired (back-fill pending)        | --        |
 | **S02** | Production & Polish (v2 era)             | In production (24-arc + specials) | --        |
-| **S03** | Local & Multi-Provider                   | Pre-production                  | [s03-blueprint.md](s03-blueprint.md) |
-| **S04** | Model Intelligence                       | Pre-production                  | [s04-blueprint.md](s04-blueprint.md) |
+| **S03** | Local & Multi-Provider                   | Aired (30 episodes; index back-fill pending) | [s03-blueprint.md](s03-blueprint.md) |
+| **S04** | Model Intelligence                       | In production (E01-E07 + 4 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
 | **S05** | Protocols & Plugins (incl. MCP)          | Pre-production                  | [s05-blueprint.md](s05-blueprint.md) |
 | **S06** | Dogfooding (`az-ai` is the main tool)    | Pre-production (showrunner override) | [s06-blueprint.md](s06-blueprint.md) |
 | **S07+** | Roadmap pad (Enterprise, Multimodal, ...) | Slate                            | [seasons-roadmap.md](seasons-roadmap.md) |
@@ -70,10 +70,30 @@ the cast would tell you it's time for a retool.
 **S02 sealed at E24.** 35 episodes aired. S03 *Local & Multi-Provider*
 is pre-production -- see [`s03-blueprint.md`](s03-blueprint.md).
 
-### Season 3 -- *(unaired)*
+### Season 4 -- Model Intelligence
 
-[Blueprint](s03-blueprint.md) -- pre-season treatment, three candidate
-themes awaiting showrunner greenlight.
+[Blueprint](s04-blueprint.md). Commit column is the start of the commit
+range recorded in each report. E06 is the mid-season cast-balance audit.
+
+| Ep       | Title                  | Report | Commit | Summary |
+|----------|------------------------|--------|--------|---------|
+| S04E01   | *The Registry*         | [s04e01-the-registry.md](s04e01-the-registry.md) | `493c21b` | Model registry seam, 3 seed cards, ADR-012; Babu i18n special |
+| S04E02   | *Embedded Cards*       | [s04e02-embedded-cards.md](s04e02-embedded-cards.md) | `d51beda` | Card reader, `--doctor` description column, symlink hotfix |
+| S04E03   | *The Capabilities*     | [s04e03-the-capabilities.md](s04e03-the-capabilities.md) | `5e71331` | Per-model capability gate at request time, ADR-013 |
+| S04E04   | *Reading Room*         | [s04e04-reading-room.md](s04e04-reading-room.md) | `457e06b` | `az-ai models list`, table renderer, ADR-014 output standard |
+| S04E05   | *The Picker*           | [s04e05-the-picker.md](s04e05-the-picker.md) | `3bdac79` | Capability-aware default model picker, four reason codes |
+| S04E06   | *The Cast Balance*     | [s04e06-the-cast-balance.md](s04e06-the-cast-balance.md) | docs-only | Mid-season audit: Rule 1 broken in the plan, corrected E08-E13 slate |
+| S04E07   | *The Fallback*         | [s04e07-the-fallback.md](s04e07-the-fallback.md) | `c3deb8b` | Same-model retry, backoff and budget executor |
+| S04SP1   | *The Reruns*           | [s04sp1-the-reruns.md](s04sp1-the-reruns.md) | `eecfd74` | Release matrix retag after v2.2.0 |
+| S04SP2   | *The Stenographer*     | [s04sp2-the-stenographer.md](s04sp2-the-stenographer.md) | docs-only | Paperwork audit; artifact contract locked for v2.3.0 |
+| S04SP3   | *The Pre-Push*         | [s04sp3-the-pre-push.md](s04sp3-the-pre-push.md) | `1c8c787` | Pre-push docs-lint after ten consecutive red runs |
+| S04SP4   | *The Bucket*           | [s04sp4-the-bucket.md](s04sp4-the-bucket.md) | `457e06b` | Release queue unblock and printf fix-forward |
+
+### Season 3 -- Local & Multi-Provider
+
+[Blueprint](s03-blueprint.md). 30 episodes aired (`s03e01` through `s03e30`
+in this directory). A per-episode index with verified commit SHAs is a
+follow-up; see the S04E06 report.
 
 ### Season 1 -- The Pilot Years
 
