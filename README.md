@@ -100,9 +100,18 @@ Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) — id
 
 | Flag | What it does |
 |------|--------------|
-| `--json` | Machine-readable output. Errors go to stdout as structured JSON with `error`, `message`, and `exit_code` fields. |
-| `--schema <json>` | Capture a JSON schema for structured output (wire enforcement lands in 2.1.x). |
-| `--max-rounds <n>` | Agent tool-call cap. Default `5`, range `1–20`. |
+| `--json` | Machine-readable output. Happy-path completions emit a single JSON object (`response`, `model`, `mode`, `input_tokens`, `output_tokens`, `total_tokens`, `duration_ms`, `cached`) on stdout; errors emit structured JSON (`error`, `message`, `exit_code`) on stderr. |
+| `--jsonl` | Stream single-line NDJSON events (`delta` chunks + final `done` summary) on stdout for real-time agent/pipeline consumption. |
+| `--code` | Extract only fenced code blocks from the model response to stdout (ideal for `az-ai --code "..." > script.py`). |
+| `--pattern <name>` (`-p`), `--patterns [--json]` | Apply or list curated prompt patterns (`summarize`, `fix-grammar`, `commit-message`, `explain-code`, `shell-oneliner`, `json-extract`, `code-review`, `security-audit`, plus user `~/.config/azureopenai-cli/patterns/*.json`). |
+| `--schema <json>` | Enforce a strict JSON schema on the model's completion (`ChatResponseFormat.ForJsonSchema`). |
+| `--max-rounds <n>` | Enforced agent tool-call round cap. Default `5`, range `1–20`. |
+| `--list-tools [--json]` | Enumerate all built-in tools and discovered JSON manifest plugins with their source and schema. |
+| `--plugin-dir <path>` / `--allow-local-plugins` / `--no-plugins` | Discover AOT-safe external tool manifests (`*.json`) from `~/.config/azureopenai-cli/tools/`, a custom directory, or opt-in `./.azureopenai-cli/tools/`. |
+| `az-ai mcp serve` (`--mcp-serve`) | Run `az-ai` as an MCP (Model Context Protocol) JSON-RPC 2.0 server over `stdio` exposing tools, prompts (patterns + personas), and squad resources (`--allow-shell` to opt in `shell_exec`, `--read-only` for read-only tools). |
+| `--mcp-server <spec>` / `az-ai mcp tools` / `az-ai mcp call` | Connect `az-ai` as an MCP `stdio` client to external MCP servers, inspect their tools, call them directly, or bridge them into `--agent` and `--ralph` runs. |
+| `--provider <name>` / `--providers [--json]` | Multi-provider routing across `azure` (default), `openai`, `openrouter`, `ollama`, `llamacpp` (`local`), and `custom` OpenAI-compatible endpoints (env: `AZ_PROVIDER`, config: `default_provider`). |
+| `az-ai queue` / `az-ai commander` (`init\|add\|plan\|status\|run\|clear`) | Built-in DAG Work Queue orchestrator (`.az-ai/queue.json`) with dependency cycle detection, atomic persistence, `--concurrency 1..8`, `--dry-run`, `--recover-stale`, and per-task provider/model/persona/pattern/validator routing. |
 | `--config <path>` | Use an alternate config file instead of `./.azureopenai-cli.json` or `~/.azureopenai-cli.json`. |
 | `--config set/get/list/reset/show` | Full CRUD for the persistent user config (e.g. `az-ai --config set defaults.temperature=0.3`). |
 | `--completions <bash\|zsh\|fish>` | Emit a shell-completion script to stdout. Source it or drop it into your completions dir. |
