@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **docs(exec-report):** S04E06 *The Cast Balance* -- the skipped mid-season
+  cast-balance audit, run against the aired reports. Finds a Rule 1
+  violation already in the blueprint (back-to-back Maestro leads on E10/E11),
+  Newman and Jerry at zero leads ahead of the E12 line, and eight supporting
+  players at zero appearances. Ratifies a corrected E08-E13 slate. The
+  exec-report index now lists S03 as aired and carries a Season 4 section.
 - **feat(resilience):** S04E07 *The Fallback* -- new
   `azureopenai-cli/Resilience/RetryEnvelope.cs` lands the same-model
   retry+backoff+wall-clock-budget executor. Full-jitter exponential
