@@ -1,0 +1,17 @@
+{
+  "name": "git_context",
+  "description": "Return the current git branch, short status, and last 5 commits for repository context.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "count": {
+        "type": "integer",
+        "description": "Number of recent commits to display (default 5)"
+      }
+    }
+  },
+  "command": ["git", "log", "--oneline", "--decorate", "-n", "{count}"],
+  "timeout_seconds": 5,
+  "stdout_limit_bytes": 32768,
+  "dangerous": false
+}
