@@ -1,0 +1,21 @@
+# Scenario — Tier 3: MCP Stdio Server (az-ai mcp serve) & Adversarial Resilience
+name: tier3-mcp-stdio-server-and-security
+description: Verify that external AI agents can connect to az-ai mcp serve over stdio JSON-RPC 2.0, discover tools, execute safe built-in and manifest tools, and that shell_exec is blocked unless --allow-shell is explicitly enabled.
+tier: 3
+
+target:
+  kind: cli
+  start: dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release
+
+setup:
+  - Configure in-memory stdin/stdout streams with JSON-RPC 2.0 requests
+
+steps:
+  - action: Send JSON-RPC "initialize", "notifications/initialized", and "tools/list" to az-ai mcp serve
+    expect: Server responds with protocolVersion, capabilities.tools, serverInfo (name "az-ai"), and lists safe built-in tools plus loaded manifest tools while omitting shell_exec by default.
+  - action: Send JSON-RPC "tools/call" for "get_datetime" and a custom manifest tool
+    expect: Server executes the tool and returns result.content[{type:"text", text:"..."}] with isError: false.
+  - action: Send JSON-RPC "tools/call" for "shell_exec" when --allow-shell was NOT passed
+    expect: Server refuses execution with a structured error / isError: true explaining that --allow-shell is required.
+  - action: Send malformed JSON and an unknown method to az-ai mcp serve, followed by a valid "ping" request
+    expect: Server returns JSON-RPC error codes -32700 (Parse error) and -32601 (Method not found) and stays alive to answer the subsequent "ping" request cleanly.

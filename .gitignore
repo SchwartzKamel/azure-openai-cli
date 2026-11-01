@@ -95,3 +95,6 @@ UpgradeLog*.htm
 .smith/heartbeat.json
 .smith/config.yaml
 .smith/config.yml
+
+# wgm per-build scratch (durable .wgm/ artifacts stay tracked)
+/.wgm/memories.md

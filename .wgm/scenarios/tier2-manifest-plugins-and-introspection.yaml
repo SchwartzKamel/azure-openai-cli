@@ -1,0 +1,21 @@
+# Scenario — Tier 2: Custom Manifest Plugins & Tool Introspection (--list-tools)
+name: tier2-manifest-plugins-and-introspection
+description: Verify that external CLI tools can be registered via JSON manifests, inspected via --list-tools [--json], and executed safely without shell injection or credential leakage.
+tier: 2
+
+target:
+  kind: cli
+  start: dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release
+
+setup:
+  - Create temporary directory with custom JSON tool manifests
+
+steps:
+  - action: Run az-ai --plugin-dir <dir> --list-tools --json
+    expect: Emits a valid JSON array/envelope containing all 6 built-in tools plus discovered manifest tools with accurate name, description, source, and parameter schema metadata.
+  - action: Attempt to load a repo-local ./.azureopenai-cli/tools/*.json manifest with and without --allow-local-plugins (or AZ_ALLOW_LOCAL_PLUGINS=1)
+    expect: Repo-local manifests are ignored by default and loaded only when --allow-local-plugins or AZ_ALLOW_LOCAL_PLUGINS=1 is active; --no-plugins disables all manifest plugins.
+  - action: Attempt to register a manifest tool named "shell_exec" or "read_file"
+    expect: Built-in tool wins on collision; the manifest cannot shadow built-in tools.
+  - action: Execute a manifest tool with placeholder arguments containing shell metacharacters (e.g., "; echo pwned") and check child environment variables
+    expect: Arguments are passed as discrete argv entries via ArgumentList (no shell interpolation occurs) and AZUREOPENAIAPI is stripped from the child process environment.

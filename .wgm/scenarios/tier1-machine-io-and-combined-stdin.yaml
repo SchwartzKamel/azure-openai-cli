@@ -1,0 +1,21 @@
+# Scenario — Tier 1: Machine I/O Contract (--json, --schema, --code) and Combined Stdin Piping
+name: tier1-machine-io-and-combined-stdin
+description: Verify that scripts and automations can combine piped stdin with positional prompts, extract raw code blocks via --code, enforce JSON schemas via --schema, and format happy-path completions as a single valid JSON object via --json.
+tier: 1
+
+target:
+  kind: cli
+  start: dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release
+
+setup:
+  - Build azureopenai-cli and test project under .NET 10
+
+steps:
+  - action: Pipe stdin text while also supplying a positional prompt argument (e.g., echo "fn main() {}" | az-ai "explain this rust code")
+    expect: Both the piped stdin context and the positional prompt argument are merged into the effective prompt, while enforcing the 1 MB stdin cap.
+  - action: Format a completion in --json mode (ChatJsonResponse)
+    expect: Stdout receives a single valid JSON object with response, model, mode, input_tokens, output_tokens, total_tokens, duration_ms, and cached fields, serialized via AppJsonContext with zero reflection.
+  - action: Pass --schema '{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"]}'
+    expect: BuildModernChatOptions attaches a ChatResponseFormatSchema to ChatOptions.ResponseFormat and sets Temperature/MaxOutputTokenCount.
+  - action: Pass --code on a response containing markdown fenced code blocks
+    expect: Only the extracted code block contents are emitted to stdout without markdown fences or surrounding prose.
