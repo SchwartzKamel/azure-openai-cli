@@ -1,3 +1,4 @@
+# NOTE: the multi-provider half of this scenario is SUPERSEDED by origin/main's provider stack (see IMPLEMENTATION_PLAN T8); the queue half still applies.
 # Scenario — Tier 3 (Wave 3): Multi-Provider Routing & Commander Work-Queue DAG Orchestration
 name: tier3-wave3-providers-and-commander-queue
 description: Verify that az-ai supports multi-provider routing (azure, openai, openrouter, ollama, llamacpp, custom) with strict non-loopback HTTPS enforcement, and that the built-in Commander Work Queue (az-ai queue / commander) executes multi-step DAGs with cycle detection, atomic persistence, per-task persona/provider/validator routing, and MCP tool exposure.

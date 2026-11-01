@@ -119,7 +119,8 @@ Exactly one verdict per run; record it here, not just in a transcript.
 - **status:** done
 - **notes:** Implemented `McpStdioClient` + `McpClientAIFunction` in `azureopenai-cli/Mcp/McpStdioClient.cs`, added `Content-Length` + NDJSON dual framing in `McpStdioServer.ReadNextFrameAsync`, wired `--mcp-server`, `az-ai mcp tools`, and `az-ai mcp call` in `Program.cs` and `RalphWorkflow.cs`. 4/4 tests in `McpStdioClientTests` green.
 
-### T8 -- Multi-Provider Router (`--provider`, `AZ_PROVIDER`, `--providers [--json]`, `--endpoint`, `--api-key`) with Loopback Security Guard
+### T8 [SUPERSEDED] -- Multi-Provider Router (`--provider`, `AZ_PROVIDER`, `--providers [--json]`, `--endpoint`, `--api-key`) with Loopback Security Guard
+- **superseded (2026-05-17, reconcile onto origin/main):** `origin/main` gained its own provider stack (`PreferencesResolver`, `OpenAiCompatAdapter`, `EndpointAllowlist`, `CapabilityGate`, `--provider`/`--profile`, ADR-010/011) after this task was built. `ProviderSelector`, `MultiProviderTests`, `--providers`, `--endpoint`, `--api-key` and `default_provider` were dropped rather than maintain two provider stacks. T9's queue now routes per task through `Program.BuildChatClient`, so offline mode, the endpoint allowlist and the capability gate apply to queued work. The RUGGED verdicts below describe the pre-reconcile code and are history, not current claims.
 - **files/areas:** `azureopenai-cli/Providers/ProviderSelector.cs`, `azureopenai-cli/Observability/CostHook.cs`, `azureopenai-cli/JsonGenerationContext.cs`, `azureopenai-cli/Program.cs`, `tests/AzureOpenAI_CLI.Tests/MultiProviderTests.cs`
 - **validation:** `dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj -c Release --filter "FullyQualifiedName~MultiProviderTests"`
 - **acceptance:**
