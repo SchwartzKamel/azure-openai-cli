@@ -103,6 +103,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Security
+- **fix(shell):** S04E17 *The Long Tail* -- the `shell_exec` guard from S04E15 could still be
+  walked past. An independent reviewer model found `bash -c 'coproc rm x'`, and measuring its
+  neighbours found six more routes that ran a blocked command through the full guard:
+  `trap 'rm x' EXIT`, `taskset`, `chrt`, `strace`, `systemd-run` and `script -c`. The scanner
+  now treats commands that can run another command in their arguments (coproc, trap, taskset,
+  chrt, strace, ltrace, unshare, nsenter, setpriv, systemd-run, parallel, script) by checking
+  every later word as a command and as a command string, and `at` and `batch` are blocked.
+  Cost: `trap 'kill $pid' EXIT` is now refused. Still a denylist, not a sandbox.
+  (`azureopenai-cli/Tools/ShellCommandScanner.cs`, s04e17-the-long-tail)
 - **fix(redaction):** S04E16 *The Bare Token* -- `SecretRedactor` recognised a secret by where it
   sat (a header, an assignment, a secret-named field), so a provider error that echoed a bare
   key in a sentence passed through. It now also masks a credential by its own shape: OpenAI-style

@@ -49,6 +49,18 @@ internal static class ShellCommandScanner
         "sh", "bash", "zsh", "dash", "ksh", "mksh", "ash", "csh", "tcsh", "fish", "rbash",
     };
 
+    // Commands that can run another command, but with an argument shape too varied to model option by
+    // option (taskset MASK cmd, chrt PRIO cmd, strace -o FILE cmd, systemd-run --flags cmd) or that take the
+    // command as a STRING (trap 'cmd' EXIT, script -c 'cmd', systemd-run). Rather than guess where the
+    // command starts, every later word is checked both as a command position and as a command line.
+    // Found by an independent reviewer model in S04E17: `bash -c 'coproc rm x'`, `trap 'rm x' EXIT`,
+    // `taskset -c 0 rm x`, `chrt -o 0 rm x`, `strace rm x`, `systemd-run rm x` and `script -qec 'rm x'` all ran.
+    private static readonly HashSet<string> ExecCapable = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "coproc", "trap", "taskset", "chrt", "strace", "ltrace", "unshare", "nsenter", "setpriv",
+        "systemd-run", "parallel", "script",
+    };
+
     // Words that introduce or close a command without being one: `then rm x` runs rm.
     private static readonly HashSet<string> ReservedWords = new(StringComparer.Ordinal)
     {
@@ -120,6 +132,22 @@ internal static class ShellCommandScanner
 
         if (ShellExecTool.IsBlockedName(name)) return $"Error: command '{name}' is blocked for safety.";
         if (name is "eval" or "exec") return EvalMessage;
+
+        if (ExecCapable.Contains(name))
+        {
+            for (var j = i + 1; j < words.Count; j++)
+            {
+                var asCommand = CheckCommandAt(words, j, depth);
+                if (asCommand != null) return asCommand;
+                // A word with whitespace in it is a command string (trap 'rm x' EXIT, script -c 'rm x').
+                if (words[j].Text.Any(char.IsWhiteSpace))
+                {
+                    var asLine = Scan(words[j].Text, depth + 1);
+                    if (asLine != null) return asLine;
+                }
+            }
+            return null;
+        }
 
         if (Wrappers.TryGetValue(name, out var wrapper))
         {

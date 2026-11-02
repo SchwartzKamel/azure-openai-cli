@@ -21,6 +21,8 @@ internal static class ShellExecTool
         "nc", "ncat", "netcat", "wget",
         // S04E15: privilege front-ends and destructive tools that were missing from the list.
         "doas", "pkexec", "shred", "unlink", "wipefs", "mkswap",
+        // S04E17: deferred execution. `at`/`batch` run what arrives on stdin later, where no guard can read it.
+        "at", "batch",
     };
 
     /// <summary>
