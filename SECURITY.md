@@ -160,6 +160,10 @@ secrets; the *output* is the safe form to emit.
   the TLS-terminated traffic. Redaction is an application-level control.
 - Arbitrary secrets not matching `AZUREOPENAIAPI` or the endpoint -- the
   blocklist is intentionally narrow to keep the false-positive rate low.
+- A denylist is not a sandbox. `shell_exec` does not inspect a script file the agent ran
+  (`sh build.sh`), a general-purpose language interpreter (`python -c`, `perl -e`, `node -e`,
+  `awk 'BEGIN{system(...)}'`), or a git alias. A process that must be contained should run in a
+  container or as a restricted user.
 
 **Threat-model note.** Pre-v2.0.4, `ex.Message` was printed raw in the
 global catch, so an operator debugging a 401 would see their API key
@@ -748,13 +752,14 @@ Proof-of-coverage: `tests/AzureOpenAI_CLI.V2.Tests/ToolHardeningTests.cs`.
 
 | Protection | Detail |
 |---|---|
-| **Destructive command blocklist** | `rm`, `rmdir`, `mkfs`, `dd`, `shutdown`, `reboot`, `halt`, `poweroff`, `kill`, `killall`, `pkill`, `format`, `del`, `fdisk`, `passwd` (`ShellExecTool.cs:17-18`) |
-| **Privilege / interactive blocklist** | `sudo`, `su`, `crontab`, `vi`, `vim`, `nano`, `nc`, `ncat`, `netcat`, `wget` (`ShellExecTool.cs:19-20`) |
+| **Destructive command blocklist** | `rm`, `rmdir`, `mkfs`, `dd`, `shutdown`, `reboot`, `halt`, `poweroff`, `kill`, `killall`, `pkill`, `format`, `del`, `fdisk`, `passwd`, plus (S04E15) `shred`, `unlink`, `wipefs`, `mkswap` and the `mkfs.*` family (`ShellExecTool.cs:17-18`) |
+| **Privilege / interactive blocklist** | `sudo`, `su`, `doas`, `pkexec`, `crontab`, `vi`, `vim`, `nano`, `nc`, `ncat`, `netcat`, `wget` (`ShellExecTool.cs:19-20`) |
 | **Command-substitution block** | `$(...)` and backticks rejected (`ShellExecTool.cs:53`) |
 | **Process-substitution block** | `<(...)` and `>(...)` rejected (`ShellExecTool.cs:57`) |
 | **`eval` / `exec` prefix block** | Rejected as first token or after pipe/chain (`ShellExecTool.cs:58-59`) |
 | **Tab/newline first-token rescan** | K-1 hardening (v2.0.2) -- splits on tabs+newlines, not just spaces, so `"\trm"` does not bypass the blocklist (`ShellExecTool.cs:69`) |
 | **Pipe-chain analysis** | Scans through `\|`, `;`, `&` for blocked commands -- prevents bypass via chaining. |
+| **Structural command scan** (S04E15) | `ShellCommandScanner` reads the line the way the shell does and checks every command position, so a blocked name is found however it is written or wrapped: `bash -c '...'` payloads (recursively), `\rm`, `r'm'`, `"rm"`, `(rm x)`, `{ rm x; }`, `then rm x`, wrappers (`env`, `nohup`, `nice`, `timeout`, `xargs`, `command`, `time`, `busybox`, ...), `find -exec` and `find -delete`, and an interpreter reading commands from stdin (`... \| sh`, `sh <<< ...`). A command name it cannot see through (a variable, glob, brace list or `$'..'`) is refused. Before it existed, 30 of 32 such variations ran. |
 | **HTTP-write / upload block** | `ContainsHttpWriteForms` rejects `curl`/`wget` bodies + upload verbs (`-X POST/PUT/DELETE`, `--data`, `-T`, `-F`) to defeat exfiltration (`ShellExecTool.cs:79-80, 131-186`) |
 | **Env scrub** | `SensitiveEnvVars` are unset on the child before `execve` so AZUREOPENAIAPI et al. never reach the shelled command (`ShellExecTool.cs:32-42`) |
 | **Output cap** | 64 KB stdout, 16 KB stderr -- prevents memory exhaustion from verbose commands. |

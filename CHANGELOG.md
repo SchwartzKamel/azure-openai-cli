@@ -102,6 +102,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `setup-secrets` accept either name. Configs you already installed that call
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
+### Security
+- **fix(shell):** S04E15 *The Denylist* -- the agent's `shell_exec` blocklist only checked the
+  first word of each segment, so 30 of 32 trivial variations of a blocked command ran
+  (`bash -c 'rm x'`, `\rm x`, `env rm x`, `(rm x)`, `timeout 5 rm x`, `echo x | xargs rm`,
+  `find x -delete`). A new scanner reads the line the way the shell does and checks every command
+  position, including `sh -c` payloads, wrappers and interpreters reading stdin; a command name it
+  cannot see through (a variable, glob or brace list) is refused, so `$HOME/bin/tool` is now
+  refused as a command. Also blocks `doas`, `pkexec`, `shred`, `unlink`, `wipefs`, `mkswap` and
+  `mkfs.*`. Still a denylist, not a sandbox: scripts and general-purpose interpreters
+  (`python -c`) are not inspected. (`azureopenai-cli/Tools/ShellCommandScanner.cs`,
+  s04e15-the-denylist)
+
 ### Added
 - **feat(resolution):** S04E05 *The Picker* -- new
   `azureopenai-cli/Resolution/ResolveSmartDefault.cs` lands the
