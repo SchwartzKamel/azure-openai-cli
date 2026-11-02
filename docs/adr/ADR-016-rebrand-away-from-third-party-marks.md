@@ -42,11 +42,12 @@ name the Azure service they configure, which is nominative use), the `AZ_AI_*`
 variables, the C# namespace, or the source directory. Neutral env aliases may be
 added later, additively.
 
-The recommended name is `dunlin` (runner-up `curlew`), selected in the FR-024
-addendum after 719 candidates were screened against package channels, GitHub and the
-US trademark register. An earlier shortlist (`pith`, `usher`, `herald`) was withdrawn
-when that screen found live software-class marks. The choice is the maintainer's to
-confirm. No irreversible step runs until three gates clear:
+The recommended name is `anymux` (runner-ups `plainly` and `askany`), selected in the
+second FR-024 addendum after 109 meaning-first candidates were screened against package
+channels, GitHub and the US trademark register and then checked for same-named projects.
+Earlier picks were withdrawn: `pith` and `usher` on trademark evidence, and `dunlin` and
+`curlew` because the owner found them meaningless. No irreversible step runs until three
+gates clear:
 
 - **G1:** the maintainer confirms the name.
 - **G2:** counsel, or at least a full trademark and common-law search, clears it and
