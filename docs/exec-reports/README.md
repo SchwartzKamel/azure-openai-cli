@@ -91,6 +91,7 @@ range recorded in each report. E06 is the mid-season cast-balance audit.
 | S04SP2   | *The Stenographer*     | [s04sp2-the-stenographer.md](s04sp2-the-stenographer.md) | docs-only | Paperwork audit; artifact contract locked for v2.3.0 |
 | S04SP3   | *The Pre-Push*         | [s04sp3-the-pre-push.md](s04sp3-the-pre-push.md) | `1c8c787` | Pre-push docs-lint after ten consecutive red runs |
 | S04SP4   | *The Bucket*           | [s04sp4-the-bucket.md](s04sp4-the-bucket.md) | `457e06b` | Release queue unblock and printf fix-forward |
+| S04SP5   | *The Name Game*        | [s04sp5-the-name-game.md](s04sp5-the-name-game.md) | docs only | Six-round rebrand review; verdict reversed; three gates open, nothing renamed |
 
 ### Season 3 -- Local & Multi-Provider
 
