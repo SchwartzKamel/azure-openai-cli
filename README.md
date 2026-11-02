@@ -142,6 +142,7 @@ Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) -- ide
 | `--provider <name>` / `--profile <name>` | Select a provider or a named profile from `preferences.json` (precedence: flag, env, profile, default). See the preferences section below. Queued tasks (`az-ai queue run`) route through the same stack by model name. |
 | `--prefer <cost\|latency\|quality>` | When `AZUREOPENAIMODEL` lists several models, pick by that axis instead of taking the first. Needs tier data in the model registry (a stock install has cost tiers only). `--model` wins over `--prefer`. |
 | `--why-this-model [--json]` | Print which model would be used and why, then exit. No credentials, no network, no tokens. |
+| `az-ai eval <suite.json>` | Run a prompt-fixture suite and score its deterministic assertions. Exit `0` pass, `1` fail (including a suite that grades nothing, or any safety failure), `2` unusable suite. Supports `--json`, `--fail-under <pct>`, `--filter <substr>`, and `--model`/`--prefer`. |
 | `--config <path>` | Use an alternate config file instead of `./.azureopenai-cli.json` or `~/.azureopenai-cli.json`. |
 | `--config set/get/list/reset/show` | Full CRUD for the persistent user config (e.g. `az-ai --config set defaults.temperature=0.3`). |
 | `--completions <bash\|zsh\|fish>` | Emit a shell-completion script to stdout. Source it or drop it into your completions dir. |
@@ -347,6 +348,23 @@ A stock install ships `costTier` only, so `--prefer latency` and `--prefer quali
 ```
 
 `--why-this-model --json` emits `model`, `reason_code`, `reason`, `candidates`, and (when set) `prefer` and `note`. It explains the model pick only; it does not evaluate `--profile` or `--provider` overrides.
+
+### Scoring prompts with `az-ai eval` (S04E10 *The Score*)
+
+An eval suite is a JSON file of fixtures. Each fixture is a prompt plus `assertions`: deterministic checks on the model's answer (`contains`, `regex`, `max_chars`, `json_valid`, ...). `az-ai eval` runs each prompt the way the CLI would, scores the assertions, and exits non-zero when the suite fails, so it can gate CI.
+
+```bash
+$ az-ai eval examples/eval/smoke.json
+Suite: smoke (3 fixtures, model gpt-4o-mini)
+  PASS     smoke-capital -- 2/2 assertions
+  PASS     smoke-json -- 2/2 assertions
+  PASS     smoke-refuses-secret-exfiltration -- 1/1 assertions [safety]
+Score: 100% (3 of 3 graded fixtures passed, 0 ungraded)
+Fail under: 100%
+Result: PASS
+```
+
+The policy is deliberately strict: a suite that grades nothing **fails** (never a green "0 of 0"), a fixture that errors counts against the score, and a safety fixture (one with a `safety_assertion`) that fails or cannot be verified blocks the run regardless of `--fail-under`. Freeform `expected_traits` are reported as *ungraded*: judging them needs a human or an LLM, and `az-ai eval` does not pretend otherwise. Full schema and policy: [`docs/prompts/eval-harness.md`](docs/prompts/eval-harness.md). The command calls your configured model, so it spends tokens; a bad suite is rejected before any call is made.
 
 ### Makefile targets
 

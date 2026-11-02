@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(eval):** S04E10 *The Score* -- `az-ai eval <suite.json>` runs a fixture suite and
+  scores deterministic assertions (`contains`, `regex`, `max_chars`, `json_valid`, ...).
+  Strict by design: a suite that grades nothing fails, errors count against the score,
+  and a safety fixture that fails or cannot be verified blocks regardless of
+  `--fail-under`. `--json`, `--fail-under`, `--filter`, `--model`/`--prefer` supported;
+  exit 0/1/2. The existing design-doc fixtures load unchanged; freeform traits are
+  reported as ungraded (the trait judge is still deferred). Also fixes a comment that
+  named the wrong Foundry env var (`AZURE_FOUNDRY_MODELS` is the real one).
 - **feat(models):** S04E09 *The Override* -- `--prefer <cost|latency|quality>` ranks the
   models in `AZUREOPENAIMODEL` by an axis (`--model` still wins), and
   `--why-this-model [--json]` explains the pick with no credentials, network or
