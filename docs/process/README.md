@@ -23,6 +23,7 @@ support from **The Soup Nazi** (style and merge gates) and **Jerry**
 | [`cab-lite.md`](cab-lite.md) | Lightweight "Change Advisory Board" -- when a change needs cross-cast review (Newman + Jackie + Frank, etc.), how the consult is requested, and how the decision is recorded. |
 | [`retrospective-cadence.md`](retrospective-cadence.md) | Season-finale retro format, monthly mini-retros, post-incident retros, and the carry-forward path into the next season's writers' room. |
 | [`release.md`](release.md) | Step-by-step release-cut procedure: precheck, CHANGELOG promotion, tag + push, CI takeover, post-release verification, and opening the next cycle. |
+| [`trailer-audit-log.md`](trailer-audit-log.md) | Append-only log of commits that landed without the Copilot trailer, with the re-audit commands and the no-rewrite policy for protected `main`. |
 
 ## How these relate to the rest of the repo
 
