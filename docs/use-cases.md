@@ -10,17 +10,17 @@ Set the three required env vars before running any example -- see
 `AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`.
 
 ```bash
-az-ai "Explain quantum tunnelling in one sentence"        # standard
-echo "teh quik brown fox" | az-ai --raw --system "Fix spelling"
-az-ai --agent "What files are in /var/log?"               # agent
-az-ai --ralph --validate "pytest" "Fix the failing test"  # autonomous loop
-az-ai --persona security "Audit Tools/WebFetchTool.cs"    # named persona
+hopper "Explain quantum tunnelling in one sentence"        # standard
+echo "teh quik brown fox" | hopper --raw --system "Fix spelling"
+hopper --agent "What files are in /var/log?"               # agent
+hopper --ralph --validate "pytest" "Fix the failing test"  # autonomous loop
+hopper --persona security "Audit Tools/WebFetchTool.cs"    # named persona
 ```
 
 Cost-check any prompt without spending a token:
 
 ```bash
-az-ai --estimate --model gpt-4o "$(cat big-prompt.txt)"
+hopper --estimate --model gpt-4o "$(cat big-prompt.txt)"
 # → {"model":"gpt-4o","input_tokens":…, "estimated_usd":…}
 ```
 
@@ -49,7 +49,7 @@ Shared flags that apply to most modes: `--json`, `--raw`, `--system`,
 
 The 2.0.0 release adds nine flags and wires `--persona` end-to-end. Full
 rundown in [`migration-v1-to-v2.md`](migration-v1-to-v2.md) §1. Headline
-additions (also listed in `az-ai --help`):
+additions (also listed in `hopper --help`):
 
 - `--json` -- machine-readable errors and estimator output.
 - `--version --short` -- bare semver (`2.0.0`), for packaging scripts.

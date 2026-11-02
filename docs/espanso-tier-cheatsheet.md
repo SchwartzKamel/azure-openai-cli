@@ -137,7 +137,7 @@ but fit by token budget. Slated for re-tier review.
 
 | Trigger | Max-tokens | Description |
 |---------|-----------:|-------------|
-| `:aiprompts` `[905515e]` | n/a | Static replace -- prints the prompt-template index (`:aiquestion`, `:aiarch`, `:aicode`, `:aidataworkflow`, `:aicost`). No az-ai invocation, no token cost. |
+| `:aiprompts` `[905515e]` | n/a | Static replace -- prints the prompt-template index (`:aiquestion`, `:aiarch`, `:aicode`, `:aidataworkflow`, `:aicost`). No hopper invocation, no token cost. |
 
 **Total: 1 trigger.**
 

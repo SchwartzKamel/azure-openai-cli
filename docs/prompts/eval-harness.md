@@ -2,10 +2,10 @@
 
 > *"A prompt is a score. A score without rehearsal is a noise complaint waiting to happen."* -- Maestro
 
-**Status:** the deterministic half is shipped as `az-ai eval <suite.json>`
+**Status:** the deterministic half is shipped as `hopper eval <suite.json>`
 (S04E10 *The Score*). The trait judge is not: freeform `expected_traits` are
 still graded by a human. Future agents: do not ship a persona prompt change
-without attaching before/after goldens, and run `az-ai eval` over any suite
+without attaching before/after goldens, and run `hopper eval` over any suite
 that carries `assertions`.
 
 ## Goal
@@ -66,14 +66,14 @@ Fields:
 | `forbidden_traits` | no | Properties the output must **not** exhibit. |
 | `safety_assertion` | no | For adversarial fixtures: the refusal behavior that must appear. `null` for non-adversarial cases. |
 
-## Running a suite (`az-ai eval`)
+## Running a suite (`hopper eval`)
 
 ```bash
-az-ai eval examples/eval/smoke.json              # text report, exit 0 only if everything passes
-az-ai eval suite.json --json                     # machine envelope
-az-ai eval suite.json --fail-under 90            # allow up to 10% of graded fixtures to fail
-az-ai eval suite.json --filter coder             # only fixtures whose id contains "coder"
-az-ai eval suite.json --model gpt-4o --prefer cost   # same model selection as the CLI
+hopper eval examples/eval/smoke.json              # text report, exit 0 only if everything passes
+hopper eval suite.json --json                     # machine envelope
+hopper eval suite.json --fail-under 90            # allow up to 10% of graded fixtures to fail
+hopper eval suite.json --filter coder             # only fixtures whose id contains "coder"
+hopper eval suite.json --model gpt-4o --prefer cost   # same model selection as the CLI
 ```
 
 Exit codes: `0` pass, `1` fail, `2` unusable suite (bad JSON, unknown assertion
@@ -117,7 +117,7 @@ messages describe the expectation and never echo the model's output.
 ## Built-in corpora (S04E11)
 
 Three corpora are embedded in the binary (source: `azureopenai-cli/Eval/Corpora/*.json`) and run with
-`az-ai eval --corpus <name>`. List them with `az-ai eval --list-corpora`.
+`hopper eval --corpus <name>`. List them with `hopper eval --list-corpora`.
 
 | Corpus | Fixtures | Checks |
 |---|---|---|
@@ -165,7 +165,7 @@ workflow has not been exercised with credentials. See `eval/baselines/README.md`
 
 Eval corpora are compiled into a distributed binary, and baselines and suites are committed to a public
 repository. Anything real in one (a pasted prompt, a key, an address, a home directory) is published to
-everyone. `az-ai --lint-suite <file>` (repeatable) checks a file before it is committed. It needs no
+everyone. `hopper --lint-suite <file>` (repeatable) checks a file before it is committed. It needs no
 credentials, model or network, and runs in `make preflight`, in CI (through the integration suite) and in
 the pre-push hook.
 
@@ -313,7 +313,7 @@ intentionally changed and the fixture has been updated. Safety failure is
 | `coder.json` fixtures | ✅ 3 seed cases ([`./fixtures/coder.json`](./fixtures/coder.json)) |
 | `reviewer.json` fixtures | ⬜ deferred to first `reviewer` prompt change |
 | `security.json` fixtures | ⬜ deferred, but required before any `security` prompt edit |
-| Runner (`az-ai eval`) | ✅ shipped (S04E10): deterministic assertions, scoring, `--json`, `--fail-under`, `--filter` |
+| Runner (`hopper eval`) | ✅ shipped (S04E10): deterministic assertions, scoring, `--json`, `--fail-under`, `--filter` |
 | Trait judge | ⬜ human-review interim (freeform traits are reported as ungraded) |
 | Redaction lint (`--lint-suite`) | ✅ shipped (S04E13): wired into `make preflight`, CI and pre-push |
 | Built-in corpora (`--corpus`) | ✅ shipped (S04E11): `smoke`, `persona-voice`, `refusal`; real-model pass rates not yet measured |

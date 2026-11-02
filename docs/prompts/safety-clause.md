@@ -79,7 +79,7 @@ Exposed as the internal constant
 **Custom personas** in user-authored `.squad.json` files do **not**
 automatically get the refusal line -- they get whatever `system_prompt` the
 user wrote. If you author custom personas, include a refusal clause;
-`az-ai` will still append `SAFETY_CLAUSE` in agent/Ralph/delegate paths,
+`hopper` will still append `SAFETY_CLAUSE` in agent/Ralph/delegate paths,
 but defense-in-depth is your responsibility for custom persona strings.
 
 ## `--system "<custom>"` override -- REPLACES, doesn't APPEND
@@ -91,10 +91,10 @@ Effect by mode:
 
 | Invocation | What the model sees |
 |---|---|
-| `az-ai --system "You are a pirate"` | Just `"You are a pirate"`. No clause. Standard mode → no clause ever applied anyway. |
-| `az-ai --agent --system "You are a pirate"` | `"You are a pirate" + SAFETY_CLAUSE`. Clause preserved. |
-| `az-ai --ralph --system "You are a pirate" ...` | `"You are a pirate" + SAFETY_CLAUSE`. Clause preserved. |
-| `az-ai --persona coder --system "You are a pirate"` | `--persona` wins: `persona.SystemPrompt + SAFETY_CLAUSE` (in agent mode). `--system` is silently dropped. |
+| `hopper --system "You are a pirate"` | Just `"You are a pirate"`. No clause. Standard mode → no clause ever applied anyway. |
+| `hopper --agent --system "You are a pirate"` | `"You are a pirate" + SAFETY_CLAUSE`. Clause preserved. |
+| `hopper --ralph --system "You are a pirate" ...` | `"You are a pirate" + SAFETY_CLAUSE`. Clause preserved. |
+| `hopper --persona coder --system "You are a pirate"` | `--persona` wins: `persona.SystemPrompt + SAFETY_CLAUSE` (in agent mode). `--system` is silently dropped. |
 
 **Sharp edge.** If you `--system` in standard chat mode, you get exactly
 your string. That's the same behavior as the default standard-mode prompt

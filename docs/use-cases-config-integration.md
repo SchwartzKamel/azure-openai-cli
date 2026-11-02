@@ -1,6 +1,6 @@
 # Use Cases: Configuration, Integration & Security
 
-> Working examples for every config, integration, and security feature of the Azure OpenAI CLI (`az-ai`).
+> Working examples for every config, integration, and security feature of the Azure OpenAI CLI (`hopper`).
 
 ---
 
@@ -46,7 +46,7 @@ list (e.g. `gpt-4o,gpt-4o-mini`).
 Display the effective configuration with source attribution for every value. This command does **not** require valid Azure credentials -- it reads local config only.
 
 ```bash
-az-ai --config show
+hopper --config show
 ```
 
 **Expected output:**
@@ -68,7 +68,7 @@ Each value shows its source in parentheses: `cli flag`, `config`, `env`, or `def
 **Override a value and see it reflected:**
 
 ```bash
-az-ai --config show --temperature 0.9 --system "You are a pirate."
+hopper --config show --temperature 0.9 --system "You are a pirate."
 ```
 
 ```text
@@ -85,7 +85,7 @@ az-ai --config show --temperature 0.9 --system "You are a pirate."
 List all configured model deployments. The active model is marked with `→` and `*`.
 
 ```bash
-az-ai --models
+hopper --models
 ```
 
 **Expected output (multi-model setup):**
@@ -108,7 +108,7 @@ export AZUREOPENAIMODEL="gpt-4o,gpt-4o-mini,gpt-4-turbo"
 
 ```bash
 # With AZUREOPENAIMODEL unset:
-az-ai --models
+hopper --models
 ```
 
 ```text
@@ -126,7 +126,7 @@ Switch the active model. The selection persists in `~/.azureopenai-cli.json`.
 **Switch to gpt-4o-mini for fast tasks:**
 
 ```bash
-az-ai --set-model gpt-4o-mini
+hopper --set-model gpt-4o-mini
 ```
 
 ```text
@@ -136,7 +136,7 @@ Active model set to: gpt-4o-mini
 **Switch back to gpt-4o for complex reasoning:**
 
 ```bash
-az-ai --set-model gpt-4o
+hopper --set-model gpt-4o
 ```
 
 ```text
@@ -146,7 +146,7 @@ Active model set to: gpt-4o
 **Attempt to set an unconfigured model:**
 
 ```bash
-az-ai --set-model gpt-3.5-turbo
+hopper --set-model gpt-3.5-turbo
 ```
 
 ```text
@@ -167,12 +167,12 @@ Available models:
 
 ```bash
 # Morning: code review mode
-az-ai --set-model gpt-4o
-git diff HEAD~3 | az-ai "review these changes for bugs"
+hopper --set-model gpt-4o
+git diff HEAD~3 | hopper "review these changes for bugs"
 
 # Quick fix: switch to fast model for text expansion
-az-ai --set-model gpt-4o-mini
-echo "teh quikc brown fox" | az-ai --raw --system "Fix spelling"
+hopper --set-model gpt-4o-mini
+echo "teh quikc brown fox" | hopper --raw --system "Fix spelling"
 ```
 
 ---
@@ -182,7 +182,7 @@ echo "teh quikc brown fox" | az-ai --raw --system "Fix spelling"
 Display the currently active model without listing all models.
 
 ```bash
-az-ai --current-model
+hopper --current-model
 ```
 
 ```text
@@ -192,7 +192,7 @@ Current model: gpt-4o
 **When no model is set:**
 
 ```bash
-az-ai --current-model
+hopper --current-model
 ```
 
 ```text
@@ -204,10 +204,10 @@ Use --set-model <model-name> to select a model, or configure AZUREOPENAIMODEL in
 
 ```bash
 #!/bin/bash
-current=$(az-ai --current-model 2>/dev/null)
+current=$(hopper --current-model 2>/dev/null)
 if [[ "$current" != *"gpt-4o-mini"* ]]; then
     echo "Switching to fast model for batch processing..."
-    az-ai --set-model gpt-4o-mini
+    hopper --set-model gpt-4o-mini
 fi
 ```
 
@@ -282,21 +282,21 @@ export AZURE_TEMPERATURE=0.3
 # 2. Config file has: "Temperature": 0.7
 
 # 3. CLI flag overrides everything:
-az-ai --temperature 1.0 --config show
+hopper --temperature 1.0 --config show
 #   Temperature:   1.0 (cli flag)
 
 # Without CLI flag, config wins over env:
-az-ai --config show
+hopper --config show
 #   Temperature:   0.7 (config)
 
 # Without config, env wins:
 # (after removing Temperature from ~/.azureopenai-cli.json)
-az-ai --config show
+hopper --config show
 #   Temperature:   0.3 (env)
 
 # Without anything, default wins:
 # (after unsetting AZURE_TEMPERATURE)
-az-ai --config show
+hopper --config show
 #   Temperature:   0.55 (default)
 ```
 
@@ -307,7 +307,7 @@ az-ai --config show
 export SYSTEMPROMPT="You are helpful."
 
 # Per-invocation override
-az-ai --system "You are a pirate." "What is Docker?"
+hopper --system "You are a pirate." "What is Docker?"
 # → The pirate prompt wins for this invocation only
 ```
 
@@ -406,7 +406,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --temperature 0.3 --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --temperature 0.3 --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
 ```
 
 **macOS:**
@@ -419,7 +419,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "pbpaste | az-ai --raw --temperature 0.3 --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
+          cmd: "pbpaste | hopper --raw --temperature 0.3 --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
 ```
 
 **Windows:**
@@ -432,7 +432,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "Get-Clipboard | az-ai --raw --temperature 0.3 --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
+          cmd: "Get-Clipboard | hopper --raw --temperature 0.3 --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
           shell: powershell
 ```
 
@@ -447,7 +447,7 @@ Copy a rough draft → type `:aiemail` → polished, professional version.
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'"
 ```
 
 #### Trigger 3: Code Explanation (`:aiexplain`)
@@ -461,7 +461,7 @@ Copy a code snippet → type `:aiexplain` → brief technical explanation.
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'"
 ```
 
 #### Trigger 4: Summarization (`:aisum`)
@@ -475,7 +475,7 @@ Copy any text → type `:aisum` → 1-2 sentence summary.
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --max-tokens 150 --system 'Summarize in 1-2 sentences. Be concise. Output ONLY the summary.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --max-tokens 150 --system 'Summarize in 1-2 sentences. Be concise. Output ONLY the summary.'"
 ```
 
 #### Trigger 5: Translation to English (`:aien`)
@@ -489,7 +489,7 @@ Copy text in any language → type `:aien` → English translation.
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --system 'Translate the following to English. Output ONLY the translation, nothing else.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --system 'Translate the following to English. Output ONLY the translation, nothing else.'"
 ```
 
 #### Trigger 6: Commit Message from Diff (`:aicommit`)
@@ -503,7 +503,7 @@ Copy a git diff → type `:aicommit` → conventional commit message.
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'"
 ```
 
 #### Trigger 7: Free-form Prompt (`:ai`)
@@ -521,7 +521,7 @@ Type `:ai` (with trailing space) → a form pops up → type any question → AI
       - name: output
         type: shell
         params:
-          cmd: "az-ai --raw '{{form1.prompt}}'"
+          cmd: "hopper --raw '{{form1.prompt}}'"
 ```
 
 #### Performance Tips for Espanso
@@ -540,7 +540,7 @@ Type `:ai` (with trailing space) → a form pops up → type any question → AI
 
 #### Hotkey 1: Ctrl+Shift+A -- Prompt Input Box
 
-Opens an input dialog, sends your prompt to `az-ai`, pastes the response.
+Opens an input dialog, sends your prompt to `hopper`, pastes the response.
 
 ```ahk
 #Requires AutoHotkey v2.0
@@ -564,13 +564,13 @@ GetSelectedText() {
     return text
 }
 
-; ── Helper: run az-ai on text with a system prompt ──────────
+; ── Helper: run hopper on text with a system prompt ──────────
 AiTransform(text, systemPrompt, extraFlags := "") {
     escaped := StrReplace(text, '"', '\"')
     sysEscaped := StrReplace(systemPrompt, '"', '\"')
-    cmd := 'echo "' escaped '" | az-ai --raw --system "' sysEscaped '"'
+    cmd := 'echo "' escaped '" | hopper --raw --system "' sysEscaped '"'
     if (extraFlags != "")
-        cmd := 'echo "' escaped '" | az-ai --raw ' extraFlags ' --system "' sysEscaped '"'
+        cmd := 'echo "' escaped '" | hopper --raw ' extraFlags ' --system "' sysEscaped '"'
     return RunWaitOne(cmd)
 }
 
@@ -579,7 +579,7 @@ AiTransform(text, systemPrompt, extraFlags := "") {
     ib := InputBox("Enter your prompt:", "Azure OpenAI CLI", "w400 h120")
     if ib.Result = "Cancel"
         return
-    result := RunWaitOne('az-ai --raw "' StrReplace(ib.Value, '"', '\"') '"')
+    result := RunWaitOne('hopper --raw "' StrReplace(ib.Value, '"', '\"') '"')
     if (result != "") {
         A_Clipboard := result
         Send "^v"
@@ -646,18 +646,18 @@ Copies selected text → summarizes it → pastes the summary.
 
 ### 10. Pipeline Integration
 
-`az-ai` reads stdin and accepts pipe input natively. Combine it with any CLI tool.
+`hopper` reads stdin and accepts pipe input natively. Combine it with any CLI tool.
 
 #### Summarize Git Changes
 
 ```bash
-git diff HEAD~3 | az-ai --raw --system "Summarize these code changes in 3 bullet points"
+git diff HEAD~3 | hopper --raw --system "Summarize these code changes in 3 bullet points"
 ```
 
 #### Generate a Commit Message from Staged Changes
 
 ```bash
-git diff --cached | az-ai --raw --temperature 0.3 --max-tokens 100 \
+git diff --cached | hopper --raw --temperature 0.3 --max-tokens 100 \
   --system "Write a conventional commit message for this diff. Format: type(scope): description"
 ```
 
@@ -665,31 +665,31 @@ git diff --cached | az-ai --raw --temperature 0.3 --max-tokens 100 \
 
 ```bash
 curl -s https://api.github.com/repos/dotnet/runtime/releases/latest \
-  | az-ai --raw --system "Parse this JSON response. What version was released and when?"
+  | hopper --raw --system "Parse this JSON response. What version was released and when?"
 ```
 
 #### Diagnose a Log File
 
 ```bash
-cat /var/log/app/error.log | az-ai --raw --system "What's wrong? Identify the root cause and suggest a fix."
+cat /var/log/app/error.log | hopper --raw --system "What's wrong? Identify the root cause and suggest a fix."
 ```
 
 #### Structured JSON Output for Scripting
 
 ```bash
-az-ai --json "List 3 benefits of Docker" | jq '.response'
+hopper --json "List 3 benefits of Docker" | jq '.response'
 ```
 
 #### Chain Multiple Tools
 
 ```bash
 # Find TODO comments and get a prioritized summary
-grep -rn "TODO" src/ | az-ai --raw --system "Prioritize these TODOs by severity. List the top 3."
+grep -rn "TODO" src/ | hopper --raw --system "Prioritize these TODOs by severity. List the top 3."
 ```
 
 ```bash
 # Review a specific file
-cat src/auth/login.cs | az-ai --raw --system "Review this code for security issues"
+cat src/auth/login.cs | hopper --raw --system "Review this code for security issues"
 ```
 
 #### Pipeline Scripting Pattern
@@ -700,11 +700,11 @@ cat src/auth/login.cs | az-ai --raw --system "Review this code for security issu
 branch="${1:-HEAD}"
 
 echo "## Code Changes"
-git diff main..."$branch" | az-ai --raw --system "Review this diff for bugs and security issues. Be concise."
+git diff main..."$branch" | hopper --raw --system "Review this diff for bugs and security issues. Be concise."
 
 echo ""
 echo "## Commit Summary"
-git log main..."$branch" --oneline | az-ai --raw --system "Summarize these commits in one paragraph."
+git log main..."$branch" --oneline | hopper --raw --system "Summarize these commits in one paragraph."
 ```
 
 ---
@@ -716,9 +716,9 @@ git log main..."$branch" --oneline | az-ai --raw --system "Summarize these commi
 Display full usage information organized by section.
 
 ```bash
-az-ai --help
+hopper --help
 # or
-az-ai -h
+hopper -h
 ```
 
 **Expected output:**
@@ -794,9 +794,9 @@ Persona Mode:
 Display the CLI version.
 
 ```bash
-az-ai --version
+hopper --version
 # or
-az-ai -v
+hopper -v
 ```
 
 **Expected output:**
@@ -808,7 +808,7 @@ Azure OpenAI CLI v1.0.0
 **Scripting -- check minimum version:**
 
 ```bash
-version=$(az-ai --version 2>&1)
+version=$(hopper --version 2>&1)
 echo "$version"
 # Azure OpenAI CLI v1.0.0
 ```
@@ -1022,7 +1022,7 @@ The CLI validates all inputs to prevent abuse and excessive API costs.
 
 ```bash
 # A prompt exceeding 32K characters:
-python3 -c "print('x' * 33000)" | az-ai
+python3 -c "print('x' * 33000)" | hopper
 # Error: Prompt too long (33000 chars). Maximum allowed is 32000 chars.
 ```
 
@@ -1030,7 +1030,7 @@ python3 -c "print('x' * 33000)" | az-ai
 
 ```bash
 # Piping a file larger than 1 MB:
-dd if=/dev/zero bs=1048577 count=1 2>/dev/null | az-ai "analyze this"
+dd if=/dev/zero bs=1048577 count=1 2>/dev/null | hopper "analyze this"
 # Error: stdin input exceeds 1 MB limit.
 ```
 
@@ -1038,10 +1038,10 @@ dd if=/dev/zero bs=1048577 count=1 2>/dev/null | az-ai "analyze this"
 
 ```bash
 # Temperature out of range:
-az-ai --temperature 3.0 "hello"
+hopper --temperature 3.0 "hello"
 # [ERROR] Temperature must be between 0.0 and 2.0
 
-az-ai --temperature -0.5 "hello"
+hopper --temperature -0.5 "hello"
 # [ERROR] Temperature must be between 0.0 and 2.0
 ```
 
@@ -1049,10 +1049,10 @@ az-ai --temperature -0.5 "hello"
 
 ```bash
 # Max tokens out of range:
-az-ai --max-tokens 0 "hello"
+hopper --max-tokens 0 "hello"
 # [ERROR] Max tokens must be between 1 and 128000
 
-az-ai --max-tokens 200000 "hello"
+hopper --max-tokens 200000 "hello"
 # [ERROR] Max tokens must be between 1 and 128000
 ```
 
@@ -1060,7 +1060,7 @@ az-ai --max-tokens 200000 "hello"
 
 ```bash
 # Agent mode round limit:
-az-ai --agent --max-rounds 25 "do something"
+hopper --agent --max-rounds 25 "do something"
 # [ERROR] --max-rounds requires an integer 1-20
 ```
 

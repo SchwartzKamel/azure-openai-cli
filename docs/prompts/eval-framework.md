@@ -157,7 +157,7 @@ Scope discipline. S02E18 is **inventory and design** -- the artefacts
 this episode ships are the prompt library, this design sketch, and the
 temperature-cookbook context. Building the runner means:
 
-- A new test project or a new sub-command (`az-ai eval`).
+- A new test project or a new sub-command (`hopper eval`).
 - A trait-checker implementation -- substring, regex, or trait-judge.
   Each has trade-offs that deserve their own episode.
 - A CI integration (when does the eval run? on every PR? nightly?).

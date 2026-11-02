@@ -1,4 +1,4 @@
-# az-ai -- 快速入门
+# hopper -- 快速入门
 
 > **翻译说明：** 本文档为尽力翻译版本。欢迎母语为中文的用户在 v3.0 发布之前进行审校。
 > 如发现翻译错误，请参考 `s04off1-the-translation` 提交 Issue。
@@ -17,16 +17,16 @@
 ```bash
 # Linux x64 示例（请将版本号替换为最新版本）
 tar -xf az-ai-2.2.0-linux-x64.tar.gz
-mv az-ai ~/.local/bin/
-chmod +x ~/.local/bin/az-ai
+mv hopper ~/.local/bin/
+chmod +x ~/.local/bin/hopper
 ```
 
 macOS (Apple Silicon) 用户：
 
 ```bash
 tar -xf az-ai-2.2.0-osx-arm64.tar.gz
-mv az-ai ~/.local/bin/
-chmod +x ~/.local/bin/az-ai
+mv hopper ~/.local/bin/
+chmod +x ~/.local/bin/hopper
 ```
 
 ### 从源代码编译（需要 .NET 10 SDK）
@@ -40,7 +40,7 @@ make setup && make install
 安装后验证：
 
 ```bash
-az-ai --version
+hopper --version
 ```
 
 ---
@@ -67,7 +67,7 @@ chmod 600 ~/.config/az-ai/env
 此文件在启动时会自动加载，无需在 Shell 中手动 `source`。
 
 > **提示：** 首次运行时若未配置凭据，程序会启动交互式设置向导。
-> 随时可通过 `az-ai --setup` 重新运行向导。
+> 随时可通过 `hopper --setup` 重新运行向导。
 
 ---
 
@@ -76,13 +76,13 @@ chmod 600 ~/.config/az-ai/env
 简单测试：
 
 ```bash
-az-ai "你好，请用中文回复我。"
+hopper "你好，请用中文回复我。"
 ```
 
 总结文件内容的示例：
 
 ```bash
-az-ai --raw "请用中文将以下文件内容总结为三行：$(cat README.md)"
+hopper --raw "请用中文将以下文件内容总结为三行：$(cat README.md)"
 ```
 
 `--raw` 参数可以去除旋转动画和多余的换行符，
@@ -91,7 +91,7 @@ az-ai --raw "请用中文将以下文件内容总结为三行：$(cat README.md)
 指定模型的示例：
 
 ```bash
-az-ai --model gpt-4o "请提供详细的技术说明。"
+hopper --model gpt-4o "请提供详细的技术说明。"
 ```
 
 ---
@@ -103,10 +103,10 @@ az-ai --model gpt-4o "请提供详细的技术说明。"
 
 主要功能：
 
-- `az-ai --agent "任务"` -- 工具调用代理模式
-- `az-ai --ralph "任务" --validate "验证命令"` -- 自主自我修正循环
-- `az-ai --image "提示词"` -- 图像生成模式
-- `az-ai --doctor` -- 配置诊断
+- `hopper --agent "任务"` -- 工具调用代理模式
+- `hopper --ralph "任务" --validate "验证命令"` -- 自主自我修正循环
+- `hopper --image "提示词"` -- 图像生成模式
+- `hopper --doctor` -- 配置诊断
 
 其他语言的快速入门指南请参见 [`docs/i18n/`](README.md)。
 

@@ -13,7 +13,7 @@ code is the implementation of that spec.
 
 | Doc | Subject |
 |---|---|
-| [`system-prompt-master.md`](./system-prompt-master.md) | Master system prompt for all az-ai interactions -- tone, principles, safety guardrails. Foundation for all other templates. |
+| [`system-prompt-master.md`](./system-prompt-master.md) | Master system prompt for all hopper interactions -- tone, principles, safety guardrails. Foundation for all other templates. |
 | [`task-templates.md`](./task-templates.md) | Five canonical task templates (Knowledge Q&A, Architecture Design, Code Generation, Data Workflows, Cost/ROI) with expected output formats and quick-start copy-paste prompts. |
 
 ### Temperature, Safety, and Evaluation
@@ -41,7 +41,7 @@ code is the implementation of that spec.
 
 ## Roadmap (tracked in Maestro audit `docs/audits/docs-audit-2026-04-22-maestro.md`)
 
-- [x] Master system prompt guide -- [`system-prompt-master.md`](./system-prompt-master.md) -- Foundation for all az-ai interactions.
+- [x] Master system prompt guide -- [`system-prompt-master.md`](./system-prompt-master.md) -- Foundation for all hopper interactions.
 - [x] Task templates (Knowledge Q&A, Architecture, Code Gen, Data Workflows, Cost/ROI) -- [`task-templates.md`](./task-templates.md).
 - [x] Per-prompt specs for `coder`, `reviewer`, `security` (user-facing three). `architect` / `writer` remain -- H1 (partial).
 - [~] Prompt-eval harness -- **design landed** ([`eval-harness.md`](./eval-harness.md)), runner not yet implemented -- H2.

@@ -23,7 +23,7 @@ Azure OpenAI charges you for **two** things on every chat completion:
 
 ### Measuring what you spend
 
-Good news -- we already instrumented this. `az-ai` prints token usage on **stderr** after every call:
+Good news -- we already instrumented this. `hopper` prints token usage on **stderr** after every call:
 
 ```text
   [tokens: 1250→480, 1730 total]
@@ -228,7 +228,7 @@ The default is:
 Example from `docs/espanso-ahk-integration.md`:
 
 ```bash
-xclip -selection clipboard -o | az-ai --raw --max-tokens 100 \
+xclip -selection clipboard -o | hopper --raw --max-tokens 100 \
   --system 'Write a concise conventional commit message for this diff.'
 ```
 
@@ -291,7 +291,7 @@ The `usage` object on the chat completions response includes `prompt_tokens_deta
 - Espanso, AHK, agent mode, anything interactive. 24-hour latency is a feature, not a bug -- do not try to paper over this.
 - Jobs smaller than a few hundred requests. The overhead of JSONL packaging + upload + poll is not worth it below that threshold.
 
-**Current az-ai status:** not implemented. The CLI speaks synchronous chat completions only. A `--batch` flag that emits a JSONL line instead of calling the API -- or a separate `az-ai-batch` helper -- is an obvious FR. Volume justifies it the day someone does a 10k-row classification sweep on PAYG.
+**Current hopper status:** not implemented. The CLI speaks synchronous chat completions only. A `--batch` flag that emits a JSONL line instead of calling the API -- or a separate `az-ai-batch` helper -- is an obvious FR. Volume justifies it the day someone does a 10k-row classification sweep on PAYG.
 
 ### 5.3 Local cache (FR-008 `--cache-dir`) -- real, but much smaller ROI than advertised
 
@@ -348,7 +348,7 @@ az consumption usage list \
 Since we already print `[tokens: X→Y, Z total]` on stderr, log it:
 
 ```bash
-az-ai "summarize this" 2> >(tee -a ~/.az-ai-tokens.log >&2)
+hopper "summarize this" 2> >(tee -a ~/.az-ai-tokens.log >&2)
 # Then at end of day:
 grep -oP 'tokens: \d+→\d+, \K\d+' ~/.az-ai-tokens.log \
   | awk '{s+=$1} END {print s " tokens today"}'
@@ -365,7 +365,7 @@ For dashboards: `GET /subscriptions/{sub}/providers/Microsoft.CostManagement/que
 These are the ways the bill gets away from you. Memorize them.
 
 1. **Ralph mode in a runaway loop.** `--max-iterations` is the guard -- **default 10, hard cap 50** (`Program.cs:260`, `SECURITY.md:747`, enforced in tests). Do NOT bump it to 50 "just in case." Fifty iterations of `gpt-4o` with full context is a real number of dollars. If Ralph isn't converging in 10, the validator is wrong, not the limit.
-2. **Oversized prompts from piped stdin.** The 32 KB prompt cap (`MAX_PROMPT_LENGTH`) is your friend. Someone `cat file.json | az-ai` with a 5 MB file is a budget event. The cap is already there -- don't disable it.
+2. **Oversized prompts from piped stdin.** The 32 KB prompt cap (`MAX_PROMPT_LENGTH`) is your friend. Someone `cat file.json | hopper` with a 5 MB file is a budget event. The cap is already there -- don't disable it.
 3. **Agent mode with `shell_exec` producing huge outputs.** Stdout is capped at **64 KB** per child invocation (`ARCHITECTURE.md:339`, `use-cases-agent.md:282`). That cap exists *because* an unbounded `find /` round-trips back into the model as input tokens. Keep the cap. If you need more, write a tool that returns a summary, not a firehose.
 4. **Clipboard tool abuse.** `GetClipboardTool` truncates at 32 KB (`Tools/GetClipboardTool.cs:12`). Someone copies a CSV, feeds it to the agent, the agent quotes it back at you in the answer -- you just paid for that CSV twice.
 5. **Premium model on trivial tasks.** If `AZURE_DEPLOYMENT=gpt-4.1` is your default in `.env`, every one-line commit message is premium-priced. Set the default to `gpt-4o-mini` and override explicitly when you need the muscle.

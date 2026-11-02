@@ -26,7 +26,7 @@ Was that wrong? Should I not have done that? No. This was right.
 ## US-001: First run does not punish you
 
 **As a** first-time contributor,
-**I want** `az-ai` to walk me through endpoint, key, and model on the
+**I want** `hopper` to walk me through endpoint, key, and model on the
 very first run,
 **so that** I can send my first prompt within a minute of cloning the
 repo, without hunting for a sample env file.
@@ -78,7 +78,7 @@ A trailing newline from a clipboard paste, or one accidental space,
 would pass the check, get persisted, and then fail with a generic
 authentication error on the next call -- the exact moment the user has
 the least context to debug it. The fix is one line per credential
-store; the value is one fewer "az-ai is broken" issue per week.
+store; the value is one fewer "hopper is broken" issue per week.
 
 **Where it lives.** `MacSecurityCredentialStore`,
 `DpapiCredentialStore`, `PlaintextCredentialStore` in
@@ -215,7 +215,7 @@ plus the v1 section of `docs/accessibility.md`; see
 ## US-010: One command, one prompt, one answer
 
 **As a** terminal power user,
-**I want** to run `az-ai "summarize this paragraph"` and get a clean
+**I want** to run `hopper "summarize this paragraph"` and get a clean
 answer on stdout,
 **so that** I can pipe AI into any shell workflow without writing
 glue code or learning a new client library.
@@ -233,14 +233,14 @@ baseline in `docs/perf/`.
 **Lloyd flags:** the relationship between the two binaries (v1 in
 `azureopenai-cli/`, v2 elsewhere) is assumed knowledge here. A new
 contributor reading this story will not know which binary they get
-when they type `az-ai`, or why there are two.
+when they type `hopper`, or why there are two.
 
 ---
 
 ## US-011: Tell me what you think my settings are
 
 **As a** first-time contributor,
-**I want** `az-ai --config show` to print the endpoint, model, and
+**I want** `hopper --config show` to print the endpoint, model, and
 masked key that the CLI is actually using,
 **so that** I can debug "why is it hitting the wrong resource" without
 opening the JSON file by hand.

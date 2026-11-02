@@ -183,7 +183,7 @@ A user who wants to see exactly what would be sent before turning
 telemetry on:
 
 ```bash
-AZ_AI_TELEMETRY=1 az-ai "test" 2>telemetry.ndjson
+AZ_AI_TELEMETRY=1 hopper "test" 2>telemetry.ndjson
 cat telemetry.ndjson | jq .
 ```
 

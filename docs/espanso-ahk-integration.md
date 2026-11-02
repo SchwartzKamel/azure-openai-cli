@@ -78,12 +78,12 @@ Download from [GitHub Releases](https://github.com/SchwartzKamel/azure-openai-cl
 # Linux (the archive holds `hopper` and `az-ai`, its old name; same binary)
 tar xzf az-ai-<version>-linux-x64.tar.gz
 sudo install -m 0755 az-ai-<version>-linux-x64/hopper /usr/local/bin/hopper
-sudo ln -sf hopper /usr/local/bin/az-ai   # existing configs that call az-ai keep working
+sudo ln -sf hopper /usr/local/bin/hopper   # existing configs that call hopper keep working
 
 # macOS (Apple Silicon)
 tar xzf az-ai-<version>-osx-arm64.tar.gz
 sudo install -m 0755 az-ai-<version>-osx-arm64/hopper /usr/local/bin/hopper
-sudo ln -sf hopper /usr/local/bin/az-ai
+sudo ln -sf hopper /usr/local/bin/hopper
 ```
 
 **Option B: Docker alias (works but adds ~200ms container startup)**
@@ -481,7 +481,7 @@ espanso start
 
 # Put the AOT binary somewhere on PATH
 sudo install -m 0755 dist/aot/hopper /usr/local/bin/hopper
-sudo ln -sf hopper /usr/local/bin/az-ai   # keeps existing configs working
+sudo ln -sf hopper /usr/local/bin/hopper   # keeps existing configs working
 hopper --help  # should print in < 20ms
 ```
 
@@ -516,7 +516,7 @@ The config below invokes `wsl.exe bash -lc "hopper …"` rather than the arguabl
 
 1. **`bash -lc` launches a login shell**, which sources `~/.bash_profile` / `~/.profile` / `~/.bashrc` (in login order). That's how your `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` end up in the environment. `wsl.exe -e` invokes a **non-login, non-interactive** shell that skips all of those rc files -- `hopper` launches with no credentials, errors to stderr, and because espanso only captures stdout, **you see an empty replacement with no visible error**. Classic silent-fail trap.
 2. **stdin forwarding via pipes is more reliable** through `bash -lc` than through `-e` on several older Windows builds. The `-e` flag bypasses the shell entirely; any stdin conversion quirks surface without a buffer in between.
-3. **PATH resolution is free.** With a login shell you can just say `hopper` and let `~/.local/bin` (or wherever your install landed) resolve. No hardcoded `/usr/local/bin/az-ai` that breaks the moment you move the binary.
+3. **PATH resolution is free.** With a login shell you can just say `hopper` and let `~/.local/bin` (or wherever your install landed) resolve. No hardcoded `/usr/local/bin/hopper` that breaks the moment you move the binary.
 
 If you *really* want to skip the login shell (say, to shave another 3-5 ms): put your two env vars in `/etc/environment` instead of `~/.bashrc` (Linux session-wide, WSL-compatible), set them on the Windows side and forward via `WSLENV` (Windows-scoped), or use `wsl.exe env AZUREOPENAIENDPOINT=… AZUREOPENAIAPI=… hopper …`. None of these are as simple as `bash -lc`, which is why the config below uses the latter.
 
@@ -955,7 +955,7 @@ docker run --rm --env-file .env azure-openai-cli --raw "Hello"
 
 ```bash
 make publish-aot      # builds dist/aot/hopper (~13 MiB, ~10.7 ms p50 startup -- see docs/perf/v2.0.5-baseline.md)
-make install          # copies to ~/.local/bin/hopper and links az-ai to it
+make install          # copies to ~/.local/bin/hopper and links hopper to it
 make bench            # measures cold-start (10 runs)
 ```
 

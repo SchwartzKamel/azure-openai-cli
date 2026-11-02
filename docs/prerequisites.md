@@ -1,6 +1,6 @@
 # Prerequisites -- Environment Variables
 
-Every `az-ai` example in the use-case guides assumes the following three
+Every `hopper` example in the use-case guides assumes the following three
 environment variables are set. Without them the CLI will refuse to start.
 
 | Variable              | Purpose                                         | Example                                         |
