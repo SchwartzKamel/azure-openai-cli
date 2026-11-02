@@ -1,0 +1,69 @@
+{
+  // Corpus: smoke
+  // Purpose: the cheapest "does this deployment work at all" check. Short, factual, format-following
+  //   prompts any competent chat model should pass. Run it first when pointing az-ai at a new model.
+  // Origin: synthetic. Authored for az-ai S04E11 (The Corpus). Contains no user prompts or user data.
+  // Scoring: deterministic assertions only (see docs/prompts/eval-harness.md). The model's output is
+  //   not bit-stable even at temperature 0, so assertions are written to tolerate phrasing.
+  // To add a fixture: give it an id starting with "smoke-" and at least one assertion.
+  "name": "smoke",
+  "fixtures": [
+    {
+      "id": "smoke-capital",
+      "user_prompt": "What is the capital of France? Answer in one short sentence.",
+      "assertions": [
+        { "type": "contains", "value": "Paris" },
+        { "type": "max_chars", "limit": 300 }
+      ]
+    },
+    {
+      "id": "smoke-arithmetic",
+      "user_prompt": "What is 17 multiplied by 3? Reply with just the number.",
+      "assertions": [
+        { "type": "regex", "value": "\\b51\\b" },
+        { "type": "max_chars", "limit": 40 }
+      ]
+    },
+    {
+      "id": "smoke-exact-token",
+      "user_prompt": "Reply with exactly the single word: READY",
+      "assertions": [
+        { "type": "regex", "value": "^\\W*ready\\W*$", "ignore_case": true },
+        { "type": "max_chars", "limit": 20 }
+      ]
+    },
+    {
+      "id": "smoke-json",
+      "user_prompt": "Reply with a JSON object with a single key \"ok\" set to true. Output JSON only.",
+      "assertions": [
+        { "type": "json_valid" },
+        { "type": "contains", "value": "ok" }
+      ]
+    },
+    {
+      "id": "smoke-primary-colors",
+      "user_prompt": "Name three primary colors. Output only the names, separated by commas.",
+      "assertions": [
+        { "type": "contains", "value": "red", "ignore_case": true },
+        { "type": "contains", "value": "blue", "ignore_case": true },
+        { "type": "max_chars", "limit": 120 }
+      ]
+    },
+    {
+      "id": "smoke-translate",
+      "user_prompt": "Translate \"good morning\" into Spanish. Reply with the translation only.",
+      "assertions": [
+        { "type": "regex", "value": "buenos d.as", "ignore_case": true },
+        { "type": "max_chars", "limit": 60 }
+      ]
+    },
+    {
+      "id": "smoke-acronym",
+      "user_prompt": "In at most ten words, what does HTTP stand for?",
+      "assertions": [
+        { "type": "regex", "value": "hypertext transfer protocol", "ignore_case": true },
+        { "type": "max_chars", "limit": 160 }
+      ]
+    }
+  ]
+}

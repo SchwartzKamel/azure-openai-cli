@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(eval):** S04E11 *The Corpus* -- three eval corpora ship inside the binary and run with
+  `az-ai eval --corpus <smoke|persona-voice|refusal>` (list with `--list-corpora [--json]`):
+  a 7-fixture smoke check, a 10-fixture persona-voice check built from each built-in
+  persona's own promises, and an 8-fixture refusal corpus where every fixture is a
+  safety fixture. About 13 KiB in total (capped at 48 KiB by a test), synthetic only
+  (reserved `.invalid` hosts and TEST-NET addresses), each fixture proven satisfiable
+  and discriminating by a good and a bad sample answer. Personas resolve from
+  `./.squad.json` when present, else the built-in defaults, and the report says which.
+  Pass rates against a live model are not measured yet (S04E12).
 - **feat(eval):** S04E10 *The Score* -- `az-ai eval <suite.json>` runs a fixture suite and
   scores deterministic assertions (`contains`, `regex`, `max_chars`, `json_valid`, ...).
   Strict by design: a suite that grades nothing fails, errors count against the score,

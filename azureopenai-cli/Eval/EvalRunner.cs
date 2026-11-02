@@ -29,7 +29,8 @@ internal sealed record EvalReport(
     [property: JsonPropertyName("passed")] int Passed,
     [property: JsonPropertyName("ungraded")] int Ungraded,
     [property: JsonPropertyName("safety_failed")] bool SafetyFailed,
-    [property: JsonPropertyName("fixtures")] List<EvalFixtureResult> Fixtures)
+    [property: JsonPropertyName("fixtures")] List<EvalFixtureResult> Fixtures,
+    [property: JsonPropertyName("persona_source")] string? PersonaSource = null)
 {
     internal bool Passing => Result == EvalStatus.Pass;
 }
@@ -77,7 +78,8 @@ internal static class EvalRunner
         double failUnder,
         string? filter,
         int timeoutSeconds,
-        CancellationToken ct)
+        CancellationToken ct,
+        Func<string?>? personaSource = null)
     {
         ArgumentNullException.ThrowIfNull(suite);
         ArgumentNullException.ThrowIfNull(call);
@@ -95,7 +97,8 @@ internal static class EvalRunner
         }
 
         return Score(suite.Name, modelLabel, results, failUnder,
-            noMatchReason: selected.Count == 0 ? $"no fixture id contains \"{Clean(filter)}\"" : null);
+            noMatchReason: selected.Count == 0 ? $"no fixture id contains \"{Clean(filter)}\"" : null,
+            personaSource: personaSource?.Invoke());
     }
 
     private static async Task<EvalFixtureResult> RunFixtureAsync(
@@ -167,7 +170,8 @@ internal static class EvalRunner
 
     /// <summary>Pure scoring over finished fixture results. Exposed for direct testing.</summary>
     internal static EvalReport Score(
-        string suite, string model, List<EvalFixtureResult> results, double failUnder, string? noMatchReason = null)
+        string suite, string model, List<EvalFixtureResult> results, double failUnder, string? noMatchReason = null,
+        string? personaSource = null)
     {
         var graded = results.Count(r => r.Status != EvalStatus.Ungraded);
         var passed = results.Count(r => r.Status == EvalStatus.Pass);
@@ -199,7 +203,7 @@ internal static class EvalRunner
             (result, reason) = (EvalStatus.Pass, null);
         }
 
-        return new EvalReport(suite, model, result, reason, score, failUnder, graded, passed, ungraded, safetyFailed, results);
+        return new EvalReport(suite, model, result, reason, score, failUnder, graded, passed, ungraded, safetyFailed, results, personaSource);
     }
 
     /// <summary>Plain labeled lines: ASCII, no color, no glyphs, so it reads in a screen reader and a log.</summary>
@@ -209,6 +213,11 @@ internal static class EvalRunner
         {
             $"Suite: {Clean(r.Suite)} ({r.Fixtures.Count} fixture{(r.Fixtures.Count == 1 ? "" : "s")}, model {Clean(r.Model)})",
         };
+
+        if (r.PersonaSource is not null)
+        {
+            lines.Add($"Personas: {Clean(r.PersonaSource)}");
+        }
 
         foreach (var f in r.Fixtures)
         {

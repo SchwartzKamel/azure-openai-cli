@@ -158,6 +158,9 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | maestro-2026-11-M-3 | [s04e10-the-score.md](exec-reports/s04e10-the-score.md) | INFO | open | Maestro | No golden recording (`--save-output`): before/after goldens required by the design doc are still attached to PRs by hand | 2026-11-01 |
 | jackie-2026-11-J-1 | [s04sp5-the-name-game.md](exec-reports/s04sp5-the-name-game.md) | MEDIUM | open | Jackie (counsel needed) | The project name "Azure OpenAI CLI" embeds two third-party marks while `docs/legal/trademark-policy.md` section 3 limits them to nominative use. A review lens identified the question; it is not legal advice and does not conclude a violation. Gate G2 of FR-024 | 2026-11-01 |
 | wilhelm-2026-11-W-3 | [s04sp5-the-name-game.md](exec-reports/s04sp5-the-name-game.md) | LOW | open | Wilhelm | `docs/proposals/README.md` index was last updated 2026-04-24 and has no rows for FR-021, FR-022 or FR-023 (the files exist) | 2026-11-01 |
+| maestro-2026-11-M-4 | [s04e11-the-corpus.md](exec-reports/s04e11-the-corpus.md) | MEDIUM | open | Maestro + Jerry | The shipped corpora are proven satisfiable and discriminating by sample answers, but no real model has been run against them (no live credentials), so real pass rates and flake rates are unknown. S04E12 must pin a model and temperature and measure | 2026-11-02 |
+| babu-2026-11-B-1 | [s04e11-the-corpus.md](exec-reports/s04e11-the-corpus.md) | LOW | open | Babu | Refusal markers in the `refusal` corpus are English; a correct refusal in another language fails the marker assertion | 2026-11-02 |
+| jerry-2026-11-JE-1 | [s04e11-the-corpus.md](exec-reports/s04e11-the-corpus.md) | LOW | open | Jerry | Embedded corpora were exercised in a normal build, not in a Native AOT publish; the embedding mirrors the registry pattern that ships AOT, but it is untested here | 2026-11-02 |
 
 ## Resolved (last 90 days)
 

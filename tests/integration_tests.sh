@@ -950,6 +950,32 @@ EVSUITE
         fail "S04E10 eval: --help documents the subcommand and --fail-under" "missing"
     fi
 
+    # ── S04E11 -- The Corpus (built-in corpora; no server needed) ──────
+    ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval --list-corpora 2>&1)
+    if printf '%s' "$ev_out" | grep -qF 'smoke' && printf '%s' "$ev_out" | grep -qF 'persona-voice' \
+        && printf '%s' "$ev_out" | grep -qF 'refusal' && printf '%s' "$ev_out" | grep -qF '8 safety'; then
+        pass "S04E11 corpus: --list-corpora lists the three embedded corpora (no credentials)"
+    else
+        fail "S04E11 corpus: --list-corpora lists the three embedded corpora (no credentials)" "out=$ev_out"
+    fi
+
+    ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval --list-corpora --json 2>&1)
+    if printf '%s' "$ev_out" | grep -qF '"name": "refusal"' && printf '%s' "$ev_out" | grep -qF '"safety_fixtures": 8'; then
+        pass "S04E11 corpus: --list-corpora --json emits the envelope"
+    else
+        fail "S04E11 corpus: --list-corpora --json emits the envelope" "out=$ev_out"
+    fi
+
+    set +e
+    ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval --corpus nope 2>&1)
+    ev_rc=$?
+    set -e
+    if [ "$ev_rc" -ne 0 ] && printf '%s' "$ev_out" | grep -qF 'smoke, persona-voice, refusal'; then
+        pass "S04E11 corpus: an unknown corpus is rejected with the valid names"
+    else
+        fail "S04E11 corpus: an unknown corpus is rejected with the valid names" "rc=$ev_rc out=$ev_out"
+    fi
+
     if ! command -v python3 >/dev/null 2>&1; then
         skip "S04E10 eval: end-to-end against a fake model server" "python3 not available"
     else
@@ -966,7 +992,12 @@ class H(http.server.BaseHTTPRequestHandler):
         user = next((m.get("content", "") for m in reversed(msgs) if m.get("role") == "user"), "")
         user = user if isinstance(user, str) else json.dumps(user)
         if "capital of France" in user: text = "The capital of France is Paris."
+        elif "17 multiplied" in user: text = "51"
+        elif "single word: READY" in user: text = "READY"
         elif "JSON" in user: text = '{"ok": true}'
+        elif "primary colors" in user: text = "Red, blue, yellow"
+        elif "good morning" in user: text = "Buenos dias"
+        elif "HTTP stand" in user: text = "HTTP stands for HyperText Transfer Protocol."
         else: text = "I cannot help with that."
         out = {"id": "x", "object": "chat.completion", "created": 0, "model": "fake-model",
                "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": text}}],
@@ -1046,6 +1077,49 @@ EVFAIL
                 pass "S04E10 eval: a failing suite exits 1"
             else
                 fail "S04E10 eval: a failing suite exits 1" "rc=$ev_rc out=$ev_out"
+            fi
+
+            # The embedded corpora, run through the published binary against the fake model.
+            : > "$ev_dir/req.log"
+            set +e
+            ev_out=$(ev_run eval --corpus smoke --model fake-model)
+            ev_rc=$?
+            set -e
+            ev_reqs=$(wc -l < "$ev_dir/req.log" | tr -d ' ')
+            if [ "$ev_rc" -eq 0 ] && [ "$ev_reqs" = "7" ] && printf '%s' "$ev_out" | grep -qF 'Suite: smoke (7 fixtures' \
+                && printf '%s' "$ev_out" | grep -qF 'Result: PASS'; then
+                pass "S04E11 corpus: the embedded smoke corpus passes end to end (7 requests)"
+            else
+                fail "S04E11 corpus: the embedded smoke corpus passes end to end (7 requests)" "rc=$ev_rc requests=$ev_reqs out=$ev_out"
+            fi
+
+            # The fake model refuses everything, so the refusal corpus (all safety fixtures) must pass.
+            set +e
+            ev_out=$(ev_run eval --corpus refusal --model fake-model)
+            ev_rc=$?
+            set -e
+            if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grep -qF 'Suite: refusal (8 fixtures' \
+                && printf '%s' "$ev_out" | grep -qF '[safety]'; then
+                pass "S04E11 corpus: the refusal corpus passes against a model that refuses"
+            else
+                fail "S04E11 corpus: the refusal corpus passes against a model that refuses" "rc=$ev_rc out=$ev_out"
+            fi
+
+            # The fake model does not answer in persona voice, so persona-voice must FAIL (exit 1) and
+            # must report that personas came from the built-in defaults (no .squad.json in this HOME).
+            # BIN can be a relative path in CI, and this case changes directory, so resolve it first.
+            local ev_abs; ev_abs="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
+            set +e
+            ev_out=$(cd "$ev_dir" && env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+                AZUREOPENAIENDPOINT="https://example.openai.azure.com/" AZUREOPENAIAPI="dummy-key-0123456789" \
+                AZURE_FOUNDRY_ENDPOINT="http://127.0.0.1:$ev_port" AZURE_FOUNDRY_KEY="fake-key-0123456789" \
+                AZURE_FOUNDRY_MODELS="fake-model" "$ev_abs" eval --corpus persona-voice --model fake-model 2>&1)
+            ev_rc=$?
+            set -e
+            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'Personas: built-in defaults'; then
+                pass "S04E11 corpus: persona-voice fails a model with no voice and reports built-in personas"
+            else
+                fail "S04E11 corpus: persona-voice fails a model with no voice and reports built-in personas" "rc=$ev_rc out=$ev_out"
             fi
 
             kill "$ev_srv" 2>/dev/null || true
