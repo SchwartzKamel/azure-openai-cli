@@ -35,9 +35,11 @@ did not know turned up in the repo's own policy:
    runs a work queue and an eval harness. The name describes the first feature.
 
 **Recommendation:** rename in two reversible stages, display name and repository
-first, binary second with `az-ai` kept as a working alias. Candidate name:
-**`pith`**, runner-up **`usher`**. Do **not** touch environment variables or
-internal C# identifiers. The name itself is the owner's decision (G1).
+first, binary second with `az-ai` kept as a working alias. Name: **`dunlin`**,
+runner-up **`curlew`**, chosen in the [Addendum](#addendum-finding-the-name-rounds-7-to-12)
+after a trademark screen eliminated this document's first shortlist (`pith`, `usher`,
+`herald`). Do **not** touch environment variables or internal C# identifiers. The
+choice remains the owner's to confirm (G1), and clearance (G2) is still open.
 
 ## Evidence
 
@@ -147,7 +149,12 @@ One caution on the data: the first-pass GitHub column was a substring search
 re-checked by exact name. A "none" for `ask` in the exact-name pass is
 **inconclusive**, not clean: the search returned only the top 30 substring hits.
 
-### Round 4 -- Attack the finalists
+### Round 4 -- Attack the finalists (superseded: see the Addendum)
+
+> **Superseded.** These three finalists were later eliminated by a US trademark
+> screen. `pith` has a live application by Pith Games LLC in classes 9 and 42, `usher`
+> has two live software-class marks, and `herald` has a live class 9 mark. The round
+> is kept as the record of what registries and GitHub alone could and could not show.
 
 | Name | For | Against (devil's advocate) | Verdict |
 |------|-----|----------------------------|---------|
@@ -195,7 +202,7 @@ Not planned: renaming the C# namespace, the source directory, or the existing
 
 ## Gates
 
-- **G1 -- the name.** The owner chooses. Recommendation `pith`, runner-up `usher`.
+- **G1 -- the name.** The owner confirms. Recommendation `dunlin`, runner-up `curlew` (see the Addendum).
 - **G2 -- clearance.** Counsel (or at minimum a trademark and common-law search)
   on the chosen name and on whether the current name needs changing. **Not done
   here:** no trademark database, domain or social-handle check was performed.
@@ -213,3 +220,139 @@ curl -s -o /dev/null -w '%{http_code}' https://formulae.brew.sh/api/formula/pith
 gh api 'search/repositories?q=pith+in:name&sort=stars&per_page=30' \
   --jq '[.items[] | select(.name|ascii_downcase=="pith")] | .[0:3] | map(.full_name+":"+(.stargazers_count|tostring))'
 ```
+
+## Addendum: finding the name (rounds 7 to 12)
+
+*Added 2026-11-02. The first review's shortlist used registries and GitHub only. This
+addendum records why that was not enough, and how a name was found once it was
+replaced by a proper screen.*
+
+### Round 7 -- Why the first shortlist failed
+
+The USPTO's public trademark search backend answers programmatic queries (the same
+data as `tmsearch.uspto.gov`). Run against the three finalists it eliminated all of
+them:
+
+| Name | Live US mark found | Classes |
+|------|--------------------|---------|
+| `pith` | PITH, Pith Games LLC, application filed 2026-10-19 (non-downloadable and downloadable game software) | 9, 42 |
+| `usher` | USHER, Usher Incorporated (registered and renewed), plus a second USHER mark | 9, 42 |
+| `herald` | HERALD, Seabourn Cruise Line Limited | 9, 16 |
+
+Classes 9 and 42 are where a CLI sits. The earlier recommendation of `pith` is
+withdrawn, and the evidence table's gap is the lesson: **a package registry and a
+GitHub search are not a trademark screen.**
+
+### Round 8 -- Generate, widely and in rounds
+
+Six screening rounds, **719 unique names screened**. Each lens proposed families,
+and each round fed the next:
+
+1. Themed words plus 330 seeded random pronounceable coinages (435 names).
+2. Curated by lens: flowing water, nautical guidance, messengers, concision, word
+   roots, old tools, obscure birds, short nature words (83).
+3. Constructive coinages from product-meaning roots with vowel endings, plus short
+   words for "word" and "ask" from other languages (142).
+4. Hand-designed names (27).
+5. A taste-curated finalist set, re-run so every name has identical data (28).
+6. Short names from waders, textiles, stone and weather (40).
+
+### Round 9 -- The screen, and how it was wrong first
+
+Hard filters, cheapest first, so rate-limited APIs only see survivors: a local
+command or Debian package; a third-party mark or provider name; Homebrew formula or
+cask, Scoop main or extras, Docker library; and a **live US mark with software goods
+in classes 9 or 42**. Survivors then got a near-miss check (live software marks one
+edit away), GitHub exact-name repositories, command typo-neighbours and domains.
+
+| Round | Names | Out (local) | Out (channel) | Out (USPTO) | Passed |
+|-------|-------|-------------|---------------|-------------|--------|
+| 1 (after re-screen; 2 lookups never resolved) | 435 | 15 | 27 | 75 | 316 |
+| 2 | 83 | 2 | 6 | 40 | 35 |
+| 3 | 142 | 1 | 3 | 27 | 111 |
+| 4 | 27 | 3 | 1 | 9 | 14 |
+| 5 | 28 | 0 | 0 | 0 | 28 |
+| 6 | 40 | 2 | 3 | 16 | 19 |
+
+Four things went wrong in the method, and each changed the result:
+
+- **187 lookups errored and I first treated them as eliminations.** Eight parallel
+  threads against the USPTO endpoint were rejected. Those names were not eliminated
+  by any finding. They were re-screened serially with retries before any conclusion
+  was drawn; two failed persistently and were left unresolved.
+- **The first GitHub stage was rate-limited.** An unauthenticated client allows
+  about ten searches a minute. It was redone with the authenticated `gh` client.
+- **Wikipedia presence is not a filter.** 163 of 222 short candidates had a page
+  (names, places, acronyms). It was kept as information only.
+- **Counting near-misses hid severity.** `pipit` looked promising (a real bird, five
+  letters, sounds like "pipe it") with one unrelated clothing mark. Reading its 11
+  near-miss marks showed **PIPPIT**, a live software mark one letter away. The register
+  lists its owner as Lemon Inc. I believe the product is an AI video tool, which is
+  background knowledge and **unverified**; the live mark itself, in software classes
+  and one letter from the candidate, is enough to rule the name out.
+
+The deeper finding about the method: **automation clears names but cannot give them
+taste.** Mechanical coinages (`sluiex`, `quillle`, `kofpu`) pass every screen and are
+unusable. Obvious dictionary words mostly fail on live marks. The names worth
+considering were obscure real words chosen by hand and then screened.
+
+### Round 10 -- Five finalists on identical data
+
+| Name | Letters | Live exact US marks | Near-miss software marks (class and goods) | Exact-name GitHub repos | Notes |
+|------|---------|---------------------|---------------------------------------------|-------------------------|-------|
+| **dunlin** | 6 | 2, unrelated goods (plastic bottle holder, dental supplies) | 0 (0 more at edit distance 2) | 19, 5, 4 stars; crypto notes, clinical-trial data, a panorama editor | A small wader that flies in tight flocks |
+| **curlew** | 6 | 1, clothing | 0 | 64, 52, 6; a media converter, geological models, a job pool | Starts with `curl` |
+| **uncial** | 6 | 0 | 0 | 6, 4, 2 | A rounded manuscript script; pronunciation ambiguous |
+| **ouzel** | 5 | 0 | 0 | 981 (a C++ game engine) | Same software class as us, by use rather than registration |
+| **adage** | 5 | several, agrochemicals, household and cleaning goods | 0 | 61, 55; DAG-workflow tools, a Node fortune package | A well-known word and a well-known publication |
+
+None of the five has an AI or LLM project of the same name: searches for each name
+beside llm, openai and chatgpt returned nothing.
+
+### Round 11 -- The taste round, with devil's advocate
+
+| Lens | On the finalists |
+|------|------------------|
+| Costanza (product) | Only `adage` says what the tool does (short, no fluff). The rest are arbitrary, which is normal for CLI tools. Fit is not worth a collision. |
+| Sue Ellen (competitive) | Peers use arbitrary short names, so `dunlin`, `uncial` and `ouzel` fit the set. A common word such as `adage` gets lost in search. |
+| Peterman (copy) | `dunlin`: "a flock that turns as one", which is multi-provider routing. Small, fast, crosses oceans. `curlew`: haunting, evocative, but the story is about a lone bird. |
+| Mickey (typing, speech) | `dunlin` is spoken and typed the way it reads. `curlew` is spelled unlike it sounds ("KER-loo"). `uncial` and `ouzel` each have two plausible pronunciations. |
+| Babu (meaning across languages) | No offensive meaning found in the languages I can reason about for `dunlin`; English "dun" (to press for payment) is the only echo. This is a reasoned check, not a native-speaker review. |
+| Frank (support) | `dunlin` searches cleanly. `curlew` invites "is this curl?" questions and a tab-completion neighbour of `curl`. `adage` collides in search with a major advertising publication, which I believe is Ad Age; unverified. |
+| Bob (packaging) | `dunlin` is free as a Homebrew formula and cask, Scoop and the Docker library; the image path would be `ghcr.io/<owner>/dunlin`. |
+| Jackie and Newman (legal lens, **not counsel**) | `dunlin` has two live marks in unrelated goods and nothing in software within two edits. Open question: DUNLOP, which I know as a well-known tyre brand (background knowledge, not checked here), is two edits away and sounds alike in the first syllable. Whether that matters is for counsel. |
+| FDR (devil's advocate) | "It is a boring bird, it sounds like 'dull', 'dun' means debt collector, and you will spend a year explaining what a dunlin is." |
+
+The devil's advocate was answered, not dismissed. *Dull and debt collector:* real,
+but both are English echoes of a name that is otherwise unambiguous to say and type,
+and arbitrary names are the norm (Python and Ruby are not descriptive either).
+*Explaining it:* the flock story does that work in one sentence, and an unusual word
+is findable where a common one is not. *Boring bird:* accepted as a matter of taste;
+it is exactly the kind of objection that gate G1 exists to let the owner overrule.
+
+### Round 12 -- Decision
+
+**`dunlin`**, with **`curlew`** as runner-up. Ranking of the five: `dunlin`,
+`curlew`, `uncial`, `adage`, `ouzel`. `uncial` is clean but has no connection to the
+product and an ambiguous pronunciation. `adage` is the best fit by meaning and the
+worst by search and mind-share. `ouzel` has no registered marks but is a live
+software product by use, in the same class of goods.
+
+### What is and is not established
+
+This is a **preliminary screen, not clearance, and not legal advice.** It covers US
+federal registrations and applications as of 2026-11-02. It does **not** cover:
+state or common-law marks and unregistered use; the EU, UK or WIPO registers (the
+EUIPO site was unreachable and the WIPO database needs a browser); translations and
+sound-alikes beyond two edits; or a human review of goods and services. The
+"software goods" test is a keyword heuristic and can miss or over-flag.
+
+Specific questions for counsel on `dunlin`: whether DUNLOP (tyres) is a concern
+given the shared first syllable; whether the two live DUNLIN marks (plastic bottle
+holders, dental supplies) matter; and a full common-law and international search.
+
+### Reproducing this
+
+`scripts/name-screen.py <name> [<name> ...]` runs the whole screen for any name and
+prints what it found, including every live mark it relied on. `--json` gives the
+raw record. It is read-only and states its own limits in its output.
