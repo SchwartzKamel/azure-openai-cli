@@ -16,7 +16,17 @@ internal sealed record EvalFixtureResult(
     [property: JsonPropertyName("safety")] bool Safety,
     [property: JsonPropertyName("ungraded_traits")] int UngradedTraits,
     [property: JsonPropertyName("failures")] List<EvalAssertionFailure> Failures,
-    [property: JsonPropertyName("error")] string? Error);
+    [property: JsonPropertyName("error")] string? Error,
+    [property: JsonPropertyName("runs")] int Runs = 1,
+    [property: JsonPropertyName("passed_runs")] int PassedRuns = 0)
+{
+    /// <summary>
+    /// True when a fixture passed some runs but not all: the signal that a result is not stable.
+    /// Only meaningful with <c>--repeat</c>; a single run cannot be flaky.
+    /// </summary>
+    [JsonPropertyName("flaky")]
+    public bool Flaky => PassedRuns > 0 && PassedRuns < Runs;
+}
 
 internal sealed record EvalReport(
     [property: JsonPropertyName("suite")] string Suite,
@@ -30,7 +40,10 @@ internal sealed record EvalReport(
     [property: JsonPropertyName("ungraded")] int Ungraded,
     [property: JsonPropertyName("safety_failed")] bool SafetyFailed,
     [property: JsonPropertyName("fixtures")] List<EvalFixtureResult> Fixtures,
-    [property: JsonPropertyName("persona_source")] string? PersonaSource = null)
+    [property: JsonPropertyName("persona_source")] string? PersonaSource = null,
+    [property: JsonPropertyName("repeat")] int Repeat = 1,
+    [property: JsonPropertyName("flaky")] int FlakyCount = 0,
+    [property: JsonPropertyName("baseline")] EvalBaselineComparison? Baseline = null)
 {
     internal bool Passing => Result == EvalStatus.Pass;
 }
@@ -79,7 +92,9 @@ internal static class EvalRunner
         string? filter,
         int timeoutSeconds,
         CancellationToken ct,
-        Func<string?>? personaSource = null)
+        Func<string?>? personaSource = null,
+        int repeat = 1,
+        EvalBaselineFile? baseline = null)
     {
         ArgumentNullException.ThrowIfNull(suite);
         ArgumentNullException.ThrowIfNull(call);
@@ -93,21 +108,25 @@ internal static class EvalRunner
         foreach (var fixture in selected)
         {
             ct.ThrowIfCancellationRequested();
-            results.Add(await RunFixtureAsync(fixture, call, personas, timeoutSeconds, ct));
+            results.Add(await RunFixtureAsync(fixture, call, personas, timeoutSeconds, Math.Max(1, repeat), ct));
         }
 
         return Score(suite.Name, modelLabel, results, failUnder,
             noMatchReason: selected.Count == 0 ? $"no fixture id contains \"{Clean(filter)}\"" : null,
-            personaSource: personaSource?.Invoke());
+            personaSource: personaSource?.Invoke(),
+            repeat: Math.Max(1, repeat),
+            baseline: baseline,
+            baselineIgnoresMissing: !string.IsNullOrWhiteSpace(filter));
     }
 
     private static async Task<EvalFixtureResult> RunFixtureAsync(
-        EvalFixture f, EvalModelCall call, PersonaResolver? personas, int timeoutSeconds, CancellationToken ct)
+        EvalFixture f, EvalModelCall call, PersonaResolver? personas, int timeoutSeconds, int repeat, CancellationToken ct)
     {
         var traits = f.ExpectedTraits.Count + f.ForbiddenTraits.Count + (f.IsSafety ? 1 : 0);
 
-        EvalFixtureResult Result(string status, int passed, int total, List<EvalAssertionFailure>? failures = null, string? error = null)
-            => new(f.Id, status, passed, total, f.IsSafety, traits, failures ?? new(), error);
+        EvalFixtureResult Result(string status, int passed, int total, List<EvalAssertionFailure>? failures = null,
+            string? error = null, int runs = 0, int passedRuns = 0)
+            => new(f.Id, status, passed, total, f.IsSafety, traits, failures ?? new(), error, runs, passedRuns);
 
         // A safety fixture with nothing deterministic to check cannot be verified. Passing it
         // silently is the worst failure mode this harness exists to prevent.
@@ -134,6 +153,34 @@ internal static class EvalRunner
             system = personaPrompt + "\n\n" + Program.SAFETY_CLAUSE;
         }
 
+        // Run the fixture `repeat` times. A fixture passes only if EVERY run passes: a model that
+        // passes two runs in three is not a model that passes. The pass count is kept so flakiness
+        // is visible rather than averaged away.
+        var runs = new List<EvalFixtureResult>();
+        for (var i = 0; i < repeat; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            runs.Add(await RunOnceAsync(f, system, call, timeoutSeconds, Result, ct));
+        }
+
+        var passedRuns = runs.Count(r => r.Status == EvalStatus.Pass);
+        if (passedRuns == runs.Count)
+        {
+            return Result(EvalStatus.Pass, f.Assertions.Count, f.Assertions.Count, null, null, runs.Count, passedRuns);
+        }
+
+        // Report the first run that did not pass, so the failure text is real, not a blend.
+        var firstBad = runs.First(r => r.Status != EvalStatus.Pass);
+        var allErrors = runs.All(r => r.Status == EvalStatus.Error);
+        return Result(allErrors ? EvalStatus.Error : EvalStatus.Fail, firstBad.Passed, firstBad.Total,
+            firstBad.Failures, firstBad.Error, runs.Count, passedRuns);
+    }
+
+    private static async Task<EvalFixtureResult> RunOnceAsync(
+        EvalFixture f, string system, EvalModelCall call, int timeoutSeconds,
+        Func<string, int, int, List<EvalAssertionFailure>?, string?, int, int, EvalFixtureResult> result,
+        CancellationToken ct)
+    {
         string output;
         using (var cts = CancellationTokenSource.CreateLinkedTokenSource(ct))
         {
@@ -144,7 +191,7 @@ internal static class EvalRunner
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                return Result(EvalStatus.Error, 0, f.Assertions.Count, error: $"timed out after {timeoutSeconds}s");
+                return result(EvalStatus.Error, 0, f.Assertions.Count, null, $"timed out after {timeoutSeconds}s", 1, 0);
             }
             catch (OperationCanceledException)
             {
@@ -152,8 +199,8 @@ internal static class EvalRunner
             }
             catch (Exception ex)
             {
-                return Result(EvalStatus.Error, 0, f.Assertions.Count,
-                    error: "model call failed: " + Trunc(Clean(SecretRedactor.Redact(ex.Message)), 160));
+                return result(EvalStatus.Error, 0, f.Assertions.Count, null,
+                    "model call failed: " + Trunc(Clean(SecretRedactor.Redact(ex.Message)), 160), 1, 0);
             }
         }
 
@@ -165,19 +212,23 @@ internal static class EvalRunner
         }
 
         var passed = f.Assertions.Count - failures.Count;
-        return Result(failures.Count == 0 ? EvalStatus.Pass : EvalStatus.Fail, passed, f.Assertions.Count, failures);
+        return result(failures.Count == 0 ? EvalStatus.Pass : EvalStatus.Fail, passed, f.Assertions.Count, failures, null, 1,
+            failures.Count == 0 ? 1 : 0);
     }
 
     /// <summary>Pure scoring over finished fixture results. Exposed for direct testing.</summary>
     internal static EvalReport Score(
         string suite, string model, List<EvalFixtureResult> results, double failUnder, string? noMatchReason = null,
-        string? personaSource = null)
+        string? personaSource = null, int repeat = 1, EvalBaselineFile? baseline = null,
+        bool baselineIgnoresMissing = false)
     {
         var graded = results.Count(r => r.Status != EvalStatus.Ungraded);
         var passed = results.Count(r => r.Status == EvalStatus.Pass);
         var ungraded = results.Count - graded;
         var score = graded == 0 ? 0.0 : Math.Round(passed * 100.0 / graded, 1);
         var safetyFailed = results.Any(r => r.Safety && r.Status is EvalStatus.Fail or EvalStatus.Error);
+        var flaky = results.Count(r => r.Flaky);
+        var comparison = baseline is null ? null : EvalBaselines.Compare(results, baseline, model, baselineIgnoresMissing);
 
         string result;
         string? reason;
@@ -188,6 +239,14 @@ internal static class EvalRunner
         else if (safetyFailed)
         {
             (result, reason) = (EvalStatus.Fail, "a safety fixture failed or could not be verified (no waiver, --fail-under does not apply)");
+        }
+        else if (comparison is { Regressions.Count: > 0 })
+        {
+            // A regression against a recorded run is its own gate: a score can stay above
+            // --fail-under while a fixture that used to pass now fails.
+            (result, reason) = (EvalStatus.Fail,
+                $"regression against baseline: {string.Join(", ", comparison.Regressions.Take(5))}"
+                + (comparison.Regressions.Count > 5 ? $" and {comparison.Regressions.Count - 5} more" : ""));
         }
         else if (graded == 0)
         {
@@ -203,7 +262,8 @@ internal static class EvalRunner
             (result, reason) = (EvalStatus.Pass, null);
         }
 
-        return new EvalReport(suite, model, result, reason, score, failUnder, graded, passed, ungraded, safetyFailed, results, personaSource);
+        return new EvalReport(suite, model, result, reason, score, failUnder, graded, passed, ungraded, safetyFailed, results, personaSource,
+            repeat, flaky, comparison);
     }
 
     /// <summary>Plain labeled lines: ASCII, no color, no glyphs, so it reads in a screen reader and a log.</summary>
@@ -218,6 +278,10 @@ internal static class EvalRunner
         {
             lines.Add($"Personas: {Clean(r.PersonaSource)}");
         }
+        if (r.Repeat > 1)
+        {
+            lines.Add($"Repeat: {r.Repeat} runs per fixture (a fixture passes only if every run passes)");
+        }
 
         foreach (var f in r.Fixtures)
         {
@@ -228,6 +292,10 @@ internal static class EvalRunner
                 EvalStatus.Error => f.Error ?? "error",
                 _ => $"{f.Passed}/{f.Total} assertions",
             };
+            if (r.Repeat > 1 && f.Status != EvalStatus.Ungraded)
+            {
+                detail += f.Flaky ? $" [FLAKY: {f.PassedRuns} of {f.Runs} runs passed]" : $" [{f.PassedRuns} of {f.Runs} runs passed]";
+            }
             lines.Add($"  {tag} {Clean(f.Id)} -- {detail}{(f.Safety ? " [safety]" : "")}");
             foreach (var failure in f.Failures)
             {
@@ -236,6 +304,16 @@ internal static class EvalRunner
         }
 
         lines.Add($"Score: {r.ScorePercent:0.#}% ({r.Passed} of {r.Graded} graded fixtures passed, {r.Ungraded} ungraded)");
+        if (r.Repeat > 1)
+        {
+            lines.Add($"Flaky: {r.FlakyCount} fixture{(r.FlakyCount == 1 ? "" : "s")}");
+        }
+        if (r.Baseline is { } b)
+        {
+            lines.Add($"Baseline: {b.Regressions.Count} regression(s), {b.Improvements.Count} improvement(s), {b.Added.Count} new, {b.Removed.Count} no longer in the suite"
+                + (b.ModelMismatch ? $" (baseline was recorded with model {Clean(b.BaselineModel)}, this run used {Clean(r.Model)})" : ""));
+            foreach (var id in b.Regressions) lines.Add($"           - regressed: {Clean(id)}");
+        }
         lines.Add($"Fail under: {r.FailUnder:0.#}%");
         lines.Add($"Result: {r.Result.ToUpperInvariant()}" + (r.Reason is null ? "" : $" -- {r.Reason}"));
         return lines.ToArray();

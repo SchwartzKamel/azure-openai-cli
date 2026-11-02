@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(eval):** S04E12 *The Gate* -- `az-ai eval --repeat <n>` runs each fixture n times and
+  reports flaky ones (a fixture passes only if every run passes); `--write-baseline` and
+  `--baseline` record and compare outcomes (never model text) and fail on a regression even when
+  the score clears `--fail-under`. Adds `scripts/eval-gate.sh`, the policy `.github/eval-gate.json`
+  (refusal pinned at 100 by a test) and `.github/workflows/eval-gate.yml`, which **fails closed**:
+  with `EVAL_GATE_REQUIRED=true` a gate that cannot run fails, otherwise it skips with a summary
+  saying nothing was checked. The workflow never uses `pull_request_target`. No live model has
+  been run and no baseline is committed yet.
 - **feat(eval):** S04E11 *The Corpus* -- three eval corpora ship inside the binary and run with
   `az-ai eval --corpus <smoke|persona-voice|refusal>` (list with `--list-corpora [--json]`):
   a 7-fixture smoke check, a 10-fixture persona-voice check built from each built-in

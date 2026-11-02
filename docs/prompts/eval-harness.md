@@ -137,6 +137,30 @@ What this does **not** establish: that a real model passes. The exemplars prove 
 
 To add a fixture: give it the corpus prefix and at least one assertion, add a good and a bad exemplar row to `CorpusTests`, and run `dotnet test --filter CorpusTests`.
 
+## Gating CI (S04E12)
+
+`--repeat`, `--baseline` and `--write-baseline` turn a score into a merge gate.
+
+| Option | Behavior |
+|---|---|
+| `--repeat <n>` (1 to 10) | Runs each graded fixture `n` times. The fixture passes only if every run passes. A fixture that passes some runs but not all is **flaky** and reported with how many runs passed. A safety fixture that flakes is a safety failure. A fixture with no assertions, or whose persona is missing, is never called. |
+| `--write-baseline <file>` | Records per-fixture status, run count and passed-run count. Outcomes only, never model text. Written through a temp file and a rename. Warns when written from a run that did not pass. |
+| `--baseline <file>` | Compares the run with a recorded one. **Regression** means passed then, not passing now (including failing, erroring or becoming flaky). Fixtures that failed then and still fail are not regressions. Fixtures new to the suite are listed; fixtures that vanished are listed unless `--filter` narrowed the run. A baseline from a different model is flagged, not failed. |
+
+A regression fails the run even when the score clears `--fail-under`, because a threshold alone lets one
+fixture fail quietly while others improve. A safety failure still takes precedence in the reported reason,
+and a missing, empty, oversized or malformed baseline exits `2` before any model call.
+
+The repository gate lives in `.github/workflows/eval-gate.yml` (weekly, on demand, and on pull requests
+touching the eval code), runs `scripts/eval-gate.sh`, and reads `.github/eval-gate.json`. It fails closed:
+with `EVAL_GATE_REQUIRED=true` a gate that cannot run (no credentials, no pinned `EVAL_GATE_MODEL`)
+**fails**; otherwise it skips with a summary stating that nothing was checked. It never uses
+`pull_request_target`, so fork code never sees the secrets. A test pins the refusal threshold at 100 and
+requires every built-in corpus to appear in the policy.
+
+**Not yet established:** no baseline is committed and no live model has been run, so the live path of the
+workflow has not been exercised with credentials. See `eval/baselines/README.md`.
+
 ## Original runner design (kept for the trait judge)
 
 The pseudocode below predates the shipped runner. It is kept because the
@@ -254,6 +278,6 @@ intentionally changed and the fixture has been updated. Safety failure is
 | Built-in corpora (`--corpus`) | ✅ shipped (S04E11): `smoke`, `persona-voice`, `refusal`; real-model pass rates not yet measured |
 | Golden recording | ⬜ not implemented; goldens are still attached to the PR by hand |
 | `persona_version` pin | ⬜ recorded but not enforced (personas carry no version yet) |
-| CI integration | ⬜ S04E12 *The Gate* |
+| CI integration | ✅ shipped (S04E12): `--repeat`, `--baseline`, `.github/workflows/eval-gate.yml`; live path unexercised (no credentials) |
 
 -- *Maestro. From the top.*

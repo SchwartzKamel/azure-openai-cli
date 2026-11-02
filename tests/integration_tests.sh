@@ -1122,6 +1122,102 @@ EVFAIL
                 fail "S04E11 corpus: persona-voice fails a model with no voice and reports built-in personas" "rc=$ev_rc out=$ev_out"
             fi
 
+            # ── S04E12 -- The Gate (scripts/eval-gate.sh) ─────────────────────────
+            printf '{"repeat":2,"corpora":[{"name":"smoke","fail_under":100},{"name":"refusal","fail_under":100}]}' > "$ev_dir/policy_ok.json"
+            printf '{"repeat":1,"corpora":[{"name":"persona-voice","fail_under":80}]}' > "$ev_dir/policy_voice.json"
+            gate_run() {
+                env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" BIN="$ev_abs" OUT="$ev_dir/gate-out" \
+                    BASELINE_DIR="$ev_dir/baselines" "$@" bash scripts/eval-gate.sh "${GATE_MODE:-run}" 2>&1
+            }
+            gate_creds() {
+                echo AZUREOPENAIENDPOINT="https://example.openai.azure.com/" AZUREOPENAIAPI="dummy-key-0123456789" \
+                    AZURE_FOUNDRY_ENDPOINT="http://127.0.0.1:$ev_port" AZURE_FOUNDRY_KEY="fake-key-0123456789" \
+                    AZURE_FOUNDRY_MODELS="fake-model" EVAL_GATE_MODEL=fake-model
+            }
+
+            # Control case 1: a REQUIRED gate that cannot run must FAIL, never go green.
+            set +e
+            ev_out=$(gate_run POLICY="$ev_dir/policy_ok.json" EVAL_GATE_REQUIRED=true)
+            ev_rc=$?
+            set -e
+            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'Refusing to report green without running'; then
+                pass "S04E12 gate: a required gate with no credentials FAILS (never green)"
+            else
+                fail "S04E12 gate: a required gate with no credentials FAILS (never green)" "rc=$ev_rc out=$ev_out"
+            fi
+
+            # Control case 2: an optional gate that cannot run SKIPS visibly and says it is not a pass.
+            set +e
+            ev_out=$(gate_run POLICY="$ev_dir/policy_ok.json")
+            ev_rc=$?
+            set -e
+            if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grep -qF 'SKIPPED' && printf '%s' "$ev_out" | grep -qF 'This is not a pass'; then
+                pass "S04E12 gate: an optional gate with no credentials SKIPS visibly (not a pass)"
+            else
+                fail "S04E12 gate: an optional gate with no credentials SKIPS visibly (not a pass)" "rc=$ev_rc out=$ev_out"
+            fi
+
+            : > "$ev_dir/req.log"
+            set +e
+            # shellcheck disable=SC2046
+            ev_out=$(gate_run POLICY="$ev_dir/policy_ok.json" $(gate_creds))
+            ev_rc=$?
+            set -e
+            ev_reqs=$(wc -l < "$ev_dir/req.log" | tr -d ' ')
+            if [ "$ev_rc" -eq 0 ] && [ "$ev_reqs" = "30" ] && printf '%s' "$ev_out" | grep -qF 'eval-gate: OK'; then
+                pass "S04E12 gate: smoke and refusal pass with --repeat 2 (30 requests: 7x2 + 8x2)"
+            else
+                fail "S04E12 gate: smoke and refusal pass with --repeat 2 (30 requests: 7x2 + 8x2)" "rc=$ev_rc requests=$ev_reqs out=$ev_out"
+            fi
+
+            set +e
+            # shellcheck disable=SC2046
+            ev_out=$(gate_run POLICY="$ev_dir/policy_voice.json" $(gate_creds))
+            ev_rc=$?
+            set -e
+            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'did not pass'; then
+                pass "S04E12 gate: persona-voice against a model with no voice fails the gate"
+            else
+                fail "S04E12 gate: persona-voice against a model with no voice fails the gate" "rc=$ev_rc out=$ev_out"
+            fi
+
+            # Baseline round trip: record, then re-run against it with no regressions.
+            set +e
+            # shellcheck disable=SC2046
+            # The mode is exported INSIDE the substitution so it cannot leak into the next call.
+            ev_out=$(export GATE_MODE=baseline; gate_run POLICY="$ev_dir/policy_ok.json" $(gate_creds))
+            ev_rc=$?
+            # shellcheck disable=SC2046
+            ev_out2=$(gate_run POLICY="$ev_dir/policy_ok.json" $(gate_creds))
+            ev_rc2=$?
+            set -e
+            if [ "$ev_rc" -eq 0 ] && [ -f "$ev_dir/baselines/fake-model.smoke.json" ] && [ "$ev_rc2" -eq 0 ] \
+                && printf '%s' "$ev_out2" | grep -qF '0 regression(s)'; then
+                pass "S04E12 gate: baselines are recorded and the next run compares with 0 regressions"
+            else
+                fail "S04E12 gate: baselines are recorded and the next run compares with 0 regressions" \
+                    "rc=$ev_rc rc2=$ev_rc2 out2=$ev_out2"
+            fi
+
+            # A baseline that says persona-voice fixtures all PASSED before must make today's failures regressions.
+            python3 - "$ev_dir/baselines/fake-model.persona-voice.json" "$ev_dir/policy_voice.json" <<'PYB'
+import json, re, subprocess, sys
+src = open("azureopenai-cli/Eval/Corpora/persona-voice.json").read()
+ids = re.findall(r'"id":\s*"(voice-[a-z-]+)"', src)
+json.dump({"suite": "persona-voice", "model": "fake-model", "repeat": 1,
+           "fixtures": {i: {"status": "pass", "runs": 1, "passed_runs": 1} for i in ids}}, open(sys.argv[1], "w"))
+PYB
+            set +e
+            # shellcheck disable=SC2046
+            ev_out=$(gate_run POLICY="$ev_dir/policy_voice.json" $(gate_creds))
+            ev_rc=$?
+            set -e
+            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'regression against baseline'; then
+                pass "S04E12 gate: fixtures that passed in the baseline and now fail are regressions"
+            else
+                fail "S04E12 gate: fixtures that passed in the baseline and now fail are regressions" "rc=$ev_rc out=$ev_out"
+            fi
+
             kill "$ev_srv" 2>/dev/null || true
             wait "$ev_srv" 2>/dev/null || true
         fi
