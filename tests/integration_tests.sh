@@ -1182,6 +1182,55 @@ EVSUITE
         fail "S04SP10 ignored-script: this repository is clean" "$ig_out"
     fi
 
+    # ── S04SP11 -- The Field Notes: the MCP read-only proxy example is pinned, not just shown ──
+    # hopper's MCP client exposes every tool a server lists. examples/mcp/read-only-proxy.py is the stopgap: it
+    # relays a real server and shows only the tools a policy allows. The upstream here is hopper's own MCP
+    # server, so no network, no model and no credentials are needed.
+    echo "▸ S04SP11 mcp read-only proxy"
+    px_proxy="$(pwd)/examples/mcp/read-only-proxy.py"
+    px_bin="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"   # CI runs with a relative BIN
+    px_up="$px_bin mcp serve"
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        skip "S04SP11 mcp proxy" "python3 not available"
+    else
+        px_out=$(env -u MCP_ALLOW -u MCP_DENY python3 "$px_proxy" $px_up 2>&1 </dev/null; echo "rc=$?") || true
+        if printf '%s' "$px_out" | grep -qF 'rc=2' && printf '%s' "$px_out" | grep -qF 'refusing to start with no policy'; then
+            pass "S04SP11 mcp proxy: with no policy it refuses to start (never defaults open)"
+        else
+            fail "S04SP11 mcp proxy: with no policy it refuses to start (never defaults open)" "$px_out"
+        fi
+
+        px_out=$(MCP_ALLOW="get_datetime,queue_status" "$px_bin" mcp tools "python3 $px_proxy $px_up" 2>&1 || true)
+        if printf '%s' "$px_out" | grep -qF 'tools (2)' && printf '%s' "$px_out" | grep -qF 'get_datetime' \
+            && printf '%s' "$px_out" | grep -qF 'queue_status' && ! printf '%s' "$px_out" | grep -qF 'read_file'; then
+            pass "S04SP11 mcp proxy: only the allowed tools are visible to the client"
+        else
+            fail "S04SP11 mcp proxy: only the allowed tools are visible to the client" "$px_out"
+        fi
+
+        px_out=$(MCP_ALLOW='*' MCP_DENY='queue_*,delegate_*,web_*' "$px_bin" mcp tools "python3 $px_proxy $px_up" 2>&1 || true)
+        if printf '%s' "$px_out" | grep -qF 'tools (3)' && ! printf '%s' "$px_out" | grep -qE 'queue_|delegate_|web_fetch'; then
+            pass "S04SP11 mcp proxy: a deny pattern beats an allow-everything pattern"
+        else
+            fail "S04SP11 mcp proxy: a deny pattern beats an allow-everything pattern" "$px_out"
+        fi
+
+        px_out=$(MCP_ALLOW="get_datetime" "$px_bin" mcp call "python3 $px_proxy $px_up" read_file '{"path":"/etc/hostname"}' 2>&1 || true)
+        if printf '%s' "$px_out" | grep -qF 'not permitted by read-only-proxy'; then
+            pass "S04SP11 mcp proxy: a call to a hidden tool is refused before it reaches the server"
+        else
+            fail "S04SP11 mcp proxy: a call to a hidden tool is refused before it reaches the server" "$px_out"
+        fi
+
+        px_out=$(MCP_ALLOW="get_datetime" "$px_bin" mcp call "python3 $px_proxy $px_up" get_datetime '{}' 2>&1 || true)
+        if printf '%s' "$px_out" | grep -qE '20[0-9]{2}-[0-9]{2}-[0-9]{2}'; then
+            pass "S04SP11 mcp proxy: an allowed call goes through to the real server"
+        else
+            fail "S04SP11 mcp proxy: an allowed call goes through to the real server" "$px_out"
+        fi
+    fi
+
 
     if ! command -v python3 >/dev/null 2>&1; then
         skip "S04E10 eval: end-to-end against a fake model server" "python3 not available"
