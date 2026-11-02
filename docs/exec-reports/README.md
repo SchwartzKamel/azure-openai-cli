@@ -14,7 +14,7 @@ because the [cast itself is](../../AGENTS.md).
 | **S01** | The Pilot Years                          | Aired (back-fill pending)        | --        |
 | **S02** | Production & Polish (v2 era)             | In production (24-arc + specials) | --        |
 | **S03** | Local & Multi-Provider                   | Aired (30 episodes; index back-fill pending) | [s03-blueprint.md](s03-blueprint.md) |
-| **S04** | Model Intelligence                       | In production (E01-E12 + 7 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
+| **S04** | Model Intelligence                       | In production (E01-E13 + 7 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
 | **S05** | Protocols & Plugins (incl. MCP)          | Pre-production                  | [s05-blueprint.md](s05-blueprint.md) |
 | **S06** | Dogfooding (`az-ai` is the main tool)    | Pre-production (showrunner override) | [s06-blueprint.md](s06-blueprint.md) |
 | **S07+** | Roadmap pad (Enterprise, Multimodal, ...) | Slate                            | [seasons-roadmap.md](seasons-roadmap.md) |
@@ -89,6 +89,7 @@ range recorded in each report. E06 is the mid-season cast-balance audit.
 | S04E10   | *The Score*            | [s04e10-the-score.md](s04e10-the-score.md) | code + docs | `az-ai eval`: deterministic scoring; empty suites and unverifiable safety fixtures fail |
 | S04E11   | *The Corpus*           | [s04e11-the-corpus.md](s04e11-the-corpus.md) | code + docs | Three embedded eval corpora; each fixture proven satisfiable and violable; no real model run yet |
 | S04E12   | *The Gate*             | [s04e12-the-gate.md](s04e12-the-gate.md) | code + CI | `--repeat`, baselines and a fail-closed eval gate; live path unexercised (no credentials) |
+| S04E13   | *The Redaction*        | [s04e13-the-redaction.md](s04e13-the-redaction.md) | code + docs | `az-ai --lint-suite`: eval files cannot leak; a unicode-escape bypass found and fixed pre-release |
 | S04SP1   | *The Reruns*           | [s04sp1-the-reruns.md](s04sp1-the-reruns.md) | `eecfd74` | Release matrix retag after v2.2.0 |
 | S04SP2   | *The Stenographer*     | [s04sp2-the-stenographer.md](s04sp2-the-stenographer.md) | docs-only | Paperwork audit; artifact contract locked for v2.3.0 |
 | S04SP3   | *The Pre-Push*         | [s04sp3-the-pre-push.md](s04sp3-the-pre-push.md) | `1c8c787` | Pre-push docs-lint after ten consecutive red runs |
