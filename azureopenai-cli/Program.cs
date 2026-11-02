@@ -157,7 +157,10 @@ internal class Program
         double FailUnder = 100.0,    // --fail-under <0..100> (S04E10)
         string? EvalFilter = null,   // --filter <id-substring> (S04E10)
         string? EvalCorpus = null,   // --corpus <smoke|persona-voice|refusal> (S04E11)
-        bool ListCorpora = false     // --list-corpora (S04E11)
+        bool ListCorpora = false,    // --list-corpora (S04E11)
+        int Repeat = 1,              // --repeat <1..10> (S04E12)
+        string? Baseline = null,     // --baseline <file> (S04E12)
+        string? WriteBaseline = null // --write-baseline <file> (S04E12)
     );
 
     private static async Task<int> Main(string[] args)
@@ -1589,6 +1592,9 @@ internal class Program
         string? evalFilter = null;
         string? evalCorpus = null;
         bool listCorpora = false;
+        int evalRepeat = 1;
+        string? evalBaseline = null;
+        string? evalWriteBaseline = null;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -1986,6 +1992,21 @@ internal class Program
                         }
                     }
                     else { Fail($"--corpus requires a name: {string.Join(", ", AzureOpenAI_CLI.Eval.Corpora.Names)}"); }
+                    break;
+                // S04E12 -- The Gate. Flakiness and golden comparison for `az-ai eval`.
+                case "--repeat":
+                    if (i + 1 < args.Length && int.TryParse(args[i + 1], System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture, out var rp) && rp >= 1 && rp <= 10)
+                    { evalRepeat = rp; i++; }
+                    else { Fail("--repeat requires an integer from 1 to 10"); }
+                    break;
+                case "--baseline":
+                    if (i + 1 < args.Length) { evalBaseline = args[++i]; }
+                    else { Fail("--baseline requires a file path"); }
+                    break;
+                case "--write-baseline":
+                    if (i + 1 < args.Length) { evalWriteBaseline = args[++i]; }
+                    else { Fail("--write-baseline requires a file path"); }
                     break;
                 case "--list-corpora":
                     listCorpora = true;
@@ -2437,6 +2458,9 @@ internal class Program
             EvalFilter = evalFilter,
             EvalCorpus = evalCorpus,
             ListCorpora = listCorpora,
+            Repeat = evalRepeat,
+            Baseline = evalBaseline,
+            WriteBaseline = evalWriteBaseline,
             Plain = plain,
             Offline = offline,
             Provider = provider,
@@ -4269,6 +4293,10 @@ Prompt Eval (S04E10, S04E11):
                             (supports --json; --model/--prefer pick the model)
   --corpus <name>           Run a built-in corpus instead of a file: smoke, persona-voice, refusal
   --list-corpora            List the built-in corpora (supports --json)
+  --repeat <n>              Run each fixture n times (1-10); it passes only if every run
+                            passes, and flaky fixtures are reported
+  --baseline <file>         Fail if a fixture that passed in this recorded run now does not
+  --write-baseline <file>   Record this run as a baseline (per-fixture outcomes only)
   --fail-under <pct>        Minimum score to pass, 0-100 (default: 100). Does not apply to
                             safety fixtures, which block on any failure.
   --filter <substr>         Run only fixtures whose id contains <substr>
@@ -4342,7 +4370,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-serve --allow-shell --read-only --fail-under --filter --corpus --list-corpora""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-serve --allow-shell --read-only --fail-under --filter --corpus --list-corpora --repeat --baseline --write-baseline""
 
     case ""${prev}"" in
         --completions)
@@ -4435,6 +4463,9 @@ _az-ai() {
         '--filter[Eval fixture id filter]:substr:'
         '--corpus[Run a built-in eval corpus]:name:(smoke persona-voice refusal)'
         '--list-corpora[List built-in eval corpora]'
+        '--repeat[Run each eval fixture n times]:n:'
+        '--baseline[Compare an eval run with a baseline]:file:_files'
+        '--write-baseline[Record an eval run as a baseline]:file:_files'
     )
     _arguments -s $opts
 }
@@ -4497,6 +4528,9 @@ complete -c az-ai -l fail-under -d 'Eval minimum score' -r
 complete -c az-ai -l filter -d 'Eval fixture id filter' -r
 complete -c az-ai -l corpus -d 'Run a built-in eval corpus' -xa 'smoke persona-voice refusal'
 complete -c az-ai -l list-corpora -d 'List built-in eval corpora'
+complete -c az-ai -l repeat -d 'Run each eval fixture n times' -r
+complete -c az-ai -l baseline -d 'Compare an eval run with a baseline' -r
+complete -c az-ai -l write-baseline -d 'Record an eval run as a baseline' -r
 complete -c az-ai -w az-ai
 ";
 
@@ -4615,6 +4649,15 @@ complete -c az-ai -w az-ai
             };
         }
 
+        AzureOpenAI_CLI.Eval.EvalBaselineFile? baseline = null;
+        if (!string.IsNullOrEmpty(opts.Baseline)
+            && !AzureOpenAI_CLI.Eval.EvalBaselines.TryLoad(opts.Baseline!, out baseline, out var baselineError))
+        {
+            // Refuse before spending any tokens: a missing or broken baseline must never silently
+            // turn into "no baseline, so nothing to regress against".
+            return ErrorAndExit("eval: " + baselineError, 2, jsonMode: opts.Json);
+        }
+
         // Personas load lazily: a suite with no persona fixtures needs no .squad.json.
         // ./.squad.json wins when present (so a project can eval its own personas); otherwise the
         // built-in defaults, so a corpus run is hermetic in CI. The report says which was used.
@@ -4634,7 +4677,23 @@ complete -c az-ai -w az-ai
 
         var report = await AzureOpenAI_CLI.Eval.EvalRunner.RunAsync(
             suite!, model, call, personas, opts.FailUnder, opts.EvalFilter,
-            opts.TimeoutSeconds, CancellationToken.None, () => personaSource);
+            opts.TimeoutSeconds, CancellationToken.None, () => personaSource, opts.Repeat, baseline);
+
+        if (!string.IsNullOrEmpty(opts.WriteBaseline))
+        {
+            try
+            {
+                AzureOpenAI_CLI.Eval.EvalBaselines.Write(opts.WriteBaseline!, AzureOpenAI_CLI.Eval.EvalBaselines.Create(report));
+                if (!report.Passing)
+                {
+                    Console.Error.WriteLine("[WARN] baseline written from a run that did not pass; failing fixtures are recorded as failing.");
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return ErrorAndExit("eval: cannot write baseline: " + ex.Message, 2, jsonMode: opts.Json);
+            }
+        }
 
         if (opts.Json)
         {

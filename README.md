@@ -144,6 +144,7 @@ Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) -- ide
 | `--why-this-model [--json]` | Print which model would be used and why, then exit. No credentials, no network, no tokens. |
 | `az-ai eval <suite.json>` | Run a prompt-fixture suite and score its deterministic assertions. Exit `0` pass, `1` fail (including a suite that grades nothing, or any safety failure), `2` unusable suite. Supports `--json`, `--fail-under <pct>`, `--filter <substr>`, and `--model`/`--prefer`. |
 | `az-ai eval --corpus <name>` / `--list-corpora [--json]` | Run one of the built-in corpora (`smoke`, `persona-voice`, `refusal`) with no file, or list them. Same scoring, exit codes and flags as `az-ai eval <suite.json>`. |
+| `az-ai eval ... --repeat <n>` / `--baseline <file>` / `--write-baseline <file>` | Run each fixture n times (flaky fixtures reported) and gate on regressions against a recorded run. Outcomes only, never model text. |
 | `--config <path>` | Use an alternate config file instead of `./.azureopenai-cli.json` or `~/.azureopenai-cli.json`. |
 | `--config set/get/list/reset/show` | Full CRUD for the persistent user config (e.g. `az-ai --config set defaults.temperature=0.3`). |
 | `--completions <bash\|zsh\|fish>` | Emit a shell-completion script to stdout. Source it or drop it into your completions dir. |
@@ -383,6 +384,16 @@ $ az-ai eval --corpus smoke
 `smoke` is the first thing to run against a new model. `persona-voice` checks that each built-in persona keeps the promises its own prompt makes (the reviewer cites line numbers, security classifies by severity, the architect documents trade-offs); personas come from `./.squad.json` when present, else the built-in defaults, and the report says which. `refusal` is the safety contract: every fixture is a safety fixture, so any failure blocks regardless of `--fail-under`.
 
 The corpora are small (about 13 KiB in total, capped by a test), synthetic (no user prompts, reserved `.invalid` hosts and TEST-NET addresses only) and graded by deterministic assertions only. **A passing score means the assertions held, not that the answer was good**, and model output is not bit-stable even at temperature 0, so the assertions tolerate phrasing. Pass rates against a live model have not been measured yet.
+
+#### Gating CI on evals (S04E12 *The Gate*)
+
+`az-ai eval` has three options for turning a score into a gate:
+
+- `--repeat <n>` runs each fixture *n* times. A fixture passes only if **every** run passes, and a fixture that passes some runs but not all is reported as **flaky**. This is how you find out how stable a model really is.
+- `--write-baseline <file>` records the run (per-fixture outcomes only, never model text) and `--baseline <file>` compares a later run with it. A fixture that passed in the baseline and does not now is a **regression** and fails the run, even when the overall score is above `--fail-under`.
+- A bad baseline path or file exits `2` before any model call, so it can never quietly become "no baseline".
+
+The repository's own gate is `.github/workflows/eval-gate.yml`, driven by `scripts/eval-gate.sh` and the policy in `.github/eval-gate.json`. It runs weekly, on demand, and on pull requests that touch the eval code. It needs credentials, which this repository has not configured, so **it currently skips, and says so**: the job summary reads "SKIPPED ... nothing was checked. This is not a pass." Set the repository variable `EVAL_GATE_REQUIRED=true` to make a skipped gate **fail** instead, so green can never mean "nothing ran". Pin the model with `EVAL_GATE_MODEL`, and see `eval/baselines/README.md` to record baselines. The refusal corpus threshold is pinned at 100 by a test.
 
 ### Makefile targets
 
