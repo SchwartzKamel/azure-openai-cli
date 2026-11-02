@@ -145,6 +145,7 @@ Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) -- ide
 | `az-ai eval <suite.json>` | Run a prompt-fixture suite and score its deterministic assertions. Exit `0` pass, `1` fail (including a suite that grades nothing, or any safety failure), `2` unusable suite. Supports `--json`, `--fail-under <pct>`, `--filter <substr>`, and `--model`/`--prefer`. |
 | `az-ai eval --corpus <name>` / `--list-corpora [--json]` | Run one of the built-in corpora (`smoke`, `persona-voice`, `refusal`) with no file, or list them. Same scoring, exit codes and flags as `az-ai eval <suite.json>`. |
 | `az-ai eval ... --repeat <n>` / `--baseline <file>` / `--write-baseline <file>` | Run each fixture n times (flaky fixtures reported) and gate on regressions against a recorded run. Outcomes only, never model text. |
+| `az-ai --lint-suite <file>` (repeatable) / `--require-provenance` | Check an eval suite, fixture file or baseline for anything that must not be committed (keys, real emails and hosts, home paths, PII shapes, non-ASCII). Findings are masked, never printed in full. Exit `0` clean, `1` findings. Needs no credentials. |
 | `--config <path>` | Use an alternate config file instead of `./.azureopenai-cli.json` or `~/.azureopenai-cli.json`. |
 | `--config set/get/list/reset/show` | Full CRUD for the persistent user config (e.g. `az-ai --config set defaults.temperature=0.3`). |
 | `--completions <bash\|zsh\|fish>` | Emit a shell-completion script to stdout. Source it or drop it into your completions dir. |
@@ -394,6 +395,10 @@ The corpora are small (about 13 KiB in total, capped by a test), synthetic (no u
 - A bad baseline path or file exits `2` before any model call, so it can never quietly become "no baseline".
 
 The repository's own gate is `.github/workflows/eval-gate.yml`, driven by `scripts/eval-gate.sh` and the policy in `.github/eval-gate.json`. It runs weekly, on demand, and on pull requests that touch the eval code. It needs credentials, which this repository has not configured, so **it currently skips, and says so**: the job summary reads "SKIPPED ... nothing was checked. This is not a pass." Set the repository variable `EVAL_GATE_REQUIRED=true` to make a skipped gate **fail** instead, so green can never mean "nothing ran". Pin the model with `EVAL_GATE_MODEL`, and see `eval/baselines/README.md` to record baselines. The refusal corpus threshold is pinned at 100 by a test.
+
+#### Keeping real data out of eval files (S04E13 *The Redaction*)
+
+Eval corpora ship inside the binary and baselines live in the repository, so a real prompt or key in one is published. `az-ai --lint-suite <file>` refuses it. It runs in `make preflight`, in CI, and in the pre-push hook (`make install-hooks`), has **no opt-out**, and never prints what it matched. See the redaction policy in [`docs/prompts/eval-harness.md`](docs/prompts/eval-harness.md). It finds shapes, not meaning; review still matters.
 
 ### Makefile targets
 

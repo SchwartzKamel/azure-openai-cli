@@ -144,6 +144,7 @@ internal record JsonlStreamEvent(
 [JsonSerializable(typeof(EvalReport))]
 [JsonSerializable(typeof(List<CorpusInfo>))]
 [JsonSerializable(typeof(EvalBaselineFile))]
+[JsonSerializable(typeof(EvalLintReport))]
 [JsonSerializable(typeof(ExportEnvJson))]
 [JsonSerializable(typeof(AzureOpenAI_CLI.Observability.EstimateResult))]
 // ── FR-008 prompt/response cache ────────────────────────────────

@@ -976,6 +976,55 @@ EVSUITE
         fail "S04E11 corpus: an unknown corpus is rejected with the valid names" "rc=$ev_rc out=$ev_out"
     fi
 
+    # ── S04E13 -- The Redaction (eval-lint; no server, no credentials) ───
+    set +e
+    ev_out=$(BIN="$BIN" bash scripts/eval-lint.sh 2>&1)
+    ev_rc=$?
+    set -e
+    if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grep -qF 'eval-lint: clean'; then
+        pass "S04E13 eval-lint: every eval file in the repository is clean"
+    else
+        fail "S04E13 eval-lint: every eval file in the repository is clean" "rc=$ev_rc out=$ev_out"
+    fi
+
+    # Control case: a leaky file MUST fail, and the lint must not print what it found.
+    # The key is built by concatenation so this script is not itself a leak.
+    ev_key="sk-""abcdefghijklmnopqrstuvwx0123"
+    printf '[{"id":"a","user_prompt":"use %s and mail bob@gmail.com","assertions":[{"type":"contains","value":"ok"}]}]' "$ev_key" > "$ev_dir/leaky.json"
+    set +e
+    ev_out=$(BIN="$BIN" bash scripts/eval-lint.sh "$ev_dir/leaky.json" 2>&1)
+    ev_rc=$?
+    set -e
+    if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'secret-shape' && printf '%s' "$ev_out" | grep -qF ': email:' \
+        && ! printf '%s' "$ev_out" | grep -qF 'abcdefghijkl' && ! printf '%s' "$ev_out" | grep -qF 'bob@gmail'; then
+        pass "S04E13 eval-lint: a leaky file fails (exit 1) and the output never prints the matched text"
+    else
+        fail "S04E13 eval-lint: a leaky file fails (exit 1) and the output never prints the matched text" "rc=$ev_rc out=$ev_out"
+    fi
+
+    # A JSON unicode escape must not hide a character: the file is ASCII, the decoded string is not.
+    printf '[{"id":"a","user_prompt":"\\u0430dmin","assertions":[{"type":"contains","value":"ok"}]}]' > "$ev_dir/escape.json"
+    set +e
+    ev_out=$(BIN="$BIN" bash scripts/eval-lint.sh "$ev_dir/escape.json" 2>&1)
+    ev_rc=$?
+    set -e
+    if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'non-ascii'; then
+        pass "S04E13 eval-lint: a JSON unicode escape does not hide a look-alike character"
+    else
+        fail "S04E13 eval-lint: a JSON unicode escape does not hide a look-alike character" "rc=$ev_rc out=$ev_out"
+    fi
+
+    set +e
+    ev_out=$(BIN=/nonexistent/az-ai bash scripts/eval-lint.sh 2>&1)
+    ev_rc=$?
+    set -e
+    if [ "$ev_rc" -eq 2 ] && printf '%s' "$ev_out" | grep -qF 'no binary'; then
+        pass "S04E13 eval-lint: a missing binary fails loudly (exit 2), never a silent pass"
+    else
+        fail "S04E13 eval-lint: a missing binary fails loudly (exit 2), never a silent pass" "rc=$ev_rc out=$ev_out"
+    fi
+
+
     if ! command -v python3 >/dev/null 2>&1; then
         skip "S04E10 eval: end-to-end against a fake model server" "python3 not available"
     else
@@ -1120,6 +1169,42 @@ EVFAIL
                 pass "S04E11 corpus: persona-voice fails a model with no voice and reports built-in personas"
             else
                 fail "S04E11 corpus: persona-voice fails a model with no voice and reports built-in personas" "rc=$ev_rc out=$ev_out"
+            fi
+
+            # ── S04E13 control: prove this harness CAN see telemetry. A normal prompt run with telemetry on
+            # must emit events (so the eval-run check below cannot pass merely because nothing is visible),
+            # and even those events must not carry the prompt text.
+            set +e
+            ev_ctl=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" AZ_AI_TELEMETRY=1 AZ_TELEMETRY=1 \
+                AZUREOPENAIENDPOINT="https://example.openai.azure.com/" AZUREOPENAIAPI="dummy-key-0123456789" \
+                AZURE_FOUNDRY_ENDPOINT="http://127.0.0.1:$ev_port" AZURE_FOUNDRY_KEY="fake-key-0123456789" \
+                AZURE_FOUNDRY_MODELS="fake-model" "$ev_abs" --telemetry --model fake-model "What is the capital of France?" 2>&1 >/dev/null)
+            set -e
+            if printf '%s' "$ev_ctl" | grep -qF '"dispatch_path"' && ! printf '%s' "$ev_ctl" | grep -qF 'capital of France'; then
+                pass "S04E13 telemetry control: a normal run emits telemetry events and none carry the prompt text"
+            else
+                fail "S04E13 telemetry control: a normal run emits telemetry events and none carry the prompt text" "stderr=$(printf '%s' "$ev_ctl" | head -c 400)"
+            fi
+
+            # ── S04E13: an eval run with telemetry ON must not emit prompt or output text ──
+            # The smoke corpus prompts and the fake model's answers contain distinctive phrases; none may
+            # appear on stdout or stderr beyond what the report itself prints (ids, statuses, scores).
+            set +e
+            ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" AZ_AI_TELEMETRY=1 AZ_TELEMETRY=1 \
+                AZUREOPENAIENDPOINT="https://example.openai.azure.com/" AZUREOPENAIAPI="dummy-key-0123456789" \
+                AZURE_FOUNDRY_ENDPOINT="http://127.0.0.1:$ev_port" AZURE_FOUNDRY_KEY="fake-key-0123456789" \
+                AZURE_FOUNDRY_MODELS="fake-model" "$ev_abs" eval --corpus smoke --model fake-model --telemetry 2>&1)
+            ev_rc=$?
+            set -e
+            if [ "$ev_rc" -eq 0 ] \
+                && ! printf '%s' "$ev_out" | grep -qF 'capital of France' \
+                && ! printf '%s' "$ev_out" | grep -qF 'HyperText Transfer Protocol' \
+                && ! printf '%s' "$ev_out" | grep -qF 'Reply with a JSON object' \
+                && ! printf '%s' "$ev_out" | grep -qF 'dummy-key-0123456789' \
+                && ! printf '%s' "$ev_out" | grep -qF 'fake-key-0123456789'; then
+                pass "S04E13 telemetry: an eval run with telemetry on emits no prompt, output or key text"
+            else
+                fail "S04E13 telemetry: an eval run with telemetry on emits no prompt, output or key text" "rc=$ev_rc out=$(printf '%s' "$ev_out" | head -c 600)"
             fi
 
             # ── S04E12 -- The Gate (scripts/eval-gate.sh) ─────────────────────────

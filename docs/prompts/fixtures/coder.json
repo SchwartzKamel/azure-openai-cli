@@ -7,7 +7,7 @@
     "temperature": 0.3,
     "max_tokens": 2000,
     "expected_traits": [
-      "Output describes a targeted edit limited to the `foo` → `fooCount` rename.",
+      "Output describes a targeted edit limited to the `foo` -> `fooCount` rename.",
       "Output explains what changed and why, per the persona contract.",
       "Output cites the specific file (src/utils/format.ts) it is editing."
     ],

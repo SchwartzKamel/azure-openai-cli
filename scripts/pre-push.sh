@@ -52,6 +52,32 @@ if [ -z "$new_commits" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Gate: eval-lint. Eval corpora, fixtures and baselines are compiled into a
+# binary or committed to a public repo, so a leaked key, address or path in
+# one is published. Runs only when an eval file is in the push range.
+# Deliberately has NO opt-out trailer (a secrets guard should not have a
+# waiver); `git push --no-verify` is the only bypass and CI still checks.
+# ---------------------------------------------------------------------------
+mapfile -t changed_eval < <(git diff --name-only --diff-filter=AM "$range" -- \
+    'azureopenai-cli/Eval/Corpora/*.json' 'examples/eval/*.json' \
+    'docs/prompts/fixtures/*.json' 'eval/baselines/*.json' 2>/dev/null || true)
+if [ "${#changed_eval[@]}" -gt 0 ]; then
+    eval_bin="${BIN:-azureopenai-cli/bin/Release/net10.0/az-ai}"
+    if [ -x "$eval_bin" ] || command -v "$eval_bin" >/dev/null 2>&1; then
+        echo "[pre-push] eval-lint on ${#changed_eval[@]} changed eval file(s) ..." >&2
+        if ! BIN="$eval_bin" bash scripts/eval-lint.sh "${changed_eval[@]}" >&2; then
+            echo "" >&2
+            echo "[pre-push] FAIL: eval-lint found something that must not be committed (see above)." >&2
+            echo "Matched text is masked on purpose. Fix the file; there is no opt-out trailer." >&2
+            exit 1
+        fi
+    else
+        echo "[pre-push] eval-lint SKIPPED: no built binary at $eval_bin (run 'make dotnet-build')." >&2
+        echo "[pre-push] This is NOT a pass: CI will still run the check." >&2
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Skip-Docs-Lint trailer: parallel to Skip-Exec-Report. Any commit in the
 # range with `Skip-Docs-Lint: <reason>` (start-of-line, colon-separated)
 # opts the whole push out of the docs-lint + ascii-check gates. Use only

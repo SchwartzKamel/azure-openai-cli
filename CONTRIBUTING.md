@@ -93,12 +93,14 @@ and run all gates locally before `git commit` on any change that touches:
 
 `make preflight` runs the full gate chain: format-check, color-contract,
 **docs-lint**, **ascii-check**, build, unit tests, integration tests,
-exec-report-check. Two of those (docs-lint + ascii-check, wired in S04SP3
+**eval-lint**, exec-report-check. Two of those (docs-lint + ascii-check, wired in S04SP3
 *The Pre-Push*) mirror `.github/workflows/docs-lint.yml` server-side so
 red CI is no longer reachable by pushing. `make install-hooks` installs
-a pre-push hook that re-runs the markdown checks against the push range;
-opt out per-commit with a `Skip-Docs-Lint: <reason>` trailer (parallel to
-`Skip-Exec-Report:`) for legitimate bulk-rename / import cases.
+a pre-push hook that re-runs the markdown checks against the push range
+(and, when an eval corpus, fixture or baseline changed, `scripts/eval-lint.sh`, which has no
+opt-out trailer because it guards against publishing secrets);
+opt out of the markdown checks (only) per-commit with a `Skip-Docs-Lint: <reason>`
+trailer (parallel to `Skip-Exec-Report:`) for legitimate bulk-rename / import cases.
 
 Docs-only PRs (`*.md`) can skip the .NET portion but must still pass
 `make docs-lint` and `make ascii-check`. If you skip preflight on a code

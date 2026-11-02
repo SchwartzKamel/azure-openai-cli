@@ -23,7 +23,7 @@ BIN=./azureopenai-cli/bin/Release/net10.0/az-ai scripts/eval-gate.sh baseline
 git add eval/baselines && git commit -m "test(eval): record baselines for gpt-4o-mini"
 ```
 
-Review the files before committing. A baseline recorded from a failing run records the failures as
+Baselines are linted by `scripts/eval-lint.sh` (and by `make preflight`, CI and the pre-push hook): ids and outcomes only, nothing that looks like a secret or a path. Review the files before committing. A baseline recorded from a failing run records the failures as
 failing; the command warns when that happens.
 
 ## Status
