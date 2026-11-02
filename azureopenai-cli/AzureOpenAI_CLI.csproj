@@ -61,6 +61,7 @@
   <ItemGroup>
     <!-- S04E01 The Registry: seed model registry embedded in the binary -->
     <EmbeddedResource Include="Registry\registry.json" />
+    <EmbeddedResource Include="Eval\Corpora\*.json" />
   </ItemGroup>
 
   <ItemGroup>

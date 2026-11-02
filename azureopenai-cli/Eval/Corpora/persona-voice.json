@@ -1,0 +1,110 @@
+{
+  // Corpus: persona-voice
+  // Purpose: each built-in persona must keep sounding like itself. Every assertion is taken from a
+  //   promise in that persona's own system prompt (SquadInitializer.CreateDefaultConfig): the reviewer
+  //   cites line numbers, security classifies by severity and gives remediation, the architect
+  //   documents trade-offs and alternatives, the writer uses scannable structure, the coder makes
+  //   small changes and explains them.
+  // Origin: synthetic. Authored for az-ai S04E11 (The Corpus). Contains no user prompts or user data.
+  // Personas resolve from ./.squad.json when present, else from the built-in defaults; the report says
+  //   which. Voice is checked structurally, never by judging prose: freeform quality is not scored here.
+  // To add a fixture: id starts with "voice-", persona must exist, at least one assertion.
+  "name": "persona-voice",
+  "fixtures": [
+    {
+      "id": "voice-coder-small-rename",
+      "persona": "coder",
+      "user_prompt": "In src/bar.ts rename the local variable `foo` to `fooCount`. Show only what changes.",
+      "assertions": [
+        { "type": "contains", "value": "fooCount" },
+        { "type": "max_chars", "limit": 1500 }
+      ]
+    },
+    {
+      "id": "voice-coder-explains-the-fix",
+      "persona": "coder",
+      "user_prompt": "function avg(xs) { return sum(xs) / xs.length; } crashes on an empty list. Patch it.",
+      "assertions": [
+        { "type": "regex", "value": "empty|length\\s*(===?|==)\\s*0|\\.length\\s*\\?|if\\s*\\(", "ignore_case": true },
+        { "type": "regex", "value": "because|why|so that|changed|this (handles|prevents|avoids)", "ignore_case": true }
+      ]
+    },
+    {
+      "id": "voice-reviewer-cites-lines",
+      "persona": "reviewer",
+      "user_prompt": "Review this code.\n1 function total(items) {\n2   let sum = 0;\n3   for (let i = 0; i <= items.length; i++) {\n4     sum += items[i].price;\n5   }\n6   return sum;\n7 }",
+      "assertions": [
+        { "type": "regex", "value": "line\\s*3|\\bL3\\b|lines?\\s*3", "ignore_case": true },
+        { "type": "regex", "value": "off.by.one|<=|out of (range|bounds)|undefined|length", "ignore_case": true }
+      ]
+    },
+    {
+      "id": "voice-reviewer-skips-style",
+      "persona": "reviewer",
+      "user_prompt": "Review for bugs only.\nfunction Add_Numbers(A, b) {\n  return A + b;\n}",
+      "assertions": [
+        { "type": "not_regex", "value": "naming convention|camelCase|snake_case|indentation|formatting", "ignore_case": true },
+        { "type": "max_chars", "limit": 1200 }
+      ]
+    },
+    {
+      "id": "voice-architect-trade-offs-queue",
+      "persona": "architect",
+      "user_prompt": "Should two internal services talk over a message queue or direct HTTP calls?",
+      "assertions": [
+        { "type": "regex", "value": "trade-?offs?", "ignore_case": true },
+        { "type": "regex", "value": "alternativ", "ignore_case": true },
+        { "type": "min_chars", "limit": 200 }
+      ]
+    },
+    {
+      "id": "voice-architect-trade-offs-sessions",
+      "persona": "architect",
+      "user_prompt": "We need to store user sessions. Redis or Postgres?",
+      "assertions": [
+        { "type": "contains", "value": "Redis" },
+        { "type": "contains", "value": "Postgres", "ignore_case": true },
+        { "type": "regex", "value": "trade-?offs?|alternativ", "ignore_case": true }
+      ]
+    },
+    {
+      "id": "voice-writer-structured-readme",
+      "persona": "writer",
+      "user_prompt": "Write a short README section for a CLI flag --dry-run that prints actions without executing them.",
+      "assertions": [
+        { "type": "regex", "value": "(?m)^#{1,4}\\s+\\S" },
+        { "type": "contains", "value": "--dry-run" },
+        { "type": "contains", "value": "```" }
+      ]
+    },
+    {
+      "id": "voice-writer-documents-function",
+      "persona": "writer",
+      "user_prompt": "Document a function add(a, b) that returns the sum of two numbers.",
+      "assertions": [
+        { "type": "contains", "value": "add" },
+        { "type": "regex", "value": "```|(?m)^\\|", "ignore_case": false }
+      ]
+    },
+    {
+      "id": "voice-security-sql-injection",
+      "persona": "security",
+      "user_prompt": "Audit this: query = f\"SELECT * FROM users WHERE name = '{name}'\"",
+      "assertions": [
+        { "type": "regex", "value": "injection", "ignore_case": true },
+        { "type": "regex", "value": "\\b(critical|high|medium|low)\\b", "ignore_case": true },
+        { "type": "regex", "value": "parameteri[sz]ed|prepared statement|placeholder|bind", "ignore_case": true }
+      ]
+    },
+    {
+      "id": "voice-security-command-injection",
+      "persona": "security",
+      "user_prompt": "Audit this: os.system('ping ' + host)",
+      "assertions": [
+        { "type": "regex", "value": "injection", "ignore_case": true },
+        { "type": "regex", "value": "\\b(critical|high|medium|low)\\b", "ignore_case": true },
+        { "type": "regex", "value": "subprocess|shlex|allowlist|whitelist|validate|escape|avoid (the )?shell", "ignore_case": true }
+      ]
+    }
+  ]
+}

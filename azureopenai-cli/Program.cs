@@ -155,7 +155,9 @@ internal class Program
         bool WhyThisModel = false,   // --why-this-model (S04E09)
         string? EvalSuite = null,    // `az-ai eval <suite.json>` (S04E10)
         double FailUnder = 100.0,    // --fail-under <0..100> (S04E10)
-        string? EvalFilter = null    // --filter <id-substring> (S04E10)
+        string? EvalFilter = null,   // --filter <id-substring> (S04E10)
+        string? EvalCorpus = null,   // --corpus <smoke|persona-voice|refusal> (S04E11)
+        bool ListCorpora = false     // --list-corpora (S04E11)
     );
 
     private static async Task<int> Main(string[] args)
@@ -393,7 +395,7 @@ internal class Program
         }
 
         // S04E10 -- `az-ai eval <suite.json>`: score a fixture suite with deterministic assertions.
-        if (!string.IsNullOrEmpty(opts.EvalSuite))
+        if (!string.IsNullOrEmpty(opts.EvalSuite) || !string.IsNullOrEmpty(opts.EvalCorpus) || opts.ListCorpora)
         {
             return await HandleEvalAsync(opts, userConfig);
         }
@@ -1585,6 +1587,8 @@ internal class Program
         string? evalSuite = null;
         double failUnder = 100.0;
         string? evalFilter = null;
+        string? evalCorpus = null;
+        bool listCorpora = false;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -1970,6 +1974,21 @@ internal class Program
                         && fu >= 0 && fu <= 100)
                     { failUnder = fu; i++; }
                     else { Fail("--fail-under requires a number from 0 to 100"); }
+                    break;
+                // S04E11 -- The Corpus. Built-in suites, so no file path is needed.
+                case "--corpus":
+                    if (i + 1 < args.Length)
+                    {
+                        evalCorpus = args[++i].Trim().ToLowerInvariant();
+                        if (!AzureOpenAI_CLI.Eval.Corpora.IsKnown(evalCorpus))
+                        {
+                            Fail($"--corpus must be one of: {string.Join(", ", AzureOpenAI_CLI.Eval.Corpora.Names)}");
+                        }
+                    }
+                    else { Fail($"--corpus requires a name: {string.Join(", ", AzureOpenAI_CLI.Eval.Corpora.Names)}"); }
+                    break;
+                case "--list-corpora":
+                    listCorpora = true;
                     break;
                 case "--filter":
                     if (i + 1 < args.Length) { evalFilter = args[++i]; }
@@ -2416,6 +2435,8 @@ internal class Program
             EvalSuite = evalSuite,
             FailUnder = failUnder,
             EvalFilter = evalFilter,
+            EvalCorpus = evalCorpus,
+            ListCorpora = listCorpora,
             Plain = plain,
             Offline = offline,
             Provider = provider,
@@ -4243,9 +4264,11 @@ Prompt Cache (FR-008, opt-in):
   --cache-ttl <hours>       Cache entry lifetime in hours (env: AZ_CACHE_TTL_HOURS,
                             default: 168 = 7 days).
 
-Prompt Eval (S04E10):
+Prompt Eval (S04E10, S04E11):
   az-ai eval <suite.json>   Run a fixture suite and score its deterministic assertions
                             (supports --json; --model/--prefer pick the model)
+  --corpus <name>           Run a built-in corpus instead of a file: smoke, persona-voice, refusal
+  --list-corpora            List the built-in corpora (supports --json)
   --fail-under <pct>        Minimum score to pass, 0-100 (default: 100). Does not apply to
                             safety fixtures, which block on any failure.
   --filter <substr>         Run only fixtures whose id contains <substr>
@@ -4319,7 +4342,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-serve --allow-shell --read-only --fail-under --filter""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-serve --allow-shell --read-only --fail-under --filter --corpus --list-corpora""
 
     case ""${prev}"" in
         --completions)
@@ -4332,6 +4355,10 @@ _az_ai_completions()
             ;;
         --prefer)
             COMPREPLY=( $(compgen -W ""cost latency quality"" -- ${cur}) )
+            return 0
+            ;;
+        --corpus)
+            COMPREPLY=( $(compgen -W ""smoke persona-voice refusal"" -- ${cur}) )
             return 0
             ;;
         --set-model|--model)
@@ -4406,6 +4433,8 @@ _az-ai() {
         '--read-only[Read-only MCP server]'
         '--fail-under[Eval minimum score]:pct:'
         '--filter[Eval fixture id filter]:substr:'
+        '--corpus[Run a built-in eval corpus]:name:(smoke persona-voice refusal)'
+        '--list-corpora[List built-in eval corpora]'
     )
     _arguments -s $opts
 }
@@ -4466,6 +4495,8 @@ complete -c az-ai -l allow-shell -d 'Allow shell tool over MCP'
 complete -c az-ai -l read-only -d 'Read-only MCP server'
 complete -c az-ai -l fail-under -d 'Eval minimum score' -r
 complete -c az-ai -l filter -d 'Eval fixture id filter' -r
+complete -c az-ai -l corpus -d 'Run a built-in eval corpus' -xa 'smoke persona-voice refusal'
+complete -c az-ai -l list-corpora -d 'List built-in eval corpora'
 complete -c az-ai -w az-ai
 ";
 
@@ -4484,6 +4515,36 @@ complete -c az-ai -w az-ai
 
     // ── Model-alias commands (FR-010) ──────────────────────────────────────────
 
+    /// <summary>S04E11 -- <c>az-ai eval --list-corpora [--json]</c>: what ships in the binary.</summary>
+    internal static int ListCorporaCommand(bool json)
+    {
+        var infos = new List<AzureOpenAI_CLI.Eval.CorpusInfo>();
+        foreach (var name in AzureOpenAI_CLI.Eval.Corpora.Names)
+        {
+            AzureOpenAI_CLI.Eval.Corpora.TryLoad(name, out var suite, out _);
+            var fixtures = suite?.Fixtures ?? new();
+            infos.Add(new AzureOpenAI_CLI.Eval.CorpusInfo(
+                name,
+                AzureOpenAI_CLI.Eval.Corpora.Descriptions[name],
+                fixtures.Count,
+                fixtures.Count(f => f.IsSafety),
+                AzureOpenAI_CLI.Eval.Corpora.ReadBytes(name)?.Length ?? 0));
+        }
+
+        if (json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(infos, AppJsonContext.Default.ListCorpusInfo));
+            return 0;
+        }
+
+        Console.WriteLine("Built-in corpora (run with: az-ai eval --corpus <name>)");
+        foreach (var c in infos)
+        {
+            Console.WriteLine($"  {c.Name,-14} {c.Fixtures,2} fixtures, {c.SafetyFixtures,2} safety, {c.Bytes,5} bytes -- {c.Description}");
+        }
+        return 0;
+    }
+
     /// <summary>
     /// S04E10 -- <c>az-ai eval &lt;suite.json&gt;</c>. Loads and validates the suite BEFORE any model
     /// call (a bad suite costs no tokens), runs each fixture the way the CLI would, and scores it.
@@ -4493,7 +4554,22 @@ complete -c az-ai -w az-ai
     internal static async Task<int> HandleEvalAsync(
         CliOptions opts, UserConfig userConfig, AzureOpenAI_CLI.Eval.EvalModelCall? callOverride = null)
     {
-        if (!AzureOpenAI_CLI.Eval.EvalSuiteLoader.TryLoad(opts.EvalSuite ?? "", out var suite, out var loadError))
+        if (opts.ListCorpora)
+        {
+            return ListCorporaCommand(opts.Json);
+        }
+
+        if (!string.IsNullOrEmpty(opts.EvalSuite) && !string.IsNullOrEmpty(opts.EvalCorpus))
+        {
+            return ErrorAndExit("eval: give a suite file or --corpus, not both", 2, jsonMode: opts.Json);
+        }
+
+        AzureOpenAI_CLI.Eval.EvalSuite? suite;
+        string? loadError;
+        var loaded = !string.IsNullOrEmpty(opts.EvalCorpus)
+            ? AzureOpenAI_CLI.Eval.Corpora.TryLoad(opts.EvalCorpus!, out suite, out loadError)
+            : AzureOpenAI_CLI.Eval.EvalSuiteLoader.TryLoad(opts.EvalSuite ?? "", out suite, out loadError);
+        if (!loaded)
         {
             return ErrorAndExit("eval: " + loadError, 2, jsonMode: opts.Json);
         }
@@ -4540,18 +4616,25 @@ complete -c az-ai -w az-ai
         }
 
         // Personas load lazily: a suite with no persona fixtures needs no .squad.json.
+        // ./.squad.json wins when present (so a project can eval its own personas); otherwise the
+        // built-in defaults, so a corpus run is hermetic in CI. The report says which was used.
         AzureOpenAI_CLI.Squad.SquadConfig? squad = null;
-        var squadLoaded = false;
+        string? personaSource = null;
         AzureOpenAI_CLI.Eval.PersonaResolver personas = (string name, out string? prompt) =>
         {
-            if (!squadLoaded) { squad = AzureOpenAI_CLI.Squad.SquadConfig.Load(); squadLoaded = true; }
+            if (personaSource is null)
+            {
+                squad = AzureOpenAI_CLI.Squad.SquadConfig.Load();
+                personaSource = squad is not null ? "./.squad.json" : "built-in defaults";
+                squad ??= AzureOpenAI_CLI.Squad.SquadInitializer.CreateDefaultConfig();
+            }
             prompt = squad?.GetPersona(name)?.SystemPrompt;
             return prompt is not null;
         };
 
         var report = await AzureOpenAI_CLI.Eval.EvalRunner.RunAsync(
             suite!, model, call, personas, opts.FailUnder, opts.EvalFilter,
-            opts.TimeoutSeconds, CancellationToken.None);
+            opts.TimeoutSeconds, CancellationToken.None, () => personaSource);
 
         if (opts.Json)
         {

@@ -143,6 +143,7 @@ Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) -- ide
 | `--prefer <cost\|latency\|quality>` | When `AZUREOPENAIMODEL` lists several models, pick by that axis instead of taking the first. Needs tier data in the model registry (a stock install has cost tiers only). `--model` wins over `--prefer`. |
 | `--why-this-model [--json]` | Print which model would be used and why, then exit. No credentials, no network, no tokens. |
 | `az-ai eval <suite.json>` | Run a prompt-fixture suite and score its deterministic assertions. Exit `0` pass, `1` fail (including a suite that grades nothing, or any safety failure), `2` unusable suite. Supports `--json`, `--fail-under <pct>`, `--filter <substr>`, and `--model`/`--prefer`. |
+| `az-ai eval --corpus <name>` / `--list-corpora [--json]` | Run one of the built-in corpora (`smoke`, `persona-voice`, `refusal`) with no file, or list them. Same scoring, exit codes and flags as `az-ai eval <suite.json>`. |
 | `--config <path>` | Use an alternate config file instead of `./.azureopenai-cli.json` or `~/.azureopenai-cli.json`. |
 | `--config set/get/list/reset/show` | Full CRUD for the persistent user config (e.g. `az-ai --config set defaults.temperature=0.3`). |
 | `--completions <bash\|zsh\|fish>` | Emit a shell-completion script to stdout. Source it or drop it into your completions dir. |
@@ -365,6 +366,23 @@ Result: PASS
 ```
 
 The policy is deliberately strict: a suite that grades nothing **fails** (never a green "0 of 0"), a fixture that errors counts against the score, and a safety fixture (one with a `safety_assertion`) that fails or cannot be verified blocks the run regardless of `--fail-under`. Freeform `expected_traits` are reported as *ungraded*: judging them needs a human or an LLM, and `az-ai eval` does not pretend otherwise. Full schema and policy: [`docs/prompts/eval-harness.md`](docs/prompts/eval-harness.md). The command calls your configured model, so it spends tokens; a bad suite is rejected before any call is made.
+
+#### Built-in corpora (S04E11 *The Corpus*)
+
+Three suites ship inside the binary, so you can validate a provider or model with no file path:
+
+```bash
+$ az-ai eval --list-corpora
+Built-in corpora (run with: az-ai eval --corpus <name>)
+  smoke           7 fixtures,  0 safety,  2603 bytes -- Does this deployment work at all? ...
+  persona-voice  10 fixtures,  0 safety,  5124 bytes -- Does each built-in persona still sound like itself? ...
+  refusal         8 fixtures,  8 safety,  5349 bytes -- Does the safety clause fire? ...
+$ az-ai eval --corpus smoke
+```
+
+`smoke` is the first thing to run against a new model. `persona-voice` checks that each built-in persona keeps the promises its own prompt makes (the reviewer cites line numbers, security classifies by severity, the architect documents trade-offs); personas come from `./.squad.json` when present, else the built-in defaults, and the report says which. `refusal` is the safety contract: every fixture is a safety fixture, so any failure blocks regardless of `--fail-under`.
+
+The corpora are small (about 13 KiB in total, capped by a test), synthetic (no user prompts, reserved `.invalid` hosts and TEST-NET addresses only) and graded by deterministic assertions only. **A passing score means the assertions held, not that the answer was good**, and model output is not bit-stable even at temperature 0, so the assertions tolerate phrasing. Pass rates against a live model have not been measured yet.
 
 ### Makefile targets
 

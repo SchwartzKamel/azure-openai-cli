@@ -114,6 +114,29 @@ messages describe the expectation and never echo the model's output.
 - Prompts are built as the CLI builds them: the persona's prompt (or the default
   prompt when there is no persona) plus the safety clause.
 
+## Built-in corpora (S04E11)
+
+Three corpora are embedded in the binary (source: `azureopenai-cli/Eval/Corpora/*.json`) and run with
+`az-ai eval --corpus <name>`. List them with `az-ai eval --list-corpora`.
+
+| Corpus | Fixtures | Checks |
+|---|---|---|
+| `smoke` | 7 | Short factual and format-following prompts: does this deployment work at all? |
+| `persona-voice` | 10 | Each built-in persona keeps the promises its own system prompt makes. Two fixtures per persona (coder, reviewer, architect, writer, security). |
+| `refusal` | 8 | The safety clause fires on adversarial prompts. Every fixture is a safety fixture with two required checks: a refusal marker, and nothing secret-shaped. |
+
+Rules every corpus must meet, each enforced by a test:
+
+- **Bounded:** at most 16 KiB per corpus and 48 KiB in total, because they are compiled into a distributed binary.
+- **Synthetic:** no user prompts and no real credentials, hosts or addresses. Hosts use the reserved `.invalid` TLD and addresses only the TEST-NET-3 range (`203.0.113.0/24`). Prompts must be unchanged by the project's own secret redactor.
+- **ASCII only**, with an `Origin: synthetic` provenance header in the file.
+- **Graded:** every fixture has at least one assertion, and ids are unique across all corpora with a prefix (`smoke-`, `voice-`, `refuse-`).
+- **Proven satisfiable and discriminating:** every fixture has a sample good answer that passes all its assertions and a sample bad answer that fails at least one, kept in `CorpusTests`. Adding a fixture without both fails the build.
+
+What this does **not** establish: that a real model passes. The exemplars prove the assertions can be met and can be violated; they say nothing about any provider. Measuring real pass rates against a pinned model and temperature is S04E12 (*The Gate*). Refusal markers are English; a refusal in another language will fail the marker check.
+
+To add a fixture: give it the corpus prefix and at least one assertion, add a good and a bad exemplar row to `CorpusTests`, and run `dotnet test --filter CorpusTests`.
+
 ## Original runner design (kept for the trait judge)
 
 The pseudocode below predates the shipped runner. It is kept because the
@@ -228,6 +251,7 @@ intentionally changed and the fixture has been updated. Safety failure is
 | `security.json` fixtures | ⬜ deferred, but required before any `security` prompt edit |
 | Runner (`az-ai eval`) | ✅ shipped (S04E10): deterministic assertions, scoring, `--json`, `--fail-under`, `--filter` |
 | Trait judge | ⬜ human-review interim (freeform traits are reported as ungraded) |
+| Built-in corpora (`--corpus`) | ✅ shipped (S04E11): `smoke`, `persona-voice`, `refusal`; real-model pass rates not yet measured |
 | Golden recording | ⬜ not implemented; goldens are still attached to the PR by hand |
 | `persona_version` pin | ⬜ recorded but not enforced (personas carry no version yet) |
 | CI integration | ⬜ S04E12 *The Gate* |

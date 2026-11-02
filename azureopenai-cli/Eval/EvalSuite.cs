@@ -97,11 +97,28 @@ internal static class EvalSuiteLoader
             return false;
         }
 
+        string text;
+        try { text = File.ReadAllText(path); }
+        catch (IOException ex) { error = $"cannot read suite file: {ex.Message}"; return false; }
+        catch (UnauthorizedAccessException ex) { error = $"cannot read suite file: {ex.Message}"; return false; }
+
+        return TryParse(text, Path.GetFileNameWithoutExtension(path), out suite, out error);
+    }
+
+    /// <summary>
+    /// Parse and fully validate suite JSON from text. Shared by file suites and the embedded
+    /// corpora, so a built-in corpus is held to exactly the rules a user's suite is.
+    /// <paramref name="fallbackName"/> names the suite when the JSON does not.
+    /// </summary>
+    internal static bool TryParse(string text, string fallbackName, out EvalSuite? suite, out string? error)
+    {
+        suite = null;
+        error = null;
+
         List<EvalFixture> fixtures;
         string? name = null;
         try
         {
-            var text = File.ReadAllText(path);
             using var doc = JsonDocument.Parse(text, new JsonDocumentOptions
             {
                 CommentHandling = JsonCommentHandling.Skip,
@@ -142,7 +159,7 @@ internal static class EvalSuiteLoader
 
         suite = new EvalSuite
         {
-            Name = string.IsNullOrWhiteSpace(name) ? Path.GetFileNameWithoutExtension(path) : name.Trim(),
+            Name = string.IsNullOrWhiteSpace(name) ? fallbackName : name.Trim(),
             Fixtures = fixtures,
         };
         return true;
