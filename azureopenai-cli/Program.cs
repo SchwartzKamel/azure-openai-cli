@@ -30,7 +30,7 @@ internal class Program
     /// </summary>
     internal const float RALPH_VALIDATE_TEMPERATURE = 0.15f;
     private const int DEFAULT_MAX_TOKENS = 10000;
-    private const string DEFAULT_SYSTEM_PROMPT = "You are a secure, concise CLI assistant. Keep answers factual, no fluff.";
+    internal const string DEFAULT_SYSTEM_PROMPT = "You are a secure, concise CLI assistant. Keep answers factual, no fluff.";
 
     /// <summary>
     /// ADR-009: canonical hardcoded fallback when no CLI flag, no AZUREOPENAIMODEL env,
@@ -152,7 +152,10 @@ internal class Program
         bool DryRun = false,         // --dry-run
         bool RecoverStale = false,   // --recover-stale
         string? Prefer = null,       // --prefer <cost|latency|quality> (S04E09)
-        bool WhyThisModel = false    // --why-this-model (S04E09)
+        bool WhyThisModel = false,   // --why-this-model (S04E09)
+        string? EvalSuite = null,    // `az-ai eval <suite.json>` (S04E10)
+        double FailUnder = 100.0,    // --fail-under <0..100> (S04E10)
+        string? EvalFilter = null    // --filter <id-substring> (S04E10)
     );
 
     private static async Task<int> Main(string[] args)
@@ -387,6 +390,12 @@ internal class Program
         if (!string.IsNullOrEmpty(opts.QueueSubcommand))
         {
             return await HandleQueueSubcommandAsync(opts, userConfig);
+        }
+
+        // S04E10 -- `az-ai eval <suite.json>`: score a fixture suite with deterministic assertions.
+        if (!string.IsNullOrEmpty(opts.EvalSuite))
+        {
+            return await HandleEvalAsync(opts, userConfig);
         }
 
         // FR-013 Phase 1: `az-ai mcp tools <server-cmd>` or `az-ai mcp call <server-cmd> <tool> [json-args]`
@@ -1573,6 +1582,9 @@ internal class Program
         var mcpServers = new List<string>();
         string? prefer = null;
         bool whyThisModel = false;
+        string? evalSuite = null;
+        double failUnder = 100.0;
+        string? evalFilter = null;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -1950,6 +1962,19 @@ internal class Program
                 case "--why-this-model":
                     whyThisModel = true;
                     break;
+                // S04E10 -- The Score. Options for `az-ai eval <suite.json>`.
+                case "--fail-under":
+                    if (i + 1 < args.Length
+                        && double.TryParse(args[i + 1], System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out var fu)
+                        && fu >= 0 && fu <= 100)
+                    { failUnder = fu; i++; }
+                    else { Fail("--fail-under requires a number from 0 to 100"); }
+                    break;
+                case "--filter":
+                    if (i + 1 < args.Length) { evalFilter = args[++i]; }
+                    else { Fail("--filter requires an id substring"); }
+                    break;
                 case "--estimate":
                 case "--dry-run-cost":
                     estimate = true;
@@ -2103,6 +2128,19 @@ internal class Program
                             }
                         }
                         Fail("'mcp' subcommand requires 'serve', 'tools', or 'call' (usage: az-ai mcp serve | az-ai mcp tools <cmd> | az-ai mcp call <cmd> <tool> [json])");
+                        break;
+                    }
+                    // S04E10 -- `az-ai eval <suite.json>`. Narrow on purpose: only when it is the first
+                    // positional AND the next token ends in .json, so a prompt that merely starts with
+                    // the word "eval" is still a prompt.
+                    if (string.Equals(arg, "eval", StringComparison.OrdinalIgnoreCase)
+                        && !afterDoubleDash
+                        && positionalArgs.Count == 0
+                        && string.IsNullOrEmpty(evalSuite)
+                        && i + 1 < args.Length
+                        && args[i + 1].EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        evalSuite = args[++i];
                         break;
                     }
                     if ((string.Equals(arg, "queue", StringComparison.OrdinalIgnoreCase)
@@ -2375,6 +2413,9 @@ internal class Program
             RecoverStale = recoverStale,
             Prefer = prefer,
             WhyThisModel = whyThisModel,
+            EvalSuite = evalSuite,
+            FailUnder = failUnder,
+            EvalFilter = evalFilter,
             Plain = plain,
             Offline = offline,
             Provider = provider,
@@ -2566,7 +2607,7 @@ internal class Program
 
                         // Per-task routing goes through the SAME seam the main chat flow uses
                         // (BuildChatClient): a task's model may be a "preset:model" entry in
-                        // AZ_AI_COMPAT_MODELS or AZ_AI_FOUNDRY_MODELS, so every provider guardrail
+                        // AZ_AI_COMPAT_MODELS or AZURE_FOUNDRY_MODELS, so every provider guardrail
                         // (offline mode, endpoint allowlist, capability gate) applies to queued work
                         // exactly as it does to a one-shot invocation. No parallel provider stack.
                         var qEndpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
@@ -3446,7 +3487,7 @@ internal class Program
     /// API key / model triple. Dispatches to one of:
     /// <list type="bullet">
     ///   <item><b>Foundry / GitHub Models</b>: when the model appears in the
-    ///     <c>AZ_AI_FOUNDRY_MODELS</c> allowlist.</item>
+    ///     <c>AZURE_FOUNDRY_MODELS</c> allowlist.</item>
     ///   <item><b>OpenAI-compat allowlist</b>: when the model appears as
     ///     <c>preset:model</c> in <c>AZ_AI_COMPAT_MODELS</c>, routes through
     ///     <see cref="OpenAiCompatAdapter"/> using the named preset (openai,
@@ -4202,6 +4243,14 @@ Prompt Cache (FR-008, opt-in):
   --cache-ttl <hours>       Cache entry lifetime in hours (env: AZ_CACHE_TTL_HOURS,
                             default: 168 = 7 days).
 
+Prompt Eval (S04E10):
+  az-ai eval <suite.json>   Run a fixture suite and score its deterministic assertions
+                            (supports --json; --model/--prefer pick the model)
+  --fail-under <pct>        Minimum score to pass, 0-100 (default: 100). Does not apply to
+                            safety fixtures, which block on any failure.
+  --filter <substr>         Run only fixtures whose id contains <substr>
+                            Exit: 0 pass, 1 fail (or nothing graded), 2 unusable suite.
+
 Cost Estimator (FR-015, no API call):
   --estimate                Print estimated USD cost for the prompt and exit
   --estimate-with-output <n>  Include worst-case output cost for n completion tokens
@@ -4270,7 +4319,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-serve --allow-shell --read-only""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-serve --allow-shell --read-only --fail-under --filter""
 
     case ""${prev}"" in
         --completions)
@@ -4355,6 +4404,8 @@ _az-ai() {
         '--mcp-serve[Run as an MCP stdio server]'
         '--allow-shell[Allow shell tool over MCP]'
         '--read-only[Read-only MCP server]'
+        '--fail-under[Eval minimum score]:pct:'
+        '--filter[Eval fixture id filter]:substr:'
     )
     _arguments -s $opts
 }
@@ -4413,6 +4464,8 @@ complete -c az-ai -l mcp-server -d 'Connect to an MCP stdio server' -r
 complete -c az-ai -l mcp-serve -d 'Run as an MCP stdio server'
 complete -c az-ai -l allow-shell -d 'Allow shell tool over MCP'
 complete -c az-ai -l read-only -d 'Read-only MCP server'
+complete -c az-ai -l fail-under -d 'Eval minimum score' -r
+complete -c az-ai -l filter -d 'Eval fixture id filter' -r
 complete -c az-ai -w az-ai
 ";
 
@@ -4430,6 +4483,89 @@ complete -c az-ai -w az-ai
     }
 
     // ── Model-alias commands (FR-010) ──────────────────────────────────────────
+
+    /// <summary>
+    /// S04E10 -- <c>az-ai eval &lt;suite.json&gt;</c>. Loads and validates the suite BEFORE any model
+    /// call (a bad suite costs no tokens), runs each fixture the way the CLI would, and scores it.
+    /// Exit codes: 0 pass; 1 fail (including a suite that grades nothing, or a safety failure);
+    /// 2 unusable suite or arguments. <paramref name="callOverride"/> is the offline test seam.
+    /// </summary>
+    internal static async Task<int> HandleEvalAsync(
+        CliOptions opts, UserConfig userConfig, AzureOpenAI_CLI.Eval.EvalModelCall? callOverride = null)
+    {
+        if (!AzureOpenAI_CLI.Eval.EvalSuiteLoader.TryLoad(opts.EvalSuite ?? "", out var suite, out var loadError))
+        {
+            return ErrorAndExit("eval: " + loadError, 2, jsonMode: opts.Json);
+        }
+
+        var decision = AzureOpenAI_CLI.Resolution.ModelDecisionExplainer.Decide(
+            new AzureOpenAI_CLI.Resolution.ArrayModelRegistry(
+                RegistryEntries ?? Array.Empty<Registry.ModelRegistryEntry>()),
+            explicitModel: userConfig.ResolveModel(opts.Model),
+            preferAxis: opts.Prefer,
+            allowlist: PickerAllowlist(),
+            configDefault: userConfig.ResolveSmartDefault(),
+            hardFallback: DefaultModelFallback);
+        var model = decision.Model;
+
+        var call = callOverride;
+        if (call is null)
+        {
+            var endpoint = Environment.GetEnvironmentVariable("AZUREOPENAIENDPOINT");
+            if (string.IsNullOrWhiteSpace(endpoint)) endpoint = userConfig.Endpoint;
+            var apiKey = Environment.GetEnvironmentVariable("AZUREOPENAIAPI");
+            if (string.IsNullOrWhiteSpace(apiKey)) apiKey = userConfig.ApiKey;
+            if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(apiKey))
+            {
+                return ErrorAndExit(
+                    "eval: AZUREOPENAIENDPOINT / AZUREOPENAIAPI not set. Run 'az-ai --setup'.",
+                    1, jsonMode: opts.Json);
+            }
+
+            var client = BuildChatClient(endpoint, apiKey, model, jsonMode: false);
+            if (client is null) return 1; // BuildChatClient already reported why
+
+            call = async (system, user, temperature, maxTokens, ct) =>
+            {
+                var response = await client.GetResponseAsync(
+                    new[]
+                    {
+                        new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.System, system),
+                        new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.User, user),
+                    },
+                    BuildModernChatOptions(temperature, maxTokens),
+                    ct);
+                return response.Text ?? string.Empty;
+            };
+        }
+
+        // Personas load lazily: a suite with no persona fixtures needs no .squad.json.
+        AzureOpenAI_CLI.Squad.SquadConfig? squad = null;
+        var squadLoaded = false;
+        AzureOpenAI_CLI.Eval.PersonaResolver personas = (string name, out string? prompt) =>
+        {
+            if (!squadLoaded) { squad = AzureOpenAI_CLI.Squad.SquadConfig.Load(); squadLoaded = true; }
+            prompt = squad?.GetPersona(name)?.SystemPrompt;
+            return prompt is not null;
+        };
+
+        var report = await AzureOpenAI_CLI.Eval.EvalRunner.RunAsync(
+            suite!, model, call, personas, opts.FailUnder, opts.EvalFilter,
+            opts.TimeoutSeconds, CancellationToken.None);
+
+        if (opts.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(report, AppJsonContext.Default.EvalReport));
+        }
+        else
+        {
+            foreach (var line in AzureOpenAI_CLI.Eval.EvalRunner.Render(report))
+            {
+                Console.WriteLine(line);
+            }
+        }
+        return report.Passing ? 0 : 1;
+    }
 
     /// <summary>AZUREOPENAIMODEL entries in typed order; empty when unset.</summary>
     private static string[] PickerAllowlist()

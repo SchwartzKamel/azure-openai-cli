@@ -152,6 +152,10 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | russell-2026-11-R-1 | [s04e09-the-override.md](exec-reports/s04e09-the-override.md) | MEDIUM | open | Maestro + Kramer | Stock registry has `costTier` only, so `--prefer latency` and `--prefer quality` have no data to rank on a fresh install (the flag reports this in a `Note:` line, but cannot help) | 2026-11-01 |
 | russell-2026-11-R-2 | [s04e09-the-override.md](exec-reports/s04e09-the-override.md) | LOW | open | Costanza | No env var or config key for a default `--prefer`; a user who always wants the cheapest model must type the flag every call | 2026-11-01 |
 | sue-ellen-2026-11-S-1 | [s04e09-the-override.md](exec-reports/s04e09-the-override.md) | INFO | open | Sue Ellen | `docs/competitive-analysis.md` is silent on how other CLIs expose model-preference flags, so S04E09 made no competitive claim | 2026-11-01 |
+| newman-2026-11-N-3 | [s04e10-the-score.md](exec-reports/s04e10-the-score.md) | MEDIUM | open | Newman | `SecretRedactor` does not recognise a bare `sk-...` key in free text (it covers Bearer, api-key headers, env assignments, URL credentials and secret-named fields), so a provider error that echoes one would pass through | 2026-11-01 |
+| maestro-2026-11-M-1 | [s04e10-the-score.md](exec-reports/s04e10-the-score.md) | LOW | open | Maestro | Trait judge not implemented: freeform `expected_traits` / `forbidden_traits` are reported ungraded; only `assertions` are scored | 2026-11-01 |
+| maestro-2026-11-M-2 | [s04e10-the-score.md](exec-reports/s04e10-the-score.md) | LOW | open | Maestro + Kramer | `persona_version` is recorded in fixtures but not enforced, because personas carry no version | 2026-11-01 |
+| maestro-2026-11-M-3 | [s04e10-the-score.md](exec-reports/s04e10-the-score.md) | INFO | open | Maestro | No golden recording (`--save-output`): before/after goldens required by the design doc are still attached to PRs by hand | 2026-11-01 |
 
 ## Resolved (last 90 days)
 
@@ -172,6 +176,7 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | lloyd-2026-11-L-1 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | HIGH | resolved | Elaine + Newman | README key-storage table promised DPAPI / macOS Keychain / libsecret encryption that is not implemented (FR-023 is still Proposed); corrected to describe the plaintext `0600` files the code writes | 2026-11-01 |
 | lloyd-2026-11-L-2 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | MEDIUM | resolved | Elaine | README and `docs/onboarding.md` told newcomers to run `az-ai --init`, which fails with "unknown flag"; replaced with `--setup` | 2026-11-01 |
 | kramer-2026-11-K-1 | [s04e09-the-override.md](exec-reports/s04e09-the-override.md) | LOW | resolved | Kramer | Shell completions (bash, zsh, fish) omitted the agent-interop flags merged earlier (`--jsonl`, `--code`, `--list-tools`, `--plugin-dir`, `--pattern`, `--mcp-server`, ...); added with the S04E09 flags | 2026-11-01 |
+| kramer-2026-11-K-2 | [s04e10-the-score.md](exec-reports/s04e10-the-score.md) | LOW | resolved | Kramer | Two code comments named `AZ_AI_FOUNDRY_MODELS`; the implementation reads `AZURE_FOUNDRY_MODELS` (one comment was copied into the queue code in #17) | 2026-11-01 |
 
 ## Deferred / wontfix
 

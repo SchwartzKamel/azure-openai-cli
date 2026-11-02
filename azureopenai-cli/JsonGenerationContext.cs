@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using AzureOpenAI_CLI.Cache;
 using AzureOpenAI_CLI.Commander;
+using AzureOpenAI_CLI.Eval;
 using AzureOpenAI_CLI.Mcp;
 using AzureOpenAI_CLI.Patterns;
 using AzureOpenAI_CLI.Registry;
@@ -138,6 +139,9 @@ internal record JsonlStreamEvent(
 [JsonSerializable(typeof(UnknownFlagDetail))]
 [JsonSerializable(typeof(ChatJsonResponse))]
 [JsonSerializable(typeof(ModelDecision))]
+[JsonSerializable(typeof(EvalSuiteFile))]
+[JsonSerializable(typeof(List<EvalFixture>))]
+[JsonSerializable(typeof(EvalReport))]
 [JsonSerializable(typeof(ExportEnvJson))]
 [JsonSerializable(typeof(AzureOpenAI_CLI.Observability.EstimateResult))]
 // ── FR-008 prompt/response cache ────────────────────────────────

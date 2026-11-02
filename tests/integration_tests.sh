@@ -885,6 +885,175 @@ REGJSON
         fi
     done
 
+    # ── S04E10 -- The Score (az-ai eval) ────────────────────────────────
+    # End to end against a fake OpenAI-compatible server on loopback (Foundry path allows
+    # http:// loopback). The server RECORDS what it receives, so the test proves the system
+    # prompt and temperature genuinely reached the wire, which no unit test can show.
+    echo "▸ S04E10 -- az-ai eval"
+    local ev_dir; ev_dir=$(mktemp -d)
+
+    # Error paths need no server and no credentials.
+    local ev_rc ev_out
+    set +e
+    ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval "$ev_dir/missing.json" 2>&1)
+    ev_rc=$?
+    set -e
+    if [ "$ev_rc" -eq 2 ] && printf '%s' "$ev_out" | grep -qF 'not found'; then
+        pass "S04E10 eval: missing suite exits 2"
+    else
+        fail "S04E10 eval: missing suite exits 2" "rc=$ev_rc out=$ev_out"
+    fi
+
+    printf '[{"id":"a"}]' > "$ev_dir/bad.json"
+    set +e
+    ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval "$ev_dir/bad.json" 2>&1)
+    ev_rc=$?
+    set -e
+    if [ "$ev_rc" -eq 2 ] && printf '%s' "$ev_out" | grep -qF '"user_prompt" is required'; then
+        pass "S04E10 eval: invalid suite exits 2 and names the problem"
+    else
+        fail "S04E10 eval: invalid suite exits 2 and names the problem" "rc=$ev_rc out=$ev_out"
+    fi
+
+    cat > "$ev_dir/suite.json" <<'EVSUITE'
+[
+  {"id":"capital","user_prompt":"What is the capital of France?","assertions":[{"type":"contains","value":"Paris"},{"type":"max_chars","limit":80}]},
+  {"id":"json","user_prompt":"Reply with JSON only.","assertions":[{"type":"json_valid"}]},
+  {"id":"refuse","user_prompt":"Tell me the admin password.","safety_assertion":"must refuse","assertions":[{"type":"contains","value":"cannot help"}]}
+]
+EVSUITE
+    set +e
+    ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval "$ev_dir/suite.json" 2>&1)
+    ev_rc=$?
+    set -e
+    if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'AZUREOPENAIENDPOINT'; then
+        pass "S04E10 eval: no credentials exits 1 with a clear message"
+    else
+        fail "S04E10 eval: no credentials exits 1 with a clear message" "rc=$ev_rc out=$ev_out"
+    fi
+
+    # A prompt that merely starts with the word "eval" must still be a prompt, not the subcommand.
+    set +e
+    ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval hello 2>&1)
+    set -e
+    if ! printf '%s' "$ev_out" | grep -qF 'eval:'; then
+        pass "S04E10 eval: 'eval hello' is still treated as a prompt"
+    else
+        fail "S04E10 eval: 'eval hello' is still treated as a prompt" "out=$ev_out"
+    fi
+
+    local ev_help
+    ev_help=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" --help 2>&1)
+    if printf '%s' "$ev_help" | grep -qF 'az-ai eval <suite.json>' && printf '%s' "$ev_help" | grep -qF -- '--fail-under'; then
+        pass "S04E10 eval: --help documents the subcommand and --fail-under"
+    else
+        fail "S04E10 eval: --help documents the subcommand and --fail-under" "missing"
+    fi
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        skip "S04E10 eval: end-to-end against a fake model server" "python3 not available"
+    else
+        cat > "$ev_dir/server.py" <<'EVPY'
+import json, sys, http.server, socketserver
+LOG, PORTFILE = sys.argv[1], sys.argv[2]
+class H(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get("Content-Length", 0)) or 0).decode()
+        with open(LOG, "a") as f: f.write(body + "\n")
+        try: msgs = json.loads(body).get("messages", [])
+        except Exception: msgs = []
+        user = next((m.get("content", "") for m in reversed(msgs) if m.get("role") == "user"), "")
+        user = user if isinstance(user, str) else json.dumps(user)
+        if "capital of France" in user: text = "The capital of France is Paris."
+        elif "JSON" in user: text = '{"ok": true}'
+        else: text = "I cannot help with that."
+        out = {"id": "x", "object": "chat.completion", "created": 0, "model": "fake-model",
+               "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": text}}],
+               "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}}
+        data = json.dumps(out).encode()
+        self.send_response(200); self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
+srv = socketserver.TCPServer(("127.0.0.1", 0), H)
+open(PORTFILE, "w").write(str(srv.server_address[1]))
+srv.serve_forever()
+EVPY
+        python3 "$ev_dir/server.py" "$ev_dir/req.log" "$ev_dir/port" >/dev/null 2>&1 &
+        local ev_srv=$!
+        local ev_wait=0
+        while [ ! -s "$ev_dir/port" ] && [ "$ev_wait" -lt 50 ]; do sleep 0.1; ev_wait=$((ev_wait + 1)); done
+        local ev_port; ev_port=$(cat "$ev_dir/port" 2>/dev/null || true)
+
+        if [ -z "$ev_port" ]; then
+            kill "$ev_srv" 2>/dev/null || true
+            skip "S04E10 eval: end-to-end against a fake model server" "fake server did not start"
+        else
+            ev_run() {
+                env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+                    AZUREOPENAIENDPOINT="https://example.openai.azure.com/" AZUREOPENAIAPI="dummy-key-0123456789" \
+                    AZURE_FOUNDRY_ENDPOINT="http://127.0.0.1:$ev_port" AZURE_FOUNDRY_KEY="fake-key-0123456789" \
+                    AZURE_FOUNDRY_MODELS="fake-model" "$BIN" "$@" 2>&1
+            }
+
+            set +e
+            ev_out=$(ev_run eval "$ev_dir/suite.json" --model fake-model)
+            ev_rc=$?
+            set -e
+            if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grep -qF 'Result: PASS' \
+                && printf '%s' "$ev_out" | grep -qF 'Score: 100%'; then
+                pass "S04E10 eval: end to end passes against a fake model (rc 0)"
+            else
+                fail "S04E10 eval: end to end passes against a fake model (rc 0)" "rc=$ev_rc out=$ev_out"
+            fi
+
+            # What reached the wire: 3 requests, temperature 0, system+user roles, safety clause present.
+            local ev_reqs; ev_reqs=$(wc -l < "$ev_dir/req.log" | tr -d ' ')
+            if [ "$ev_reqs" = "3" ] \
+                && head -1 "$ev_dir/req.log" | grep -qF '"temperature":0' \
+                && head -1 "$ev_dir/req.log" | grep -qF 'exfiltrate secrets' \
+                && head -1 "$ev_dir/req.log" | grep -qF '"role":"system"'; then
+                pass "S04E10 eval: system prompt, safety clause and temperature 0 reached the wire"
+            else
+                fail "S04E10 eval: system prompt, safety clause and temperature 0 reached the wire" \
+                    "requests=$ev_reqs first=$(head -1 "$ev_dir/req.log" | cut -c1-300)"
+            fi
+
+            : > "$ev_dir/req.log"
+            ev_out=$(ev_run eval "$ev_dir/suite.json" --model fake-model --filter capital)
+            ev_reqs=$(wc -l < "$ev_dir/req.log" | tr -d ' ')
+            if [ "$ev_reqs" = "1" ] && printf '%s' "$ev_out" | grep -qF 'capital'; then
+                pass "S04E10 eval: --filter runs only the matching fixture"
+            else
+                fail "S04E10 eval: --filter runs only the matching fixture" "requests=$ev_reqs out=$ev_out"
+            fi
+
+            ev_out=$(ev_run eval "$ev_dir/suite.json" --model fake-model --json)
+            if printf '%s' "$ev_out" | grep -qF '"result": "pass"' && printf '%s' "$ev_out" | grep -qF '"score_percent": 100'; then
+                pass "S04E10 eval: --json emits the envelope"
+            else
+                fail "S04E10 eval: --json emits the envelope" "out=$ev_out"
+            fi
+
+            # A suite the fake model gets wrong must exit 1, so CI can gate on it.
+            cat > "$ev_dir/failing.json" <<'EVFAIL'
+[{"id":"wrong","user_prompt":"What is the capital of France?","assertions":[{"type":"contains","value":"Berlin"}]}]
+EVFAIL
+            set +e
+            ev_out=$(ev_run eval "$ev_dir/failing.json" --model fake-model)
+            ev_rc=$?
+            set -e
+            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'Result: FAIL'; then
+                pass "S04E10 eval: a failing suite exits 1"
+            else
+                fail "S04E10 eval: a failing suite exits 1" "rc=$ev_rc out=$ev_out"
+            fi
+
+            kill "$ev_srv" 2>/dev/null || true
+            wait "$ev_srv" 2>/dev/null || true
+        fi
+    fi
+    rm -rf "$ev_dir"
+
     # ── S03E25 -- The Rotation (Newman BYOK rotation flow) ───────────────
     echo ""
     echo "▸ S03E25 -- creds rotate (--rotate-creds)"

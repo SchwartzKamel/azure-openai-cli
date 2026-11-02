@@ -2,9 +2,11 @@
 
 > *"A prompt is a score. A score without rehearsal is a noise complaint waiting to happen."* -- Maestro
 
-**Status:** design-only. This document specifies the shape. The runner does
-not yet exist. Future agents: do not ship a persona prompt change without
-landing this harness first *or* attaching before/after goldens manually.
+**Status:** the deterministic half is shipped as `az-ai eval <suite.json>`
+(S04E10 *The Score*). The trait judge is not: freeform `expected_traits` are
+still graded by a human. Future agents: do not ship a persona prompt change
+without attaching before/after goldens, and run `az-ai eval` over any suite
+that carries `assertions`.
 
 ## Goal
 
@@ -64,7 +66,58 @@ Fields:
 | `forbidden_traits` | no | Properties the output must **not** exhibit. |
 | `safety_assertion` | no | For adversarial fixtures: the refusal behavior that must appear. `null` for non-adversarial cases. |
 
-## Runner shape (not yet implemented)
+## Running a suite (`az-ai eval`)
+
+```bash
+az-ai eval examples/eval/smoke.json              # text report, exit 0 only if everything passes
+az-ai eval suite.json --json                     # machine envelope
+az-ai eval suite.json --fail-under 90            # allow up to 10% of graded fixtures to fail
+az-ai eval suite.json --filter coder             # only fixtures whose id contains "coder"
+az-ai eval suite.json --model gpt-4o --prefer cost   # same model selection as the CLI
+```
+
+Exit codes: `0` pass, `1` fail, `2` unusable suite (bad JSON, unknown assertion
+type, duplicate id, ...). A suite is validated **before** any model call, so a
+typo costs no tokens.
+
+### `assertions` (new, deterministic)
+
+Each fixture may carry `assertions`: structural checks scored without a judge.
+Everything in the format above still applies; `assertions` is purely additive,
+so existing fixtures load unchanged.
+
+| `type` | Fields | Passes when |
+|---|---|---|
+| `contains` / `not_contains` | `value`, `ignore_case` | the text is (not) present |
+| `starts_with` | `value`, `ignore_case` | the output, trimmed at the start, begins with it |
+| `regex` / `not_regex` | `value`, `ignore_case` | the pattern does (not) match; a pattern that times out FAILS |
+| `min_chars` / `max_chars` | `limit` | the length is at least / at most `limit` |
+| `json_valid` | none | the output parses as JSON (one fenced block is allowed) |
+
+An unknown `type` is a schema error (exit 2), never a silent pass. Failure
+messages describe the expectation and never echo the model's output.
+
+### Scoring policy
+
+- **Score** is graded fixtures that passed, over graded fixtures. A fixture with
+  no `assertions` is **ungraded**: reported, with how many traits wait on a
+  judge, but not counted.
+- **No vacuous pass.** A suite that grades nothing FAILS (`nothing was graded`).
+  "0 of 0" is never green.
+- **Errors count against the score.** A fixture that cannot run (persona not
+  found, provider error, timeout) is graded and failed, not skipped, so an
+  outage cannot score 100%.
+- **Safety fails closed.** A fixture with a non-null `safety_assertion` is a
+  safety fixture. If it fails, errors, or has no `assertions` to verify it with,
+  the run fails regardless of `--fail-under`. No override, no waiver.
+- **Deterministic by default.** A fixture with no `temperature` runs at `0.0`.
+- Prompts are built as the CLI builds them: the persona's prompt (or the default
+  prompt when there is no persona) plus the safety clause.
+
+## Original runner design (kept for the trait judge)
+
+The pseudocode below predates the shipped runner. It is kept because the
+`trait_judge` is still the deferred hard problem.
 
 Target location: `tests/AzureOpenAI_CLI.V2.Tests/Prompts/` (parallel to the
 rest of V2 test tree).
@@ -173,8 +226,10 @@ intentionally changed and the fixture has been updated. Safety failure is
 | `coder.json` fixtures | ✅ 3 seed cases ([`./fixtures/coder.json`](./fixtures/coder.json)) |
 | `reviewer.json` fixtures | ⬜ deferred to first `reviewer` prompt change |
 | `security.json` fixtures | ⬜ deferred, but required before any `security` prompt edit |
-| Runner | ⬜ not implemented |
-| Trait judge | ⬜ human-review interim |
-| CI integration | ⬜ gated on runner |
+| Runner (`az-ai eval`) | ✅ shipped (S04E10): deterministic assertions, scoring, `--json`, `--fail-under`, `--filter` |
+| Trait judge | ⬜ human-review interim (freeform traits are reported as ungraded) |
+| Golden recording | ⬜ not implemented; goldens are still attached to the PR by hand |
+| `persona_version` pin | ⬜ recorded but not enforced (personas carry no version yet) |
+| CI integration | ⬜ S04E12 *The Gate* |
 
 -- *Maestro. From the top.*
