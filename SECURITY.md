@@ -158,8 +158,13 @@ secrets; the *output* is the safe form to emit.
   the UserConfig file (`~/.azureopenai-cli.json`) with `chmod 600`.**
 - Logs written by an upstream proxy, sidecar, or orchestrator that sees
   the TLS-terminated traffic. Redaction is an application-level control.
-- Arbitrary secrets not matching `AZUREOPENAIAPI` or the endpoint -- the
-  blocklist is intentionally narrow to keep the false-positive rate low.
+- Secrets in a shape the redactor does not know. Besides the configured key and
+  endpoint, error output passes through `SecretRedactor`, which recognises Bearer and
+  `api-key` headers, env assignments, URL credentials, secret-named JSON fields and, since
+  S04E16, a bare credential in prose: OpenAI-style keys (`sk-`, `sk-proj-`), AWS access key
+  ids, GitHub tokens (classic and fine-grained), Slack tokens, JWTs and PEM private keys.
+  A password or key in any other format passes through; the list is intentionally narrow to
+  keep the false-positive rate low.
 - A denylist is not a sandbox. `shell_exec` does not inspect a script file the agent ran
   (`sh build.sh`), a general-purpose language interpreter (`python -c`, `perl -e`, `node -e`,
   `awk 'BEGIN{system(...)}'`), or a git alias. A process that must be contained should run in a

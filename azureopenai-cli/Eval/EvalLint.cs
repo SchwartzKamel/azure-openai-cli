@@ -50,17 +50,12 @@ internal static class EvalLint
 
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(2);
 
-    // Token shapes that are credentials in themselves. SecretRedactor covers assignments and headers;
-    // these catch a bare token sitting in prose, which the redactor does not (an open finding from E10).
+    // Token shapes that are credentials in themselves. They live in SecretRedactor.BareTokenRules (S04E16),
+    // so the runtime redactor and this lint share one definition of what a bare secret looks like.
     private static readonly (string Rule, Regex Pattern, string Message)[] TokenShapes =
-    {
-        ("secret-shape", new Regex(@"\bsk-[A-Za-z0-9_-]{16,}", RegexOptions.CultureInvariant, Timeout), "looks like an API key (sk-...)"),
-        ("secret-shape", new Regex(@"\bAKIA[0-9A-Z]{16}\b", RegexOptions.CultureInvariant, Timeout), "looks like an AWS access key id"),
-        ("secret-shape", new Regex(@"\bgh[pousr]_[A-Za-z0-9]{20,}", RegexOptions.CultureInvariant, Timeout), "looks like a GitHub token"),
-        ("secret-shape", new Regex(@"\bxox[baprs]-[A-Za-z0-9-]{10,}", RegexOptions.CultureInvariant, Timeout), "looks like a Slack token"),
-        ("secret-shape", new Regex(@"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}", RegexOptions.CultureInvariant, Timeout), "looks like a JWT"),
-        ("secret-shape", new Regex(@"-----BEGIN [A-Z ]*PRIVATE KEY-----", RegexOptions.CultureInvariant, Timeout), "contains a private-key header"),
-    };
+        SecretRedactor.BareTokenRules
+            .Select(r => ("secret-shape", r.Pattern, r.Description))
+            .ToArray();
 
     private static readonly Regex Email = new(@"[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)", RegexOptions.CultureInvariant, Timeout);
     private static readonly Regex Ipv4 = new(@"(?<![\d.])((?:\d{1,3}\.){3}\d{1,3})(?![\d.])", RegexOptions.CultureInvariant, Timeout);
@@ -238,7 +233,8 @@ internal static class EvalLint
             }
 
             // SecretRedactor covers assignments, headers, URL credentials and secret-named fields.
-            var redacted = SecretRedactor.Redact(text);
+            // Structured rules only: a bare token was already reported above, with a message that names it.
+            var redacted = SecretRedactor.RedactStructured(text);
             if (!string.Equals(redacted, text, StringComparison.Ordinal))
             {
                 findings.Add(new EvalLintFinding(file, location, "secret-shape",
