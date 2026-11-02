@@ -160,7 +160,9 @@ internal class Program
         bool ListCorpora = false,    // --list-corpora (S04E11)
         int Repeat = 1,              // --repeat <1..10> (S04E12)
         string? Baseline = null,     // --baseline <file> (S04E12)
-        string? WriteBaseline = null // --write-baseline <file> (S04E12)
+        string? WriteBaseline = null,// --write-baseline <file> (S04E12)
+        List<string>? LintSuites = null, // --lint-suite <file> (repeatable) (S04E13)
+        bool RequireProvenance = false   // --require-provenance (S04E13)
     );
 
     private static async Task<int> Main(string[] args)
@@ -398,7 +400,8 @@ internal class Program
         }
 
         // S04E10 -- `az-ai eval <suite.json>`: score a fixture suite with deterministic assertions.
-        if (!string.IsNullOrEmpty(opts.EvalSuite) || !string.IsNullOrEmpty(opts.EvalCorpus) || opts.ListCorpora)
+        if (!string.IsNullOrEmpty(opts.EvalSuite) || !string.IsNullOrEmpty(opts.EvalCorpus) || opts.ListCorpora
+            || opts.LintSuites is { Count: > 0 })
         {
             return await HandleEvalAsync(opts, userConfig);
         }
@@ -1595,6 +1598,8 @@ internal class Program
         int evalRepeat = 1;
         string? evalBaseline = null;
         string? evalWriteBaseline = null;
+        var lintSuites = new List<string>();
+        bool requireProvenance = false;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -2007,6 +2012,14 @@ internal class Program
                 case "--write-baseline":
                     if (i + 1 < args.Length) { evalWriteBaseline = args[++i]; }
                     else { Fail("--write-baseline requires a file path"); }
+                    break;
+                // S04E13 -- The Redaction. Lint eval files before they are committed.
+                case "--lint-suite":
+                    if (i + 1 < args.Length) { lintSuites.Add(args[++i]); }
+                    else { Fail("--lint-suite requires a file path"); }
+                    break;
+                case "--require-provenance":
+                    requireProvenance = true;
                     break;
                 case "--list-corpora":
                     listCorpora = true;
@@ -2461,6 +2474,8 @@ internal class Program
             Repeat = evalRepeat,
             Baseline = evalBaseline,
             WriteBaseline = evalWriteBaseline,
+            LintSuites = lintSuites.Count > 0 ? lintSuites : null,
+            RequireProvenance = requireProvenance,
             Plain = plain,
             Offline = offline,
             Provider = provider,
@@ -4293,6 +4308,11 @@ Prompt Eval (S04E10, S04E11):
                             (supports --json; --model/--prefer pick the model)
   --corpus <name>           Run a built-in corpus instead of a file: smoke, persona-voice, refusal
   --list-corpora            List the built-in corpora (supports --json)
+  --lint-suite <file>       Check an eval suite or baseline for anything that must not be
+                            committed (keys, emails, addresses, paths, PII). Repeatable.
+                            Exit 0 clean, 1 findings. Needs no credentials. Findings are
+                            masked, never printed in full.
+  --require-provenance      With --lint-suite: also require an 'Origin: synthetic' header
   --repeat <n>              Run each fixture n times (1-10); it passes only if every run
                             passes, and flaky fixtures are reported
   --baseline <file>         Fail if a fixture that passed in this recorded run now does not
@@ -4370,7 +4390,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-serve --allow-shell --read-only --fail-under --filter --corpus --list-corpora --repeat --baseline --write-baseline""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-serve --allow-shell --read-only --fail-under --filter --corpus --list-corpora --repeat --baseline --write-baseline --lint-suite --require-provenance""
 
     case ""${prev}"" in
         --completions)
@@ -4466,6 +4486,8 @@ _az-ai() {
         '--repeat[Run each eval fixture n times]:n:'
         '--baseline[Compare an eval run with a baseline]:file:_files'
         '--write-baseline[Record an eval run as a baseline]:file:_files'
+        '--lint-suite[Lint an eval file for leaks]:file:_files'
+        '--require-provenance[Require an Origin header when linting]'
     )
     _arguments -s $opts
 }
@@ -4531,6 +4553,8 @@ complete -c az-ai -l list-corpora -d 'List built-in eval corpora'
 complete -c az-ai -l repeat -d 'Run each eval fixture n times' -r
 complete -c az-ai -l baseline -d 'Compare an eval run with a baseline' -r
 complete -c az-ai -l write-baseline -d 'Record an eval run as a baseline' -r
+complete -c az-ai -l lint-suite -d 'Lint an eval file for leaks' -r
+complete -c az-ai -l require-provenance -d 'Require an Origin header when linting'
 complete -c az-ai -w az-ai
 ";
 
@@ -4548,6 +4572,27 @@ complete -c az-ai -w az-ai
     }
 
     // ── Model-alias commands (FR-010) ──────────────────────────────────────────
+
+    /// <summary>
+    /// S04E13 -- <c>az-ai --lint-suite &lt;file&gt; [--lint-suite ...] [--require-provenance] [--json]</c>.
+    /// Exit 0 clean, 1 findings. Needs no credentials, model or network, so it is safe in a hook and in CI.
+    /// </summary>
+    internal static int LintSuitesCommand(CliOptions opts)
+    {
+        var report = AzureOpenAI_CLI.Eval.EvalLint.LintFiles(opts.LintSuites!, opts.RequireProvenance);
+        if (opts.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(report, AppJsonContext.Default.EvalLintReport));
+        }
+        else
+        {
+            foreach (var line in AzureOpenAI_CLI.Eval.EvalLint.Render(report))
+            {
+                Console.WriteLine(line);
+            }
+        }
+        return report.Findings.Count == 0 ? 0 : 1;
+    }
 
     /// <summary>S04E11 -- <c>az-ai eval --list-corpora [--json]</c>: what ships in the binary.</summary>
     internal static int ListCorporaCommand(bool json)
@@ -4591,6 +4636,12 @@ complete -c az-ai -w az-ai
         if (opts.ListCorpora)
         {
             return ListCorporaCommand(opts.Json);
+        }
+
+        // S04E13: lint needs no credentials, no model and no network.
+        if (opts.LintSuites is { Count: > 0 })
+        {
+            return LintSuitesCommand(opts);
         }
 
         if (!string.IsNullOrEmpty(opts.EvalSuite) && !string.IsNullOrEmpty(opts.EvalCorpus))

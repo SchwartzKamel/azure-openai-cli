@@ -41,7 +41,7 @@ per persona, array of fixture objects.
   "max_tokens": 2000,
   "expected_traits": [
     "Output is a small, focused diff or targeted edit -- not a full-file rewrite.",
-    "Mentions the rename scope explicitly (only `foo` → `fooCount`, no other changes).",
+    "Mentions the rename scope explicitly (only `foo` -> `fooCount`, no other changes).",
     "Does not add new dependencies or imports."
   ],
   "forbidden_traits": [
@@ -161,6 +161,46 @@ requires every built-in corpus to appear in the policy.
 **Not yet established:** no baseline is committed and no live model has been run, so the live path of the
 workflow has not been exercised with credentials. See `eval/baselines/README.md`.
 
+## Redaction policy (S04E13)
+
+Eval corpora are compiled into a distributed binary, and baselines and suites are committed to a public
+repository. Anything real in one (a pasted prompt, a key, an address, a home directory) is published to
+everyone. `az-ai --lint-suite <file>` (repeatable) checks a file before it is committed. It needs no
+credentials, model or network, and runs in `make preflight`, in CI (through the integration suite) and in
+the pre-push hook.
+
+| Rule | Flags |
+|---|---|
+| `secret-shape` | API-key, AWS, GitHub, Slack and JWT shapes, private-key headers, and anything the project's `SecretRedactor` would redact (credential assignments, bearer headers, URL credentials) |
+| `email` | an address on a real domain (use `.invalid`, `.example`, `.test` or `example.com`) |
+| `ip-address`, `url-host` | an address or host outside the reserved ranges (TEST-NET-1/2/3, loopback, `.invalid`, `.example`, `example.com`, `localhost`) |
+| `local-path` | `/home/<user>`, `/Users/<user>` or `C:\Users\<user>` with a real user name |
+| `pii` | US social security numbers, phone numbers (the reserved `555-01xx` range is allowed), payment card numbers that pass the Luhn check |
+| `high-entropy` | a long random-looking token, which is what real secrets look like |
+| `non-ascii` | any character outside printable ASCII, **including one that arrives through a JSON `\u` escape** |
+| `provenance` | with `--require-provenance` (used for the embedded corpora): no `Origin: synthetic` header |
+| `unparseable`, `unreadable`, `scan-timeout` | a file that cannot be parsed, read or fully scanned is a finding, never a silent skip |
+
+How it works, and why each choice:
+
+- **Context-aware.** A regex assertion's `value` is a pattern, so it may look like a secret (the refusal
+  corpus detects `sk-...` in model output). A literal assertion (`contains`, `not_contains`,
+  `starts_with`) is text and is scanned like a prompt. The exemption is by assertion type, not by how a
+  string looks.
+- **Decodes before it scans**, so a JSON escape cannot hide a character from a rule.
+- **Scans everywhere text can hide:** string values, property **names** (a baseline keeps fixture ids as
+  names), ids, traits, the safety assertion, and comments, which the loader ignores but the repository
+  publishes.
+- **Never prints what it found.** A finding carries a rule, a location and a masked preview (two
+  characters and a length). A lint log that printed the secret would be a second leak, into CI logs.
+- **No opt-out.** The pre-push hook has no skip trailer for this gate; `git push --no-verify` is the only
+  bypass and CI still enforces it.
+
+What it does **not** do: it finds shapes, not meaning. A sentence that happens to describe something
+private, a name, an address written in prose, is not caught. Review still matters. An eval run also emits
+no telemetry: with telemetry enabled, no prompt, output or key text appears (an integration test checks
+this, with a control proving the harness can see telemetry at all).
+
 ## Original runner design (kept for the trait judge)
 
 The pseudocode below predates the shipped runner. It is kept because the
@@ -275,6 +315,7 @@ intentionally changed and the fixture has been updated. Safety failure is
 | `security.json` fixtures | ⬜ deferred, but required before any `security` prompt edit |
 | Runner (`az-ai eval`) | ✅ shipped (S04E10): deterministic assertions, scoring, `--json`, `--fail-under`, `--filter` |
 | Trait judge | ⬜ human-review interim (freeform traits are reported as ungraded) |
+| Redaction lint (`--lint-suite`) | ✅ shipped (S04E13): wired into `make preflight`, CI and pre-push |
 | Built-in corpora (`--corpus`) | ✅ shipped (S04E11): `smoke`, `persona-voice`, `refusal`; real-model pass rates not yet measured |
 | Golden recording | ⬜ not implemented; goldens are still attached to the PR by hand |
 | `persona_version` pin | ⬜ recorded but not enforced (personas carry no version yet) |

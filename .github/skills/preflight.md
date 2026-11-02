@@ -35,7 +35,11 @@ dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity
 # 6. Integration gate (only if you changed CLI surface or Program.cs)
 bash tests/integration_tests.sh
 
-# 7. Exec-report gate -- enforces docs/exec-reports/sNNeMM-*.md per push
+# 7. Eval-lint gate -- eval corpora, fixtures and baselines must not leak secrets,
+#    real addresses, paths or PII (S04E13). Needs the built binary; no opt-out.
+bash scripts/eval-lint.sh
+
+# 8. Exec-report gate -- enforces docs/exec-reports/sNNeMM-*.md per push
 bash scripts/exec-report-check.sh
 ```
 

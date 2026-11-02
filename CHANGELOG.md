@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(eval):** S04E13 *The Redaction* -- `az-ai --lint-suite <file>` (repeatable, with
+  `--require-provenance`) checks eval corpora, fixtures and baselines for secrets, real emails
+  and hosts, non-reserved IPs, home paths, PII shapes, high-entropy tokens and non-ASCII. It is
+  context-aware (a regex assertion may look like a secret; a prompt may not), decodes JSON
+  escapes before scanning, scans comments and property names, treats an unparseable file as a
+  finding, and never prints what it matched. Wired into `make preflight`, CI and the pre-push
+  hook with no opt-out trailer. An adversarial test found a bypass (a JSON `\u` escape hid a
+  look-alike character from the ASCII rule); fixed. The first run found a non-ASCII arrow in the
+  design-doc fixture `docs/prompts/fixtures/coder.json`; fixed.
 - **feat(eval):** S04E12 *The Gate* -- `az-ai eval --repeat <n>` runs each fixture n times and
   reports flaky ones (a fixture passes only if every run passes); `--write-baseline` and
   `--baseline` record and compare outcomes (never model text) and fail on a regression even when
