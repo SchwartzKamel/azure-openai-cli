@@ -451,3 +451,152 @@ reader this tool has.
 clearance; the limits stated in the first addendum still apply.
 
 Reproduce any of it with `scripts/name-screen.py <name>`.
+
+## Addendum 3: open source only, and the competitor landscape (rounds 16 to 19)
+
+### Round 16 -- The owner drops the trademark stage
+
+The owner's instruction: this is an open-source command-line tool with no legal entity, so
+do not worry about trademarks. That removes the US-register stage from the ranking and,
+with it, the only reason `pith`, `usher`, `herald`, `courier`, `dispatch`, `gateway` and
+`mux` were ever rejected. They were re-screened on open-source grounds in this round.
+
+What stays is what an open-source user actually hits: a name that is already a command on
+their machine, a Homebrew or Scoop package, or a well-known project in the same space, so
+that `brew install <name>` or a web search lands on somebody else's tool. Counsel questions
+(`jackie-2026-11-J-1`, `-J-2`) are unchanged for the day the project has an entity.
+
+### Round 17 -- What competitors are called
+
+A 314-repository keyword sweep of GitHub was too noisy to name peers from (coding agents
+dominate it), so the table below was pulled by exact repository, as of 2026-11-02.
+
+| Repository | Stars | Language | Created | Kind |
+|---|---|---|---|---|
+| `opencode` | 223,936 | TypeScript | 2025 | coding agent |
+| `ollama` | 185,639 | Go | 2023 | local model runtime |
+| `claude-code` | 154,212 | TypeScript | 2025 | coding agent |
+| `codex` | 132,800 | Rust | 2025 | coding agent |
+| `gemini-cli` | 108,661 | TypeScript | 2025 | coding agent |
+| `openinterpreter` | 68,775 | Rust | 2023 | coding agent |
+| `goose` | 56,111 | Rust | 2024 | general agent |
+| `aider` | 49,891 | Python | 2023 | pair-programming agent |
+| `Fabric` | 44,526 | Go | 2024 | prompt patterns framework |
+| `crush` | 28,909 | Go | 2025 | coding agent |
+| `plandex` | 15,885 | Go | 2023 | coding agent |
+| `llm` | 12,689 | Python | 2023 | prompt CLI (closest peer) |
+| `shell_gpt` | 12,299 | Python | 2023 | prompt CLI (closest peer) |
+| `aichat` | 10,534 | Rust | 2023 | prompt CLI (closest peer) |
+| `aicommits` | 9,121 | TypeScript | 2023 | commit-message writer |
+| `code2prompt` | 7,745 | Rust | 2024 | codebase to prompt |
+| `ai-shell` | 5,306 | TypeScript | 2023 | natural language to shell |
+| `mods` | 4,521 | Go | 2023 | prompt CLI (closest peer), archived |
+| `gptme` | 4,466 | Python | 2023 | terminal agent |
+| `tgpt` | 3,287 | Go | 2023 | terminal chat |
+| `chatblade` | 2,583 | Python | 2023 | prompt CLI, archived |
+| `elia` | 2,481 | Python | 2023 | terminal chat UI |
+| `gorilla-cli` | 1,374 | Python | 2023 | natural language to shell |
+| `ai-cli` | 1,165 | TypeScript | 2022 | natural language to shell |
+| `chatgpt-cli` | 965 | Go | 2023 | multi-provider prompt CLI (closest peer) |
+| `tmuxai` | 1 | Go | 2026 | terminal assistant (new, 1 star) |
+
+What the names do:
+
+| Strategy | Examples | Reading |
+|---|---|---|
+| A literal "ai / gpt / chat / shell / cli" in the name | `shell_gpt`, `aichat`, `aicommits`, `ai-shell`, `tgpt`, `chatblade`, `ai-cli`, `chatgpt-cli`, `gptme`, `tmuxai` | Descriptive, weak as a brand. 12 of the 14 tools in the 1k to 13k star tier are like this. |
+| A short brandable word or agent-noun | `aider`, `crush`, `goose`, `plandex`, `fabric`, `mods`, `elia`, `gorilla` | Of the ten tools above 28k stars, none has a literal "ai", "gpt", "llm" or "chat" in its name; they are words or vendor names. |
+| A vendor product name | `codex`, `gemini-cli`, `claude-code`, `opencode`, `ollama` | The brand carries the name, not the function. |
+| A generic noun that was first | `llm` | Works once, for whoever got there first. |
+
+The median name is 6 characters. The correlation between brandable names and star count is
+real but confounded: the top tier is mostly vendor-backed products. It is a reason not to
+choose another `ai-something`, not proof that a word name wins.
+
+What nobody has claimed, and this tool actually has: **speed** (a 10.7 ms p50 cold start
+per the README, on its reference rig), **Unix-pipe use** (every peer's examples are interactive), **provider-agnosticism
+as a signal** (only `chatgpt-cli` says "multi-provider"), and **text injection** (the
+answer typed at your cursor by a text expander). A name can point at one of these.
+
+One more criterion, new here: **does it read as a command?** `git diff | NAME "review"`
+is the line a user types hundreds of times. `llm`, `aichat` and `mods` read as commands.
+
+### Round 18 -- Generate by angle, then screen on open-source grounds
+
+`scripts/name-screen.py --oss <name>` is the new mode. It skips the trademark stage and
+checks, in order: a command on PATH, a shell builtin, a Debian package, a taken Homebrew,
+Scoop or Docker name (all of these rule a name out); then GitHub repositories of the exact
+name and whether they sit in the AI space, PyPI, npm and crates.io packages of that name
+and a one-edit neighbour check (these are flags, not verdicts).
+
+186 names were generated from six angles (speed, pipe, any-provider, text injection,
+asking and summoning, helper spirits and voice) plus the team-of-personas and fallback-chain
+features, and the earlier mark-only rejections.
+
+| Stage | Names |
+|---|---|
+| Screened | 186 |
+| Out: command, Debian package or shell builtin | 25 |
+| Out: taken on Homebrew, a cask, Scoop or Docker | 35 |
+| Survived distribution | 126 |
+| Survived and has no AI-space collision on GitHub or any registry | 62 |
+
+Two defects in the screen were found and fixed during the round, and they matter more than
+any single name:
+
+- **Shell builtins.** The local check looked for executables, so `type` passed. `type` is
+  a builtin in bash, zsh and fish. The check now asks the shell.
+- **A failed GitHub lookup was reported as "no repositories".** `tempo` showed no flags
+  although `grafana/tempo` has 5,552 stars. A failed lookup is now an error, and the 13
+  names that had shown zero repositories were re-checked: 7 are genuinely zero (`any`,
+  `anymux`, `imp`, `quest`, `seek`, `speak`, `tell`), 5 had repositories after all
+  (`hopper`, `tempo`, `troupe`, `usher`, `utter`) and 1 was a builtin (`type`).
+
+A limit of "zero": GitHub search returns the top 100 substring matches by stars, so zero
+means no exact-name repository notable enough to rank, not no repository at all.
+
+### Round 19 -- Finalists on identical data
+
+| Name | Letters | Why it is called that | Top same-named repo (stars) | AI-space collision | How it reads |
+|---|---|---|---|---|---|
+| `hopper` | 6 | hops between providers; stdin goes into the hopper | 274 (fuzzing tool) | none | `git diff \| hopper "review"` |
+| `anymux` | 6 | any provider, multiplexed | none notable | none | `git diff \| anymux "review"` |
+| `tell` | 4 | you tell the model | none notable | none | `git diff \| tell "review"` |
+| `seek` | 4 | you seek an answer | none notable | none | `git diff \| seek "review"` |
+| `jiffy` | 5 | in a jiffy (speed) | 880 (Erlang JSON) | none | `git diff \| jiffy "review"` |
+| `trice` | 5 | in a trice (speed) | 1,012 (C tracing library) | none | `git diff \| trice "review"` |
+| `typist` | 6 | types the answer where your cursor is | 1,056 (Swift keyboard) | none | `typist --raw "fix:" < note` |
+| `usher` | 5 | ushers a prompt along | 141 (bioinformatics) | none | `git diff \| usher "review"` |
+| `plainly` | 7 | plain answers | 30 (a theme) | 1 repo, 1 star | `git diff \| plainly "review"` |
+| `summon` | 6 | summon an answer | **762, `cyberark/summon`, a CLI** | none | out: same-named CLI |
+
+Devil's advocate, by name:
+
+- **`hopper`:** a hopper is also a bin you pour things into, which is the right image for
+  stdin and has nothing to do with models. *Answer:* that is the second meaning, and
+  it fits. The first meaning is in the code: the project's own telemetry already calls a
+  provider switch a `fallback_hop` (`TelemetryEmitter.EmitFallbackHop`). Collisions are a
+  274-star fuzzing tool and a 132-star one, neither in the AI space. A macOS disassembler
+  is also called Hopper (background knowledge, unverified here).
+- **`anymux`:** jargon, and "any" over-promises. *Answer:* as in round 15, the reader is
+  a terminal user, and the tagline keeps the promise honest. It is the descriptive choice
+  and has no collisions at all.
+- **`tell` and `seek`:** no collisions, and they read best as commands, but they are
+  ordinary words, so a web search for them finds nothing, and the next project to take
+  the name takes the search results with it.
+- **`jiffy` and `trice`:** speed only, and speed is a feature a peer can match. `trice` is
+  also an "ultra-fast" tracing library.
+- **`typist`:** one use case of several.
+- **`summon`:** `cyberark/summon` is a command-line tool of the same name. Out.
+
+### Decision
+
+**`hopper`** is the recommendation, with **`anymux`** as the descriptive runner-up for an
+owner who prefers a label to a metaphor, and `tell` as a minimalist third. `hopper` has the
+shape of the top-tier names (a friendly word, with `-er` like `aider`), passes the one-sentence
+sense test twice, and is the only candidate whose meaning is already in the codebase.
+
+This is the owner's decision (gate G1) and nothing is renamed. Caveat as before: it is a
+screen of open-source collisions, not a legal clearance.
+
+Reproduce with `scripts/name-screen.py --oss <name>`.

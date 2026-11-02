@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """name-screen.py -- screen candidate product names. Read-only.
 
-Usage:  scripts/name-screen.py [--json] <name> [<name> ...]
+Usage:  scripts/name-screen.py [--json] [--oss] <name> [<name> ...]
+
+  --oss   open-source mode: skips the US trademark stage and instead checks the OSS world. It looks for
+          GitHub repositories with the exact name and flags those in the AI/LLM/CLI space, flags PyPI, npm
+          and crates packages of that name whose summary is AI/CLI-flavoured, and keeps the distribution
+          blockers (a command on PATH, a Debian package, a Homebrew/Scoop/Docker name that is taken).
 
 What it checks, cheapest first (a name that fails an early stage skips the later, rate-limited ones):
   1 local    a command on PATH, a Debian package, or a third-party mark / provider name
@@ -24,7 +29,13 @@ UA = {"User-Agent": "name-screen (read-only research)"}
 DENY = set("""azure openai gpt chatgpt microsoft copilot claude anthropic gemini google llama meta mistral cohere
 nvidia grok deepseek qwen bing cortana codex sora dalle whisper bard palm groq together cloudflare openrouter
 ollama xai kimi""".split())
+# zsh and fish builtins that bash does not have (bash is what `type -t` can ask here).
+OTHER_SHELL_BUILTINS = set("""abbr argparse autoload bindkey builtin commandline compdef complete compgen contains count dirs
+disable disown emulate enable fc float functions history integer jobs math nohup noglob not path popd print
+pushd random rehash repeat sched setopt status string suspend trap ttyctl unalias unfunction unhash unlimit
+unsetopt vared where whence zcompile zle zmodload zparseopts zstyle""".split())
 SOFTWARE_CLASSES = {"009", "042"}
+AI_SPACE = re.compile(r"\b(llm|llms|gpt|chatgpt|openai|ai|a\.i\.|artificial|prompt|chatbot|copilot|assistant|claude|gemini|ollama|agent|language model)\b", re.I)
 SOFTWARE_GOODS = re.compile(
     r"software|application|\bapps?\b|platform|computer|download|saas|cloud|artificial intelligence|"
     r"machine learning|chatbot|developer|command.line", re.I)
@@ -70,6 +81,14 @@ def local(n):
     notes = []
     if shutil.which(n):
         notes.append("command on PATH")
+    # Shell builtins, keywords, aliases and functions are not on PATH, so `which` misses them, yet a name
+    # that is one (`type`, `time`, `test`, `where`) is shadowed in the shell before the binary is found.
+    if re.fullmatch(r"[a-z0-9]+", n):
+        t = subprocess.run(["bash", "-c", f"type -t {n}"], capture_output=True, text=True).stdout.strip()
+        if t in ("builtin", "keyword", "alias", "function"):
+            notes.append(f"shell {t}")
+    if n in OTHER_SHELL_BUILTINS:
+        notes.append("builtin in zsh or fish")
     p = subprocess.run(["apt-cache", "policy", n], capture_output=True, text=True)
     if re.search(r"Candidate: [^(]", p.stdout):
         notes.append("apt package")
@@ -129,7 +148,7 @@ def uspto(n):
 def github(n):
     q = f"search/repositories?q={n}+in:name&sort=stars&per_page=100"
     jq = (f'[.items[] | select(.name|ascii_downcase=="{n}")] | map({{repo:.full_name,stars:.stargazers_count,'
-          f'description:(.description // "-")[0:70]}}) | .[0:3]')
+          f'description:(.description // "-")[0:90]}}) | .[0:10]')
     if shutil.which("gh"):
         p = subprocess.run(["gh", "api", q, "--jq", jq], capture_output=True, text=True)
         if p.returncode == 0:
@@ -138,8 +157,26 @@ def github(n):
     code, raw = http("https://api.github.com/" + q, headers={"Accept": "application/vnd.github+json"})
     if code != 200:
         return None
-    return [{"repo": i["full_name"], "stars": i["stargazers_count"], "description": (i["description"] or "-")[:70]}
-            for i in json.loads(raw)["items"] if i["name"].lower() == n][:3]
+    return [{"repo": i["full_name"], "stars": i["stargazers_count"], "description": (i["description"] or "-")[:90]}
+            for i in json.loads(raw)["items"] if i["name"].lower() == n][:10]
+
+
+def packages(n):
+    """PyPI, npm and crates.io packages of this exact name, with a one-line summary and an AI-space flag."""
+    out = {}
+    code, raw = http(f"https://pypi.org/pypi/{n}/json")
+    if code == 200:
+        try: out["pypi"] = (json.loads(raw)["info"].get("summary") or "")[:90]
+        except Exception: out["pypi"] = ""
+    code, raw = http(f"https://registry.npmjs.org/{n}")
+    if code == 200:
+        try: out["npm"] = (json.loads(raw).get("description") or "")[:90]
+        except Exception: out["npm"] = ""
+    code, raw = http(f"https://crates.io/api/v1/crates/{n}")
+    if code == 200:
+        try: out["crates"] = (json.loads(raw)["crate"].get("description") or "")[:90]
+        except Exception: out["crates"] = ""
+    return out
 
 
 _RDAP = {}
@@ -163,6 +200,41 @@ def domains(n):
 def typo_neighbours(n):
     cmds = subprocess.run(["bash", "-lc", "compgen -c"], capture_output=True, text=True).stdout.split()
     return sorted({c.lower() for c in cmds if c.lower() != n and abs(len(c) - len(n)) <= 1 and lev(c.lower(), n) <= 1})[:6]
+
+
+def screen_oss(n):
+    """Open-source screen: no trademark stage. Distribution blockers, then the OSS and package world."""
+    r = {"name": n, "verdict": None, "mode": "oss"}
+    notes = local(n)
+    if notes:
+        r["verdict"] = "OUT: " + ", ".join(notes); return r
+    taken = channel(n)
+    r["channels_taken"] = taken
+    if taken:
+        r["verdict"] = "OUT: taken on " + ", ".join(taken); return r
+    # A failed GitHub lookup is an ERROR, never "no repositories": an empty answer from a rate-limited
+    # client looks exactly like a clean name. github() returns None on failure and [] for a real "none".
+    r["github"] = retry(github, n)
+    if r["github"] is None:
+        r["verdict"] = "ERROR: GitHub lookup failed (rate limit?), so this name was not verified"
+        return r
+    r["packages"] = packages(n)
+    r["typo_neighbours"] = typo_neighbours(n)
+    r["ai_repos"] = [g for g in r["github"] if AI_SPACE.search(g["description"])]
+    r["ai_packages"] = {k: v for k, v in r["packages"].items() if AI_SPACE.search(v)}
+    r["top_stars"] = max([g["stars"] for g in r["github"]] or [0])
+    r["ai_top_stars"] = max([g["stars"] for g in r["ai_repos"]] or [0])
+    flags = []
+    if r["ai_repos"]:
+        flags.append(f"{len(r['ai_repos'])} GitHub repo(s) of this name in the AI space (top {r['ai_top_stars']} stars)")
+    if r["ai_packages"]:
+        flags.append("AI-flavoured package(s): " + ", ".join(r["ai_packages"]))
+    if r["top_stars"] > 1000 and not r["ai_repos"]:
+        flags.append(f"a {r['top_stars']}-star repo of this name (not AI)")
+    if r["typo_neighbours"]:
+        flags.append("one edit from command(s): " + ", ".join(r["typo_neighbours"]))
+    r["verdict"] = "PASS" if not flags else "PASS WITH FLAGS: " + "; ".join(flags)
+    return r
 
 
 def screen(n):
@@ -210,13 +282,26 @@ def render(r):
     return "\n".join(lines)
 
 
+def render_oss(r):
+    lines = [f"{r['name']}: {r['verdict']}"]
+    if r.get("github") is not None and r.get("mode") == "oss":
+        lines.append("  GitHub exact-name repos: " + ("; ".join(f"{g['repo']} ({g['stars']}): {g['description'][:50]}" for g in r["github"][:4]) or "none"))
+        lines.append("  Packages of this name: " + ("; ".join(f"{k}: {v[:48] or '-'}" for k, v in r["packages"].items()) or "none"))
+    lines.append("  (open-source screen: no trademark stage; a flag is information, not a verdict)")
+    return "\n".join(lines)
+
+
 def main(argv):
     as_json = "--json" in argv
+    oss = "--oss" in argv
     names = [a.lower() for a in argv if not a.startswith("--")]
     if not names:
         print(__doc__); return 2
-    results = [screen(n) for n in names]
-    print(json.dumps(results, indent=2) if as_json else "\n\n".join(render(r) for r in results))
+    results = [(screen_oss if oss else screen)(n) for n in names]
+    if as_json:
+        print(json.dumps(results, indent=2))
+    else:
+        print("\n\n".join(render_oss(r) if oss else render(r) for r in results))
     return 0
 
 

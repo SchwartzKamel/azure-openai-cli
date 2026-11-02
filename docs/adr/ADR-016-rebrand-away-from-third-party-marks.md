@@ -42,9 +42,11 @@ name the Azure service they configure, which is nominative use), the `AZ_AI_*`
 variables, the C# namespace, or the source directory. Neutral env aliases may be
 added later, additively.
 
-The recommended name is `anymux` (runner-ups `plainly` and `askany`), selected in the
-second FR-024 addendum after 109 meaning-first candidates were screened against package
-channels, GitHub and the US trademark register and then checked for same-named projects.
+The recommended name is `hopper`, with `anymux` as the descriptive runner-up (FR-024,
+third addendum). The owner dropped the trademark stage, so 186 names were screened on
+open-source grounds (commands, builtins, Homebrew and Scoop, GitHub and package registries)
+against a table of 26 competitor tools. `anymux` was the pick of the second addendum
+(109 candidates, with a US-register stage that no longer applies).
 Earlier picks were withdrawn: `pith` and `usher` on trademark evidence, and `dunlin` and
 `curlew` because the owner found them meaningless. No irreversible step runs until three
 gates clear:
