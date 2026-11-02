@@ -254,7 +254,7 @@ public sealed class CorpusTests
     [Fact]
     public void PersonaVoice_OnlyNamesBuiltInPersonas()
     {
-        var known = SquadInitializer.CreateDefaultConfig().Personas.Select(p => p.Name).ToHashSet();
+        var known = SquadInitializer.CreateDefaultConfig().Personas.Select(p => (string?)p.Name).ToHashSet();
 
         Assert.All(Load("persona-voice").Fixtures, f => Assert.Contains(f.Persona, known));
         Assert.Equal(known.Count, Load("persona-voice").Fixtures.Select(f => f.Persona).Distinct().Count()); // every persona is covered
