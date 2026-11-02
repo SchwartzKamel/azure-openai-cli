@@ -19,7 +19,16 @@ internal static class ShellExecTool
         "kill", "killall", "pkill", "format", "del", "fdisk", "passwd",
         "sudo", "su", "crontab", "vi", "vim", "nano",
         "nc", "ncat", "netcat", "wget",
+        // S04E15: privilege front-ends and destructive tools that were missing from the list.
+        "doas", "pkexec", "shred", "unlink", "wipefs", "mkswap",
     };
+
+    /// <summary>
+    /// True when <paramref name="name"/> (a bare command name, no path) is one shell_exec refuses to run.
+    /// Shared by the first-token check and <see cref="ShellCommandScanner"/> so they cannot disagree.
+    /// </summary>
+    internal static bool IsBlockedName(string name) =>
+        BlockedCommands.Contains(name) || name.StartsWith("mkfs.", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Environment variables scrubbed from the child process before execution.
@@ -155,7 +164,7 @@ internal static class ShellExecTool
         // future refactors that might touch it.
         var firstTokens = command.Split(new[] { ' ', '\t', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         var firstToken = (firstTokens.Length > 0 ? firstTokens[0] : "").Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
-        if (BlockedCommands.Contains(firstToken))
+        if (IsBlockedName(firstToken))
             return $"Error: command '{firstToken}' is blocked for safety.";
 
         // Block pipe chains to dangerous commands.
@@ -165,9 +174,18 @@ internal static class ShellExecTool
         foreach (var segment in command.Split('|', ';', '&', '\t', '\n'))
         {
             var token = segment.Trim().Split(new[] { ' ', '\t' }, 2)[0].Split('/').LastOrDefault() ?? "";
-            if (BlockedCommands.Contains(token))
+            if (IsBlockedName(token))
                 return $"Error: command '{token}' is blocked for safety.";
         }
+
+        // The checks above only see a blocked name written plainly at the start of a segment. Measured
+        // (S04E15), 30 of 32 trivial variations ran past them: `bash -c 'rm x'`, `\rm x`, `env rm x`,
+        // `(rm x)`, `timeout 5 rm x`, `echo x | xargs rm`, `find x -delete`. The scanner reads the
+        // line the way the shell does and checks every command position. The checks above stay: they
+        // over-block on purpose (a tab or a quoted ';' counts as a separator).
+        var scanRefusal = ShellCommandScanner.Scan(command);
+        if (scanRefusal != null)
+            return scanRefusal;
 
         // Destructive remote git operations (force push, '+' refspec, mirror, remote
         // ref deletion) are irreversible for other collaborators and are never needed
