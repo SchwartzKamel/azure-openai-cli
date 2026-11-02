@@ -8,7 +8,7 @@ namespace AzureOpenAI_CLI;
 //
 // `preferences.json` v1 -- the unified provider + profile registry that
 // downstream FR-018/019/020 + S03E08+ episodes will populate. v1 carries
-// only the fields needed to render `az-ai --config show` and to seed the
+// only the fields needed to render `hopper --config show` and to seed the
 // profile-resolution layer. No API keys live here -- credentials stay in
 // the OS credential store / env (per ADR-007 and Newman's S03E04 audit).
 //

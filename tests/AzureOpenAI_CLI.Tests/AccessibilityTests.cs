@@ -208,7 +208,7 @@ public sealed class AccessibilityTests
         var (stdout, stderr) = CaptureMain(new[] { "--help" });
         AssertAsciiAndAnsiFree(stdout, $"--help stdout [{label}]");
         AssertAsciiAndAnsiFree(stderr, $"--help stderr [{label}]");
-        Assert.Contains("az-ai", stdout, StringComparison.Ordinal);
+        Assert.Contains("hopper", stdout, StringComparison.Ordinal);
         Assert.Contains("--plain", stdout, StringComparison.Ordinal);
     }
 
@@ -221,7 +221,7 @@ public sealed class AccessibilityTests
         var (stdout, stderr) = CaptureMain(new[] { "--version" });
         AssertAsciiAndAnsiFree(stdout, $"--version stdout [{label}]");
         AssertAsciiAndAnsiFree(stderr, $"--version stderr [{label}]");
-        Assert.Contains("az-ai", stdout, StringComparison.Ordinal);
+        Assert.Contains("hopper", stdout, StringComparison.Ordinal);
     }
 
     [Theory]

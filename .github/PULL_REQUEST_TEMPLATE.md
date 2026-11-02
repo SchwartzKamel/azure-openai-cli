@@ -38,7 +38,7 @@ Fixes #
     ... format clean / build OK
     $ dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --nologo
     ... Passed!  - Failed:     0, Passed:   501
-    $ az-ai "hi" --verbose
+    $ hopper "hi" --verbose
     ... expected output
 -->
 

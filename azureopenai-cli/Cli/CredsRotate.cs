@@ -46,7 +46,7 @@ namespace AzureOpenAI_CLI.Cli;
 //       - non-TTY: when stdin is the real Console.In and is redirected,
 //         we refuse with exit 3 -- mirrors the SetupWizard gate so a CI
 //         pipe never hangs on a prompt.
-//       - missing env file: exit 2 with a pointer to `az-ai --setup`.
+//       - missing env file: exit 2 with a pointer to `hopper --setup`.
 //       - unknown provider name on the CLI: exit 3.
 
 /// <summary>
@@ -120,7 +120,7 @@ internal static class CredsRotate
                 stderr.WriteLine(SecretRedactor.Redact(
                     "[ERROR] No env file at " + path + "."));
                 stderr.WriteLine(SecretRedactor.Redact(
-                    "        Run 'az-ai --setup' to create one before rotating."));
+                    "        Run 'hopper --setup' to create one before rotating."));
                 return ExitIoFailure;
             }
 
@@ -148,7 +148,7 @@ internal static class CredsRotate
                 stderr.WriteLine(SecretRedactor.Redact(
                     "[ERROR] No provider credentials found in " + path + "."));
                 stderr.WriteLine(SecretRedactor.Redact(
-                    "        Run 'az-ai --setup' to (re)configure."));
+                    "        Run 'hopper --setup' to (re)configure."));
                 return ExitIoFailure;
             }
 
@@ -245,7 +245,7 @@ internal static class CredsRotate
                     + target + "] in " + path + ": "
                     + (rewriteError ?? "unknown reason") + "."));
                 stderr.WriteLine(SecretRedactor.Redact(
-                    "        Run 'az-ai --setup' to rewrite the file from scratch."));
+                    "        Run 'hopper --setup' to rewrite the file from scratch."));
                 return ExitIoFailure;
             }
 

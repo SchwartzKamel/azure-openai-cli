@@ -132,13 +132,13 @@ internal class Program
         bool NoPlugins = false,      // FR-012: --no-plugins: disable manifest tool loading
         bool AllowLocalPlugins = false, // FR-012: --allow-local-plugins: allow ./.azureopenai-cli/tools
         string? PluginDir = null,    // FR-012: --plugin-dir <path>: custom plugin manifest dir
-        bool McpServe = false,       // FR-013: az-ai mcp serve / --mcp-serve
+        bool McpServe = false,       // FR-013: hopper mcp serve / --mcp-serve
         bool AllowShell = false,     // FR-013: --allow-shell (expose shell_exec over MCP)
         bool ReadOnly = false,       // FR-013: --read-only (read-only tools only over MCP)
         string? Pattern = null,      // FR-015: --pattern / -p <name>: curated prompt pattern
         bool ListPatterns = false,   // FR-015: --patterns / --list-patterns
         IReadOnlyList<string>? McpServers = null, // FR-013: --mcp-server <spec> (repeatable)
-        string? McpSubcommand = null, // FR-013: az-ai mcp tools|call
+        string? McpSubcommand = null, // FR-013: hopper mcp tools|call
         string? McpTargetServer = null,
         string? McpTargetTool = null,
         string? McpTargetArgsJson = null,
@@ -153,7 +153,7 @@ internal class Program
         bool RecoverStale = false,   // --recover-stale
         string? Prefer = null,       // --prefer <cost|latency|quality> (S04E09)
         bool WhyThisModel = false,   // --why-this-model (S04E09)
-        string? EvalSuite = null,    // `az-ai eval <suite.json>` (S04E10)
+        string? EvalSuite = null,    // `hopper eval <suite.json>` (S04E10)
         double FailUnder = 100.0,    // --fail-under <0..100> (S04E10)
         string? EvalFilter = null,   // --filter <id-substring> (S04E10)
         string? EvalCorpus = null,   // --corpus <smoke|persona-voice|refusal> (S04E11)
@@ -253,7 +253,7 @@ internal class Program
             // cached in RegistryEntries for the --doctor handler.
             RegistryEntries = Registry.ModelRegistry.Load(isRaw: preRaw);
 
-            // S04E04 (Elaine) -- `az-ai models <list|show|capabilities>`.
+            // S04E04 (Elaine) -- `hopper models <list|show|capabilities>`.
             // Routed before ParseArgs because the sub-command tree has its
             // own flag dialect (`--json`, `--raw`, `--no-color`, positional
             // <name>) and shares no semantics with the standard prompt path.
@@ -288,7 +288,7 @@ internal class Program
             while (inner is AggregateException agg && agg.InnerException != null)
                 inner = agg.InnerException;
             Console.Error.WriteLine($"[ERROR] {inner.GetType().Name}: {SecretRedactor.Redact(inner.Message)}");
-            Console.Error.WriteLine("Run 'az-ai --help' for usage or 'az-ai --setup' to reconfigure.");
+            Console.Error.WriteLine("Run 'hopper --help' for usage or 'hopper --setup' to reconfigure.");
             return 99;
         }
     }
@@ -393,20 +393,20 @@ internal class Program
             return ListPatternsCommand(opts);
         }
 
-        // Commander Work Queue (`az-ai queue ...` or `az-ai commander ...`)
+        // Commander Work Queue (`hopper queue ...` or `hopper commander ...`)
         if (!string.IsNullOrEmpty(opts.QueueSubcommand))
         {
             return await HandleQueueSubcommandAsync(opts, userConfig);
         }
 
-        // S04E10 -- `az-ai eval <suite.json>`: score a fixture suite with deterministic assertions.
+        // S04E10 -- `hopper eval <suite.json>`: score a fixture suite with deterministic assertions.
         if (!string.IsNullOrEmpty(opts.EvalSuite) || !string.IsNullOrEmpty(opts.EvalCorpus) || opts.ListCorpora
             || opts.LintSuites is { Count: > 0 })
         {
             return await HandleEvalAsync(opts, userConfig);
         }
 
-        // FR-013 Phase 1: `az-ai mcp tools <server-cmd>` or `az-ai mcp call <server-cmd> <tool> [json-args]`
+        // FR-013 Phase 1: `hopper mcp tools <server-cmd>` or `hopper mcp call <server-cmd> <tool> [json-args]`
         if (!string.IsNullOrEmpty(opts.McpSubcommand))
         {
             return await HandleMcpClientSubcommandAsync(opts);
@@ -432,7 +432,7 @@ internal class Program
             }
         }
 
-        // FR-013: `az-ai mcp serve` / `--mcp-serve` (JSON-RPC 2.0 over stdio).
+        // FR-013: `hopper mcp serve` / `--mcp-serve` (JSON-RPC 2.0 over stdio).
         // Optionally configures DelegateTaskTool if Azure credentials exist,
         // but does NOT fail if credentials are absent so local tools (file,
         // web, datetime, clipboard, manifest plugins) work offline.
@@ -558,7 +558,7 @@ internal class Program
         // not give us a prompt or task file, stdin is a TTY, and no machine-
         // readable output flags are set. Walk them through setup instead of
         // dumping a terse env-var error. Explicit --setup above takes precedence;
-        // this block only fires when the user simply ran bare `az-ai` with
+        // this block only fires when the user simply ran bare `hopper` with
         // nothing configured yet. (CHANGELOG claim, restored from stash impl.)
         if (ShouldAutoLaunchSetup(opts, endpoint, apiKey,
                 SetupWizard.IsInteractiveTty(), Console.IsInputRedirected))
@@ -581,12 +581,12 @@ internal class Program
 
         if (string.IsNullOrWhiteSpace(endpoint))
         {
-            return ErrorAndExit("AZUREOPENAIENDPOINT environment variable not set. Run 'az-ai --setup' for guided configuration.", 1, jsonMode: opts.Json);
+            return ErrorAndExit("AZUREOPENAIENDPOINT environment variable not set. Run 'hopper --setup' for guided configuration.", 1, jsonMode: opts.Json);
         }
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return ErrorAndExit("AZUREOPENAIAPI environment variable not set. Run 'az-ai --setup' for guided configuration.", 1, jsonMode: opts.Json);
+            return ErrorAndExit("AZUREOPENAIAPI environment variable not set. Run 'hopper --setup' for guided configuration.", 1, jsonMode: opts.Json);
         }
 
         // FR-007: fire-and-forget TLS / DNS prewarm against the configured
@@ -1388,7 +1388,7 @@ internal class Program
                 || msg.Contains("No such host", StringComparison.OrdinalIgnoreCase)
                 || msg.Contains("actively refused", StringComparison.OrdinalIgnoreCase))
             {
-                msg += " Endpoint may be deleted or unreachable. Run 'az-ai --setup' to reconfigure.";
+                msg += " Endpoint may be deleted or unreachable. Run 'hopper --setup' to reconfigure.";
             }
             telScope.SetOutcome("unknown_error", ex.GetType().FullName);
             return ErrorAndExit(
@@ -1476,7 +1476,7 @@ internal class Program
     /// </summary>
     /// <summary>
     /// First-run wizard auto-trigger predicate. Returns true when the user
-    /// invoked bare <c>az-ai</c> with no usable credentials on an interactive
+    /// invoked bare <c>hopper</c> with no usable credentials on an interactive
     /// terminal and no machine-readable output flags. Extracted as a pure
     /// function (no Console / env reads) so the decision is unit-testable
     /// without a PTY harness — the caller passes in the terminal facts.
@@ -1820,7 +1820,7 @@ internal class Program
                     else { Fail("--mcp-server requires a server command or <name>=<command>"); }
                     break;
                 case "--stdio":
-                    // Accepted as an explicit transport flag for `az-ai mcp serve --stdio` (FR-013 §6.2)
+                    // Accepted as an explicit transport flag for `hopper mcp serve --stdio` (FR-013 §6.2)
                     break;
                 case "--allow-shell":
                     allowShell = true;
@@ -1977,7 +1977,7 @@ internal class Program
                 case "--why-this-model":
                     whyThisModel = true;
                     break;
-                // S04E10 -- The Score. Options for `az-ai eval <suite.json>`.
+                // S04E10 -- The Score. Options for `hopper eval <suite.json>`.
                 case "--fail-under":
                     if (i + 1 < args.Length
                         && double.TryParse(args[i + 1], System.Globalization.NumberStyles.Float,
@@ -1998,7 +1998,7 @@ internal class Program
                     }
                     else { Fail($"--corpus requires a name: {string.Join(", ", AzureOpenAI_CLI.Eval.Corpora.Names)}"); }
                     break;
-                // S04E12 -- The Gate. Flakiness and golden comparison for `az-ai eval`.
+                // S04E12 -- The Gate. Flakiness and golden comparison for `hopper eval`.
                 case "--repeat":
                     if (i + 1 < args.Length && int.TryParse(args[i + 1], System.Globalization.NumberStyles.Integer,
                             System.Globalization.CultureInfo.InvariantCulture, out var rp) && rp >= 1 && rp <= 10)
@@ -2156,7 +2156,7 @@ internal class Program
                                 }
                                 else
                                 {
-                                    Fail("'mcp tools' requires a server command (usage: az-ai mcp tools \"<server-command>\" [--json])");
+                                    Fail("'mcp tools' requires a server command (usage: hopper mcp tools \"<server-command>\" [--json])");
                                 }
                                 break;
                             }
@@ -2175,15 +2175,15 @@ internal class Program
                                 }
                                 else
                                 {
-                                    Fail("'mcp call' requires <server-command> and <tool-name> (usage: az-ai mcp call \"<server-command>\" <tool> ['{\"arg\":\"val\"}'])");
+                                    Fail("'mcp call' requires <server-command> and <tool-name> (usage: hopper mcp call \"<server-command>\" <tool> ['{\"arg\":\"val\"}'])");
                                 }
                                 break;
                             }
                         }
-                        Fail("'mcp' subcommand requires 'serve', 'tools', or 'call' (usage: az-ai mcp serve | az-ai mcp tools <cmd> | az-ai mcp call <cmd> <tool> [json])");
+                        Fail("'mcp' subcommand requires 'serve', 'tools', or 'call' (usage: hopper mcp serve | hopper mcp tools <cmd> | hopper mcp call <cmd> <tool> [json])");
                         break;
                     }
-                    // S04E10 -- `az-ai eval <suite.json>`. Narrow on purpose: only when it is the first
+                    // S04E10 -- `hopper eval <suite.json>`. Narrow on purpose: only when it is the first
                     // positional AND the next token ends in .json, so a prompt that merely starts with
                     // the word "eval" is still a prompt.
                     if (string.Equals(arg, "eval", StringComparison.OrdinalIgnoreCase)
@@ -2484,8 +2484,8 @@ internal class Program
     }
 
     /// <summary>
-    /// Dispatches <c>az-ai queue &lt;init|add|list|status|plan|run|clear&gt;</c>
-    /// (and alias <c>az-ai commander ...</c>).
+    /// Dispatches <c>hopper queue &lt;init|add|list|status|plan|run|clear&gt;</c>
+    /// (and alias <c>hopper commander ...</c>).
     /// </summary>
     internal static async Task<int> HandleQueueSubcommandAsync(CliOptions opts, UserConfig userConfig)
     {
@@ -2684,7 +2684,7 @@ internal class Program
                             var taskModel = userConfig.ResolveModel(task.Model) ?? task.Model ?? qDefaultModel;
                             if (string.IsNullOrWhiteSpace(qEndpoint) || string.IsNullOrWhiteSpace(qApiKey))
                             {
-                                return (null, taskModel, "AZUREOPENAIENDPOINT / AZUREOPENAIAPI not set. Run 'az-ai --setup'.");
+                                return (null, taskModel, "AZUREOPENAIENDPOINT / AZUREOPENAIAPI not set. Run 'hopper --setup'.");
                             }
                             var client = BuildChatClient(qEndpoint, qApiKey, taskModel, opts.Json);
                             return client is null
@@ -2730,8 +2730,8 @@ internal class Program
     }
 
     /// <summary>
-    /// FR-013 Phase 1: handles <c>az-ai mcp tools &lt;cmd&gt;</c> and
-    /// <c>az-ai mcp call &lt;cmd&gt; &lt;tool&gt; [json-args]</c>.
+    /// FR-013 Phase 1: handles <c>hopper mcp tools &lt;cmd&gt;</c> and
+    /// <c>hopper mcp call &lt;cmd&gt; &lt;tool&gt; [json-args]</c>.
     /// </summary>
     internal static async Task<int> HandleMcpClientSubcommandAsync(CliOptions opts)
     {
@@ -3255,7 +3255,7 @@ internal class Program
         if (jsonMode)
         {
             // Scope 2 (Puddy finding): JSON errors go to stderr so that
-            // `az-ai --json ... | jq` only sees happy-path results on stdout.
+            // `hopper --json ... | jq` only sees happy-path results on stdout.
             // Happy-path JSON (results) stays on stdout at its own call sites.
             var errorObj = new ErrorJsonResponse(Error: true, Message: redactedMessage, ExitCode: exitCode);
             Console.Error.WriteLine(JsonSerializer.Serialize(errorObj, AppJsonContext.Default.ErrorJsonResponse));
@@ -4145,7 +4145,7 @@ internal class Program
             opts.ResponseFormat = Microsoft.Extensions.AI.ChatResponseFormat.ForJsonSchema(
                 doc.RootElement.Clone(),
                 schemaName: "response_schema",
-                schemaDescription: "Structured output schema enforced by az-ai --schema");
+                schemaDescription: "Structured output schema enforced by hopper --schema");
         }
 
         return opts;
@@ -4153,11 +4153,12 @@ internal class Program
 
     private static void ShowHelp()
     {
-        Console.WriteLine(@"az-ai (v2.0.0) -- Azure OpenAI CLI (Microsoft Agent Framework)
+        Console.WriteLine($"hopper (v{VersionSemver}) -- pipe a prompt in, hop to any model, get plain text back");
+        Console.WriteLine(@"(formerly az-ai / Azure OpenAI CLI; the az-ai command still works)
 
 Usage:
-  az-ai [OPTIONS] <prompt>
-  echo ""prompt"" | az-ai [OPTIONS]
+  hopper [OPTIONS] <prompt>
+  echo ""prompt"" | hopper [OPTIONS]
 
 Core Options:
   --model, -m <alias|name>  Model deployment or alias (env: AZUREOPENAIMODEL, AZ_MODEL)
@@ -4205,9 +4206,9 @@ Agent / Tools:
 MCP Client & Server (FR-013, stdio JSON-RPC 2.0):
   --mcp-server <spec>       Connect to an external MCP stdio server and expose its tools
                             in agent/ralph mode (e.g. --mcp-server ""fs=npx -y @modelcontextprotocol/server-filesystem ."")
-  az-ai mcp tools <cmd>     List tools exposed by an external MCP stdio server (supports --json)
-  az-ai mcp call <c> <t>    Invoke a tool on an external MCP stdio server (optional JSON args)
-  az-ai mcp serve           Expose az-ai tools, prompts, and resources over MCP stdio (alias: --mcp-serve)
+  hopper mcp tools <cmd>     List tools exposed by an external MCP stdio server (supports --json)
+  hopper mcp call <c> <t>    Invoke a tool on an external MCP stdio server (optional JSON args)
+  hopper mcp serve           Expose hopper tools, prompts, and resources over MCP stdio (alias: --mcp-serve)
   --allow-shell             Allow exposing shell_exec (and dangerous plugins) over MCP
   --read-only               Expose only read-only tools (file,web,clipboard,datetime) over MCP
 
@@ -4218,13 +4219,13 @@ Ralph Mode (Autonomous Agent Loop):
   --max-iterations <n>      Maximum loop iterations (default: 10, max: 50)
 
 Commander / Work Queue Mode (DAG Orchestration):
-  az-ai queue init          Initialize .az-ai/queue.json (alias: az-ai commander ...)
-  az-ai queue add <prompt>  Enqueue a task (--task-id, --depends-on, --priority, --provider, --persona, --validate)
-  az-ai queue plan <json>   Bulk-load a JSON array of tasks into the DAG queue
-  az-ai queue status        Show queue summary and task states (supports --json; alias: list)
-  az-ai queue run           Execute ready DAG tasks in dependency/priority order
+  hopper queue init          Initialize .az-ai/queue.json (alias: hopper commander ...)
+  hopper queue add <prompt>  Enqueue a task (--task-id, --depends-on, --priority, --provider, --persona, --validate)
+  hopper queue plan <json>   Bulk-load a JSON array of tasks into the DAG queue
+  hopper queue status        Show queue summary and task states (supports --json; alias: list)
+  hopper queue run           Execute ready DAG tasks in dependency/priority order
                             (--concurrency 1..8, --dry-run, --recover-stale, --queue-file <path>)
-  az-ai queue clear         Reset the work queue
+  hopper queue clear         Reset the work queue
 
 Persona / Squad Mode:
   --squad-init              Initialize squad system (creates .squad.json + .squad/ dir)
@@ -4304,7 +4305,7 @@ Prompt Cache (FR-008, opt-in):
                             default: 168 = 7 days).
 
 Prompt Eval (S04E10, S04E11):
-  az-ai eval <suite.json>   Run a fixture suite and score its deterministic assertions
+  hopper eval <suite.json>   Run a fixture suite and score its deterministic assertions
                             (supports --json; --model/--prefer pick the model)
   --corpus <name>           Run a built-in corpus instead of a file: smoke, persona-voice, refusal
   --list-corpora            List the built-in corpora (supports --json)
@@ -4343,25 +4344,25 @@ Environment Variables (required):
   AZUREOPENAIENDPOINT       Azure OpenAI endpoint URL
   AZUREOPENAIAPI            API key
 
-  Run 'az-ai --setup' for guided configuration if these are not set.
+  Run 'hopper --setup' for guided configuration if these are not set.
 
 Subcommands (bare words):
-  az-ai help                Same as --help
-  az-ai setup               Same as --setup
+  hopper help                Same as --help
+  hopper setup               Same as --setup
 
 Examples:
-  az-ai --setup
-  az-ai ""What is the capital of France?""
-  az-ai --model fast --temperature 0.7 ""Write a haiku""
-  az-ai --set-model fast=gpt-4o-mini
-  az-ai --config set defaults.temperature=0.3
-  az-ai --agent --tools shell,file ""Summarize this directory""
-  az-ai --persona coder ""Review this function""
-  az-ai --ralph --task-file task.md --validate ""dotnet test"" --max-iterations 5
-  az-ai --image ""A cat wearing a top hat, oil painting""
-  az-ai --image --size 512x512 --output cat.png ""A cat in space""
-  echo ""sunset over mountains"" | az-ai --image --raw | base64 -d > sunset.png
-  source <(az-ai --completions bash)
+  hopper --setup
+  hopper ""What is the capital of France?""
+  hopper --model fast --temperature 0.7 ""Write a haiku""
+  hopper --set-model fast=gpt-4o-mini
+  hopper --config set defaults.temperature=0.3
+  hopper --agent --tools shell,file ""Summarize this directory""
+  hopper --persona coder ""Review this function""
+  hopper --ralph --task-file task.md --validate ""dotnet test"" --max-iterations 5
+  hopper --image ""A cat wearing a top hat, oil painting""
+  hopper --image --size 512x512 --output cat.png ""A cat in space""
+  echo ""sunset over mountains"" | hopper --image --raw | base64 -d > sunset.png
+  source <(hopper --completions bash)
 ");
     }
 
@@ -4375,7 +4376,7 @@ Examples:
     internal static readonly string VersionSemver =
         typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "unknown";
     internal static readonly string VersionFull =
-        $"az-ai {VersionSemver} (Microsoft Agent Framework)";
+        $"hopper {VersionSemver} (Microsoft Agent Framework)";
 
     private static void ShowVersion(bool shortForm)
     {
@@ -4383,8 +4384,8 @@ Examples:
     }
 
     // ── Shell completion scripts (ported from v1 Program.cs:1019-1101) ──────────
-    private const string BashCompletionScript = @"# bash completion for az-ai
-_az_ai_completions()
+    private const string BashCompletionScript = @"# bash completion for hopper
+_hopper_completions()
 {
     local cur prev opts
     COMPREPLY=()
@@ -4420,12 +4421,11 @@ _az_ai_completions()
         return 0
     fi
 }
-complete -F _az_ai_completions az-ai
-complete -F _az_ai_completions az-ai
+complete -F _hopper_completions hopper az-ai
 ";
 
-    private const string ZshCompletionScript = @"#compdef az-ai az-ai
-_az-ai() {
+    private const string ZshCompletionScript = @"#compdef hopper az-ai
+_hopper() {
     local -a opts
     opts=(
         '--agent[Enable agentic mode]'
@@ -4491,71 +4491,77 @@ _az-ai() {
     )
     _arguments -s $opts
 }
-compdef _az-ai az-ai az-ai
+compdef _hopper hopper az-ai
 ";
 
-    private const string FishCompletionScript = @"# fish completion for az-ai
-complete -c az-ai -l agent -d 'Enable agentic mode'
-complete -c az-ai -l ralph -d 'Enable Ralph loop mode'
-complete -c az-ai -l persona -d 'Use a persona' -r
-complete -c az-ai -l personas -d 'List personas'
-complete -c az-ai -l squad-init -d 'Initialize squad'
-complete -c az-ai -l raw -d 'Raw text output'
-complete -c az-ai -l plain -d 'Plain ASCII output -- no banner / color / glyphs'
-complete -c az-ai -l json -d 'JSON output'
-complete -c az-ai -l code -d 'Extract code blocks only'
-complete -c az-ai -l version -s v -d 'Show version'
-complete -c az-ai -l help -s h -d 'Show help'
-complete -c az-ai -l model -s m -d 'Select model' -r
-complete -c az-ai -l provider -d 'Provider override (S03E20)' -xa 'azure openai groq together cloudflare foundry'
-complete -c az-ai -l profile -d 'Named profile from preferences.json (S03E20)' -r
-complete -c az-ai -l set-model -d 'Set model alias' -r
-complete -c az-ai -l current-model -d 'Show default alias'
-complete -c az-ai -l models -d 'List aliases'
-complete -c az-ai -l completions -d 'Shell completions' -xa 'bash zsh fish'
-complete -c az-ai -l temperature -s t -d 'Temperature' -r
-complete -c az-ai -l max-tokens -d 'Max tokens' -r
-complete -c az-ai -l timeout -d 'Timeout seconds' -r
-complete -c az-ai -l system -s s -d 'System prompt' -r
-complete -c az-ai -l schema -d 'JSON schema' -r
-complete -c az-ai -l tools -d 'Tools list' -r
-complete -c az-ai -l max-rounds -d 'Max agent rounds' -r
-complete -c az-ai -l max-iterations -d 'Ralph iterations' -r
-complete -c az-ai -l config -d 'Config subcmd or path' -xa 'set get list reset show export-env'
-complete -c az-ai -l short -d 'Bare semver (with --version)'
-complete -c az-ai -l estimate -d 'Estimate cost'
-complete -c az-ai -l estimate-with-output -d 'Estimate with output' -r
-complete -c az-ai -l telemetry -d 'Enable telemetry'
-complete -c az-ai -l otel -d 'Enable OTLP traces'
-complete -c az-ai -l metrics -d 'Enable OTLP metrics'
-complete -c az-ai -l validate -d 'Ralph validator' -r
-complete -c az-ai -l task-file -d 'Ralph task file' -r
-complete -c az-ai -l setup -d 'Interactive setup wizard'
-complete -c az-ai -l init-wizard -d 'Alias for --setup'
-complete -c az-ai -l prefer -d 'Pick model by axis' -xa 'cost latency quality'
-complete -c az-ai -l why-this-model -d 'Explain the model pick and exit'
-complete -c az-ai -l code -d 'Print only fenced code blocks'
-complete -c az-ai -l jsonl -d 'Stream NDJSON events'
-complete -c az-ai -l list-tools -d 'List built-in and plugin tools'
-complete -c az-ai -l plugin-dir -d 'Load tool manifests from dir' -r
-complete -c az-ai -l allow-local-plugins -d 'Allow repo-local tool manifests'
-complete -c az-ai -l no-plugins -d 'Disable manifest plugins'
-complete -c az-ai -l pattern -d 'Apply a prompt pattern' -r
-complete -c az-ai -l patterns -d 'List prompt patterns'
-complete -c az-ai -l mcp-server -d 'Connect to an MCP stdio server' -r
-complete -c az-ai -l mcp-serve -d 'Run as an MCP stdio server'
-complete -c az-ai -l allow-shell -d 'Allow shell tool over MCP'
-complete -c az-ai -l read-only -d 'Read-only MCP server'
-complete -c az-ai -l fail-under -d 'Eval minimum score' -r
-complete -c az-ai -l filter -d 'Eval fixture id filter' -r
-complete -c az-ai -l corpus -d 'Run a built-in eval corpus' -xa 'smoke persona-voice refusal'
-complete -c az-ai -l list-corpora -d 'List built-in eval corpora'
-complete -c az-ai -l repeat -d 'Run each eval fixture n times' -r
-complete -c az-ai -l baseline -d 'Compare an eval run with a baseline' -r
-complete -c az-ai -l write-baseline -d 'Record an eval run as a baseline' -r
-complete -c az-ai -l lint-suite -d 'Lint an eval file for leaks' -r
-complete -c az-ai -l require-provenance -d 'Require an Origin header when linting'
-complete -c az-ai -w az-ai
+    /// <summary>
+    /// fish registers completions per command name. The old name <c>az-ai</c> still works after
+    /// the rename, so it is declared as a wrapper of <c>hopper</c> and shares every completion.
+    /// </summary>
+    internal static string FishCompletionForAllNames() =>
+        FishCompletionScript + "complete -c az-ai -w hopper\n";
+
+    private const string FishCompletionScript = @"# fish completion for hopper
+complete -c hopper -l agent -d 'Enable agentic mode'
+complete -c hopper -l ralph -d 'Enable Ralph loop mode'
+complete -c hopper -l persona -d 'Use a persona' -r
+complete -c hopper -l personas -d 'List personas'
+complete -c hopper -l squad-init -d 'Initialize squad'
+complete -c hopper -l raw -d 'Raw text output'
+complete -c hopper -l plain -d 'Plain ASCII output -- no banner / color / glyphs'
+complete -c hopper -l json -d 'JSON output'
+complete -c hopper -l code -d 'Extract code blocks only'
+complete -c hopper -l version -s v -d 'Show version'
+complete -c hopper -l help -s h -d 'Show help'
+complete -c hopper -l model -s m -d 'Select model' -r
+complete -c hopper -l provider -d 'Provider override (S03E20)' -xa 'azure openai groq together cloudflare foundry'
+complete -c hopper -l profile -d 'Named profile from preferences.json (S03E20)' -r
+complete -c hopper -l set-model -d 'Set model alias' -r
+complete -c hopper -l current-model -d 'Show default alias'
+complete -c hopper -l models -d 'List aliases'
+complete -c hopper -l completions -d 'Shell completions' -xa 'bash zsh fish'
+complete -c hopper -l temperature -s t -d 'Temperature' -r
+complete -c hopper -l max-tokens -d 'Max tokens' -r
+complete -c hopper -l timeout -d 'Timeout seconds' -r
+complete -c hopper -l system -s s -d 'System prompt' -r
+complete -c hopper -l schema -d 'JSON schema' -r
+complete -c hopper -l tools -d 'Tools list' -r
+complete -c hopper -l max-rounds -d 'Max agent rounds' -r
+complete -c hopper -l max-iterations -d 'Ralph iterations' -r
+complete -c hopper -l config -d 'Config subcmd or path' -xa 'set get list reset show export-env'
+complete -c hopper -l short -d 'Bare semver (with --version)'
+complete -c hopper -l estimate -d 'Estimate cost'
+complete -c hopper -l estimate-with-output -d 'Estimate with output' -r
+complete -c hopper -l telemetry -d 'Enable telemetry'
+complete -c hopper -l otel -d 'Enable OTLP traces'
+complete -c hopper -l metrics -d 'Enable OTLP metrics'
+complete -c hopper -l validate -d 'Ralph validator' -r
+complete -c hopper -l task-file -d 'Ralph task file' -r
+complete -c hopper -l setup -d 'Interactive setup wizard'
+complete -c hopper -l init-wizard -d 'Alias for --setup'
+complete -c hopper -l prefer -d 'Pick model by axis' -xa 'cost latency quality'
+complete -c hopper -l why-this-model -d 'Explain the model pick and exit'
+complete -c hopper -l code -d 'Print only fenced code blocks'
+complete -c hopper -l jsonl -d 'Stream NDJSON events'
+complete -c hopper -l list-tools -d 'List built-in and plugin tools'
+complete -c hopper -l plugin-dir -d 'Load tool manifests from dir' -r
+complete -c hopper -l allow-local-plugins -d 'Allow repo-local tool manifests'
+complete -c hopper -l no-plugins -d 'Disable manifest plugins'
+complete -c hopper -l pattern -d 'Apply a prompt pattern' -r
+complete -c hopper -l patterns -d 'List prompt patterns'
+complete -c hopper -l mcp-server -d 'Connect to an MCP stdio server' -r
+complete -c hopper -l mcp-serve -d 'Run as an MCP stdio server'
+complete -c hopper -l allow-shell -d 'Allow shell tool over MCP'
+complete -c hopper -l read-only -d 'Read-only MCP server'
+complete -c hopper -l fail-under -d 'Eval minimum score' -r
+complete -c hopper -l filter -d 'Eval fixture id filter' -r
+complete -c hopper -l corpus -d 'Run a built-in eval corpus' -xa 'smoke persona-voice refusal'
+complete -c hopper -l list-corpora -d 'List built-in eval corpora'
+complete -c hopper -l repeat -d 'Run each eval fixture n times' -r
+complete -c hopper -l baseline -d 'Compare an eval run with a baseline' -r
+complete -c hopper -l write-baseline -d 'Record an eval run as a baseline' -r
+complete -c hopper -l lint-suite -d 'Lint an eval file for leaks' -r
+complete -c hopper -l require-provenance -d 'Require an Origin header when linting'
 ";
 
     /// <summary>Emits a shell-completion script to stdout. 0=ok, 2=unknown shell.</summary>
@@ -4565,7 +4571,7 @@ complete -c az-ai -w az-ai
         {
             case "bash": Console.Write(BashCompletionScript); return 0;
             case "zsh": Console.Write(ZshCompletionScript); return 0;
-            case "fish": Console.Write(FishCompletionScript); return 0;
+            case "fish": Console.Write(FishCompletionForAllNames()); return 0;
             default:
                 return ErrorAndExit($"Unsupported shell '{shell}'. Supported: bash, zsh, fish.", 2, jsonMode: false);
         }
@@ -4574,7 +4580,7 @@ complete -c az-ai -w az-ai
     // ── Model-alias commands (FR-010) ──────────────────────────────────────────
 
     /// <summary>
-    /// S04E13 -- <c>az-ai --lint-suite &lt;file&gt; [--lint-suite ...] [--require-provenance] [--json]</c>.
+    /// S04E13 -- <c>hopper --lint-suite &lt;file&gt; [--lint-suite ...] [--require-provenance] [--json]</c>.
     /// Exit 0 clean, 1 findings. Needs no credentials, model or network, so it is safe in a hook and in CI.
     /// </summary>
     internal static int LintSuitesCommand(CliOptions opts)
@@ -4594,7 +4600,7 @@ complete -c az-ai -w az-ai
         return report.Findings.Count == 0 ? 0 : 1;
     }
 
-    /// <summary>S04E11 -- <c>az-ai eval --list-corpora [--json]</c>: what ships in the binary.</summary>
+    /// <summary>S04E11 -- <c>hopper eval --list-corpora [--json]</c>: what ships in the binary.</summary>
     internal static int ListCorporaCommand(bool json)
     {
         var infos = new List<AzureOpenAI_CLI.Eval.CorpusInfo>();
@@ -4616,7 +4622,7 @@ complete -c az-ai -w az-ai
             return 0;
         }
 
-        Console.WriteLine("Built-in corpora (run with: az-ai eval --corpus <name>)");
+        Console.WriteLine("Built-in corpora (run with: hopper eval --corpus <name>)");
         foreach (var c in infos)
         {
             Console.WriteLine($"  {c.Name,-14} {c.Fixtures,2} fixtures, {c.SafetyFixtures,2} safety, {c.Bytes,5} bytes -- {c.Description}");
@@ -4625,7 +4631,7 @@ complete -c az-ai -w az-ai
     }
 
     /// <summary>
-    /// S04E10 -- <c>az-ai eval &lt;suite.json&gt;</c>. Loads and validates the suite BEFORE any model
+    /// S04E10 -- <c>hopper eval &lt;suite.json&gt;</c>. Loads and validates the suite BEFORE any model
     /// call (a bad suite costs no tokens), runs each fixture the way the CLI would, and scores it.
     /// Exit codes: 0 pass; 1 fail (including a suite that grades nothing, or a safety failure);
     /// 2 unusable suite or arguments. <paramref name="callOverride"/> is the offline test seam.
@@ -4679,7 +4685,7 @@ complete -c az-ai -w az-ai
             if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(apiKey))
             {
                 return ErrorAndExit(
-                    "eval: AZUREOPENAIENDPOINT / AZUREOPENAIAPI not set. Run 'az-ai --setup'.",
+                    "eval: AZUREOPENAIENDPOINT / AZUREOPENAIAPI not set. Run 'hopper --setup'.",
                     1, jsonMode: opts.Json);
             }
 
@@ -4770,7 +4776,7 @@ complete -c az-ai -w az-ai
     }
 
     /// <summary>
-    /// S04E09 -- <c>--why-this-model</c>: print which model az-ai would use and why, then exit 0.
+    /// S04E09 -- <c>--why-this-model</c>: print which model hopper would use and why, then exit 0.
     /// No credentials, no network, no tokens. Explains the picker's decision (--model,
     /// --prefer, AZUREOPENAIMODEL); it does not evaluate --profile / --provider overrides.
     /// </summary>
@@ -4951,7 +4957,7 @@ complete -c az-ai -w az-ai
                         "Refusing to print api_key to stdout (would leak via scrollback, "
                         + "shell history, and pipe targets). "
                         + $"To inspect: {configPath} (file is mode 0600). "
-                        + "To re-set:  az-ai --setup",
+                        + "To re-set:  hopper --setup",
                         1,
                         opts.Json);
                 }
@@ -5450,13 +5456,13 @@ complete -c az-ai -w az-ai
         if (string.IsNullOrWhiteSpace(endpoint))
         {
             return ErrorAndExit(
-                "export-env: Azure OpenAI endpoint not configured. Set AZUREOPENAIENDPOINT or run 'az-ai --setup'.",
+                "export-env: Azure OpenAI endpoint not configured. Set AZUREOPENAIENDPOINT or run 'hopper --setup'.",
                 1, opts.Json);
         }
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             return ErrorAndExit(
-                "export-env: Azure OpenAI API key not configured. Set AZUREOPENAIAPI or run 'az-ai --setup'.",
+                "export-env: Azure OpenAI API key not configured. Set AZUREOPENAIAPI or run 'hopper --setup'.",
                 1, opts.Json);
         }
 
@@ -5475,8 +5481,8 @@ complete -c az-ai -w az-ai
             return 0;
         }
 
-        // Unquoted KV lines so `eval "$(az-ai --config export-env ...)"` and
-        // `env $(az-ai --config export-env ...) some-cmd` both work without
+        // Unquoted KV lines so `eval "$(hopper --config export-env ...)"` and
+        // `env $(hopper --config export-env ...) some-cmd` both work without
         // shell-quoting surprises.
         Console.WriteLine($"AZUREOPENAIENDPOINT={endpoint}");
         Console.WriteLine($"AZUREOPENAIAPI={apiKey}");

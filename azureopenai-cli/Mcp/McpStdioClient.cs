@@ -13,7 +13,7 @@ namespace AzureOpenAI_CLI.Mcp;
 /// runs the <c>initialize</c> + <c>notifications/initialized</c> handshake,
 /// discovers remote tools via <c>tools/list</c>, and exposes them as
 /// <see cref="AIFunction"/> instances (<see cref="McpClientAIFunction"/>) so
-/// <c>az-ai --agent</c> and <c>--ralph</c> can call any MCP server in the ecosystem.
+/// <c>hopper --agent</c> and <c>--ralph</c> can call any MCP server in the ecosystem.
 /// 100% Native AOT compatible via <see cref="McpJsonContext"/>.
 /// </summary>
 internal sealed class McpStdioClient : IDisposable
@@ -117,7 +117,7 @@ internal sealed class McpStdioClient : IDisposable
         var initParams = new McpInitializeRequestParams(
             ProtocolVersion: McpStdioServer.SupportedProtocolVersion,
             Capabilities: new McpClientCapabilities(),
-            ClientInfo: new McpServerInfo(Name: "az-ai-client", Version: Program.VersionSemver));
+            ClientInfo: new McpServerInfo(Name: "hopper-client", Version: Program.VersionSemver));
         var paramsElem = JsonSerializer.SerializeToElement(initParams, McpJsonContext.Default.McpInitializeRequestParams);
 
         var resp = await SendRequestAsync("initialize", paramsElem, ct).ConfigureAwait(false);

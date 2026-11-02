@@ -66,7 +66,7 @@ internal record ConfigShowResolvedField(
 );
 
 /// <summary>
-/// S03E15 -- The Probe. JSON envelope for <c>az-ai --doctor --json</c>.
+/// S03E15 -- The Probe. JSON envelope for <c>hopper --doctor --json</c>.
 /// One entry per configured provider plus a roll-up boolean. Never carries
 /// credential values; <c>creds_present</c> is the only credential signal.
 /// </summary>
@@ -178,7 +178,7 @@ internal record JsonlStreamEvent(
 [JsonSerializable(typeof(ModelRegistryEntry))]
 [JsonSerializable(typeof(ModelRegistryEntry[]))]
 // ── S04E04 Reading Room (Elaine) ----------------------------------------
-// Three DTOs supporting `az-ai models {list,show,capabilities} --json`.
+// Three DTOs supporting `hopper models {list,show,capabilities} --json`.
 // JSON property names are pinned with [JsonPropertyName] on the records so
 // the CamelCase default policy does not creep in and break the shape.
 [JsonSerializable(typeof(AzureOpenAI_CLI.Cli.ModelListEntryJson))]

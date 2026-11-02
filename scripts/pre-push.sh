@@ -62,7 +62,7 @@ mapfile -t changed_eval < <(git diff --name-only --diff-filter=AM "$range" -- \
     'azureopenai-cli/Eval/Corpora/*.json' 'examples/eval/*.json' \
     'docs/prompts/fixtures/*.json' 'eval/baselines/*.json' 2>/dev/null || true)
 if [ "${#changed_eval[@]}" -gt 0 ]; then
-    eval_bin="${BIN:-azureopenai-cli/bin/Release/net10.0/az-ai}"
+    eval_bin="${BIN:-azureopenai-cli/bin/Release/net10.0/hopper}"
     if [ -x "$eval_bin" ] || command -v "$eval_bin" >/dev/null 2>&1; then
         echo "[pre-push] eval-lint on ${#changed_eval[@]} changed eval file(s) ..." >&2
         if ! BIN="$eval_bin" bash scripts/eval-lint.sh "${changed_eval[@]}" >&2; then

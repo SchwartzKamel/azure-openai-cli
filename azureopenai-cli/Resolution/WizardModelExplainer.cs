@@ -13,7 +13,7 @@ namespace AzureOpenAI_CLI.Resolution;
 ///     and the models the user just typed; the caller prints the lines.</item>
 ///   <item>No second decision-maker. The default model is whatever
 ///     <see cref="ResolveSmartDefault.Pick"/> returns for the same input, so the
-///     panel cannot disagree with what az-ai will actually do on the next run.</item>
+///     panel cannot disagree with what hopper will actually do on the next run.</item>
 ///   <item>No new reason code. The four locked codes stay four; this class only
 ///     branches on them to choose wording.</item>
 ///   <item>Screen-reader friendly: ASCII only, no color, no box drawing, no
@@ -70,8 +70,8 @@ internal static class WizardModelExplainer
         if (pick.ReasonCode == ResolutionReason.FALLBACK)
         {
             lines.AddRange(Wrap(
-                "Note: '" + name + "' is not in az-ai's built-in model list. That is "
-                + "normal for a custom deployment name. az-ai still uses it, but skips "
+                "Note: '" + name + "' is not in hopper's built-in model list. That is "
+                + "normal for a custom deployment name. hopper still uses it, but skips "
                 + "capability checks for names it does not know.",
                 indent: "  "));
         }
@@ -83,7 +83,7 @@ internal static class WizardModelExplainer
             lines.Add("  Use one for a single call with: --model <name>");
         }
 
-        lines.Add("  To change the default, re-run 'az-ai --setup' and list that model first.");
+        lines.Add("  To change the default, re-run 'hopper --setup' and list that model first.");
         return lines.ToArray();
     }
 

@@ -20,7 +20,7 @@
 set -euo pipefail
 
 MODE="${1:-run}"
-BIN="${BIN:-az-ai}"
+BIN="${BIN:-hopper}"
 POLICY="${POLICY:-.github/eval-gate.json}"
 OUT="${OUT:-eval-gate-out}"
 BASELINE_DIR="${BASELINE_DIR:-eval/baselines}"

@@ -93,7 +93,7 @@ public class McpStdioServerTests
             Assert.Equal(1, initDoc.RootElement.GetProperty("id").GetInt32());
             var initResult = initDoc.RootElement.GetProperty("result");
             Assert.Equal("2024-11-05", initResult.GetProperty("protocolVersion").GetString());
-            Assert.Equal("az-ai", initResult.GetProperty("serverInfo").GetProperty("name").GetString());
+            Assert.Equal("hopper", initResult.GetProperty("serverInfo").GetProperty("name").GetString());
 
             // Check tools/list response
             using var listDoc = JsonDocument.Parse(responses[1]);

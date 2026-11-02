@@ -61,7 +61,7 @@ public class WizardModelExplainerTests
         var text = Reflow(lines);
 
         Assert.Equal("Azure default model: my-gpt4", lines[0]);
-        Assert.Contains("not in az-ai's built-in model list", text);
+        Assert.Contains("not in hopper's built-in model list", text);
         Assert.Contains("normal for a custom deployment name", text);
         Assert.Contains("skips capability checks", text);
         foreach (var alarming in new[] { "error", "invalid", "failed", "fix AZUREOPENAIMODEL" })
@@ -98,7 +98,7 @@ public class WizardModelExplainerTests
     {
         var lines = Explain("gpt-4o-mini", "gpt-4o-mini");
 
-        Assert.Contains("re-run 'az-ai --setup'", lines[^1]);
+        Assert.Contains("re-run 'hopper --setup'", lines[^1]);
     }
 
     // Proves: nothing to explain yields nothing, so the wizard prints no empty panel.

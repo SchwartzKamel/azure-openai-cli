@@ -36,7 +36,7 @@ internal static class ReadFileTool
         // Per-user credential stores (pre-existing)
         "~/.aws",                  // AWS CLI credentials / config
         "~/.azure",                // Azure CLI tokens & service-principal creds
-        "~/.config/az-ai",         // az-ai CLI config directory
+        "~/.config/az-ai",         // the CLI config directory (the on-disk name is unchanged by the rename)
         "~/.azureopenai-cli.json", // this CLI's own config file
 
         // Per-user credential stores (S02E26 extensions — the "locked drawer")

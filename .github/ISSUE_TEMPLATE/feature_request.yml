@@ -1,12 +1,12 @@
 name: ✨ Feature request
-description: Suggest an improvement or new capability for az-ai.
+description: Suggest an improvement or new capability for hopper.
 title: "[Feature]: "
 labels: ["enhancement", "needs-triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping shape az-ai. Feature requests that describe the
+        Thanks for helping shape hopper. Feature requests that describe the
         *problem* first — not just the solution — are the easiest to act on.
 
         **Small idea** (a flag, a message, a config key)? Stay here. File this form.
@@ -28,7 +28,7 @@ body:
     attributes:
       label: What problem are you trying to solve?
       description: What can't you do today? Who is affected? How often?
-      placeholder: When scripting az-ai in CI, I can't pipe JSON output because...
+      placeholder: When scripting hopper in CI, I can't pipe JSON output because...
     validations:
       required: true
 
@@ -36,8 +36,8 @@ body:
     id: solution
     attributes:
       label: Proposed solution
-      description: What would you like az-ai to do? Include CLI shape, flags, output, or UX if relevant.
-      placeholder: Add a `--json` flag to `az-ai chat` that emits a JSON object with fields...
+      description: What would you like hopper to do? Include CLI shape, flags, output, or UX if relevant.
+      placeholder: Add a `--json` flag to `hopper chat` that emits a JSON object with fields...
     validations:
       required: true
 

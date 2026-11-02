@@ -12,7 +12,7 @@ namespace AzureOpenAI_CLI.Cli;
 
 // S03E15 -- The Probe. Costanza's diagnostic subcommand.
 //
-// `az-ai --doctor` (also exposed as the "providers doctor" sub-command)
+// `hopper --doctor` (also exposed as the "providers doctor" sub-command)
 // probes every configured provider and reports health WITHOUT issuing any
 // authenticated API call and WITHOUT emitting credential values. The check
 // surface is intentionally narrow:
@@ -86,11 +86,11 @@ internal static class ProviderDoctor
         if (entries.Count == 0)
         {
             stdout.WriteLine(SecretRedactor.Redact(
-                "az-ai providers doctor: no providers configured."));
+                "hopper providers doctor: no providers configured."));
             stdout.WriteLine(SecretRedactor.Redact(
                 "  Set AZUREOPENAIENDPOINT, AZURE_FOUNDRY_ENDPOINT, or AZ_AI_COMPAT_MODELS,"));
             stdout.WriteLine(SecretRedactor.Redact(
-                "  or run 'az-ai --setup' for guided configuration."));
+                "  or run 'hopper --setup' for guided configuration."));
             return 0;
         }
 

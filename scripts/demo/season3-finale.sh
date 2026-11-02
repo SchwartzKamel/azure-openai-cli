@@ -123,7 +123,7 @@ require_az_ai() {
   Build and install it first:
 
       DOTNET_ROOT=/usr/lib/dotnet make publish-aot
-      make install     # copies dist/aot/az-ai to ~/.local/bin/az-ai
+      make install     # copies dist/aot/hopper to ~/.local/bin/hopper (plus an az-ai alias)
 
   Then re-run this demo:
 

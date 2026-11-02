@@ -85,6 +85,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exhaustion) rolled forward to a follow-up; tracked in episode
   backlog.
 
+### Changed
+- **feat(rebrand):** S04E14 *The Rebrand* -- the project is now **hopper**
+  (formerly `az-ai`, the Azure OpenAI CLI). The binary is `hopper`, and `az-ai`
+  stays as an alias: `make install` links it, release archives contain both, and
+  the Docker image keeps `/app/az-ai`. Help, error hints, completions (bash, zsh
+  and fish, for both names), the MCP `serverInfo` name and the README say hopper.
+  `--version` now prints `hopper <version> ...`; use `--version --short` for a bare
+  version. Unchanged on purpose: `~/.config/az-ai/`, `.az-ai/queue.json`, the
+  `AZUREOPENAI*` and `AZ_AI_*` variables. Archive and package names keep the
+  `az-ai-` prefix until the manifests move. (ADR-016, s04e14-the-rebrand)
+
 ### Added
 - **feat(resolution):** S04E05 *The Picker* -- new
   `azureopenai-cli/Resolution/ResolveSmartDefault.cs` lands the

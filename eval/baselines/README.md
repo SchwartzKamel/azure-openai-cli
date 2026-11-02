@@ -19,7 +19,7 @@ You need credentials and a pinned model. This spends tokens: the policy runs eac
 ```bash
 export AZUREOPENAIENDPOINT=... AZUREOPENAIAPI=...
 export EVAL_GATE_MODEL=gpt-4o-mini
-BIN=./azureopenai-cli/bin/Release/net10.0/az-ai scripts/eval-gate.sh baseline
+BIN=./azureopenai-cli/bin/Release/net10.0/hopper scripts/eval-gate.sh baseline
 git add eval/baselines && git commit -m "test(eval): record baselines for gpt-4o-mini"
 ```
 

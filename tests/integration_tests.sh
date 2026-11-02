@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # Binary path (override via env for CI / post-rename).
-BIN="${BIN:-./azureopenai-cli/bin/Release/net10.0/az-ai}"
+BIN="${BIN:-./azureopenai-cli/bin/Release/net10.0/hopper}"
 
 PASS=0
 FAIL=0
@@ -219,7 +219,7 @@ run_bin_tests() {
     assert_exit_code "--completions bash exits 0" 0 "$BIN" --completions bash
     local first_line
     first_line=$("$BIN" --completions bash 2>/dev/null | head -1)
-    if printf '%s' "$first_line" | grep -qE '^# bash completion for az-ai'; then
+    if printf '%s' "$first_line" | grep -qE '^# bash completion for hopper'; then
         pass "--completions bash starts with bash-completion header"
     else
         fail "--completions bash starts with bash-completion header" "got first line: $first_line"
@@ -751,7 +751,7 @@ KCEOF2
         else
             fail "S04E08 wizard: panel states why (first in your list)" "tail=$(printf '%s' "$ob_text" | tail -15)"
         fi
-        if printf '%s' "$ob_text" | grep -qF "is not in az-ai's built-in model list"; then
+        if printf '%s' "$ob_text" | grep -qF "is not in hopper's built-in model list"; then
             pass "S04E08 wizard: unregistered name explained as normal"
         else
             fail "S04E08 wizard: unregistered name explained as normal" "tail=$(printf '%s' "$ob_text" | tail -15)"
@@ -944,7 +944,7 @@ EVSUITE
 
     local ev_help
     ev_help=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" --help 2>&1)
-    if printf '%s' "$ev_help" | grep -qF 'az-ai eval <suite.json>' && printf '%s' "$ev_help" | grep -qF -- '--fail-under'; then
+    if printf '%s' "$ev_help" | grep -qF 'hopper eval <suite.json>' && printf '%s' "$ev_help" | grep -qF -- '--fail-under'; then
         pass "S04E10 eval: --help documents the subcommand and --fail-under"
     else
         fail "S04E10 eval: --help documents the subcommand and --fail-under" "missing"

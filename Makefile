@@ -30,7 +30,7 @@ ifeq ($(findstring win,$(RID)),win)
 else
   BIN_EXT :=
 endif
-BIN_NAME := az-ai$(BIN_EXT)
+BIN_NAME := hopper$(BIN_EXT)
 
 IMAGE_NAME := azureopenai-cli
 IMAGE_TAG := gpt-5-chat
@@ -73,7 +73,7 @@ help:
 	@echo "  make build       - Build the Docker image"
 	@echo "  make run         - Run the CLI (requires .env file). Use ARGS=\"your prompt\""
 	@echo "  make clean       - Remove build artifacts and dangling images"
-	@echo "  make alias       - Install 'az-ai' shell alias"
+	@echo "  make alias       - Install 'hopper' (and 'az-ai') shell aliases"
 	@echo "  make scan        - Run local vulnerability scan with Grype (dev convenience; Trivy in CI is canonical — see docs/security/scanners.md)"
 	@echo "  make test        - Run unit tests (xUnit)"
 	@echo "  make integration-test - Run end-to-end integration tests"
@@ -109,8 +109,8 @@ help:
 	@echo "  make release-notes-preview   - Print the [Unreleased] CHANGELOG section to stdout"
 	@echo ""
 	@echo "Native-install & benchmark (drop Docker for speed — ideal for Espanso/AHK):"
-	@echo "  make install      - Install host-AOT binary to ~/.local/bin/az-ai (Linux/macOS/WSL)"
-	@echo "  make uninstall    - Remove ~/.local/bin/az-ai"
+	@echo "  make install      - Install host-AOT binary to ~/.local/bin/hopper, plus an az-ai alias (Linux/macOS/WSL)"
+	@echo "  make uninstall    - Remove ~/.local/bin/hopper and the az-ai alias"
 	@echo "  make run-native   - Run native binary with env loaded from ~/.config/az-ai/env"
 	@echo "  make load-env     - Print 'source' command for ~/.config/az-ai/env (eval in your shell)"
 	@echo "  make models       - List allowed models from env file"
@@ -175,8 +175,9 @@ alias:
 		*/bash) RCFILE=$$HOME/.bashrc ;; \
 		*) RCFILE=$$HOME/.profile ;; \
 	esac; \
+	echo "alias hopper='$(DOCKER_CMD)'" >> $$RCFILE; \
 	echo "alias az-ai='$(DOCKER_CMD)'" >> $$RCFILE; \
-	echo "Alias 'az-ai' added to $$RCFILE"
+	echo "Aliases 'hopper' and 'az-ai' added to $$RCFILE"
 
 ## Run a vulnerability assessment of the compiled image.
 ##
@@ -509,37 +510,37 @@ _publish_rid = \
 publish-linux-x64:
 	@echo ">> Publishing linux-x64 (ReadyToRun, self-contained) to dist/linux-x64/"
 	@$(call _publish_rid,linux-x64)
-	@ls -lh dist/linux-x64/az-ai
+	@ls -lh dist/linux-x64/hopper
 
 publish-linux-musl-x64:
 	@echo ">> Publishing linux-musl-x64 (Alpine) to dist/linux-musl-x64/"
 	@$(call _publish_rid,linux-musl-x64)
-	@ls -lh dist/linux-musl-x64/az-ai
+	@ls -lh dist/linux-musl-x64/hopper
 
 publish-linux-arm64:
 	@echo ">> Publishing linux-arm64 to dist/linux-arm64/"
 	@$(call _publish_rid,linux-arm64)
-	@ls -lh dist/linux-arm64/az-ai
+	@ls -lh dist/linux-arm64/hopper
 
 publish-osx-x64:
 	@echo ">> Publishing osx-x64 (macOS Intel) to dist/osx-x64/"
 	@$(call _publish_rid,osx-x64)
-	@ls -lh dist/osx-x64/az-ai
+	@ls -lh dist/osx-x64/hopper
 
 publish-osx-arm64:
 	@echo ">> Publishing osx-arm64 (Apple Silicon) to dist/osx-arm64/"
 	@$(call _publish_rid,osx-arm64)
-	@ls -lh dist/osx-arm64/az-ai
+	@ls -lh dist/osx-arm64/hopper
 
 publish-win-x64:
 	@echo ">> Publishing win-x64 to dist/win-x64/"
 	@$(call _publish_rid,win-x64)
-	@ls -lh dist/win-x64/az-ai.exe
+	@ls -lh dist/win-x64/hopper.exe
 
 publish-win-arm64:
 	@echo ">> Publishing win-arm64 to dist/win-arm64/"
 	@$(call _publish_rid,win-arm64)
-	@ls -lh dist/win-arm64/az-ai.exe
+	@ls -lh dist/win-arm64/hopper.exe
 
 ## Publish all 7 supported RIDs (~7× single-build time). Local-dev convenience.
 ## NOTE: this builds MORE than the shipped release matrix. The release
@@ -561,26 +562,29 @@ publish-all: publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 # ─────────────────────────────────────────────────────────────────────────────
 
 PREFIX ?= $(HOME)/.local
-INSTALL_BIN := $(PREFIX)/bin/az-ai
+INSTALL_BIN := $(PREFIX)/bin/hopper
+# The old command name keeps working: a link to the same binary (FR-024, ADR-016).
+ALIAS_BIN := $(PREFIX)/bin/az-ai
 
-## Install host-AOT binary to ~/.local/bin/az-ai (Linux/macOS/WSL).
+## Install host-AOT binary to ~/.local/bin/hopper, plus an az-ai alias (Linux/macOS/WSL).
 ## Requires `make publish-aot` to have been run first.
 ## Add ~/.local/bin to PATH if it isn't already (most distros do this).
 install: dist/aot/$(BIN_NAME)
 	@mkdir -p $(PREFIX)/bin
 	@cp dist/aot/$(BIN_NAME) $(INSTALL_BIN)
 	@chmod +x $(INSTALL_BIN)
-	@echo ">> Installed to $(INSTALL_BIN)"
-	@echo "   Invoke with: az-ai \"your prompt\""
-	@echo "   Espanso:     command: [\"az-ai\", \"--raw\", \"{{prompt}}\"]"
+	@ln -sf hopper $(ALIAS_BIN)
+	@echo ">> Installed to $(INSTALL_BIN) (and the az-ai alias: $(ALIAS_BIN) -> hopper)"
+	@echo "   Invoke with: hopper \"your prompt\""
+	@echo "   Espanso:     command: [\"hopper\", \"--raw\", \"{{prompt}}\"]"
 
 ## If the host-AOT binary doesn't exist, build it first.
 dist/aot/$(BIN_NAME):
 	@$(MAKE) publish-aot
 
 uninstall:
-	@rm -f $(INSTALL_BIN)
-	@echo ">> Removed $(INSTALL_BIN)"
+	@rm -f $(INSTALL_BIN) $(ALIAS_BIN)
+	@echo ">> Removed $(INSTALL_BIN) and $(ALIAS_BIN)"
 
 # Env-file location for native (non-Docker) usage.
 # setup-secrets.sh writes here; chmod 600 by convention.
@@ -750,7 +754,7 @@ set-image-model:
 	@echo 'export AZURE_IMAGE_MODEL="$(MODEL)"' >> "$(ENV_FILE)"
 	@echo "Done. AZURE_IMAGE_MODEL set to '$(MODEL)' in $(ENV_FILE)"
 	@echo ""
-	@echo "Usage: az-ai --image \"a cat wearing a top hat\""
+	@echo "Usage: hopper --image \"a cat wearing a top hat\""
 	@echo ""
 	@echo "The image model also needs to be in AZURE_FOUNDRY_MODELS if it's"
 	@echo "hosted on Foundry (e.g. FLUX.2-pro). Use 'make set-foundry' first."

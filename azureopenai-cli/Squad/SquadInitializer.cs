@@ -208,10 +208,10 @@ internal static class SquadInitializer
         ## Commands
 
         ```bash
-        az-ai --persona coder "implement login page"     # Use specific persona
-        az-ai --persona auto "fix the auth bug"           # Auto-route to best persona
-        az-ai --personas                                  # List available personas
-        az-ai --squad-init                                # Re-scaffold (won't overwrite)
+        hopper --persona coder "implement login page"     # Use specific persona
+        hopper --persona auto "fix the auth bug"           # Auto-route to best persona
+        hopper --personas                                  # List available personas
+        hopper --squad-init                                # Re-scaffold (won't overwrite)
         ```
         """;
 }
