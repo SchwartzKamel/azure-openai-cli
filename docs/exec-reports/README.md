@@ -14,7 +14,7 @@ because the [cast itself is](../../AGENTS.md).
 | **S01** | The Pilot Years                          | Aired (back-fill pending)        | --        |
 | **S02** | Production & Polish (v2 era)             | In production (24-arc + specials) | --        |
 | **S03** | Local & Multi-Provider                   | Aired (30 episodes; index back-fill pending) | [s03-blueprint.md](s03-blueprint.md) |
-| **S04** | Model Intelligence                       | In production (E01-E11 + 5 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
+| **S04** | Model Intelligence                       | In production (E01-E11 + 6 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
 | **S05** | Protocols & Plugins (incl. MCP)          | Pre-production                  | [s05-blueprint.md](s05-blueprint.md) |
 | **S06** | Dogfooding (`az-ai` is the main tool)    | Pre-production (showrunner override) | [s06-blueprint.md](s06-blueprint.md) |
 | **S07+** | Roadmap pad (Enterprise, Multimodal, ...) | Slate                            | [seasons-roadmap.md](seasons-roadmap.md) |
@@ -93,6 +93,7 @@ range recorded in each report. E06 is the mid-season cast-balance audit.
 | S04SP3   | *The Pre-Push*         | [s04sp3-the-pre-push.md](s04sp3-the-pre-push.md) | `1c8c787` | Pre-push docs-lint after ten consecutive red runs |
 | S04SP4   | *The Bucket*           | [s04sp4-the-bucket.md](s04sp4-the-bucket.md) | `457e06b` | Release queue unblock and printf fix-forward |
 | S04SP5   | *The Name Game*        | [s04sp5-the-name-game.md](s04sp5-the-name-game.md) | docs only | Six-round rebrand review; verdict reversed; three gates open, nothing renamed |
+| S04SP6   | *The Name Game, Part II* | [s04sp6-the-name-game-part-ii.md](s04sp6-the-name-game-part-ii.md) | docs + script | 719 names screened incl. US trademarks; first shortlist withdrawn; `dunlin` selected, clearance open |
 
 ### Season 3 -- Local & Multi-Provider
 
