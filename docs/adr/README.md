@@ -48,6 +48,14 @@ Skip an ADR for routine refactors, bug fixes, or reversible choices.
 | ADR-006  | [NVIDIA NIM / NVFP4 Provider Integration](./ADR-006-nvfp4-nim-integration.md) | Proposed -- 2026-04-23 |
 | ADR-007  | [Security Guardrails for Third-Party HTTP Inference Providers](./ADR-007-third-party-http-provider-security.md) | Proposed -- 2026-04-23 |
 | ADR-008  | [Benchmarking Policy for GPU / Non-CI-Gated Providers](./ADR-008-gpu-provider-bench-policy.md) | Proposed -- 2026-04-23 |
+| ADR-009  | [Default Model Resolution: Env-Var-First, Conservative Fallback](./ADR-009-default-model-resolution.md) | Accepted -- 2026-04-23 |
+| ADR-010  | [First Non-Azure Cloud Provider](./ADR-010-first-non-azure-cloud.md) | Accepted -- 2026-05-06 |
+| ADR-011  | [Default Provider Heuristic](./ADR-011-default-provider-heuristic.md) | Accepted -- 2026-05-21 |
+| ADR-012  | [Model Registry Seam](./ADR-012-model-registry-seam.md) | Accepted -- 2026-05-13 (S04E01) |
+| ADR-013  | [Capability Gate](./ADR-013-capability-gate.md) | GREENLIT (S04E03) -- 2026-05-21 |
+| ADR-014  | [Output Formatting Standard](./ADR-014-output-formatting-standard.md) | GREENLIT (S04E04 *Reading Room*, Wave 1) |
+| ADR-015  | [Fallback policy doctrine](./ADR-015-fallback-policy.md) | Accepted (S04E07 *The Fallback*, Wave 1) |
+| ADR-016  | [Rename the project away from third-party marks (staged)](./ADR-016-rebrand-away-from-third-party-marks.md) | Proposed |
 
 ## Who writes them?
 

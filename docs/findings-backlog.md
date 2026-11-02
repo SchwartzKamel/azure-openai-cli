@@ -156,6 +156,8 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | maestro-2026-11-M-1 | [s04e10-the-score.md](exec-reports/s04e10-the-score.md) | LOW | open | Maestro | Trait judge not implemented: freeform `expected_traits` / `forbidden_traits` are reported ungraded; only `assertions` are scored | 2026-11-01 |
 | maestro-2026-11-M-2 | [s04e10-the-score.md](exec-reports/s04e10-the-score.md) | LOW | open | Maestro + Kramer | `persona_version` is recorded in fixtures but not enforced, because personas carry no version | 2026-11-01 |
 | maestro-2026-11-M-3 | [s04e10-the-score.md](exec-reports/s04e10-the-score.md) | INFO | open | Maestro | No golden recording (`--save-output`): before/after goldens required by the design doc are still attached to PRs by hand | 2026-11-01 |
+| jackie-2026-11-J-1 | [s04sp5-the-name-game.md](exec-reports/s04sp5-the-name-game.md) | MEDIUM | open | Jackie (counsel needed) | The project name "Azure OpenAI CLI" embeds two third-party marks while `docs/legal/trademark-policy.md` section 3 limits them to nominative use. A review lens identified the question; it is not legal advice and does not conclude a violation. Gate G2 of FR-024 | 2026-11-01 |
+| wilhelm-2026-11-W-3 | [s04sp5-the-name-game.md](exec-reports/s04sp5-the-name-game.md) | LOW | open | Wilhelm | `docs/proposals/README.md` index was last updated 2026-04-24 and has no rows for FR-021, FR-022 or FR-023 (the files exist) | 2026-11-01 |
 
 ## Resolved (last 90 days)
 
@@ -176,6 +178,7 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | lloyd-2026-11-L-1 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | HIGH | resolved | Elaine + Newman | README key-storage table promised DPAPI / macOS Keychain / libsecret encryption that is not implemented (FR-023 is still Proposed); corrected to describe the plaintext `0600` files the code writes | 2026-11-01 |
 | lloyd-2026-11-L-2 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | MEDIUM | resolved | Elaine | README and `docs/onboarding.md` told newcomers to run `az-ai --init`, which fails with "unknown flag"; replaced with `--setup` | 2026-11-01 |
 | kramer-2026-11-K-1 | [s04e09-the-override.md](exec-reports/s04e09-the-override.md) | LOW | resolved | Kramer | Shell completions (bash, zsh, fish) omitted the agent-interop flags merged earlier (`--jsonl`, `--code`, `--list-tools`, `--plugin-dir`, `--pattern`, `--mcp-server`, ...); added with the S04E09 flags | 2026-11-01 |
+| wilhelm-2026-11-W-2 | [s04sp5-the-name-game.md](exec-reports/s04sp5-the-name-game.md) | LOW | resolved | Wilhelm | `docs/adr/README.md` indexed ADR-001 to ADR-008 only; ADR-009 to ADR-015 were missing. Rows derived from the files and added, with ADR-016 | 2026-11-01 |
 | kramer-2026-11-K-2 | [s04e10-the-score.md](exec-reports/s04e10-the-score.md) | LOW | resolved | Kramer | Two code comments named `AZ_AI_FOUNDRY_MODELS`; the implementation reads `AZURE_FOUNDRY_MODELS` (one comment was copied into the queue code in #17) | 2026-11-01 |
 
 ## Deferred / wontfix

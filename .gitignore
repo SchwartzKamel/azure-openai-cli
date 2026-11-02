@@ -16,6 +16,7 @@ scripts/*
 !scripts/test-i18n.sh
 !scripts/exec-report-check.sh
 !scripts/pre-push.sh
+!scripts/brand-inventory.sh
 !scripts/lint-espanso-yml.sh
 !scripts/provider-deps.json
 !scripts/provider-deps.schema.json
