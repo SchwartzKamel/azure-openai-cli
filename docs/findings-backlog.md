@@ -148,6 +148,7 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | lloyd-2026-11-L-3 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | LOW | open | Kramer + Costanza | Seed registry ships 3 models, so common Azure models such as `gpt-4o` read as "custom" in the wizard panel and skip capability checks | 2026-11-01 |
 | lloyd-2026-11-L-4 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | LOW | open | Elaine | `docs/user-stories.md` and `docs/accessibility.md` still describe v1 `--init` / `--configure` / `--login` flags that do not exist | 2026-11-01 |
 | newman-2026-11-N-1 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | MEDIUM | open | Newman | `WizardSession.SetRestrictivePermissions` is a no-op on Windows, so the plaintext key in `%APPDATA%\az-ai\env` relies on default profile ACLs (README now says so) | 2026-11-01 |
+| fdr-2026-11-F-1 | [PR 22: shell git-safety](https://github.com/SchwartzKamel/azure-openai-cli/pull/22) | MEDIUM | open | Newman + FDR | `shell_exec` blocklist only checks the first token of each `\|`/`;`/`&` segment and `sh`/`bash` are not blocked, so `bash -c 'rm ...'` and `sh -c "sudo ..."` run (verified by probe) | 2026-11-01 |
 
 ## Resolved (last 90 days)
 
@@ -172,5 +173,4 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 
 | ID | Source | Severity | State | Owner | Title | Reason | Last update |
 |---|---|---|---|---|---|---|---|
-
-(none yet)
+| newman-2026-11-N-2 | [PR 22: shell git-safety](https://github.com/SchwartzKamel/azure-openai-cli/pull/22) | MEDIUM | deferred | Newman + Maestro | Tool-output prompt-injection sanitizer WIP (regex line redaction + credential redaction) not landed | Probe: 5 of 8 ordinary inputs damaged (`var apiKey = config.ApiKey;` became `var [credential redacted]`; `// act as a facade` deleted) and 3 of 3 bypasses succeeded (leetspeak, line split). Redacting `read_file` output corrupts what the agent is about to edit. A sound design labels untrusted web content rather than deleting lines. | 2026-11-01 |
