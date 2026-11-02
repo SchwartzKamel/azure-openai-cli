@@ -1,8 +1,8 @@
 # ~/.config/espanso/match/ai.yml
-# az-ai Espanso matches -- macOS native.
+# hopper Espanso matches -- macOS native.
 #
 # "Yada yada yada" placeholder UX:
-#   While az-ai processes, the trigger text is first backspaced away, then
+#   While hopper processes, the trigger text is first backspaced away, then
 #   "yada yada yada" appears at the cursor so the user knows something is
 #   happening. Once the response arrives, the placeholder is backspaced and
 #   filler spaces (equal to trigger length) are typed so Espanso's own
@@ -18,17 +18,17 @@
 #   grant Accessibility access. Go to:
 #     System Settings → Privacy & Security → Accessibility → enable Espanso
 #   Without this, the placeholder typing/clearing will silently fail but
-#   az-ai itself will still work (you just won't see the placeholder).
+#   hopper itself will still work (you just won't see the placeholder).
 #
 # Design rules (do not weaken without reading the kit README §5.6):
 #   * --raw on every invocation (no spinner, no stats, no trailing newline).
 #   * stderr → /dev/null (defense-in-depth against spinner leakage).
-#   * User text (clipboard or form) reaches az-ai via STDIN, never via
+#   * User text (clipboard or form) reaches hopper via STDIN, never via
 #     shell-interpolated args. Forms use a single-quoted heredoc so the body
 #     is not expanded by the shell.
 #   * Clipboard read uses pbpaste (always available on macOS).
 #
-# Since v2.1.1, az-ai auto-loads ~/.config/az-ai/env at startup (env vars
+# Since v2.1.1, hopper auto-loads ~/.config/az-ai/env at startup (env vars
 # that aren't already set). This means non-login-shell contexts (Espanso,
 # launchd) find credentials without a wrapper or profile hook.
 #
@@ -59,7 +59,7 @@ matches:
             osascript -e 'tell application "System Events"' -e "repeat $tl times" -e 'key code 51' -e 'end repeat' -e 'end tell'
             sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
-            response=$(az-ai --raw 2>/dev/null <<'__AZ_AI_EOF__'
+            response=$(hopper --raw 2>/dev/null <<'__AZ_AI_EOF__'
             {{form1.prompt}}
             __AZ_AI_EOF__
             )
@@ -83,7 +83,7 @@ matches:
             sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             response=$(pbpaste \
-              | az-ai --raw --max-tokens 500 --temperature 0.3 \
+              | hopper --raw --max-tokens 500 --temperature 0.3 \
                   --system 'Fix grammar and spelling. Preserve meaning, tone, and formatting. Output ONLY the corrected text, nothing else.' \
                   2>/dev/null)
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
@@ -104,7 +104,7 @@ matches:
             sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             response=$(pbpaste \
-              | az-ai --raw --max-tokens 300 --temperature 0.4 \
+              | hopper --raw --max-tokens 300 --temperature 0.4 \
                   --system 'Explain the following clearly in 2-3 sentences. If it is code, be precise and technical. Output ONLY the explanation, no preamble.' \
                   2>/dev/null)
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
@@ -127,7 +127,7 @@ matches:
             sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             response=$(pbpaste \
-              | az-ai --raw --max-tokens 150 --temperature 0.4 \
+              | hopper --raw --max-tokens 150 --temperature 0.4 \
                   --system 'Summarize in exactly 2 sentences. Be concise. Output ONLY the summary.' \
                   2>/dev/null)
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
@@ -150,7 +150,7 @@ matches:
             sleep 0.05
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             response=$(pbpaste \
-              | az-ai --raw --max-tokens 600 --temperature 0.5 \
+              | hopper --raw --max-tokens 600 --temperature 0.5 \
                   --system 'Rewrite the following in a more professional, polished tone. Preserve meaning and key facts. Do not add information. Output ONLY the rewritten text.' \
                   2>/dev/null)
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
@@ -160,9 +160,9 @@ matches:
             printf '%s' "$response"
 
   # ── :aic -- code review on clipboard ────────────────────────────────────
-  # Uses the 'reviewer' persona if squad is configured (see `az-ai --squad-init`).
+  # Uses the 'reviewer' persona if squad is configured (see `hopper --squad-init`).
   # Falls back to a plain --system prompt if persona isn't available --
-  # az-ai exits non-zero for unknown personas, and the `||` branch kicks in.
+  # hopper exits non-zero for unknown personas, and the `||` branch kicks in.
   - trigger: ":aic"
     replace: "{{output}}"
     vars:
@@ -177,9 +177,9 @@ matches:
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             CLIP="$(pbpaste)"
             response=$(printf '%s' "$CLIP" \
-              | az-ai --raw --persona reviewer --max-tokens 500 2>/dev/null \
+              | hopper --raw --persona reviewer --max-tokens 500 2>/dev/null \
               || printf '%s' "$CLIP" \
-                 | az-ai --raw --max-tokens 500 --temperature 0.3 \
+                 | hopper --raw --max-tokens 500 --temperature 0.3 \
                      --system 'You are a senior code reviewer. Identify bugs, security issues, and design problems in the following code. Be concise, specific, and actionable. Use bullet points. Output ONLY the review.' \
                      2>/dev/null)
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
@@ -211,12 +211,12 @@ matches:
             # User input flows in via a single-quoted heredoc -- Espanso's
             # template substitution lands inside a body bash treats as
             # literal text. Closes the F-1/F-2 injection class (S03E04).
-            b64=$(az-ai --image --raw 2>/dev/null <<'__AZ_AI_EOF__'
+            b64=$(hopper --image --raw 2>/dev/null <<'__AZ_AI_EOF__'
             {{form1.prompt}}
             __AZ_AI_EOF__
             )
             if [ -n "$b64" ]; then
-              tmp="/tmp/az-ai-espanso-$$.png"
+              tmp="/tmp/hopper-espanso-$$.png"
               printf '%s' "$b64" | base64 -d > "$tmp"
               osascript -e "set the clipboard to (read (POSIX file \"$tmp\") as «class PNGf»)"
               result='[image copied to clipboard]'
@@ -246,7 +246,7 @@ matches:
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             CLIP="$(pbpaste)"
             response=$( printf '%s' "$CLIP" \
-              | az-ai --raw --max-tokens 2000 --temperature 0.6 \
+              | hopper --raw --max-tokens 2000 --temperature 0.6 \
                   --system 'Take the following text and expand on it. Add relevant detail, context, and supporting points. Keep the same voice and intent but make it richer and more thorough. Do NOT pad with filler -- every sentence should add substance. Output ONLY the expanded text.' \
                   2>/dev/null )
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
@@ -277,7 +277,7 @@ matches:
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             # User prompt flows in via a single-quoted heredoc -- the form
             # placeholder expands to literal text bash never re-parses.
-            response=$(az-ai --raw --agent --tools web --max-tokens 2000 --max-rounds 5 \
+            response=$(hopper --raw --agent --tools web --max-tokens 2000 --max-rounds 5 \
                 --system 'You have access to a web_fetch tool. Use it to search for current, accurate information relevant to the user prompt. Fetch 1-3 URLs as needed. Synthesize findings into a clear, well-structured answer. Cite sources inline with [Source Title](URL) format. Output ONLY the final answer -- no tool-call narration.' \
                 2>/dev/null <<'__AZ_AI_EOF__'
             {{form1.prompt}}
@@ -339,7 +339,7 @@ matches:
             esac
             CLIP="$(pbpaste)"
             response=$( printf '%s' "$CLIP" \
-              | az-ai --raw --max-tokens 1000 \
+              | hopper --raw --max-tokens 1000 \
                   --system "Rewrite the following text in a $tone tone. Preserve the core meaning and all key facts. Adjust vocabulary, sentence structure, and register to match the requested tone. Output ONLY the rewritten text." \
                   2>/dev/null )
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
@@ -363,7 +363,7 @@ matches:
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             CLIP="$(pbpaste)"
             response=$( printf '%s' "$CLIP" \
-              | az-ai --raw --max-tokens 1000 --temperature 0.3 \
+              | hopper --raw --max-tokens 1000 --temperature 0.3 \
                   --system 'Convert the following text into a clean bullet-point list. Group related points under short bold headings if the content spans multiple topics. Each bullet should be one clear, complete thought. Use - for bullets. Output ONLY the bullet list.' \
                   2>/dev/null )
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
@@ -387,7 +387,7 @@ matches:
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             CLIP="$(pbpaste)"
             response=$( printf '%s' "$CLIP" \
-              | az-ai --raw --max-tokens 1000 --temperature 0.2 \
+              | hopper --raw --max-tokens 1000 --temperature 0.2 \
                   --system 'Extract all key facts, data points, names, dates, numbers, decisions, and action items from the following text. Present them as a structured list grouped by category (e.g. People, Dates, Decisions, Action Items, Numbers/Metrics). Use - for bullets. If a category has no entries, omit it. Output ONLY the extracted data.' \
                   2>/dev/null )
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'
@@ -411,7 +411,7 @@ matches:
             osascript -e "tell application \"System Events\" to keystroke \"$ph\""
             CLIP="$(pbpaste)"
             response=$( printf '%s' "$CLIP" \
-              | az-ai --raw --max-tokens 1000 --temperature 0.7 \
+              | hopper --raw --max-tokens 1000 --temperature 0.7 \
                   --system 'Play devils advocate on the following text. Identify the strongest counter-arguments, unstated assumptions, potential weaknesses, and alternative perspectives. Be intellectually honest -- not contrarian for its own sake. Structure as: Assumptions, Counter-arguments, Risks/Blind spots. Output ONLY the analysis.' \
                   2>/dev/null )
             osascript -e 'tell application "System Events"' -e "repeat ${#ph} times" -e 'key code 51' -e 'end repeat' -e 'end tell'

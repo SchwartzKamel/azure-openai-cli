@@ -22,6 +22,8 @@ readonly SCRIPT_VERSION="1.0.0"
 readonly CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/az-ai"
 readonly PLAIN_FILE="$CONFIG_DIR/env"
 readonly GPG_FILE="$CONFIG_DIR/env.gpg"
+# The marker text keeps the old name on purpose: it is matched against profile files that earlier
+# runs already wrote. Renaming it would leave the old hook in place and add a second one.
 readonly HOOK_MARK_BEGIN="# >>> az-ai creds hook (managed by setup-secrets.sh) >>>"
 readonly HOOK_MARK_END="# <<< az-ai creds hook <<<"
 
@@ -250,12 +252,16 @@ verify() {
         fi
     fi
 
-    # Probe 3: az-ai binary resolution in login shell
-    if bash -lc 'command -v az-ai' >/dev/null 2>&1; then
-        ok "az-ai binary resolves on PATH in bash -lc"
+    # Probe 3: binary resolution in login shell. hopper is the command; az-ai is its old name and
+    # still works, so either one passes.
+    if bash -lc 'command -v hopper' >/dev/null 2>&1; then
+        ok "hopper binary resolves on PATH in bash -lc"
+    elif bash -lc 'command -v az-ai' >/dev/null 2>&1; then
+        ok "az-ai (the old name of hopper) resolves on PATH in bash -lc"
+        warn "  hopper itself is not installed; run 'make install' (it installs both names)"
     else
-        warn "az-ai binary is NOT on PATH in bash -lc"
-        warn "  install with: sudo install -m 0755 dist/aot/AzureOpenAI_CLI /usr/local/bin/az-ai"
+        warn "hopper binary is NOT on PATH in bash -lc"
+        warn "  install with: sudo install -m 0755 dist/aot/hopper /usr/local/bin/hopper && sudo ln -sf hopper /usr/local/bin/az-ai"
     fi
 
     if (( fail )); then
@@ -335,8 +341,8 @@ main() {
 ${C_GRN}━━━ done ━━━${C_RST}
 Next steps:
   ${C_CYN}1.${C_RST} Open a new terminal (or source your rc file as shown above).
-  ${C_CYN}2.${C_RST} Test: ${C_DIM}az-ai --raw --system 'Say hi.' <<< 'hi'${C_RST}
-  ${C_CYN}3.${C_RST} Test from espanso simulation: ${C_DIM}echo hi | bash -lc 'az-ai --raw --system "Say hi."'${C_RST}
+  ${C_CYN}2.${C_RST} Test: ${C_DIM}hopper --raw --system 'Say hi.' <<< 'hi'${C_RST}
+  ${C_CYN}3.${C_RST} Test from espanso simulation: ${C_DIM}echo hi | bash -lc 'hopper --raw --system "Say hi."'${C_RST}
   ${C_CYN}4.${C_RST} Rotate creds? Just re-run: ${C_DIM}bash scripts/setup-secrets.sh${C_RST} — it's idempotent.
   ${C_CYN}5.${C_RST} Recheck without re-prompting: ${C_DIM}VERIFY_ONLY=1 bash scripts/setup-secrets.sh${C_RST}
 

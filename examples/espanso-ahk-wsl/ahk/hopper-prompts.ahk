@@ -1,5 +1,5 @@
 ; ============================================================
-;  az-ai Prompt Templates — AutoHotkey v2 hotkeys
+;  hopper Prompt Templates — AutoHotkey v2 hotkeys
 ; ============================================================
 ;
 ;  Maps the five canonical task templates to Ctrl+Shift+(letter) hotkeys.
@@ -16,7 +16,7 @@
 ;    1. Pops InputBox for task-specific parameters.
 ;    2. Prepends master system prompt.
 ;    3. Adds task template to the system prompt.
-;    4. Sends to az-ai via WSL.
+;    4. Sends to hopper via WSL.
 ;    5. Pastes result at cursor.
 ;
 ;  Latency: ~3–5 s (Azure round-trip).
@@ -27,11 +27,11 @@
 #SingleInstance Force
 
 ; ──────────────────────────────────────────────────────────────
-; Run `az-ai-wrap` in WSL with stdinText and custom system prompt.
+; Run `hopper-wrap` (or the old `az-ai-wrap`, if that is all that is installed) in WSL with stdinText and custom system prompt.
 ; ──────────────────────────────────────────────────────────────
-RunAzAi(stdinText, systemPrompt, maxTokens := 800, temperature := 0.3) {
+RunHopper(stdinText, systemPrompt, maxTokens := 800, temperature := 0.3) {
     sysEsc := StrReplace(systemPrompt, "'", "'\''")
-    bashCmd := "tr -d '\r' | az-ai-wrap --raw"
+    bashCmd := "W=$(command -v hopper-wrap || echo az-ai-wrap); tr -d '\r' | $W --raw"
              . " --max-tokens " maxTokens
              . " --temperature " temperature
              . " --system '" sysEsc "' 2>/dev/null"
@@ -67,7 +67,7 @@ PasteText(text) {
 ;  Master System Prompt (prepended to all template calls)
 ; ============================================================
 
-masterPrompt := "You are az-ai, a concise, secure assistant that helps design, implement, and optimize Azure AI solutions. Your tone: clear, precise, and actionable. No fluff. Ask clarifying questions if input is ambiguous. Do not hallucinate; if uncertain, state what is known and propose a plan to verify. Prioritize safety, privacy, and governance. Cite sources or indicate best-practice guidance. Provide outputs in structured, easily parseable formats. Avoid long digressions; present plan → implementation details → next steps."
+masterPrompt := "You are hopper, a concise, secure assistant that helps design, implement, and optimize Azure AI solutions. Your tone: clear, precise, and actionable. No fluff. Ask clarifying questions if input is ambiguous. Do not hallucinate; if uncertain, state what is known and propose a plan to verify. Prioritize safety, privacy, and governance. Cite sources or indicate best-practice guidance. Provide outputs in structured, easily parseable formats. Avoid long digressions; present plan → implementation details → next steps."
 
 ; ============================================================
 ;  Template A: Knowledge Q&A / Guidance (Ctrl+Shift+Q)
@@ -78,7 +78,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
     
     ib := InputBox(
         "Template A: Knowledge Q&A`n`nAsk an Azure-focused question.`nInclude context if helpful.`n`n",
-        "az-ai — Q&A Template",
+        "hopper — Q&A Template",
         "w600 h200"
     )
     if (ib.Result != "OK" || ib.Value = "")
@@ -87,7 +87,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
     templateA := "Provide a concise, Azure-focused answer to the user's question. If relevant, include a short checklist of implementation steps. Cite sources when applicable. If ambiguous, ask 1 clarifying question before answering."
     
     systemPrompt := masterPrompt "`n`n" templateA
-    result := RunAzAi(ib.Value, systemPrompt, 800, 0.3)
+    result := RunHopper(ib.Value, systemPrompt, 800, 0.3)
     PasteText(result)
 }
 
@@ -100,7 +100,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
     
     ib := InputBox(
         "Template B: Architecture Design`n`nDescribe your goal, constraints, and existing resources.`n`n",
-        "az-ai — Architecture Template",
+        "hopper — Architecture Template",
         "w600 h240"
     )
     if (ib.Result != "OK" || ib.Value = "")
@@ -109,7 +109,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
     templateB := "Given the user goal, propose a high-level Azure AI solution architecture. Include components and their roles, data flow (input → processing → output), security and compliance considerations, and rough cost estimate (ranges, not exact figures). Then provide a compact implementation plan with 4–6 milestones."
     
     systemPrompt := masterPrompt "`n`n" templateB
-    result := RunAzAi(ib.Value, systemPrompt, 1500, 0.3)
+    result := RunHopper(ib.Value, systemPrompt, 1500, 0.3)
     PasteText(result)
 }
 
@@ -122,7 +122,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
     
     ib := InputBox(
         "Template C: Code Generation`n`nLanguage: [Python/PowerShell/CLI/C#/Terraform]`nRuntime: [local/Azure/Docker]`nTask description:`n`n",
-        "az-ai — Code Generation Template",
+        "hopper — Code Generation Template",
         "w600 h240"
     )
     if (ib.Result != "OK" || ib.Value = "")
@@ -131,7 +131,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
     templateC := "Generate a minimal, reproducible example including prerequisites, installation steps, code comments, basic tests, and troubleshooting. Use placeholders for secrets. Format as: Prerequisites | Installation | Code | How to Run | Tests | Troubleshooting."
     
     systemPrompt := masterPrompt "`n`n" templateC
-    result := RunAzAi(ib.Value, systemPrompt, 1200, 0.2)
+    result := RunHopper(ib.Value, systemPrompt, 1200, 0.2)
     PasteText(result)
 }
 
@@ -144,7 +144,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
     
     ib := InputBox(
         "Template D: Data Workflow / ETL / MLOps`n`nData sources, processing goals, model/output type, governance constraints:`n`n",
-        "az-ai — Data Workflow Template",
+        "hopper — Data Workflow Template",
         "w600 h240"
     )
     if (ib.Result != "OK" || ib.Value = "")
@@ -153,7 +153,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
     templateD := "Design an end-to-end data ingestion, preprocessing, and model deployment workflow in Azure. Include data sources and ingestion, storage and partitioning, compute (preprocessing, training, validation), model deployment and serving, monitoring and alerting, governance and compliance. Provide a textual data flow diagram and component details."
     
     systemPrompt := masterPrompt "`n`n" templateD
-    result := RunAzAi(ib.Value, systemPrompt, 1500, 0.3)
+    result := RunHopper(ib.Value, systemPrompt, 1500, 0.3)
     PasteText(result)
 }
 
@@ -166,7 +166,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
     
     ib := InputBox(
         "Template E: Cost & ROI Assessment`n`nProposed solution, estimated usage, target SLA, budget/constraints:`n`n",
-        "az-ai — Cost & ROI Template",
+        "hopper — Cost & ROI Template",
         "w600 h240"
     )
     if (ib.Result != "OK" || ib.Value = "")
@@ -175,7 +175,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
     templateE := "Provide a cost/ROI assessment for the proposed Azure AI solution. Include key assumptions (volume, duration, pricing tier), financial model (costs vs. benefits), optimization options (autoscale, reserved instances, caching, batching), break-even analysis (if applicable), and decision criteria (when to optimize, when to accept higher cost)."
     
     systemPrompt := masterPrompt "`n`n" templateE
-    result := RunAzAi(ib.Value, systemPrompt, 1200, 0.3)
+    result := RunHopper(ib.Value, systemPrompt, 1200, 0.3)
     PasteText(result)
 }
 
@@ -186,7 +186,7 @@ masterPrompt := "You are az-ai, a concise, secure assistant that helps design, i
 ^+t:: {
     MsgBox(
         0,
-        "az-ai Prompt Templates — Quick Reference",
+        "hopper Prompt Templates — Quick Reference",
         "
 (
 Template A: Knowledge Q&A / Guidance

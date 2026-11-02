@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Azure OpenAI CLI (`az-ai`) -- a C# .NET 10 Native AOT single-file binary.
+hopper (formerly Azure OpenAI CLI, `az-ai`; the old name still works as an alias) -- a C# .NET 10 Native AOT single-file binary.
 Primary use case: headless text generation for Espanso/AHK text expansion workflows.
 Version source of truth: `<Version>` in `azureopenai-cli/AzureOpenAI_CLI.csproj`.
 
@@ -43,7 +43,7 @@ If you push without one, the gate fails with the next sNNeMM number you should u
 
 The episode is one report per push, not one per commit. A two-commit field-debug session is one episode. Update CHANGELOG `[Unreleased]` and write the exec-report **before** the final `git push`, not after a reviewer notices.
 
-**Native AOT binary:** `make publish-aot` builds to `dist/aot/`, `make install` copies to `~/.local/bin/az-ai`.
+**Native AOT binary:** `make publish-aot` builds to `dist/aot/`, `make install` copies to `~/.local/bin/hopper` and links `az-ai` to it.
 
 ## Architecture
 

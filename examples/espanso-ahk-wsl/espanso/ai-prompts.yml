@@ -1,5 +1,5 @@
 # ~/.config/espanso/match/ai-prompts.yml
-# az-ai Prompting Guide -- Quick-access Espanso shortcuts for the five canonical task templates.
+# hopper Prompting Guide -- Quick-access Espanso shortcuts for the five canonical task templates.
 #
 # Templates (from docs/prompts/task-templates.md):
 #   A. Knowledge Q&A / guidance
@@ -11,7 +11,7 @@
 # Each trigger:
 #   - Inserts the master system prompt + task template into a form.
 #   - User edits the specific request (query, goal, parameters).
-#   - Sends to az-ai with --system flag (hard-coded, never user-controlled).
+#   - Sends to hopper with --system flag (hard-coded, never user-controlled).
 #   - Returns structured response (plan, details, risks, next steps).
 #
 # Expected latency: 3-5 s per trigger (Azure round-trip).
@@ -52,8 +52,8 @@ matches:
             sleep 0.05
             xdotool type --clearmodifiers "$ph" 2>/dev/null || true
 
-            response=$(az-ai --raw --max-tokens 800 --temperature 0.3 \
-                --system 'You are az-ai. Provide a concise, Azure-focused answer to the user question. If relevant, include a short checklist of implementation steps. Cite sources when applicable. If ambiguous, ask 1 clarifying question before answering.' \
+            response=$(hopper --raw --max-tokens 800 --temperature 0.3 \
+                --system 'You are hopper. Provide a concise, Azure-focused answer to the user question. If relevant, include a short checklist of implementation steps. Cite sources when applicable. If ambiguous, ask 1 clarifying question before answering.' \
                 2>/dev/null <<'__AZ_AI_EOF__'
             {{question.query}}
             __AZ_AI_EOF__
@@ -91,8 +91,8 @@ matches:
             sleep 0.05
             xdotool type --clearmodifiers "$ph" 2>/dev/null || true
 
-            response=$(az-ai --raw --max-tokens 1500 --temperature 0.3 \
-                --system 'You are az-ai. Given the user goal, propose a high-level Azure AI solution architecture. Include components and their roles, data flow (input -> processing -> output), security and compliance considerations, and rough cost estimate (ranges, not exact figures). Then provide a compact implementation plan with 4-6 milestones.' \
+            response=$(hopper --raw --max-tokens 1500 --temperature 0.3 \
+                --system 'You are hopper. Given the user goal, propose a high-level Azure AI solution architecture. Include components and their roles, data flow (input -> processing -> output), security and compliance considerations, and rough cost estimate (ranges, not exact figures). Then provide a compact implementation plan with 4-6 milestones.' \
                 2>/dev/null <<'__AZ_AI_EOF__'
             Goal: {{goal.goal_text}}
 
@@ -136,8 +136,8 @@ matches:
             sleep 0.05
             xdotool type --clearmodifiers "$ph" 2>/dev/null || true
 
-            response=$(az-ai --raw --max-tokens 1200 --temperature 0.2 \
-                --system 'You are az-ai. Generate a minimal, reproducible example using the language and runtime specified by the user input below. Include prerequisites, installation steps, code comments, basic tests, and troubleshooting. Use placeholders for secrets. Format: Prerequisites | Installation | Code | How to Run | Tests | Troubleshooting.' \
+            response=$(hopper --raw --max-tokens 1200 --temperature 0.2 \
+                --system 'You are hopper. Generate a minimal, reproducible example using the language and runtime specified by the user input below. Include prerequisites, installation steps, code comments, basic tests, and troubleshooting. Use placeholders for secrets. Format: Prerequisites | Installation | Code | How to Run | Tests | Troubleshooting.' \
                 2>/dev/null <<'__AZ_AI_EOF__'
             Language: {{request.language}}
             Runtime: {{request.runtime}}
@@ -184,8 +184,8 @@ matches:
             sleep 0.05
             xdotool type --clearmodifiers "$ph" 2>/dev/null || true
 
-            response=$(az-ai --raw --max-tokens 1500 --temperature 0.3 \
-                --system 'You are az-ai. Design an end-to-end data ingestion, preprocessing, and model deployment workflow in Azure. Include data sources and ingestion, storage and partitioning, compute (preprocessing, training, validation), model deployment and serving, monitoring and alerting, governance and compliance. Provide a textual data flow diagram and component details.' \
+            response=$(hopper --raw --max-tokens 1500 --temperature 0.3 \
+                --system 'You are hopper. Design an end-to-end data ingestion, preprocessing, and model deployment workflow in Azure. Include data sources and ingestion, storage and partitioning, compute (preprocessing, training, validation), model deployment and serving, monitoring and alerting, governance and compliance. Provide a textual data flow diagram and component details.' \
                 2>/dev/null <<'__AZ_AI_EOF__'
             Data sources: {{workflow.sources}}
 
@@ -231,8 +231,8 @@ matches:
             sleep 0.05
             xdotool type --clearmodifiers "$ph" 2>/dev/null || true
 
-            response=$(az-ai --raw --max-tokens 1200 --temperature 0.3 \
-                --system 'You are az-ai. Provide a cost/ROI assessment for the proposed Azure AI solution. Include key assumptions (volume, duration, pricing tier), financial model (costs vs. benefits), optimization options (autoscale, reserved instances, caching, batching), break-even analysis (if applicable), and decision criteria (when to optimize, when to accept higher cost).' \
+            response=$(hopper --raw --max-tokens 1200 --temperature 0.3 \
+                --system 'You are hopper. Provide a cost/ROI assessment for the proposed Azure AI solution. Include key assumptions (volume, duration, pricing tier), financial model (costs vs. benefits), optimization options (autoscale, reserved instances, caching, batching), break-even analysis (if applicable), and decision criteria (when to optimize, when to accept higher cost).' \
                 2>/dev/null <<'__AZ_AI_EOF__'
             Solution: {{financial.solution}}
 
@@ -255,7 +255,7 @@ matches:
   - trigger: ":aiprompts"
     replace: |
       ===================================================================================
-      az-ai Prompt Templates -- Quick Reference
+      hopper Prompt Templates -- Quick Reference
       ===================================================================================
 
       Template A: Knowledge Q&A / Guidance

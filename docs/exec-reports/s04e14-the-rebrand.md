@@ -81,9 +81,40 @@ extracted `az-ai` and `hopper` share an inode and both print `hopper 2.3.0`.
 5. **An inherited broken form.** `.github/ISSUE_TEMPLATE/bug_report.yml` does not parse as
    YAML (two dropdown options start with a backtick), so the bug-report form was likely
    broken. Quoted; not part of the rename.
-6. **A local-only quirk.** Some integration cases run the binary under `env -i` with a
+6. **The same ordering mistake, twice.** In the man page, a blanket `az-ai` to `hopper` replace
+   ran *after* I had written "formerly az-ai", and turned it into "formerly hopper". A sentence
+   that names the old name has to be written after the replacement, not before.
+7. **A local-only quirk.** Some integration cases run the binary under `env -i` with a
    throwaway `HOME`, which loses `DOTNET_ROOT` for a framework-dependent build. A wrapper that
    hard-codes the path fixes it locally. CI is unaffected.
+
+### Act VI -- The aliases and the integrations (the second commit)
+
+The owner's next instruction was to update the aliases and the rest, and keep them working.
+The rule that sorted every case: **what is installed on a machine needs a fallback; what is
+copied from a checkout does not.**
+
+- **Installed helpers get real fallbacks.** The WSL wrapper (`hopper-wrap`) prefers `hopper`
+  and falls back to `az-ai`; the AutoHotkey scripts resolve `hopper-wrap` or `az-ai-wrap` at
+  run time through one line; `make espanso-test` and `setup-secrets` accept either name. The
+  install step links `az-ai-wrap` to `hopper-wrap`, mirroring the binary's alias.
+- **Templates just call `hopper`.** The Espanso templates are copied from a current checkout,
+  and a fallback in each of 22 triggers would clutter them and risk the linter. A compatibility
+  note says what to do on an older install.
+- **Stored identifiers do not move.** `setup-secrets.sh` writes a marker comment into the
+  user's `~/.profile` and finds it again by its text; renaming it would leave the old hook
+  and add a second. A comment now says why. The container name `az-ai-nim` stays too.
+- **The man page** is `hopper.1`, and `az-ai.1` is a one-line `.so` stub, so `man az-ai`
+  still works (checked with groff).
+- **Left alone on purpose:** the Season 3 demo script calls `az-ai` from PATH, which works on
+  every install, and rewriting 25 call sites in a script that asserts on output buys nothing.
+
+Every claim above was run, not read: the wrapper in four install situations (including an
+already-installed **old** `az-ai-wrap` after upgrading), the AHK one-liner, and the Makefile's
+command pick against a throwaway login shell. Then it was pinned: 8 new integration cases.
+**Mutation-checked:** five mutations caught. The first run caught only three, because a
+failing assertion inside a command substitution aborted the whole suite under `set -e`
+instead of reporting a FAIL. That was a flaw in my tests, now fixed.
 
 ## What shipped
 
@@ -106,22 +137,26 @@ extracted `az-ai` and `hopper` share an inode and both print `hopper 2.3.0`.
   directory name). **Mutation-checked:** five mutations, each turned exactly one test red,
   and each revert was clean.
 - Six existing assertions updated for the new command text.
+- Integration: 8 new cases (wrapper fallback in four situations, `make install` and `uninstall`
+  including replacing an older `az-ai` file, and both completion names from the real binary).
+  Mutation-checked.
 
 **Docs**
 
 - README (title, lead, a naming note, commands), `docs/legal/trademark-policy.md`, ADR-016
   (accepted; the stages restated to match what is built), FR-024 status, CHANGELOG, issue
   and PR templates.
+- The Espanso/AutoHotkey kit (README, templates, `hopper-wrap.sh`, `hopper.ahk`,
+  `hopper-prompts.ahk`), `docs/espanso-ahk-integration.md` and the man page.
 
 **Not shipped**
 
 - **Stage 2:** archive names, the Homebrew formula, the Scoop manifest, the Nix flake,
   `release.yml` globs. They move together at the release.
 - **Stage 3:** the GitHub repository name. The image path follows it.
-- **The docs migration:** 198 documentation files still say `az-ai` as the command. The alias
-  keeps them correct, and history-style documents should keep the name they were written
-  under. The user-facing ones are a follow-up.
-- **The man page** (`man/az-ai.1`) and the Espanso and AHK example configs.
+- **The rest of the docs migration:** about 190 documentation files still say `az-ai` as the
+  command. The alias keeps them correct, and history-style documents should keep the name they
+  were written under. The user-facing ones are a follow-up.
 
 ## Lessons from this episode
 
@@ -135,13 +170,18 @@ extracted `az-ai` and `hopper` share an inode and both print `hopper 2.3.0`.
    link and saves a broken autoupdate.
 6. **What you cannot run, you can still reason about.** `release.yml` is untested here; the
    decision rests on reading what consumes its output.
+7. **Installed means fallback; copied means plain.** A script that lives on a user's machine
+   must cope with either name. A template they copy from a current checkout may assume one.
+8. **A test that aborts is worse than one that fails.** Under `set -e` a failing assertion in
+   a command substitution ended the whole suite without a word. Mutation-checking found it.
 
 ## Metrics
 
-- **Diff:** about 50 files changed (see the PR). The inventory moved from 328 to 311 files
-  and from 3,156 to 2,905 lines: the command is renamed, the documentation is not.
-- **Test delta:** unit 2,006 to 2,017 (+11). Integration 155 passed, 2 skipped (live Azure
-  credentials), unchanged.
+- **Diff:** about 70 files changed across two commits (see the PR). The inventory moved from
+  328 to 305 files and from 3,156 to 2,648 lines: the command and its integrations are
+  renamed, most of the documentation is not.
+- **Test delta:** unit 2,006 to 2,017 (+11). Integration 155 to 163 (+8), 2 skipped (live Azure
+  credentials).
 - **Verified locally:** unit, integration, a real AOT publish through `stage.sh` with the
   archive inspected, and `make install` / `make uninstall` including the upgrade path.
 - **Not verified locally:** the Docker image build and `release.yml`; CI runs the former.

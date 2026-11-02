@@ -605,8 +605,10 @@ Reproduce with `scripts/name-screen.py --oss <name>`.
 
 The owner confirmed `hopper` (gate G1) and waived the legal gate (G2) for this open-source
 project. Stage 1 is built: the command is `hopper`, `az-ai` stays as an alias, and the
-config directory and environment variables are unchanged. See ADR-016 for the stages as
-built, and S04E14 for what was verified and what was not.
+config directory and environment variables are unchanged. The Espanso and AutoHotkey kit, the
+WSL wrapper (`hopper-wrap`, with `az-ai-wrap` kept as a link) and the man page followed in the
+same change, each with a fallback to the old name where the file is installed on a machine.
+See ADR-016 for the stages as built, and S04E14 for what was verified and what was not.
 
 What remains, in order:
 

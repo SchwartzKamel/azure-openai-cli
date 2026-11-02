@@ -1,5 +1,5 @@
 ; ============================================================
-;  az-ai — AutoHotkey v2 hotkeys that call WSL
+;  hopper — AutoHotkey v2 hotkeys that call WSL
 ; ============================================================
 ;
 ;  IMPORTANT: This script requires AutoHotkey **v2** (not v1).
@@ -8,8 +8,8 @@
 ;  `shell:startup` for launch-on-login.
 ;
 ;  Prereqs (inside WSL, see kit README §1):
-;    * /usr/local/bin/az-ai          (the AOT binary)
-;    * /usr/local/bin/az-ai-wrap     (login-shell wrapper)
+;    * /usr/local/bin/hopper         (the AOT binary; `az-ai` is its old name and still works)
+;    * /usr/local/bin/hopper-wrap    (login-shell wrapper; `az-ai-wrap` is its old name and still works)
 ;    * AZUREOPENAI* vars exported in ~/.bashrc
 ;
 ;  Hotkeys:
@@ -19,7 +19,7 @@
 ;    Ctrl+Shift+S   Summarize selected text in 2 sentences
 ;
 ;  Design:
-;    * User text is sent via STDIN through `wsl.exe -e bash -c 'az-ai-wrap ...'`
+;    * User text is sent via STDIN through `wsl.exe -e bash -c 'hopper-wrap ...'`
 ;      so shell metachars in the input are inert.
 ;    * stderr goes to /dev/null on the WSL side; the hidden cmd window swallows
 ;      everything else. No spinner, no stats, no preamble in pasted output.
@@ -36,16 +36,16 @@
 SetTitleMatchMode 2
 
 ; ──────────────────────────────────────────────────────────────
-; Run `az-ai-wrap` in WSL with stdinText piped in; return trimmed stdout.
+; Run `hopper-wrap` (or the old `az-ai-wrap`, if that is all that is installed) in WSL with stdinText piped in; return trimmed stdout.
 ; Uses WScript.Shell.Exec so we can write to StdIn directly (no temp file).
 ; ──────────────────────────────────────────────────────────────
-RunAzAi(stdinText, systemPrompt, maxTokens := 500, temperature := 0.4) {
+RunHopper(stdinText, systemPrompt, maxTokens := 500, temperature := 0.4) {
     ; Escape single quotes for the bash-c argument (close, literal, reopen).
     sysEsc := StrReplace(systemPrompt, "'", "'\''")
 
     ; Everything inside bash -c '...' — user text arrives via STDIN, never as
     ; an arg, so it cannot be shell-interpolated.
-    bashCmd := "tr -d '\r' | az-ai-wrap --raw"
+    bashCmd := "W=$(command -v hopper-wrap || echo az-ai-wrap); tr -d '\r' | $W --raw"
              . " --max-tokens " maxTokens
              . " --temperature " temperature
              . " --system '" sysEsc "' 2>/dev/null"
@@ -102,10 +102,10 @@ PasteText(text) {
 
 ; Ctrl+Shift+A — Free-form prompt box
 ^+a:: {
-    ib := InputBox("Enter your prompt:", "az-ai", "w520 h160")
+    ib := InputBox("Enter your prompt:", "hopper", "w520 h160")
     if (ib.Result != "OK" || ib.Value = "")
         return
-    result := RunAzAi(ib.Value,
+    result := RunHopper(ib.Value,
         "Answer the user's prompt. Be concise. Output ONLY the answer, no preamble.",
         600, 0.5)
     PasteText(result)
@@ -116,7 +116,7 @@ PasteText(text) {
     text := GetSelectedText()
     if (text = "")
         return
-    result := RunAzAi(text,
+    result := RunHopper(text,
         "Explain the following clearly in 2-3 sentences. If it is code, be precise and technical. Output ONLY the explanation, no preamble.",
         300, 0.4)
     PasteText(result)
@@ -127,7 +127,7 @@ PasteText(text) {
     text := GetSelectedText()
     if (text = "")
         return
-    result := RunAzAi(text,
+    result := RunHopper(text,
         "Fix grammar and spelling. Preserve meaning, tone, and formatting. Output ONLY the corrected text, nothing else.",
         500, 0.3)
     PasteText(result)
@@ -138,7 +138,7 @@ PasteText(text) {
     text := GetSelectedText()
     if (text = "")
         return
-    result := RunAzAi(text,
+    result := RunHopper(text,
         "Summarize in exactly 2 sentences. Be concise. Output ONLY the summary.",
         150, 0.4)
     PasteText(result)

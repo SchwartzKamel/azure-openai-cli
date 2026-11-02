@@ -94,7 +94,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--version` now prints `hopper <version> ...`; use `--version --short` for a bare
   version. Unchanged on purpose: `~/.config/az-ai/`, `.az-ai/queue.json`, the
   `AZUREOPENAI*` and `AZ_AI_*` variables. Archive and package names keep the
-  `az-ai-` prefix until the manifests move. (ADR-016, s04e14-the-rebrand)
+  `az-ai-` prefix until the manifests move. Integrations follow the same rule:
+  the WSL wrapper is `hopper-wrap` (install links `az-ai-wrap` to it, and it falls
+  back to `az-ai` on an install that predates the rename), the AutoHotkey scripts are
+  `hopper.ahk` and `hopper-prompts.ahk`, the Espanso templates and the man page
+  (`man az-ai` still works) say hopper, and `make espanso-test` and
+  `setup-secrets` accept either name. Configs you already installed that call
+  `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Added
 - **feat(resolution):** S04E05 *The Picker* -- new

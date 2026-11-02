@@ -51,7 +51,7 @@ Each trigger:
 
 1. **Pops a form** for you to enter task-specific parameters (goal, constraints, language, etc.)
 2. **Constructs a system prompt** = master prompt + task template
-3. **Sends to az-ai** via stdin with `--raw --system` flags
+3. **Sends to hopper** via stdin with `--raw --system` flags
 4. **Replaces the trigger** with the structured response
 
 Example: Type `:aiquestion`, fill in "How should I monitor Azure OpenAI latency?", press Enter → get a concise answer with implementation checklist.
@@ -61,8 +61,8 @@ Example: Type `:aiquestion`, fill in "How should I monitor Azure OpenAI latency?
 Install the prompt templates hotkey script:
 
 ```batch
-copy examples\espanso-ahk-wsl\ahk\az-ai-prompts.ahk "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\az-ai-prompts.ahk"
-double-click az-ai-prompts.ahk or restart Windows
+copy examples\espanso-ahk-wsl\ahk\hopper-prompts.ahk "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\hopper-prompts.ahk"
+double-click hopper-prompts.ahk or restart Windows
 ```
 
 Now use these hotkeys anywhere:
@@ -80,7 +80,7 @@ Each hotkey:
 
 1. **Pops an InputBox** for task-specific parameters
 2. **Constructs a system prompt** = master prompt + task template
-3. **Sends to WSL az-ai** (same as existing AHK hotkeys)
+3. **Sends to WSL hopper** (same as existing AHK hotkeys)
 4. **Pastes result** at your cursor
 
 Example: In VS Code, press `Ctrl+Shift+R`, describe your goal → get full architecture design pasted into your document.
@@ -247,14 +247,14 @@ Decision:
 
 1. Check that `ai-prompts.yml` is in `~/.config/espanso/match/`
 2. Restart Espanso: `espanso restart`
-3. Ensure `az-ai` is in your `$PATH` (or in WSL `/usr/local/bin/az-ai`)
+3. Ensure `hopper` is in your `$PATH` (or in WSL `/usr/local/bin/hopper`)
 4. Check logs: `espanso log`
 
 ### AHK hotkey not working
 
 1. Verify AutoHotkey **v2** is installed (not v1)
 2. Run the script with admin rights (required for WSL.exe calls)
-3. Ensure `az-ai-wrap` is in WSL `/usr/local/bin/`
+3. Ensure `hopper-wrap` is in WSL `/usr/local/bin/`
 4. Check that AZUREOPENAI* env vars are set in WSL `~/.bashrc`
 
 ### Empty or truncated response
@@ -262,7 +262,7 @@ Decision:
 1. Check Azure OpenAI quota and rate limits
 2. Verify `--max-tokens` in the config is appropriate for your task
 3. Increase `--temperature` slightly if responses are too rigid (default 0.3)
-4. Check `az-ai` logs: run `az-ai` directly with `--debug` flag
+4. Check `hopper` logs: run `hopper` directly with `--debug` flag
 
 ---
 
@@ -271,7 +271,7 @@ Decision:
 | File | Purpose |
 |------|---------|
 | `espanso/ai-prompts.yml` | Espanso triggers for all five templates (copy to `~/.config/espanso/match/`) |
-| `ahk/az-ai-prompts.ahk` | AutoHotkey v2 hotkeys for all five templates (copy to Startup folder) |
+| `ahk/hopper-prompts.ahk` | AutoHotkey v2 hotkeys for all five templates (copy to Startup folder) |
 | `docs/prompts/system-prompt-master.md` | Master system prompt (foundation for all templates) |
 | `docs/prompts/task-templates.md` | Five canonical task templates with examples and quick-start prompts |
 
@@ -282,7 +282,7 @@ Decision:
 - **Full prompting guide**: `docs/prompts/README.md`
 - **System prompt specification**: `docs/prompts/system-prompt-master.md`
 - **Task template reference**: `docs/prompts/task-templates.md`
-- **Existing az-ai hotkeys**: `examples/espanso-ahk-wsl/espanso/ai.yml`, `ahk/az-ai.ahk`
+- **Existing hopper hotkeys**: `examples/espanso-ahk-wsl/espanso/ai.yml`, `ahk/hopper.ahk`
 
 ---
 

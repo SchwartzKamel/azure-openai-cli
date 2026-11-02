@@ -1,7 +1,9 @@
 # Text Expansion Integration -- Espanso & AutoHotKey
 
+> **Renamed.** The command was `az-ai`; it is now `hopper`. The old name is installed as an alias (`make install` and the release archives do it), the wrapper `az-ai-wrap` still works, and settings stay in `~/.config/az-ai/`, so nothing you already set up breaks. This guide uses the new names.
+>
 > **TL;DR:** Type a trigger phrase anywhere → get AI-generated text back in-place.  
-> This is the PRIMARY use case of `az-ai`: a headless text generation backend for hotkey-driven workflows.
+> This is the PRIMARY use case of `hopper`: a headless text generation backend for hotkey-driven workflows.
 
 ---
 
@@ -24,7 +26,7 @@
 
 ### What This Does
 
-`az-ai` is a CLI that calls Azure OpenAI and prints the response to stdout. When combined with a text expansion tool like [Espanso](https://espanso.org) or [AutoHotKey](https://www.autohotkey.com), it creates an invisible AI layer across your entire OS:
+`hopper` is a CLI that calls Azure OpenAI and prints the response to stdout. When combined with a text expansion tool like [Espanso](https://espanso.org) or [AutoHotKey](https://www.autohotkey.com), it creates an invisible AI layer across your entire OS:
 
 - You're writing an email → type `:aifix` → your clipboard text gets grammar-corrected and pasted back
 - You're in Slack → type `:ai` → a form pops up → you type a question → the answer replaces your trigger
@@ -34,7 +36,7 @@ No browser tabs. No context switches. The AI meets you where you already are.
 
 ### Why `--raw` Matters
 
-By default, `az-ai` shows a braille spinner on stderr while waiting for the first token, and appends token usage stats after the response. That's great for interactive terminal use -- terrible for text injection.
+By default, `hopper` shows a braille spinner on stderr while waiting for the first token, and appends token usage stats after the response. That's great for interactive terminal use -- terrible for text injection.
 
 The `--raw` flag strips all of it:
 
@@ -47,7 +49,7 @@ The `--raw` flag strips all of it:
 
 **Always use `--raw` for text expansion.** Without it, Espanso/AHK may capture spinner artifacts or extra newlines.
 
-> **Note:** When Espanso or AHK invokes `az-ai` via a shell command, stderr is typically redirected, which already suppresses the spinner. The `--raw` flag provides a defense-in-depth guarantee -- use it regardless.
+> **Note:** When Espanso or AHK invokes `hopper` via a shell command, stderr is typically redirected, which already suppresses the spinner. The `--raw` flag provides a defense-in-depth guarantee -- use it regardless.
 
 ### Performance Expectations
 
@@ -64,36 +66,36 @@ Latency is dominated by Azure API round-trip and token generation. The AOT binar
 
 ## Prerequisites
 
-### 1. Install `az-ai`
+### 1. Install `hopper`
 
-You need the `az-ai` binary accessible from your shell. Two options:
+You need the `hopper` binary accessible from your shell. Two options:
 
 **Option A: Native binary (recommended for text expansion -- fastest startup)**
 
 Download from [GitHub Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases), extract, and place on your `PATH`:
 
 ```bash
-# Linux
-tar xzf azure-openai-cli-linux-x64.tar.gz
-sudo mv AzureOpenAI_CLI /usr/local/bin/az-ai
-chmod +x /usr/local/bin/az-ai
+# Linux (the archive holds `hopper` and `az-ai`, its old name; same binary)
+tar xzf az-ai-<version>-linux-x64.tar.gz
+sudo install -m 0755 az-ai-<version>-linux-x64/hopper /usr/local/bin/hopper
+sudo ln -sf hopper /usr/local/bin/az-ai   # existing configs that call az-ai keep working
 
 # macOS (Apple Silicon)
-tar xzf azure-openai-cli-osx-arm64.tar.gz
-sudo mv AzureOpenAI_CLI /usr/local/bin/az-ai
-chmod +x /usr/local/bin/az-ai
+tar xzf az-ai-<version>-osx-arm64.tar.gz
+sudo install -m 0755 az-ai-<version>-osx-arm64/hopper /usr/local/bin/hopper
+sudo ln -sf hopper /usr/local/bin/az-ai
 ```
 
 **Option B: Docker alias (works but adds ~200ms container startup)**
 
 ```bash
 make alias
-# Adds: alias az-ai='docker run --rm --env-file .env azure-openai-cli'
+# Adds: alias hopper='docker run --rm --env-file .env azure-openai-cli'
 ```
 
 ### 2. Set Environment Variables
 
-`az-ai` needs three environment variables:
+`hopper` needs three environment variables:
 
 | Variable              | Value                                            |
 |-----------------------|--------------------------------------------------|
@@ -103,7 +105,7 @@ make alias
 
 **Never put these in `.azureopenai-cli.json`** -- that file is for model aliases and defaults, not credentials. Config files get committed, synced to OneDrive, or shared across a team; environment variables don't. See [`docs/config-reference.md`](./config-reference.md#security-notes).
 
-> **v2.0.6+: Auto-load from `~/.config/az-ai/env`.** The `az-ai` binary now calls `LoadConfigEnv()` at startup, which reads `~/.config/az-ai/env` (shell `export KEY="value"` syntax) and sets any env vars that aren't already present. This means Espanso and AHK invocations no longer *strictly* need `bash -lc` or `source ~/.bashrc` to find credentials -- the binary finds them itself. `bash -lc` remains recommended (it also resolves PATH), but if credentials are in `~/.config/az-ai/env`, they'll load even from a bare `wsl.exe -e az-ai` invocation. Run `make setup-secrets` to create this file, or see [`docs/config-reference.md`](./config-reference.md#auto-loaded-env-file-configaz-aienv) for the format.
+> **v2.0.6+: Auto-load from `~/.config/az-ai/env`.** The `hopper` binary now calls `LoadConfigEnv()` at startup, which reads `~/.config/az-ai/env` (shell `export KEY="value"` syntax) and sets any env vars that aren't already present. This means Espanso and AHK invocations no longer *strictly* need `bash -lc` or `source ~/.bashrc` to find credentials -- the binary finds them itself. `bash -lc` remains recommended (it also resolves PATH), but if credentials are in `~/.config/az-ai/env`, they'll load even from a bare `wsl.exe -e hopper` invocation. Run `make setup-secrets` to create this file, or see [`docs/config-reference.md`](./config-reference.md#auto-loaded-env-file-confighopperenv) for the format.
 
 #### Linux / macOS / WSL -- secure storage
 
@@ -128,7 +130,7 @@ make alias
 > bash scripts/unlock-secrets.sh             # Linux GPG tier -- prime cache after reboot
 > ```
 >
-> Each wizard detects shell (bash/zsh/pwsh), prompts for endpoint + API key + model, lets you pick a storage tier (plaintext-chmod-600 / GPG-encrypted on Unix; user-scope-env / DPAPI-encrypted on Windows), installs an auto-source hook, and runs verification probes at the end. Re-run anytime to rotate keys or switch tiers -- idempotent. Native `az-ai setup` is planned for 2.1 ([FR-022](./proposals/FR-022-native-setup-wizard.md)). The manual walkthroughs below are the long form if you'd rather understand before running.
+> Each wizard detects shell (bash/zsh/pwsh), prompts for endpoint + API key + model, lets you pick a storage tier (plaintext-chmod-600 / GPG-encrypted on Unix; user-scope-env / DPAPI-encrypted on Windows), installs an auto-source hook, and runs verification probes at the end. Re-run anytime to rotate keys or switch tiers -- idempotent. Native `hopper setup` is planned for 2.1 ([FR-022](./proposals/FR-022-native-setup-wizard.md)). The manual walkthroughs below are the long form if you'd rather understand before running.
 
 **Don't paste secrets directly into `~/.bashrc` or `~/.zshrc` if those are committed to a dotfiles repo.** Use one of the options below.
 
@@ -171,7 +173,7 @@ export AZUREOPENAIAPI="$(security find-generic-password -a "$USER" -s azure-open
 
 The endpoint and default model aren't secrets -- leave them in the rcfile.
 
-**Option C -- `direnv` (per-project).** If you run `az-ai` only in specific directories, use [`direnv`](https://direnv.net/) with a `.envrc` that isn't committed. Good for isolating work vs. personal keys.
+**Option C -- `direnv` (per-project).** If you run `hopper` only in specific directories, use [`direnv`](https://direnv.net/) with a `.envrc` that isn't committed. Good for isolating work vs. personal keys.
 
 **Espanso must see the variables.** Espanso spawns its own shell and may not inherit a login environment -- especially on macOS (launchd) and WSL (where Windows-side Espanso launches a non-interactive `wsl.exe`). Confirm with:
 
@@ -259,12 +261,12 @@ As with Option B, Espanso/AHK will **not** inherit `$PROFILE` -- they see the Wi
 ### 3. Verify It Works
 
 ```bash
-echo "test" | az-ai --raw
+echo "test" | hopper --raw
 ```
 
 You should see a short AI response with no spinner, no decorations, no trailing newline. If this works, you're ready for integration.
 
-**WSL users:** Run `make espanso-test` to verify the full Espanso integration chain -- it checks that `az-ai` is on PATH in a login shell, that env vars are present, and that `LoadConfigEnv` can auto-load `~/.config/az-ai/env` even without a shell profile.
+**WSL users:** Run `make espanso-test` to verify the full Espanso integration chain -- it checks that `hopper` is on PATH in a login shell, that env vars are present, and that `LoadConfigEnv` can auto-load `~/.config/az-ai/env` even without a shell profile.
 
 ---
 
@@ -296,7 +298,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "az-ai --raw '{{form1.prompt}}'"
+          cmd: "hopper --raw '{{form1.prompt}}'"
 
   # ── Fix grammar & spelling (from clipboard) ───────────────────
   # Copy text → type ":aifix" → corrected text is pasted
@@ -306,7 +308,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
 
   # ── Professional email rewrite ─────────────────────────────────
   # Copy rough draft → type ":aiemail" → polished email appears
@@ -316,7 +318,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'"
 
   # ── Explain code (from clipboard) ──────────────────────────────
   # Copy a code snippet → type ":aiexplain" → brief explanation appears
@@ -326,7 +328,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'"
 
   # ── Summarize text (from clipboard) ────────────────────────────
   # Copy any text → type ":aisum" → 1-2 sentence summary
@@ -336,7 +338,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --max-tokens 150 --system 'Summarize in 1-2 sentences. Be concise. Output ONLY the summary.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --max-tokens 150 --system 'Summarize in 1-2 sentences. Be concise. Output ONLY the summary.'"
 
   # ── Translate to English (from clipboard) ──────────────────────
   - trigger: ":aien"
@@ -345,7 +347,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --system 'Translate the following to English. Output ONLY the translation, nothing else.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --system 'Translate the following to English. Output ONLY the translation, nothing else.'"
 
   # ── Make text more concise (from clipboard) ────────────────────
   - trigger: ":aishort"
@@ -354,7 +356,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --system 'Make this text more concise. Cut unnecessary words. Preserve meaning. Output ONLY the shortened text.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --system 'Make this text more concise. Cut unnecessary words. Preserve meaning. Output ONLY the shortened text.'"
 
   # ── Generate commit message (from clipboard) ───────────────────
   # Copy a git diff → type ":aicommit" → conventional commit message
@@ -364,12 +366,12 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'"
 ```
 
 > **⚠️ Quote-safety warning for the `:ai` form trigger.** The basic config above passes `{{form1.prompt}}` as a shell argument inside single quotes. If the user types a prompt containing a literal single quote (e.g. `don't`), the shell command breaks. The clipboard-based triggers (`:aifix`, `:aiemail`, etc.) are safe because input arrives via stdin pipe. For a hardened `:ai` trigger that pipes form input via a heredoc (immune to metacharacters), see the reference config in [`examples/espanso-ahk-wsl/espanso/ai.yml`](../examples/espanso-ahk-wsl/espanso/ai.yml).
 >
-> **Loading placeholder available.** The example configs in `examples/` include a "yada yada yada" loading placeholder that shows visual feedback while `az-ai` processes. See the [Loading Placeholder](#loading-placeholder) section for details.
+> **Loading placeholder available.** The example configs in `examples/` include a "yada yada yada" loading placeholder that shows visual feedback while `hopper` processes. See the [Loading Placeholder](#loading-placeholder) section for details.
 
 ### macOS Variants
 
@@ -385,7 +387,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "pbpaste | az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
+          cmd: "pbpaste | hopper --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
 
   - trigger: ":aiemail"
     replace: "{{output}}"
@@ -393,7 +395,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "pbpaste | az-ai --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'"
+          cmd: "pbpaste | hopper --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'"
 
   - trigger: ":aiexplain"
     replace: "{{output}}"
@@ -401,7 +403,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "pbpaste | az-ai --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'"
+          cmd: "pbpaste | hopper --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'"
 
   - trigger: ":aisum"
     replace: "{{output}}"
@@ -409,7 +411,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "pbpaste | az-ai --raw --max-tokens 150 --system 'Summarize in 1-2 sentences. Be concise. Output ONLY the summary.'"
+          cmd: "pbpaste | hopper --raw --max-tokens 150 --system 'Summarize in 1-2 sentences. Be concise. Output ONLY the summary.'"
 
   - trigger: ":aicommit"
     replace: "{{output}}"
@@ -417,7 +419,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "pbpaste | az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'"
+          cmd: "pbpaste | hopper --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'"
 ```
 
 > **Loading placeholder available.** On macOS, the placeholder uses `osascript` to inject keystrokes via System Events, which requires **Accessibility permission** for your terminal or Espanso. See [Loading Placeholder](#loading-placeholder) for the full pattern.
@@ -436,7 +438,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "powershell -c \"Get-Clipboard | az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'\""
+          cmd: "powershell -c \"Get-Clipboard | hopper --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'\""
           shell: cmd
 
   - trigger: ":aiemail"
@@ -445,7 +447,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "powershell -c \"Get-Clipboard | az-ai --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'\""
+          cmd: "powershell -c \"Get-Clipboard | hopper --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'\""
           shell: cmd
 
   - trigger: ":aiexplain"
@@ -454,16 +456,16 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "powershell -c \"Get-Clipboard | az-ai --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'\""
+          cmd: "powershell -c \"Get-Clipboard | hopper --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'\""
           shell: cmd
 ```
 
-> **Tip:** On Windows, if `az-ai` isn't on your `PATH`, use the full path to the binary:  
+> **Tip:** On Windows, if `hopper` isn't on your `PATH`, use the full path to the binary:  
 > `C:\\Users\\you\\tools\\AzureOpenAI_CLI.exe`
 
 ### WSL Variants (the `:shaka:` build) 🤙
 
-If you're on Windows but do your real work in WSL, you've got two clean paths. Both use the **Linux-native AOT binary** (v2 ships as `az-ai`, ~13 MiB, ~10.7 ms p50 cold start -- see [`docs/perf/v2.0.5-baseline.md`](perf/v2.0.5-baseline.md)) -- skip Docker entirely, skip the `.exe`, just run the native ELF. This is the *fastest* setup on any platform: no Docker daemon, no interop translation, pure syscalls.
+If you're on Windows but do your real work in WSL, you've got two clean paths. Both use the **Linux-native AOT binary** (v2 ships as `hopper`, ~13 MiB, ~10.7 ms p50 cold start -- see [`docs/perf/v2.0.5-baseline.md`](perf/v2.0.5-baseline.md)) -- skip Docker entirely, skip the `.exe`, just run the native ELF. This is the *fastest* setup on any platform: no Docker daemon, no interop translation, pure syscalls.
 
 **Path A -- Espanso running *inside* WSL** (recommended if you do most text work in a Linux GUI app, terminal, VS Code Remote-WSL, etc.)
 
@@ -478,8 +480,9 @@ espanso service register
 espanso start
 
 # Put the AOT binary somewhere on PATH
-sudo install -m 0755 dist/aot/AzureOpenAI_CLI /usr/local/bin/az-ai
-az-ai --help  # should print in < 20ms
+sudo install -m 0755 dist/aot/hopper /usr/local/bin/hopper
+sudo ln -sf hopper /usr/local/bin/az-ai   # keeps existing configs working
+hopper --help  # should print in < 20ms
 ```
 
 Use the **Linux/macOS Espanso config** from earlier in this doc as-is -- `xclip` and all. It works unmodified.
@@ -496,26 +499,26 @@ Three reasons the PowerShell-direct pattern wins:
 
 | Pattern | Invocation chain | Clipboard source | Verdict |
 |---------|------------------|------------------|---------|
-| **`shell: powershell`** *(recommended)* | PS → `wsl.exe bash -lc` → `az-ai` | `Get-Clipboard` (native) | ✅ Cleanest. One quoting layer, login shell loads env. |
-| `shell: wsl` | `bash` → `powershell.exe`/`clip.exe` → pipe back → `az-ai` | Interop reach-back to Win32 | ⚠️ Works, but clipboard requires hopping *back* to Windows since `xclip` has no `DISPLAY` in headless WSL2. Net: same boundary crossings, reversed, plus fragile interop. |
-| `shell: cmd` wrapping `powershell -Command "…"` | `cmd` → `powershell` → `wsl.exe` → `az-ai` | `Get-Clipboard` | ❌ Extra hop, nested quoting (cmd escapes *and* PS escapes), no upside. |
+| **`shell: powershell`** *(recommended)* | PS → `wsl.exe bash -lc` → `hopper` | `Get-Clipboard` (native) | ✅ Cleanest. One quoting layer, login shell loads env. |
+| `shell: wsl` | `bash` → `powershell.exe`/`clip.exe` → pipe back → `hopper` | Interop reach-back to Win32 | ⚠️ Works, but clipboard requires hopping *back* to Windows since `xclip` has no `DISPLAY` in headless WSL2. Net: same boundary crossings, reversed, plus fragile interop. |
+| `shell: cmd` wrapping `powershell -Command "…"` | `cmd` → `powershell` → `wsl.exe` → `hopper` | `Get-Clipboard` | ❌ Extra hop, nested quoting (cmd escapes *and* PS escapes), no upside. |
 
 Why `shell: powershell` is right:
 
 - **One quoting layer.** `cmd` wrapping `powershell -Command "…"` forces you to double-escape every inner double-quote (`\"…\""` in YAML turns into cmd-parsed `"…"`, then PS re-parses). With `shell: powershell`, the whole `cmd:` value *is* a PowerShell expression -- YAML handles the outer quoting and PS handles its own strings natively.
 - **Native clipboard, correct encoding.** `Get-Clipboard` reads Windows's clipboard directly as a PowerShell string. `shell: wsl` can't do this without shelling back out to `powershell.exe` or `clip.exe` from inside bash, which is strictly more work for the same result.
 - **Lower latency, same boundary.** You cross the Windows↔WSL boundary exactly once (`wsl.exe bash -lc …`), not twice. Dropping the `cmd` hop saves ~10-20 ms per invocation on cold shell spawns.
-- **When `shell: cmd` is still appropriate:** basically never for this use case. If you ever need to chain `.bat` files or invoke a legacy tool that only parses cmd-style `%VAR%` expansion, that's the time. For `az-ai` + clipboard, it's pure overhead.
+- **When `shell: cmd` is still appropriate:** basically never for this use case. If you ever need to chain `.bat` files or invoke a legacy tool that only parses cmd-style `%VAR%` expansion, that's the time. For `hopper` + clipboard, it's pure overhead.
 
 #### Why `wsl.exe bash -lc …` (not `wsl.exe -e …`)
 
-The config below invokes `wsl.exe bash -lc "az-ai …"` rather than the arguably-simpler `wsl.exe -e az-ai …`. This is deliberate -- `bash -lc` is the difference between "works on the first try" and "fails silently in espanso":
+The config below invokes `wsl.exe bash -lc "hopper …"` rather than the arguably-simpler `wsl.exe -e hopper …`. This is deliberate -- `bash -lc` is the difference between "works on the first try" and "fails silently in espanso":
 
-1. **`bash -lc` launches a login shell**, which sources `~/.bash_profile` / `~/.profile` / `~/.bashrc` (in login order). That's how your `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` end up in the environment. `wsl.exe -e` invokes a **non-login, non-interactive** shell that skips all of those rc files -- `az-ai` launches with no credentials, errors to stderr, and because espanso only captures stdout, **you see an empty replacement with no visible error**. Classic silent-fail trap.
+1. **`bash -lc` launches a login shell**, which sources `~/.bash_profile` / `~/.profile` / `~/.bashrc` (in login order). That's how your `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` end up in the environment. `wsl.exe -e` invokes a **non-login, non-interactive** shell that skips all of those rc files -- `hopper` launches with no credentials, errors to stderr, and because espanso only captures stdout, **you see an empty replacement with no visible error**. Classic silent-fail trap.
 2. **stdin forwarding via pipes is more reliable** through `bash -lc` than through `-e` on several older Windows builds. The `-e` flag bypasses the shell entirely; any stdin conversion quirks surface without a buffer in between.
-3. **PATH resolution is free.** With a login shell you can just say `az-ai` and let `~/.local/bin` (or wherever your install landed) resolve. No hardcoded `/usr/local/bin/az-ai` that breaks the moment you move the binary.
+3. **PATH resolution is free.** With a login shell you can just say `hopper` and let `~/.local/bin` (or wherever your install landed) resolve. No hardcoded `/usr/local/bin/az-ai` that breaks the moment you move the binary.
 
-If you *really* want to skip the login shell (say, to shave another 3-5 ms): put your two env vars in `/etc/environment` instead of `~/.bashrc` (Linux session-wide, WSL-compatible), set them on the Windows side and forward via `WSLENV` (Windows-scoped), or use `wsl.exe env AZUREOPENAIENDPOINT=… AZUREOPENAIAPI=… az-ai …`. None of these are as simple as `bash -lc`, which is why the config below uses the latter.
+If you *really* want to skip the login shell (say, to shave another 3-5 ms): put your two env vars in `/etc/environment` instead of `~/.bashrc` (Linux session-wide, WSL-compatible), set them on the Windows side and forward via `WSLENV` (Windows-scoped), or use `wsl.exe env AZUREOPENAIENDPOINT=… AZUREOPENAIAPI=… hopper …`. None of these are as simple as `bash -lc`, which is why the config below uses the latter.
 
 #### Full Path B WSL config (copy-paste)
 
@@ -525,13 +528,13 @@ Drop this into `%APPDATA%\espanso\match\ai-wsl.yml` -- it mirrors the Linux trig
 
 ```yaml
 # %APPDATA%\espanso\match\ai-wsl.yml
-# Windows Espanso → WSL → AOT az-ai (Path B)
+# Windows Espanso → WSL → AOT hopper (Path B)
 # Clipboard via Get-Clipboard, one boundary crossing via wsl.exe.
 matches:
 
   # ── Free-form AI prompt (with input form) ─────────────────────
   # Type ":ai " (with trailing space) → form pops up → AI responds.
-  # No clipboard needed; prompt is passed as an argv to az-ai.
+  # No clipboard needed; prompt is passed as an argv to hopper.
   - trigger: ":ai "
     replace: "{{output}}"
     vars:
@@ -542,7 +545,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "wsl.exe bash -lc \"az-ai --raw '{{form1.prompt}}'\""
+          cmd: "wsl.exe bash -lc \"hopper --raw '{{form1.prompt}}'\""
           shell: powershell
 
   # ── Fix grammar & spelling (from clipboard) ───────────────────
@@ -552,7 +555,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'\""
+          cmd: "Get-Clipboard | wsl.exe bash -lc \"hopper --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'\""
           shell: powershell
 
   # ── Professional email rewrite ─────────────────────────────────
@@ -562,7 +565,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'\""
+          cmd: "Get-Clipboard | wsl.exe bash -lc \"hopper --raw --system 'Rewrite this as a professional email. Keep the same meaning and tone but make it polished and well-structured. Output ONLY the email text, nothing else.'\""
           shell: powershell
 
   # ── Explain code (from clipboard) ──────────────────────────────
@@ -572,7 +575,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'\""
+          cmd: "Get-Clipboard | wsl.exe bash -lc \"hopper --raw --max-tokens 200 --system 'Explain this code briefly in 2-3 sentences. Be precise and technical. Output ONLY the explanation.'\""
           shell: powershell
 
   # ── Summarize text (from clipboard) ────────────────────────────
@@ -582,7 +585,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --max-tokens 150 --system 'Summarize in 1-2 sentences. Be concise. Output ONLY the summary.'\""
+          cmd: "Get-Clipboard | wsl.exe bash -lc \"hopper --raw --max-tokens 150 --system 'Summarize in 1-2 sentences. Be concise. Output ONLY the summary.'\""
           shell: powershell
 
   # ── Translate to English (from clipboard) ──────────────────────
@@ -592,7 +595,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --system 'Translate the following to English. Output ONLY the translation, nothing else.'\""
+          cmd: "Get-Clipboard | wsl.exe bash -lc \"hopper --raw --system 'Translate the following to English. Output ONLY the translation, nothing else.'\""
           shell: powershell
 
   # ── Make text more concise (from clipboard) ────────────────────
@@ -602,7 +605,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --system 'Make this text more concise. Cut unnecessary words. Preserve meaning. Output ONLY the shortened text.'\""
+          cmd: "Get-Clipboard | wsl.exe bash -lc \"hopper --raw --system 'Make this text more concise. Cut unnecessary words. Preserve meaning. Output ONLY the shortened text.'\""
           shell: powershell
 
   # ── Generate commit message (from clipboard) ───────────────────
@@ -614,31 +617,31 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'\""
+          cmd: "Get-Clipboard | wsl.exe bash -lc \"hopper --raw --max-tokens 100 --temperature 0.3 --system 'Write a concise conventional commit message for this diff. Format: type(scope): description. Output ONLY the commit message, no explanation.'\""
           shell: powershell
 ```
 
-> **Loading placeholder available.** The example configs in `examples/` include a "yada yada yada" loading placeholder that shows visual feedback while `az-ai` processes. On Windows/WSL this uses `SendKeys`. See [Loading Placeholder](#loading-placeholder) for details.
+> **Loading placeholder available.** The example configs in `examples/` include a "yada yada yada" loading placeholder that shows visual feedback while `hopper` processes. On Windows/WSL this uses `SendKeys`. See [Loading Placeholder](#loading-placeholder) for details.
 
 **Gotchas -- read these before you spend an hour debugging:**
 
 > **If `:aifix` fires but the replacement is blank or nothing happens at all** -- 95% of the time it's one of these three. Check in order:
 >
-> **(1) Env vars aren't reaching WSL.** The old `wsl.exe -e …` pattern doesn't source `~/.bashrc` so `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` are missing; `az-ai` fails to stderr and espanso pastes an empty string. The config above uses `wsl.exe bash -lc …` to force a login shell -- if you've copy-pasted an older config, migrate. Verify: open PowerShell and run
+> **(1) Env vars aren't reaching WSL.** The old `wsl.exe -e …` pattern doesn't source `~/.bashrc` so `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` are missing; `hopper` fails to stderr and espanso pastes an empty string. The config above uses `wsl.exe bash -lc …` to force a login shell -- if you've copy-pasted an older config, migrate. Verify: open PowerShell and run
 >
 > ```powershell
-> Get-Clipboard | wsl.exe bash -lc "az-ai --raw --system 'Fix grammar.'"
+> Get-Clipboard | wsl.exe bash -lc "hopper --raw --system 'Fix grammar.'"
 > ```
 >
 > If you see `[ERROR] AZUREOPENAIENDPOINT is not set`, your env vars aren't in `~/.bashrc` (or wherever your login shell reads) -- fix that first.
 >
-> **(2) The `az-ai` binary isn't on PATH inside a login shell.** Test:
+> **(2) The `hopper` binary isn't on PATH inside a login shell.** Test:
 >
 > ```powershell
-> wsl.exe bash -lc "command -v az-ai"
+> wsl.exe bash -lc "command -v hopper"
 > ```
 >
-> If that prints nothing, `az-ai` isn't in the PATH your login shell sees. Either install it to `/usr/local/bin` (`sudo cp ./az-ai /usr/local/bin/`) or add its directory to PATH in `~/.bashrc` (`export PATH="$HOME/tools/azure-openai-cli/dist/aot:$PATH"`).
+> If that prints nothing, `hopper` isn't in the PATH your login shell sees. Either install it to `/usr/local/bin` (`sudo cp ./hopper /usr/local/bin/`) or add its directory to PATH in `~/.bashrc` (`export PATH="$HOME/tools/azure-openai-cli/dist/aot:$PATH"`).
 >
 > **(3) The clipboard is empty.** PowerShell's `Get-Clipboard` returns an empty string when the clipboard has image content, zero bytes, or was cleared by whatever espanso trigger fired before yours. Test:
 >
@@ -651,17 +654,17 @@ matches:
 > Run those three probes in order. The failure is always in one of them.
 
 1. **Use `bash -lc`, not `wsl.exe -e`** -- see the callout above and the dedicated *"Why `wsl.exe bash -lc …`"* section. The old `-e` pattern skips login-shell initialization, credentials go missing, and every clipboard trigger fails silently. If you wrote your config before this migration, upgrade it.
-2. **WSL default distro matters.** `wsl.exe bash -lc …` runs in whatever distro is default (`wsl --list --verbose` to check). If you've got multiple distros, pin it: `wsl.exe -d Ubuntu bash -lc "az-ai …"`.
-3. **Credentials must live *inside* WSL** (e.g. `~/.azureopenai-cli.json`, `/etc/environment`, or sourced in `~/.bashrc` -- see the *Secure env-var storage* section above). The Windows process environment doesn't cross the `wsl.exe` boundary unless you explicitly forward with `WSLENV`. `bash -lc` sources `~/.bashrc` (via `~/.bash_profile` / `~/.profile`), which is the simplest way to get those vars into the environment `az-ai` sees.
+2. **WSL default distro matters.** `wsl.exe bash -lc …` runs in whatever distro is default (`wsl --list --verbose` to check). If you've got multiple distros, pin it: `wsl.exe -d Ubuntu bash -lc "hopper …"`.
+3. **Credentials must live *inside* WSL** (e.g. `~/.azureopenai-cli.json`, `/etc/environment`, or sourced in `~/.bashrc` -- see the *Secure env-var storage* section above). The Windows process environment doesn't cross the `wsl.exe` boundary unless you explicitly forward with `WSLENV`. `bash -lc` sources `~/.bashrc` (via `~/.bash_profile` / `~/.profile`), which is the simplest way to get those vars into the environment `hopper` sees.
 4. **Clipboard encoding.** `Get-Clipboard` emits UTF-16 by default on some locales; if you see mojibake in non-ASCII input, force UTF-8 output from PowerShell before piping. Because `shell: powershell` means the whole `cmd:` value is already PowerShell, you can prepend the encoding setup inline -- no nested cmd+PS escaping:
 
    ```yaml
-   cmd: "[Console]::OutputEncoding = [Text.UTF8Encoding]::new(); Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --system '…'\""
+   cmd: "[Console]::OutputEncoding = [Text.UTF8Encoding]::new(); Get-Clipboard | wsl.exe bash -lc \"hopper --raw --system '…'\""
    shell: powershell
    ```
 
-5. **Path translation.** If you need to pass a Windows file path *to* `az-ai` in WSL, use `wslpath`: `wsl.exe bash -lc "az-ai --read-file $(wslpath -a 'C:\\temp\\file.txt')"`. Don't hand raw `C:\…` paths to a Linux binary.
-6. **Keep the binary on the WSL side, not a mounted Windows drive.** Running `az-ai` from `/mnt/c/tools/` adds filesystem-translation overhead on every syscall -- that ~11 ms startup becomes ~150 ms. Install to `/usr/local/bin` (native ext4), always.
+5. **Path translation.** If you need to pass a Windows file path *to* `hopper` in WSL, use `wslpath`: `wsl.exe bash -lc "hopper --read-file $(wslpath -a 'C:\\temp\\file.txt')"`. Don't hand raw `C:\…` paths to a Linux binary.
+6. **Keep the binary on the WSL side, not a mounted Windows drive.** Running `hopper` from `/mnt/c/tools/` adds filesystem-translation overhead on every syscall -- that ~11 ms startup becomes ~150 ms. Install to `/usr/local/bin` (native ext4), always.
 7. **Single-quote pitfall in the `:ai` form.** `{{form1.prompt}}` is templated by Espanso *before* PowerShell sees it. If the user types a prompt containing a single quote (`don't`), it'll break the PS string. Same limitation exists on the Linux side -- punt on it or pre-sanitize in a wrapper script if it matters.
 8. **Cost note (Morty says):** the WSL path is 2-way text over stdin/stdout. Every byte of piped clipboard is an input token you pay for. A 32 KB clipboard is a 32 KB bill event. The CLI caps clipboard at 32 KB in agent mode (`Tools/GetClipboardTool.cs:12`), but here you're piping directly -- *you* enforce the cap with `--max-tokens` on output. Don't let a runaway paste become a runaway invoice.
 
@@ -715,14 +718,14 @@ GetSelectedText() {
     return text
 }
 
-; ── Helper: run az-ai on text with a system prompt ──────────
+; ── Helper: run hopper on text with a system prompt ──────────
 AiTransform(text, systemPrompt, extraFlags := "") {
     ; Escape double quotes in both inputs
     escaped := StrReplace(text, '"', '\"')
     sysEscaped := StrReplace(systemPrompt, '"', '\"')
-    cmd := 'echo "' escaped '" | az-ai --raw --system "' sysEscaped '"'
+    cmd := 'echo "' escaped '" | hopper --raw --system "' sysEscaped '"'
     if (extraFlags != "")
-        cmd := 'echo "' escaped '" | az-ai --raw ' extraFlags ' --system "' sysEscaped '"'
+        cmd := 'echo "' escaped '" | hopper --raw ' extraFlags ' --system "' sysEscaped '"'
     return RunWaitOne(cmd)
 }
 
@@ -731,7 +734,7 @@ AiTransform(text, systemPrompt, extraFlags := "") {
     ib := InputBox("Enter your prompt:", "Azure OpenAI CLI", "w400 h120")
     if ib.Result = "Cancel"
         return
-    result := RunWaitOne('az-ai --raw "' StrReplace(ib.Value, '"', '\"') '"')
+    result := RunWaitOne('hopper --raw "' StrReplace(ib.Value, '"', '\"') '"')
     if (result != "") {
         A_Clipboard := result
         Send "^v"
@@ -816,16 +819,16 @@ AiTransform(text, systemPrompt, extraFlags := "") {
 
 ### The Problem
 
-When you type a trigger like `:aifix`, there's a 2-3 second gap while `az-ai` calls Azure OpenAI, streams the response, and hands it back to Espanso. During that gap you see... nothing. No spinner, no cursor change, no feedback. It looks like the trigger didn't fire.
+When you type a trigger like `:aifix`, there's a 2-3 second gap while `hopper` calls Azure OpenAI, streams the response, and hands it back to Espanso. During that gap you see... nothing. No spinner, no cursor change, no feedback. It looks like the trigger didn't fire.
 
 ### The "Yada Yada Yada" Solution
 
-The example configs in `examples/` include an optional **loading placeholder** pattern: while `az-ai` processes the request, the text `yada yada yada` appears at the cursor position. When the real response arrives, the placeholder is backspaced away and replaced with actual output. (The name is on-brand -- this project names its [agent fleet](../AGENTS.md) after Seinfeld characters.)
+The example configs in `examples/` include an optional **loading placeholder** pattern: while `hopper` processes the request, the text `yada yada yada` appears at the cursor position. When the real response arrives, the placeholder is backspaced away and replaced with actual output. (The name is on-brand -- this project names its [agent fleet](../AGENTS.md) after Seinfeld characters.)
 
 The flow is:
 
 1. **Type placeholder** -- use an OS-level keystroke API to inject `yada yada yada` at the cursor
-2. **Run `az-ai`** -- capture the real response into a variable
+2. **Run `hopper`** -- capture the real response into a variable
 3. **Clear placeholder** -- send enough `BackSpace` keystrokes to erase the placeholder text
 4. **Espanso pastes** -- the real response replaces the trigger as normal
 
@@ -844,10 +847,10 @@ Where `$ph` is the placeholder string (default `yada yada yada`, 14 characters) 
 
 ```bash
 #!/usr/bin/env bash
-# Wrapper: type placeholder → run az-ai → clear placeholder → print result
+# Wrapper: type placeholder → run hopper → clear placeholder → print result
 ph="yada yada yada"
 xdotool type --clearmodifiers "$ph"
-result=$(xclip -selection clipboard -o | az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.')
+result=$(xclip -selection clipboard -o | hopper --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.')
 xdotool key --repeat ${#ph} BackSpace
 echo "$result"
 ```
@@ -877,16 +880,16 @@ Shorter responses complete faster. For text expansion, you rarely need the defau
 
 ```yaml
 # Grammar fix: response ≈ input length. 500 tokens covers most paragraphs.
-cmd: "... | az-ai --raw --max-tokens 500 --system '...'"
+cmd: "... | hopper --raw --max-tokens 500 --system '...'"
 
 # Summaries: 1-2 sentences. 150 tokens is plenty.
-cmd: "... | az-ai --raw --max-tokens 150 --system '...'"
+cmd: "... | hopper --raw --max-tokens 150 --system '...'"
 
 # Code explanations: 2-3 sentences. 200 tokens.
-cmd: "... | az-ai --raw --max-tokens 200 --system '...'"
+cmd: "... | hopper --raw --max-tokens 200 --system '...'"
 
 # Commit messages: one line. 100 tokens.
-cmd: "... | az-ai --raw --max-tokens 100 --system '...'"
+cmd: "... | hopper --raw --max-tokens 100 --system '...'"
 ```
 
 ### 3. Use a Fast Model
@@ -917,10 +920,10 @@ Or if you have multiple models configured, override per-trigger with `--set-mode
 
 ```yaml
 # Low temp for grammar -- deterministic, consistent
-cmd: "... | az-ai --raw --temperature 0.3 --system '...'"
+cmd: "... | hopper --raw --temperature 0.3 --system '...'"
 
 # Higher temp for creative tasks
-cmd: "... | az-ai --raw --temperature 0.8 --system '...'"
+cmd: "... | hopper --raw --temperature 0.8 --system '...'"
 ```
 
 ### 5. Write System Prompts That End with "Output ONLY..."
@@ -939,10 +942,10 @@ Docker adds ~200-300ms of container startup overhead per invocation. For text ex
 
 ```bash
 # Native binary AOT: ~10.7 ms p50 startup (RECOMMENDED)
-~/.local/bin/az-ai --raw "Hello"
+~/.local/bin/hopper --raw "Hello"
 
 # Native binary R2R: ~55ms startup
-az-ai --raw "Hello"
+hopper --raw "Hello"
 
 # Docker: ~400-600ms startup (container cold-start overhead)
 docker run --rm --env-file .env azure-openai-cli --raw "Hello"
@@ -951,8 +954,8 @@ docker run --rm --env-file .env azure-openai-cli --raw "Hello"
 **Build and install the Native AOT binary (Linux, macOS, WSL):**
 
 ```bash
-make publish-aot      # builds dist/aot/az-ai (~13 MiB, ~10.7 ms p50 startup -- see docs/perf/v2.0.5-baseline.md)
-make install          # copies to ~/.local/bin/az-ai
+make publish-aot      # builds dist/aot/hopper (~13 MiB, ~10.7 ms p50 startup -- see docs/perf/v2.0.5-baseline.md)
+make install          # copies to ~/.local/bin/hopper and links az-ai to it
 make bench            # measures cold-start (10 runs)
 ```
 
@@ -979,7 +982,7 @@ If you installed via `make alias`, consider switching to a native binary for exp
 
 Non-ASCII text (CJK, accented Latin, Cyrillic, Arabic, emoji) requires
 explicit UTF-8 encoding at every boundary in the Espanso -> PowerShell
--> WSL -> `az-ai` pipeline. This section documents the requirements and
+-> WSL -> `hopper` pipeline. This section documents the requirements and
 the reasoning behind them.
 
 ### The Problem
@@ -988,7 +991,7 @@ A Windows user copies Japanese text to the clipboard and triggers
 `:aifix`. The pipeline is:
 
 ```text
-Clipboard ("いい子") -> Get-Clipboard -> pipe to wsl.exe -> az-ai -> stdout -> Espanso
+Clipboard ("いい子") -> Get-Clipboard -> pipe to wsl.exe -> hopper -> stdout -> Espanso
 ```
 
 Without explicit encoding, the output is `???`. Three independent
@@ -1019,7 +1022,7 @@ for the duration of that command. The production-hardened configs in
 [`examples/espanso-ahk-wsl/`](../examples/espanso-ahk-wsl/) include
 these declarations in every trigger.
 
-**WSL wrapper script:** `az-ai-wrap.sh` includes a locale fallback:
+**WSL wrapper script:** `hopper-wrap.sh` includes a locale fallback:
 
 ```bash
 LANG=${LANG:-C.UTF-8}
@@ -1028,7 +1031,7 @@ LANG=${LANG:-C.UTF-8}
 This ensures the `C.UTF-8` locale is active even in non-login shells
 where no profile files are sourced.
 
-**The `az-ai` binary itself:** `Program.cs` sets
+**The `hopper` binary itself:** `Program.cs` sets
 `Console.InputEncoding` and `Console.OutputEncoding` to UTF-8 at
 startup. `ShellExecTool` and `GetClipboardTool` set
 `StandardOutputEncoding = Encoding.UTF8` on every subprocess. These
@@ -1056,15 +1059,15 @@ For the full encoding enforcement audit, see
 
 ### Environment Variables Not Found
 
-**Symptom:** `az-ai` returns an error about missing endpoint or API key when triggered from Espanso, but works fine in your terminal.
+**Symptom:** `hopper` returns an error about missing endpoint or API key when triggered from Espanso, but works fine in your terminal.
 
 **Cause:** Espanso spawns a new shell that doesn't inherit your `.bashrc`/`.zshrc` environment.
 
-**Quickest fix (v2.0.6+):** If your credentials are in `~/.config/az-ai/env`, `az-ai` auto-loads them at startup via `LoadConfigEnv()` -- no shell profile required. Run `make setup-secrets` to create this file. Verify with:
+**Quickest fix (v2.0.6+):** If your credentials are in `~/.config/az-ai/env`, `hopper` auto-loads them at startup via `LoadConfigEnv()` -- no shell profile required. Run `make setup-secrets` to create this file. Verify with:
 
 ```bash
 # Simulates a bare invocation with no shell profile (exactly what Espanso does)
-env -i HOME=$HOME PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin" az-ai --version
+env -i HOME=$HOME PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin" hopper --version
 ```
 
 If that works, your Espanso triggers will too. If you also need env vars visible to *other* tools, use the shell-profile options below.
@@ -1097,19 +1100,19 @@ launchctl setenv AZUREOPENAIMODEL "gpt-4o-mini"
     - name: output
       type: shell
       params:
-        cmd: "source ~/.bashrc && xclip -selection clipboard -o | az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
+        cmd: "source ~/.bashrc && xclip -selection clipboard -o | hopper --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'"
         shell: bash
 ```
 
 ### Binary Not on PATH
 
-**Symptom:** `command not found: az-ai`
+**Symptom:** `command not found: hopper`
 
 **Fix:** Use the full path to the binary in your Espanso/AHK config:
 
 ```yaml
 # Espanso -- full path
-cmd: "xclip -selection clipboard -o | /usr/local/bin/az-ai --raw --system '...'"
+cmd: "xclip -selection clipboard -o | /usr/local/bin/hopper --raw --system '...'"
 ```
 
 ```ahk
@@ -1132,7 +1135,7 @@ RunWaitOne('C:\Users\you\tools\AzureOpenAI_CLI.exe --raw "' prompt '"')
     - name: output
       type: shell
       params:
-        cmd: "xclip -selection clipboard -o | az-ai --raw --max-tokens 500 --system '...'"
+        cmd: "xclip -selection clipboard -o | hopper --raw --max-tokens 500 --system '...'"
         timeout: 15000  # 15 seconds (Espanso timeout in ms)
 ```
 
@@ -1143,7 +1146,7 @@ RunWaitOne('C:\Users\you\tools\AzureOpenAI_CLI.exe --raw "' prompt '"')
 **Fix:** Verify you're using `--raw` (suppresses the trailing newline). If the model itself adds whitespace, pipe through `sed`:
 
 ```yaml
-cmd: "xclip -selection clipboard -o | az-ai --raw --system '...' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'"
+cmd: "xclip -selection clipboard -o | hopper --raw --system '...' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'"
 ```
 
 ### Non-ASCII Text Shows as `???` or Mojibake
@@ -1155,12 +1158,12 @@ cmd: "xclip -selection clipboard -o | az-ai --raw --system '...' | sed 's/^[[:sp
 **Fix:** Add both encoding declarations at the start of every Espanso PowerShell `cmd:` that handles non-ASCII content:
 
 ```yaml
-cmd: "$OutputEncoding = [Text.UTF8Encoding]::new(); [Console]::OutputEncoding = [Text.UTF8Encoding]::new(); Get-Clipboard | wsl.exe bash -lc \"az-ai --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'\""
+cmd: "$OutputEncoding = [Text.UTF8Encoding]::new(); [Console]::OutputEncoding = [Text.UTF8Encoding]::new(); Get-Clipboard | wsl.exe bash -lc \"hopper --raw --system 'Fix grammar and spelling. Output ONLY the corrected text, nothing else.'\""
 ```
 
 Both variables must be set. Setting only `$OutputEncoding` fixes the pipe to `wsl.exe` but not the stdout back to Espanso; setting only `[Console]::OutputEncoding` fixes the return path but not the pipe. See [docs/i18n.md](i18n.md) for the full encoding enforcement table.
 
-**Also check the WSL side:** If `az-ai` runs inside WSL via a non-login shell and `LANG` is unset, the C runtime may default to the `POSIX` locale. The `az-ai-wrap.sh` wrapper sets `LANG=${LANG:-C.UTF-8}` as a fallback. If you invoke `az-ai` directly (without the wrapper), add this to your WSL shell profile:
+**Also check the WSL side:** If `hopper` runs inside WSL via a non-login shell and `LANG` is unset, the C runtime may default to the `POSIX` locale. The `hopper-wrap.sh` wrapper sets `LANG=${LANG:-C.UTF-8}` as a fallback. If you invoke `hopper` directly (without the wrapper), add this to your WSL shell profile:
 
 ```bash
 # ~/.bashrc or ~/.profile
@@ -1171,22 +1174,22 @@ export LANG="${LANG:-C.UTF-8}"
 
 ```bash
 # 1. Is the binary on PATH?
-which az-ai
+which hopper
 
 # 2. Are env vars set?
 echo $AZUREOPENAIENDPOINT
 echo $AZUREOPENAIMODEL
 
 # 3. Does raw mode work?
-echo "say hello" | az-ai --raw
+echo "say hello" | hopper --raw
 
 # 4. Does clipboard piping work? (Linux)
 echo "test text" | xclip -selection clipboard
-xclip -selection clipboard -o | az-ai --raw --system "Repeat this text exactly."
+xclip -selection clipboard -o | hopper --raw --system "Repeat this text exactly."
 
 # 5. Does clipboard piping work? (macOS)
 echo "test text" | pbcopy
-pbpaste | az-ai --raw --system "Repeat this text exactly."
+pbpaste | hopper --raw --system "Repeat this text exactly."
 
 # 6. Full WSL integration check (binary + env vars + LoadConfigEnv)
 make espanso-test
@@ -1196,7 +1199,7 @@ make espanso-test
 
 ## Power Triggers -- Complex Text Expansion
 
-Beyond the basic clipboard-in/text-out triggers, these demonstrate what's possible when you combine `az-ai` features like agent mode, web search, structured prompts, and multi-field forms.
+Beyond the basic clipboard-in/text-out triggers, these demonstrate what's possible when you combine `hopper` features like agent mode, web search, structured prompts, and multi-field forms.
 
 ### `:aiexpand` -- Expand on This
 
@@ -1268,7 +1271,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --persona reviewer"
+          cmd: "xclip -selection clipboard -o | hopper --raw --persona reviewer"
 
   # ── Architecture advice ────────────────────────────────────
   - trigger: ":aiarch"
@@ -1281,7 +1284,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "az-ai --raw --persona architect '{{form1.question}}'"
+          cmd: "hopper --raw --persona architect '{{form1.question}}'"
 
   # ── Security audit of clipboard code ───────────────────────
   - trigger: ":aisec"
@@ -1290,7 +1293,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --max-tokens 300 --persona security"
+          cmd: "xclip -selection clipboard -o | hopper --raw --max-tokens 300 --persona security"
 
   # ── Technical writing assist ───────────────────────────────
   - trigger: ":aidocs"
@@ -1299,7 +1302,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --persona writer"
+          cmd: "xclip -selection clipboard -o | hopper --raw --persona writer"
 
   # ── Auto-route: let the CLI pick the right persona ─────────
   - trigger: ":aiauto"
@@ -1312,7 +1315,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "az-ai --raw --persona auto '{{form1.task}}'"
+          cmd: "hopper --raw --persona auto '{{form1.task}}'"
 ```
 
 > **Note:** Persona triggers use `--persona` which loads a system prompt and (optionally) enables tools. For text expansion, this adds minimal overhead since tool-calling only activates with `--agent`. The persona's system prompt is loaded from `.squad.json` -- no extra API calls.
@@ -1323,10 +1326,10 @@ You can combine `--persona` with temperature and token overrides:
 
 ```yaml
 # Precise code review (low temp, capped output)
-cmd: "... | az-ai --raw --persona reviewer --temperature 0.2 --max-tokens 400"
+cmd: "... | hopper --raw --persona reviewer --temperature 0.2 --max-tokens 400"
 
 # Creative writing assist (high temp)
-cmd: "... | az-ai --raw --persona writer --temperature 0.8"
+cmd: "... | hopper --raw --persona writer --temperature 0.8"
 ```
 
 ---
