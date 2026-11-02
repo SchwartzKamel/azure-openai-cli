@@ -1,6 +1,6 @@
 # Local providers -- the first hour
 
-> Hi, I'm Lloyd. You just installed `az-ai` and you would like the very
+> Hi, I'm Lloyd. You just installed `hopper` and you would like the very
 > next thing it does to be a model running on your own laptop -- not a
 > cloud you have to swipe a credit card at. This page walks you from
 > "binary on disk" to "Hi, what are you?" without skipping the
@@ -188,7 +188,7 @@ or `source ~/.bashrc` / `source ~/.zshrc`.
 ## 4. Step 2: Pull a small model first
 
 Resist the urge to pull a 40 GB model as your first move. Pull a tiny
-one and verify the whole pipeline -- runtime, port, az-ai wiring --
+one and verify the whole pipeline -- runtime, port, hopper wiring --
 before you commit to a long download.
 
 ```bash
@@ -252,19 +252,19 @@ If you get **"Connection refused"**, the server is not running. See
 If you get JSON but `data` is empty, the pull from step 2 did not
 land.
 
-The path that matters for `az-ai` is the **base URL**:
+The path that matters for `hopper` is the **base URL**:
 `http://localhost:11434/v1`. The `/v1` suffix is the OpenAI-wire
 convention; do not omit it.
 
 ---
 
-## 6. Step 4: Tell az-ai about it
+## 6. Step 4: Tell hopper about it
 
 There are two paths. Both end at the same `~/.config/az-ai/env` file.
 
 ### Path A: the wizard (what S03E11 *The Wizard, Reprise* shipped)
 
-`az-ai --setup` walks you through an interactive prompt. The wizard
+`hopper --setup` walks you through an interactive prompt. The wizard
 currently knows about five named provider presets: `azure`, `openai`,
 `groq`, `together`, `cloudflare`. As of writing **it does not yet have
 a dedicated `ollama` choice** -- that ships with **(coming soon:
@@ -273,8 +273,8 @@ S03E14 *The Daemon*)**. For now, use Path B.
 When E14 lands, the flow will look like:
 
 ```text
-$ az-ai --setup
-Welcome to az-ai setup!
+$ hopper --setup
+Welcome to hopper setup!
 
 Default provider:
     1) azure
@@ -292,7 +292,7 @@ Ollama model name(s), comma-separated [llama3.2:1b]: llama3.2:1b
 ### Path B: edit the env file by hand (works today)
 
 Open `~/.config/az-ai/env` in your editor (create it if it does not
-exist). Add a default-section export so `az-ai` will route the model
+exist). Add a default-section export so `hopper` will route the model
 name `llama3.2:1b` through the OpenAI-compat adapter pointed at your
 local server:
 
@@ -347,7 +347,7 @@ export AZ_AI_LOCAL_PROVIDERS=1
 
 Why this exists, in plain English: a typo in `AZ_AI_COMPAT_MODELS`,
 or an env var leaking in from the wrong shell, should never silently
-cause `az-ai` to start poking at services on your laptop. The default
+cause `hopper` to start poking at services on your laptop. The default
 is "no, do not connect to localhost"; the opt-in says "yes, I meant
 to". This belongs to **(coming soon: S03E16 *The Allowlist*)** -- it
 formalizes the threat model and the precise IP ranges treated as
@@ -371,7 +371,7 @@ want it to stick across shells.
 This is the step you came for.
 
 ```bash
-az-ai --model llama3.2:1b "Hi, what are you?"
+hopper --model llama3.2:1b "Hi, what are you?"
 ```
 
 Expected output (abridged, the actual text varies):
@@ -398,19 +398,19 @@ If you set `--raw`, you get clean stdout suitable for piping to
 Espanso / AHK / any script.
 
 ```bash
-az-ai --raw --model llama3.2:1b "translate to French: hello"
+hopper --raw --model llama3.2:1b "translate to French: hello"
 ```
 
 ---
 
 ## 9. Step 7: Verify it is actually local
 
-Trust, but verify. S03E15 *The Probe* shipped the `az-ai --doctor`
+Trust, but verify. S03E15 *The Probe* shipped the `hopper --doctor`
 subcommand, which probes every configured provider for endpoint
 reachability, credential presence, and model allowlist. Run it:
 
 ```bash
-az-ai --doctor
+hopper --doctor
 ```
 
 Expected output (abridged, ASCII table by default):
@@ -466,7 +466,7 @@ already know them.
   the runtime truncates -- usually badly.
 - **Backend vs. provider.** The "backend" is the software actually
   running the model (Ollama, llama.cpp, vLLM). The "provider" is how
-  `az-ai` routes to it (a compat preset, in our case). One backend can
+  `hopper` routes to it (a compat preset, in our case). One backend can
   serve many providers; one provider talks to exactly one backend.
 
 For the project-wide glossary (AOT, MAF, DPAPI, libsecret, MCP, and
@@ -524,7 +524,7 @@ each machine.
 
 ### `AZ_AI_LOCAL_PROVIDERS` not set
 
-See step 5. `az-ai` refuses to connect to localhost without the opt-in.
+See step 5. `hopper` refuses to connect to localhost without the opt-in.
 
 ### Two Ollamas (Windows + WSL)
 
@@ -561,14 +561,14 @@ preset, set the model name, and dispatch through `AZ_AI_COMPAT_MODELS`.
 
 When something is broken and this doc did not save you:
 
-1. Run `az-ai --doctor` (S03E15 *The Probe*) and copy its output. It
+1. Run `hopper --doctor` (S03E15 *The Probe*) and copy its output. It
    will tell you a lot in one screenful, never emits credential
    values, and exits 1 when something is unhealthy.
 2. Search [the issue tracker](https://github.com/SchwartzKamel/azure-openai-cli/issues).
    Onboarding-shaped pain is common; you are likely not the first.
 3. If the issue is new, file one. Include:
    - OS + version (`uname -a` / `sw_vers` / `winver`).
-   - `az-ai --version` output.
+   - `hopper --version` output.
    - The exact command you ran.
    - The `[ERROR]` line you saw.
    - `ollama --version` and `ollama list` output if relevant.

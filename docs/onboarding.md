@@ -90,10 +90,10 @@ your `dotnet --info` output.
 
 ```bash
 make publish-aot     # native AOT build, no .NET runtime needed at runtime
-make install         # drops the binary at ~/.local/bin/az-ai
+make install         # drops the binary at ~/.local/bin/hopper
 ```
 
-`~/.local/bin` needs to be on `$PATH`. If `az-ai` is not found after
+`~/.local/bin` needs to be on `$PATH`. If `hopper` is not found after
 `make install`, that is your culprit. Add this to your shell rc:
 
 ```bash
@@ -103,7 +103,7 @@ export PATH="$HOME/.local/bin:$PATH"
 Verify:
 
 ```bash
-az-ai --version --short
+hopper --version --short
 ```
 
 Expected: bare semver, e.g. `2.0.6`.
@@ -116,7 +116,7 @@ You have two paths. Pick one.
 no creds configured and it drops into the first-run wizard:
 
 ```bash
-az-ai
+hopper
 ```
 
 The wizard asks for endpoint, API key (input is masked), and model
@@ -124,10 +124,10 @@ deployment name(s). A deployment name is the name you gave the model in
 Azure. The first name you list becomes your default model, and the wizard
 ends by telling you which one that is and why. It saves everything to
 `~/.config/az-ai/env` (mode `0600` on Linux and macOS) as plaintext.
-`az-ai` does not use an OS keystore yet; the README's "Where is my key
+`hopper` does not use an OS keystore yet; the README's "Where is my key
 stored?" table is the canonical reference.
 
-Re-run the wizard any time with `az-ai --setup`.
+Re-run the wizard any time with `hopper --setup`.
 
 **Path B -- environment variables (recommended for CI, Docker, scripts).**
 Export the three required vars. Env vars always win over stored config.
@@ -148,20 +148,20 @@ in [`docs/prerequisites.md`](prerequisites.md).
 
 **Path C -- env file auto-load (recommended for daily use).**
 Place your exports in `~/.config/az-ai/env` (shell format, one
-`export VAR="value"` per line). `az-ai` auto-loads this file at
+`export VAR="value"` per line). `hopper` auto-loads this file at
 startup via `LoadConfigEnv` -- no need to `source` it manually.
 `make setup-secrets` creates the file for you; `make load-env` prints
 a `source` command if you want the vars in your current shell too.
 
 ```bash
 make setup-secrets   # creates ~/.config/az-ai/env interactively
-az-ai --version      # env is loaded automatically, no sourcing needed
+hopper --version      # env is loaded automatically, no sourcing needed
 ```
 
 ### 6. First successful invocation (2 min)
 
 ```bash
-az-ai --raw "Say hello in five words."
+hopper --raw "Say hello in five words."
 ```
 
 Expected: a five-ish word reply on stdout, no spinner, no formatting.
@@ -174,7 +174,7 @@ If you get an HTTP error, jump to the 401 / 429 entries in
 ### 7. (Optional) Try agent mode (5 min)
 
 ```bash
-az-ai --agent "Read README.md and summarize the install section in three bullets."
+hopper --agent "Read README.md and summarize the install section in three bullets."
 ```
 
 The model can now call the built-in tools: `shell_exec`, `read_file`,
@@ -209,7 +209,7 @@ hardened config ships in `examples/` and can be installed with:
 
 ```bash
 make espanso-install   # copies config to Windows Espanso match dir (WSL)
-make espanso-test      # verifies Espanso can reach az-ai through the WSL boundary
+make espanso-test      # verifies Espanso can reach hopper through the WSL boundary
 ```
 
 See [`docs/espanso-ahk-integration.md`](espanso-ahk-integration.md) for
@@ -454,7 +454,7 @@ production code, and each is reviewable in a single sitting.
    `tests/AzureOpenAI_CLI.Tests/`. *Reference:*
    [`docs/exec-reports/s02e08-the-translation.md`](exec-reports/s02e08-the-translation.md).
 
-4. **(S) Improve a `--help` example.** Run `az-ai --help`, find a
+4. **(S) Improve a `--help` example.** Run `hopper --help`, find a
    flag whose example is thin or missing, add one. *Files:* the
    strings live in `azureopenai-cli/`; the assertion patterns live
    in `tests/AzureOpenAI_CLI.Tests/`.

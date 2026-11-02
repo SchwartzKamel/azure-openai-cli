@@ -1,4 +1,4 @@
-# az-ai -- Translated quick-start guides
+# hopper -- Translated quick-start guides
 
 Best-effort translations of the English quick-start. Native-speaker
 review is welcome -- file an issue referencing `s04off1-the-translation`.
@@ -25,7 +25,7 @@ install, set credentials, first command, next steps.
 - Architecture docs, ADRs, exec reports, proposals.
 
 Command names and environment variable names stay in ASCII because they are
-universal. `az-ai`, `AZUREOPENAIENDPOINT`, `--raw`, `--agent` are the same
+universal. `hopper`, `AZUREOPENAIENDPOINT`, `--raw`, `--agent` are the same
 in every language; translating them would break copy-paste workflows.
 
 ---
@@ -44,7 +44,7 @@ The underlying encoding infrastructure is already correct:
 - All string comparisons use `StringComparison.Ordinal` -- no Turkish-I or culture-
   sensitive folding.
 
-Users piping CJK, Hangul, or accented Latin characters through `az-ai` get byte-
+Users piping CJK, Hangul, or accented Latin characters through `hopper` get byte-
 identical output. See `docs/i18n/cjk-notes.md` for the full engineering reference.
 
 ---

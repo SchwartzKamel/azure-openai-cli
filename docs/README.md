@@ -18,7 +18,7 @@ see [`.github/copilot-instructions.md`](../.github/copilot-instructions.md).
 
 ## Getting started (new contributor, in order)
 
-1. [`../README.md`](../README.md) -- what `az-ai` is, install, first run.
+1. [`../README.md`](../README.md) -- what `hopper` is, install, first run.
 2. [`../CONTRIBUTING.md`](../CONTRIBUTING.md) -- dev workflow, preflight, PR expectations.
 3. [`../AGENTS.md`](../AGENTS.md) -- the cast roster and how fleet dispatch works.
 4. [`onboarding.md`](onboarding.md) -- contributor onboarding deep-dive.
@@ -62,7 +62,7 @@ that shipped it, and where to read more.
 - [`cost-optimization.md`](cost-optimization.md) -- model selection and budgeting.
 - [`accessibility.md`](accessibility.md) -- `NO_COLOR`, `--raw`, keyboard workflows. Deeper notes in [`accessibility/`](accessibility/).
 - [`i18n.md`](i18n.md) -- invariant globalization contract; deeper notes in [`i18n/`](i18n/).
-- [`nim-setup.md`](nim-setup.md) -- getting `az-ai` talking to a local NVIDIA NIM (Gemma-4-2B-NVFP4) on WSL2 + Blackwell in under 10 minutes. Read this if you want to run the `:aifix` flow without calling Azure.
+- [`nim-setup.md`](nim-setup.md) -- getting `hopper` talking to a local NVIDIA NIM (Gemma-4-2B-NVFP4) on WSL2 + Blackwell in under 10 minutes. Read this if you want to run the `:aifix` flow without calling Azure.
 
 ## Process and governance
 
@@ -161,7 +161,7 @@ these are the receipts.
 - [`accessibility-review-v2.md`](accessibility-review-v2.md) -- Mickey Abbott's a11y + CLI-ergonomics review of the v2 cutover build.
 - [`chaos-drill-v2.md`](chaos-drill-v2.md) -- FDR's red-team chaos drill against the AOT v2 binary (10 attack categories + a live persona-memory exercise).
 - [`i18n-audit.md`](i18n-audit.md) -- Babu Bhatt's i18n-readiness audit of every user-facing string in the v1 CLI binary.
-- [`dogfooding-baseline-2026-04.md`](dogfooding-baseline-2026-04.md) -- snapshot of where we actually use `az-ai` today vs where we still reach for other tools. Feeds the S06 Dogfooding arc.
+- [`dogfooding-baseline-2026-04.md`](dogfooding-baseline-2026-04.md) -- snapshot of where we actually use `hopper` today vs where we still reach for other tools. Feeds the S06 Dogfooding arc.
 
 ## Conventions
 

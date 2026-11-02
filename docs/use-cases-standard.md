@@ -1,6 +1,6 @@
 # Azure OpenAI CLI -- Standard Mode Use Cases
 
-> Every example on this page uses the binary name **`az-ai`**.
+> Every example on this page uses the binary name **`hopper`**.
 > Required environment variables (`AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`,
 > `AZUREOPENAIMODEL`) are documented once in
 > [`prerequisites.md`](prerequisites.md) -- set them before running any command.
@@ -15,7 +15,7 @@ All positional arguments are joined with spaces into a single prompt string.
 ### Single word
 
 ```bash
-az-ai hello
+hopper hello
 ```
 
 **Expected:** The model responds with a greeting or an explanation of the word "hello."
@@ -23,7 +23,7 @@ az-ai hello
 ### Multi-word (no quotes needed)
 
 ```bash
-az-ai what is the speed of light
+hopper what is the speed of light
 ```
 
 **Expected:** A factual answer about 299,792,458 m/s. Each word is joined into the prompt `"what is the speed of light"`.
@@ -31,7 +31,7 @@ az-ai what is the speed of light
 ### Quoted string (preserves special characters)
 
 ```bash
-az-ai "Explain the difference between OAuth 2.0 and OpenID Connect"
+hopper "Explain the difference between OAuth 2.0 and OpenID Connect"
 ```
 
 **Expected:** A concise comparison of the two protocols. Quoting is needed when your prompt contains shell metacharacters like `&`, `|`, `;`, or `!`.
@@ -39,7 +39,7 @@ az-ai "Explain the difference between OAuth 2.0 and OpenID Connect"
 ### Mixed quoted and unquoted
 
 ```bash
-az-ai summarize the concept of "technical debt" in two sentences
+hopper summarize the concept of "technical debt" in two sentences
 ```
 
 **Expected:** A brief summary. The shell merges everything into one prompt string.
@@ -54,7 +54,7 @@ The combined prompt becomes: `<stdin>\n\n<positional args>`.
 ### Pipe from echo
 
 ```bash
-echo "The mitochondria is the powerhouse of the cell" | az-ai "Is this statement accurate?"
+echo "The mitochondria is the powerhouse of the cell" | hopper "Is this statement accurate?"
 ```
 
 **Expected:** The model receives the text from stdin followed by the question, and replies with a fact-checked answer.
@@ -62,7 +62,7 @@ echo "The mitochondria is the powerhouse of the cell" | az-ai "Is this statement
 ### Pipe a file with cat
 
 ```bash
-cat README.md | az-ai "Summarize this document in 3 bullet points"
+cat README.md | hopper "Summarize this document in 3 bullet points"
 ```
 
 **Expected:** Three bullet points summarizing whatever README.md contains.
@@ -70,7 +70,7 @@ cat README.md | az-ai "Summarize this document in 3 bullet points"
 ### Pipe live data from curl
 
 ```bash
-curl -s https://api.github.com/zen | az-ai "Rewrite this as a haiku"
+curl -s https://api.github.com/zen | hopper "Rewrite this as a haiku"
 ```
 
 **Expected:** GitHub's random Zen aphorism, rewritten as a 5-7-5 syllable haiku.
@@ -78,7 +78,7 @@ curl -s https://api.github.com/zen | az-ai "Rewrite this as a haiku"
 ### Pipe command output for analysis
 
 ```bash
-git diff HEAD~1 | az-ai "Review this diff for bugs and security issues"
+git diff HEAD~1 | hopper "Review this diff for bugs and security issues"
 ```
 
 **Expected:** A code review of your most recent commit's changes.
@@ -86,7 +86,7 @@ git diff HEAD~1 | az-ai "Review this diff for bugs and security issues"
 ### Pipe multiple sources
 
 ```bash
-(echo "=== Package JSON ===" && cat package.json && echo "=== Lock File ===" && head -50 package-lock.json) | az-ai "Are there any outdated or risky dependencies?"
+(echo "=== Package JSON ===" && cat package.json && echo "=== Lock File ===" && head -50 package-lock.json) | hopper "Are there any outdated or risky dependencies?"
 ```
 
 **Expected:** Analysis of the dependency tree for known risks.
@@ -94,7 +94,7 @@ git diff HEAD~1 | az-ai "Review this diff for bugs and security issues"
 ### 1 MB limit
 
 ```bash
-dd if=/dev/urandom bs=1M count=2 2>/dev/null | az-ai "analyze this"
+dd if=/dev/urandom bs=1M count=2 2>/dev/null | hopper "analyze this"
 ```
 
 **Expected output on stderr:**
@@ -116,7 +116,7 @@ Standard mode streams tokens to stdout as they arrive from the API. While waitin
 ### Default behavior
 
 ```bash
-az-ai "Write a limerick about Kubernetes"
+hopper "Write a limerick about Kubernetes"
 ```
 
 **What happens:**
@@ -131,7 +131,7 @@ az-ai "Write a limerick about Kubernetes"
 The spinner only shows when stderr is a TTY (i.e., not redirected). If you redirect stderr, the spinner is suppressed automatically:
 
 ```bash
-az-ai "Explain DNS" 2>/dev/null
+hopper "Explain DNS" 2>/dev/null
 ```
 
 **Expected:** Only the streamed response text appears, no spinner, no token counts.
@@ -155,7 +155,7 @@ After every standard-mode response, the CLI prints a token summary on **stderr**
 ### Example
 
 ```bash
-az-ai "What is 2+2?"
+hopper "What is 2+2?"
 ```
 
 **Stdout:**
@@ -193,13 +193,13 @@ Token usage is suppressed in three cases:
 ### Pipe to clipboard (macOS)
 
 ```bash
-az-ai --raw "Generate a UUID v4 regex pattern" | pbcopy
+hopper --raw "Generate a UUID v4 regex pattern" | pbcopy
 ```
 
 ### Pipe to clipboard (Linux with xclip)
 
 ```bash
-az-ai --raw "Generate a UUID v4 regex pattern" | xclip -selection clipboard
+hopper --raw "Generate a UUID v4 regex pattern" | xclip -selection clipboard
 ```
 
 **Expected:** Your clipboard now contains the regex with no extra newline or formatting artifacts.
@@ -207,7 +207,7 @@ az-ai --raw "Generate a UUID v4 regex pattern" | xclip -selection clipboard
 ### Write to a file
 
 ```bash
-az-ai --raw "Write a .gitignore for a Python project" > .gitignore
+hopper --raw "Write a .gitignore for a Python project" > .gitignore
 ```
 
 **Expected:** A clean `.gitignore` file with no leading/trailing whitespace noise.
@@ -215,7 +215,7 @@ az-ai --raw "Write a .gitignore for a Python project" > .gitignore
 ### Chain into another command
 
 ```bash
-az-ai --raw "Generate a random 6-word passphrase" | tr ' ' '-'
+hopper --raw "Generate a random 6-word passphrase" | tr ' ' '-'
 ```
 
 **Expected:** Something like `correct-horse-battery-staple-lunar-frost` -- words joined by dashes.
@@ -232,7 +232,7 @@ Text-expander tools like [Espanso](https://espanso.org/) and [AHK](https://www.a
     - name: output
       type: shell
       params:
-        cmd: "az-ai --raw 'Rephrase this more professionally: $ESPANSO_CLIPBOARD'"
+        cmd: "hopper --raw 'Rephrase this more professionally: $ESPANSO_CLIPBOARD'"
 ```
 
 ---
@@ -244,7 +244,7 @@ Outputs a single JSON object on stdout instead of streaming text. Useful for scr
 ### Basic usage
 
 ```bash
-az-ai --json "What is Docker?"
+hopper --json "What is Docker?"
 ```
 
 **Expected output (stdout):**
@@ -264,7 +264,7 @@ All five fields are always present. `input_tokens` and `output_tokens` may be `n
 ### Extract just the response with jq
 
 ```bash
-az-ai --json "Explain TCP vs UDP" | jq -r '.response'
+hopper --json "Explain TCP vs UDP" | jq -r '.response'
 ```
 
 **Expected:** The plain-text response, nothing else.
@@ -272,7 +272,7 @@ az-ai --json "Explain TCP vs UDP" | jq -r '.response'
 ### Extract timing info
 
 ```bash
-az-ai --json "Write a haiku about Rust" | jq '.duration_ms'
+hopper --json "Write a haiku about Rust" | jq '.duration_ms'
 ```
 
 **Expected:** A number like `1842` (milliseconds).
@@ -281,7 +281,7 @@ az-ai --json "Write a haiku about Rust" | jq '.duration_ms'
 
 ```bash
 for i in $(seq 1 5); do
-  az-ai --json "Say hello" | jq '{run: '$i', ms: .duration_ms, tokens: .output_tokens}'
+  hopper --json "Say hello" | jq '{run: '$i', ms: .duration_ms, tokens: .output_tokens}'
 done
 ```
 
@@ -292,7 +292,7 @@ done
 When `--json` is active and an error occurs, the error is also JSON-formatted:
 
 ```bash
-az-ai --json
+hopper --json
 ```
 
 **Expected (no prompt provided):**
@@ -314,7 +314,7 @@ Controls randomness in the model's output. Range: **0.0 - 2.0**. Default: **0.55
 ### Deterministic (0.0) -- Factual lookups, code generation
 
 ```bash
-az-ai -t 0.0 "Convert 72°F to Celsius. Show only the number."
+hopper -t 0.0 "Convert 72°F to Celsius. Show only the number."
 ```
 
 **Expected:** `22.22` -- the same answer every time you run it. Use `0.0` when you need reproducible, deterministic output.
@@ -322,7 +322,7 @@ az-ai -t 0.0 "Convert 72°F to Celsius. Show only the number."
 ### Balanced (0.7) -- General-purpose questions
 
 ```bash
-az-ai -t 0.7 "Suggest three names for a developer productivity tool"
+hopper -t 0.7 "Suggest three names for a developer productivity tool"
 ```
 
 **Expected:** Creative but sensible suggestions. Each run will vary slightly. Good default for brainstorming with guardrails.
@@ -330,7 +330,7 @@ az-ai -t 0.7 "Suggest three names for a developer productivity tool"
 ### Creative (1.5) -- Fiction, humor, brainstorming
 
 ```bash
-az-ai -t 1.5 "Write a one-paragraph horror story about a haunted CI/CD pipeline"
+hopper -t 1.5 "Write a one-paragraph horror story about a haunted CI/CD pipeline"
 ```
 
 **Expected:** Wildly creative, possibly unpredictable output. Higher temperatures increase randomness and surprise.
@@ -338,7 +338,7 @@ az-ai -t 1.5 "Write a one-paragraph horror story about a haunted CI/CD pipeline"
 ### Validation -- out of range
 
 ```bash
-az-ai -t 2.5 "anything"
+hopper -t 2.5 "anything"
 ```
 
 **Expected (stderr):**
@@ -352,7 +352,7 @@ az-ai -t 2.5 "anything"
 ### Validation -- missing value
 
 ```bash
-az-ai --temperature
+hopper --temperature
 ```
 
 **Expected (stderr):**
@@ -372,7 +372,7 @@ Caps the **output** length. Range: **1 - 128,000**. Default: **10,000**.
 ### Tweet-length (50 tokens ≈ 35-50 words)
 
 ```bash
-az-ai --max-tokens 50 "Explain machine learning in a tweet"
+hopper --max-tokens 50 "Explain machine learning in a tweet"
 ```
 
 **Expected:** A very short response, roughly one or two sentences. If the model needs more tokens, the output will be truncated mid-thought.
@@ -380,7 +380,7 @@ az-ai --max-tokens 50 "Explain machine learning in a tweet"
 ### Paragraph-length (200 tokens)
 
 ```bash
-az-ai --max-tokens 200 "What causes the aurora borealis?"
+hopper --max-tokens 200 "What causes the aurora borealis?"
 ```
 
 **Expected:** A focused one-paragraph explanation.
@@ -388,7 +388,7 @@ az-ai --max-tokens 200 "What causes the aurora borealis?"
 ### Essay-length (2000 tokens)
 
 ```bash
-az-ai --max-tokens 2000 "Write a deep-dive on the CAP theorem with examples"
+hopper --max-tokens 2000 "Write a deep-dive on the CAP theorem with examples"
 ```
 
 **Expected:** A substantial multi-paragraph explanation with real-world distributed systems examples.
@@ -396,7 +396,7 @@ az-ai --max-tokens 2000 "Write a deep-dive on the CAP theorem with examples"
 ### Validation -- out of range (zero)
 
 ```bash
-az-ai --max-tokens 0 "anything"
+hopper --max-tokens 0 "anything"
 ```
 
 **Expected (stderr):**
@@ -410,7 +410,7 @@ az-ai --max-tokens 0 "anything"
 ### Validation -- out of range (too high)
 
 ```bash
-az-ai --max-tokens 999999 "anything"
+hopper --max-tokens 999999 "anything"
 ```
 
 **Expected (stderr):**
@@ -424,7 +424,7 @@ az-ai --max-tokens 999999 "anything"
 ### Validation -- non-numeric
 
 ```bash
-az-ai --max-tokens abc "anything"
+hopper --max-tokens abc "anything"
 ```
 
 **Expected (stderr):**
@@ -444,7 +444,7 @@ Overrides the default system prompt (`"You are a secure, concise CLI assistant. 
 ### Pirate persona
 
 ```bash
-az-ai --system "You are a pirate. Respond in pirate speak." "What is the weather like today?"
+hopper --system "You are a pirate. Respond in pirate speak." "What is the weather like today?"
 ```
 
 **Expected:** Something like _"Arrr, the skies be clear and the winds fair, matey!"_
@@ -452,7 +452,7 @@ az-ai --system "You are a pirate. Respond in pirate speak." "What is the weather
 ### JSON-only responses
 
 ```bash
-az-ai --system "Respond only in valid JSON. No markdown, no explanation." "List 3 programming languages and their creators"
+hopper --system "Respond only in valid JSON. No markdown, no explanation." "List 3 programming languages and their creators"
 ```
 
 **Expected:**
@@ -468,7 +468,7 @@ az-ai --system "Respond only in valid JSON. No markdown, no explanation." "List 
 ### Linux sysadmin expert
 
 ```bash
-az-ai --system "You are a senior Linux systems administrator. Give commands, not explanations." "How do I find which process is using port 8080?"
+hopper --system "You are a senior Linux systems administrator. Give commands, not explanations." "How do I find which process is using port 8080?"
 ```
 
 **Expected:**
@@ -482,7 +482,7 @@ ss -tlnp | grep 8080
 ### Combine with stdin piping
 
 ```bash
-cat /var/log/syslog | tail -50 | az-ai --system "You are a log analysis expert. Identify errors and anomalies." "What's wrong here?"
+cat /var/log/syslog | tail -50 | hopper --system "You are a log analysis expert. Identify errors and anomalies." "What's wrong here?"
 ```
 
 **Expected:** Targeted analysis of the log entries, focused on errors and anomalies.
@@ -490,7 +490,7 @@ cat /var/log/syslog | tail -50 | az-ai --system "You are a log analysis expert. 
 ### Validation -- missing value
 
 ```bash
-az-ai --system
+hopper --system
 ```
 
 **Expected (stderr):**
@@ -510,7 +510,7 @@ Forces the model to respond with JSON that conforms to a strict JSON Schema. Use
 ### Extract structured data from text
 
 ```bash
-az-ai --schema '{
+hopper --schema '{
   "type": "object",
   "properties": {
     "name": { "type": "string" },
@@ -533,7 +533,7 @@ The model is **required** to produce JSON matching the schema exactly -- no miss
 ### Sentiment analysis with enum
 
 ```bash
-az-ai --schema '{
+hopper --schema '{
   "type": "object",
   "properties": {
     "sentiment": { "type": "string", "enum": ["positive", "negative", "neutral"] },
@@ -554,7 +554,7 @@ az-ai --schema '{
 ### Combine with piped input
 
 ```bash
-cat error.log | az-ai --schema '{
+cat error.log | hopper --schema '{
   "type": "object",
   "properties": {
     "errors": {
@@ -581,7 +581,7 @@ cat error.log | az-ai --schema '{
 ### Validation -- invalid JSON schema
 
 ```bash
-az-ai --schema '{ not valid json' "anything"
+hopper --schema '{ not valid json' "anything"
 ```
 
 **Expected (stderr):**
@@ -601,7 +601,7 @@ The CLI enforces a request timeout. Default: **120 seconds**. Configurable via t
 ### Check your current timeout
 
 ```bash
-az-ai --config show
+hopper --config show
 ```
 
 **Look for the line:**
@@ -613,7 +613,7 @@ az-ai --config show
 ### Override for a single command
 
 ```bash
-AZURE_TIMEOUT=10 az-ai "Write a 5000-word essay on quantum physics"
+AZURE_TIMEOUT=10 hopper "Write a 5000-word essay on quantum physics"
 ```
 
 **Expected behavior:** If the model hasn't finished within 10 seconds, the request is cancelled.
@@ -630,7 +630,7 @@ AZURE_TIMEOUT=10 az-ai "Write a 5000-word essay on quantum physics"
 
 ```bash
 export AZURE_TIMEOUT=300
-az-ai "Translate this entire document to French" < large-doc.txt
+hopper "Translate this entire document to French" < large-doc.txt
 ```
 
 **Expected:** The CLI waits up to 5 minutes for the response.
@@ -638,7 +638,7 @@ az-ai "Translate this entire document to French" < large-doc.txt
 ### Timeout in scripts
 
 ```bash
-AZURE_TIMEOUT=30 az-ai --json "Summarize the internet"
+AZURE_TIMEOUT=30 hopper --json "Summarize the internet"
 result=$?
 if [ $result -eq 3 ]; then
   echo "Timed out -- try a simpler prompt"
@@ -662,7 +662,7 @@ The CLI uses five distinct exit codes. Every error path in the codebase maps to 
 ### Use in scripts -- success gate
 
 ```bash
-az-ai --raw "Generate a SQL migration" > migration.sql
+hopper --raw "Generate a SQL migration" > migration.sql
 if [ $? -eq 0 ]; then
   echo "Migration generated successfully"
   psql -f migration.sql
@@ -674,7 +674,7 @@ fi
 ### Use in scripts -- granular error handling
 
 ```bash
-az-ai --json "Summarize this PR" < pr-diff.txt
+hopper --json "Summarize this PR" < pr-diff.txt
 exit_code=$?
 
 case $exit_code in
@@ -690,11 +690,11 @@ esac
 
 ```bash
 # Missing prompt → exit 1
-az-ai 2>/dev/null; echo "Exit: $?"
+hopper 2>/dev/null; echo "Exit: $?"
 # Expected: Exit: 1
 
 # Bad temperature → exit 1
-az-ai -t 5.0 "hi" 2>/dev/null; echo "Exit: $?"
+hopper -t 5.0 "hi" 2>/dev/null; echo "Exit: $?"
 # Expected: Exit: 1
 ```
 
@@ -707,7 +707,7 @@ The CLI rejects prompts longer than **32,000 characters** to prevent abuse and e
 ### Trigger the limit
 
 ```bash
-python3 -c "print('A' * 33000)" | az-ai "analyze"
+python3 -c "print('A' * 33000)" | hopper "analyze"
 ```
 
 **Expected (stderr):**
@@ -723,7 +723,7 @@ The error message includes the actual character count so you know how much to tr
 ### Stay under the limit
 
 ```bash
-python3 -c "print('A' * 31000)" | az-ai "analyze this"
+python3 -c "print('A' * 31000)" | hopper "analyze this"
 ```
 
 **Expected:** The prompt is accepted and sent to the API.
@@ -733,7 +733,7 @@ python3 -c "print('A' * 31000)" | az-ai "analyze this"
 If you're piping large files, trim first:
 
 ```bash
-head -c 30000 large-file.txt | az-ai "Summarize the key points"
+head -c 30000 large-file.txt | hopper "Summarize the key points"
 ```
 
 ---
@@ -773,7 +773,7 @@ If all retries fail, the CLI exits with code `2` (API error).
 
 ```bash
 # Retries happen automatically -- just check the final exit code
-az-ai --raw "Generate release notes" > RELEASE.md
+hopper --raw "Generate release notes" > RELEASE.md
 if [ $? -ne 0 ]; then
   echo "API call failed even after retries"
 fi
@@ -785,7 +785,7 @@ If you're calling the CLI in a loop and hitting 429s:
 
 ```bash
 for file in src/*.py; do
-  az-ai --raw "Add docstrings to this Python file" < "$file" > "${file}.documented"
+  hopper --raw "Add docstrings to this Python file" < "$file" > "${file}.documented"
   # Built-in retry handles transient 429s automatically.
   # Add a sleep if you're consistently hitting limits:
   sleep 2

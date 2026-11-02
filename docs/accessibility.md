@@ -2,7 +2,7 @@
 
 > *Us little guys gotta stick together.* -- M.A.
 
-This page is the user-facing accessibility contract for `az-ai` (v2+). It
+This page is the user-facing accessibility contract for `hopper` (v2+). It
 documents what the tool **actually does today** -- not what it might do
 someday. Everything below is grep-verifiable against the source tree. If
 the code ever drifts from this page, the code is wrong; file a bug.
@@ -24,7 +24,7 @@ and get the same triage as crashes.
 
 ## 1. The color contract
 
-`az-ai` honors the [no-color.org](https://no-color.org/) informal
+`hopper` honors the [no-color.org](https://no-color.org/) informal
 standard, plus `TERM=dumb`, `CLICOLOR`, `CLICOLOR_FORCE`, and
 `FORCE_COLOR` -- the superset of conventions you'd expect from a
 well-behaved POSIX tool. Color is **garnish, never the entrée**: every
@@ -64,22 +64,22 @@ is never touched in production. It is not a user-facing knob.
 
 ```bash
 # 1. Respect a user who wants plain output everywhere. Always works.
-NO_COLOR=1 az-ai "summarize this log"
+NO_COLOR=1 hopper "summarize this log"
 
 # 2. Piping to cat / less / a file -> no ANSI by default.
-az-ai "summarize this log" | cat
-az-ai "summarize this log" > out.txt       # out.txt is clean
+hopper "summarize this log" | cat
+hopper "summarize this log" > out.txt       # out.txt is clean
 
 # 3. CI that captures terminal output and *wants* ANSI preserved
 #    (e.g. GitHub Actions log renderer, asciinema):
-FORCE_COLOR=1 az-ai "summarize" | tee run.log
+FORCE_COLOR=1 hopper "summarize" | tee run.log
 
 # 4. User who hates color globally -- set once in shell rc:
 #    echo 'export NO_COLOR=1' >> ~/.bashrc
 #    Everything is plain, forever. FORCE_COLOR=1 will not override it.
 
 # 5. Legacy Emacs shell / dumb terminal:
-TERM=dumb az-ai "summarize"                 # plain, regardless of TTY
+TERM=dumb hopper "summarize"                 # plain, regardless of TTY
 ```
 
 ### What this means for screen readers
@@ -98,7 +98,7 @@ stricter still.
 Espanso, AutoHotkey, pipes to `xclip`, pipes to `say` / `espeak`, and
 screen-reader workflows should rely on.
 
-When `--raw` is set, `az-ai` emits:
+When `--raw` is set, `hopper` emits:
 
 - **Zero ANSI escapes** -- no color, no cursor-hide, no carriage-return
   rewrite tricks. Pure UTF-8 text.
@@ -108,7 +108,7 @@ When `--raw` is set, `az-ai` emits:
   stderr in raw mode; `UserConfig.Load(quiet: opts.Raw)` respects the
   caller's promise of stderr cleanliness (see
   [`Program.cs:141`](../azureopenai-cli/Program.cs)).
-- **Zero version banner** -- no `az-ai v2.0.x` preamble.
+- **Zero version banner** -- no `hopper v2.0.x` preamble.
 - **Zero token-usage footer** -- the `~123 in / ~456 out tokens` stderr
   line is suppressed.
 - **Pure model output, nothing else.** That is the contract.
@@ -122,16 +122,16 @@ workflow makes it safe to pipe to a TTS engine or a braille display.
 
 ```bash
 # Espanso / AHK / any "insert into active field" flow:
-az-ai --raw "fix this grammar: $clipboard"
+hopper --raw "fix this grammar: $clipboard"
 
 # TTS pipeline -- pure text into espeak, no escape-code choke:
-az-ai --raw "explain this diff" | espeak-ng
+hopper --raw "explain this diff" | espeak-ng
 
 # Shell script variable capture:
-answer="$(az-ai --raw "one-word-answer: ready or not?")"
+answer="$(hopper --raw "one-word-answer: ready or not?")"
 
 # Braille display via brltty's text device:
-az-ai --raw "summarize" > /var/run/brltty/in
+hopper --raw "summarize" > /var/run/brltty/in
 ```
 
 ### When *not* to use `--raw`
@@ -154,7 +154,7 @@ not a best-effort.
 ## 3. Exit codes
 
 Exit codes are the scripting contract -- Espanso triggers, AHK hotkeys,
-CI gates, and `if az-ai … ; then` shell conditionals all depend on a
+CI gates, and `if hopper … ; then` shell conditionals all depend on a
 meaningful, stable non-zero code. The full table:
 
 | Exit | Meaning                                         | When you see it                                                                 |
@@ -178,7 +178,7 @@ meaningful, stable non-zero code. The full table:
 
 ```bash
 # Simple gate:
-if az-ai --raw "lint this" > suggestions.txt ; then
+if hopper --raw "lint this" > suggestions.txt ; then
     echo "got suggestions"
 else
     case "$?" in
@@ -191,7 +191,7 @@ fi
 
 # Never retry on SIGINT:
 for attempt in 1 2 3; do
-    az-ai --raw "$prompt" && break
+    hopper --raw "$prompt" && break
     [ "$?" = 130 ] && exit 130
     sleep $((attempt * 2))
 done
@@ -213,7 +213,7 @@ bug. File it.
 
 ## 4. Keyboard-only workflows
 
-`az-ai` is keyboard-native from first principles. There is **no GUI**,
+`hopper` is keyboard-native from first principles. There is **no GUI**,
 **no TUI**, **no cursor-addressable interface**, and **no mouse
 affordance** anywhere in the tool surface. Every workflow below is
 driveable from a keyboard on a text-only terminal.
@@ -240,7 +240,7 @@ No mouse, no focus-grabbing UI, no modal dialog. This is a WCAG 2.1 SC
 
 ### AutoHotkey (Windows keyboard hotstrings)
 
-Same shape: a keystroke or hotstring triggers a shell-out to `az-ai
+Same shape: a keystroke or hotstring triggers a shell-out to `hopper
 --raw`. AHK runs entirely on keyboard events. The CLI never pops a
 window, never steals focus.
 
@@ -251,7 +251,7 @@ Keyboard-only interop across the WSL boundary works:
 ```bash
 # Read Windows clipboard from WSL without leaving the keyboard:
 prompt="$(powershell.exe -NoProfile Get-Clipboard | tr -d '\r')"
-answer="$(az-ai --raw "$prompt")"
+answer="$(hopper --raw "$prompt")"
 
 # Write back to Windows clipboard:
 printf '%s' "$answer" | clip.exe
@@ -298,11 +298,12 @@ today -- but they are real gaps and they are tracked.
   pass). User-facing output from the binary itself is already compliant
   -- every emoji is redundant with text.
 
-- **No shipped man page.** `man az-ai` does not currently work because
-  no `.1` file is packaged. The text of `--help` is the only reference.
-  A `docs/man/az-ai.1` is scoped as future work; when it lands it will
-  be generated from the same source as `--help` and shipped in every
-  release tarball.
+- **No packaged man page.** `man hopper` does not work after a normal install:
+  the stub at `man/hopper.1` is neither installed by `make install` nor shipped
+  in the release archives. Preview it with `man -l man/hopper.1`; `man az-ai`
+  shows the same page where the stub is installed. The text of `--help` is the
+  reference. Generating the page from the same source as `--help` and shipping
+  it in every release archive is future work.
 
 - **Screen-reader testing is not automated in CI.** We run the
   `NO_COLOR` and `--raw` contract tests on every build, but we do not
@@ -332,7 +333,7 @@ today -- but they are real gaps and they are tracked.
 - **No `--plain` / `--ascii` flag.** The current `--raw` mode still
   emits UTF-8. A user on a strict-ASCII terminal (some embedded SSH
   clients, very old serial consoles) will see mojibake for any non-ASCII
-  the model produces. Today the workaround is `az-ai --raw … | iconv
+  the model produces. Today the workaround is `hopper --raw … | iconv
   -f utf-8 -t ascii//TRANSLIT`. A first-class flag is future work.
 
 If you hit a gap that isn't in this list, that's a bug -- please file
@@ -386,7 +387,7 @@ announcement would be a lie and is suppressed.
 
 `FirstRunWizard._useConsoleKeyMasking` is the gate:
 `ReferenceEquals(_input, Console.In) && !Console.IsInputRedirected`.
-When stdin is piped (Espanso, AHK, test harness, `echo … | az-ai
+When stdin is piped (Espanso, AHK, test harness, `echo … | hopper
 --init`), the wizard skips `Console.ReadKey` entirely and calls
 `TextReader.ReadLineAsync()`. **No bullet glyphs are written**, no
 backspace-rewrite tricks, no ANSI. A piped-in key reads cleanly and
@@ -524,7 +525,7 @@ consistent picture without an explicit `Plain` reference.
   signals (`NO_COLOR`, `TERM=dumb`, `AZ_AI_PLAIN`, `--plain`),
   `Plain.Override` test seam, `Plain.Activate()` contract.
 - `tests/integration_tests.sh` -- 6 shell assertions covering the
-  same surfaces against the built `az-ai` binary.
+  same surfaces against the built `hopper` binary.
 
 ### Coordination with S03E13 (Frank Costanza, telemetry)
 

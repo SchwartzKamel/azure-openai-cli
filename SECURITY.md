@@ -134,7 +134,7 @@ Added in v2.0.4 (commit [`4842b6a`](https://github.com/SchwartzKamel/azure-opena
 resolving FDR High-severity finding `fdr-v2-err-unwrap` from
 [`docs/audits/fdr-v2-dogfood-2026-04-22.md`](docs/audits/fdr-v2-dogfood-2026-04-22.md)).
 
-The v2 binary (`az-ai`) redacts the `AZUREOPENAIAPI` key value and the
+The v2 binary (`hopper`) redacts the `AZUREOPENAIAPI` key value and the
 `AZUREOPENAIENDPOINT` hostname from every user-visible error surface before
 anything is written to `stdout` or `stderr`. The helper is
 `UnsafeReplaceSecrets` in `azureopenai-cli/Program.cs` (line 1348) --
@@ -210,7 +210,7 @@ The process cannot:
 
 ### Self-Contained Binary
 
-- `az-ai` is published as a **NativeAOT** single-file ELF
+- `hopper` is published as a **NativeAOT** single-file ELF
   (`linux-x64`, `linux-musl-x64`, `osx-arm64`, `win-x64`). Build flags:
   `--self-contained -p:PublishAot=true`
   (see [`Dockerfile:65`](Dockerfile) and the csproj).
@@ -387,7 +387,7 @@ contract, hardened in v2.0.4 (`UserConfig.Load(quiet:)`), is:
 
 This matters for security-adjacent pipelines -- Espanso / AHK hotkeys that
 tee output, CI jobs that treat any stderr byte as a warning signal. The
-contract ensures `az-ai --raw` never leaks home-dir config paths into
+contract ensures `hopper --raw` never leaks home-dir config paths into
 a shared log surface when the hot path is working correctly.
 
 ---

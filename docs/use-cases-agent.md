@@ -1,6 +1,6 @@
 # Agent Mode -- Use Cases & Examples
 
-> Comprehensive working examples for every agent mode feature in `az-ai`
+> Comprehensive working examples for every agent mode feature in `hopper`
 > (v2.0.0, Microsoft Agent Framework).
 
 ## Prerequisites
@@ -42,7 +42,7 @@ instead of returning a single static response.
 
 ```bash
 # Standard mode: the model guesses or refuses -- no tool access
-az-ai "What files are in my current directory?"
+hopper "What files are in my current directory?"
 ```
 
 The model will either hallucinate a file listing or say it cannot access your filesystem.
@@ -51,7 +51,7 @@ The model will either hallucinate a file listing or say it cannot access your fi
 
 ```bash
 # Agent mode: the model calls shell_exec → ls → returns real output
-az-ai --agent "What files are in my current directory?"
+hopper --agent "What files are in my current directory?"
 ```
 
 Now the model calls `shell_exec` with `ls`, reads the real output, and answers
@@ -61,13 +61,13 @@ with your actual directory listing. The response is grounded in reality.
 
 ```bash
 # Questions about your system -- agent mode
-az-ai --agent "How much disk space do I have left?"
+hopper --agent "How much disk space do I have left?"
 
 # Questions about the world -- agent mode with web
-az-ai --agent "What is the latest version of Node.js?"
+hopper --agent "What is the latest version of Node.js?"
 
 # Pure knowledge questions -- standard mode is fine
-az-ai "Explain the difference between TCP and UDP"
+hopper "Explain the difference between TCP and UDP"
 ```
 
 **Rule of thumb:** If the answer requires real-time data, file access, or system
@@ -84,7 +84,7 @@ Each time the model calls one or more tools and gets results back counts as one
 
 ```bash
 # Default: up to 5 tool-calling rounds before the model must answer
-az-ai --agent "Read my package.json, check what Node version I'm running, and list outdated packages"
+hopper --agent "Read my package.json, check what Node version I'm running, and list outdated packages"
 ```
 
 This task may take 3 rounds:
@@ -99,7 +99,7 @@ Five rounds is usually enough.
 
 ```bash
 # Restrict to 3 rounds for a tighter, faster response
-az-ai --agent --max-rounds 3 "What's in my home directory?"
+hopper --agent --max-rounds 3 "What's in my home directory?"
 ```
 
 Use a low limit when the task is simple and you want a quick answer. The model
@@ -109,14 +109,14 @@ will prioritize getting to a final response within the budget.
 
 ```bash
 # Allow 15 rounds for a deep investigation
-az-ai --agent --max-rounds 15 "Audit all open ports on this machine and explain each service"
+hopper --agent --max-rounds 15 "Audit all open ports on this machine and explain each service"
 ```
 
 ### Round Exhaustion
 
 ```bash
 # Intentionally low limit on a complex task
-az-ai --agent --max-rounds 1 "Read every .py file in src/, find security issues, and write a report"
+hopper --agent --max-rounds 1 "Read every .py file in src/, find security issues, and write a report"
 ```
 
 If the model hits the round limit without producing a final text response, you'll see:
@@ -131,10 +131,10 @@ The CLI exits with code **1**. Increase `--max-rounds` or simplify the task.
 
 ```bash
 # Invalid: --max-rounds must be 1-20
-az-ai --agent --max-rounds 0 "hello"
+hopper --agent --max-rounds 0 "hello"
 # → [ERROR] --max-rounds requires an integer 1-20
 
-az-ai --agent --max-rounds 25 "hello"
+hopper --agent --max-rounds 25 "hello"
 # → [ERROR] --max-rounds requires an integer 1-20
 ```
 
@@ -158,13 +158,13 @@ tools the model can call, using **short aliases** or full names.
 
 ```bash
 # Only allow shell and file tools -- no network access
-az-ai --agent --tools shell,file "Scan my project for TODO comments"
+hopper --agent --tools shell,file "Scan my project for TODO comments"
 
 # Only web and datetime -- safe for public-facing use
-az-ai --agent --tools web,datetime "What time does the London Stock Exchange open in my timezone?"
+hopper --agent --tools web,datetime "What time does the London Stock Exchange open in my timezone?"
 
 # Only shell -- locked down to command execution
-az-ai --agent --tools shell "Show me the top 10 largest files in this directory"
+hopper --agent --tools shell "Show me the top 10 largest files in this directory"
 ```
 
 ### Why Restrict Tools?
@@ -176,20 +176,20 @@ az-ai --agent --tools shell "Show me the top 10 largest files in this directory"
 
 ```bash
 # Read-only file analysis -- no shell, no web, no clipboard
-az-ai --agent --tools file "Review the code in src/auth.py for bugs"
+hopper --agent --tools file "Review the code in src/auth.py for bugs"
 
 # Network research only -- no local system access
-az-ai --agent --tools web,datetime "Research the latest CVEs for OpenSSL"
+hopper --agent --tools web,datetime "Research the latest CVEs for OpenSSL"
 
 # Full lockdown -- datetime only
-az-ai --agent --tools datetime "What's the date 90 days from now?"
+hopper --agent --tools datetime "What's the date 90 days from now?"
 ```
 
 ### Invalid Tool Names
 
 ```bash
 # Missing --tools argument
-az-ai --agent --tools
+hopper --agent --tools
 # → [ERROR] --tools requires comma-separated tool names (e.g., --tools shell,file,web)
 ```
 
@@ -207,31 +207,31 @@ timeout, 64KB output cap**.
 
 ```bash
 # Git history
-az-ai --agent --tools shell "Show me the last 5 git commits with stats"
+hopper --agent --tools shell "Show me the last 5 git commits with stats"
 # → model calls: shell_exec { "command": "git log -5 --stat" }
 
 # Directory listing
-az-ai --agent --tools shell "What's in /var/log? Show sizes."
+hopper --agent --tools shell "What's in /var/log? Show sizes."
 # → model calls: shell_exec { "command": "ls -lah /var/log" }
 
 # Disk usage
-az-ai --agent --tools shell "How much disk space is used?"
+hopper --agent --tools shell "How much disk space is used?"
 # → model calls: shell_exec { "command": "df -h" }
 
 # System info
-az-ai --agent --tools shell "What operating system and kernel am I running?"
+hopper --agent --tools shell "What operating system and kernel am I running?"
 # → model calls: shell_exec { "command": "uname -a" }
 
 # Code metrics
-az-ai --agent --tools shell "Count lines of code in all Python files"
+hopper --agent --tools shell "Count lines of code in all Python files"
 # → model calls: shell_exec { "command": "find . -name '*.py' | xargs wc -l" }
 
 # Network info
-az-ai --agent --tools shell "What ports are currently listening?"
+hopper --agent --tools shell "What ports are currently listening?"
 # → model calls: shell_exec { "command": "ss -tlnp" }
 
 # Process list
-az-ai --agent --tools shell "Show me the top 5 memory-consuming processes"
+hopper --agent --tools shell "Show me the top 5 memory-consuming processes"
 # → model calls: shell_exec { "command": "ps aux --sort=-%mem | head -6" }
 ```
 
@@ -250,13 +250,13 @@ The tool blocks **24+ dangerous commands** to prevent destructive operations:
 
 ```bash
 # These will all be safely blocked:
-az-ai --agent "Delete all files in /tmp"
+hopper --agent "Delete all files in /tmp"
 # → Error: command 'rm' is blocked for safety.
 
-az-ai --agent "Restart the server"
+hopper --agent "Restart the server"
 # → Error: command 'reboot' is blocked for safety.
 
-az-ai --agent "Edit my .bashrc with vim"
+hopper --agent "Edit my .bashrc with vim"
 # → Error: command 'vim' is blocked for safety.
 ```
 
@@ -292,7 +292,7 @@ Every segment of a pipe chain is checked against the blocklist:
 # → Error: command 'rm' is blocked for safety.
 
 # Safe pipes work fine
-az-ai --agent "Find the 10 biggest files and sort them"
+hopper --agent "Find the 10 biggest files and sort them"
 # → model calls: shell_exec { "command": "du -ah . | sort -rh | head -10" }
 ```
 
@@ -313,20 +313,20 @@ expansion. Symlinks are resolved and re-checked against the blocklist.
 
 ```bash
 # Read a config file
-az-ai --agent --tools file "What's in my .gitignore?"
+hopper --agent --tools file "What's in my .gitignore?"
 # → model calls: read_file { "path": ".gitignore" }
 
 # Read source code
-az-ai --agent --tools file "Review the code in src/main.py"
+hopper --agent --tools file "Review the code in src/main.py"
 # → model calls: read_file { "path": "src/main.py" }
 
 # Read with home directory expansion
-az-ai --agent --tools file "Show me my SSH config"
+hopper --agent --tools file "Show me my SSH config"
 # → model calls: read_file { "path": "~/.ssh/config" }
 # → Error: access to '/root/.ssh/config' is blocked for security.
 
 # Read log files
-az-ai --agent --tools file,shell "Read the last 100 lines of app.log and find errors"
+hopper --agent --tools file,shell "Read the last 100 lines of app.log and find errors"
 # → Round 1: shell_exec { "command": "tail -100 app.log" }  (or read_file if small)
 # → Round 2: model analyzes and responds
 ```
@@ -376,7 +376,7 @@ If a file is a symlink, the tool resolves it to the real target and re-checks:
 For large files, combine with shell:
 
 ```bash
-az-ai --agent --tools shell "Show me the first 50 lines of huge-dump.sql"
+hopper --agent --tools shell "Show me the first 50 lines of huge-dump.sql"
 # → model calls: shell_exec { "command": "head -50 huge-dump.sql" }
 ```
 
@@ -391,19 +391,19 @@ redirect validation, 10-second timeout, and a 128KB response cap.
 
 ```bash
 # Fetch a webpage
-az-ai --agent --tools web "Summarize the homepage of https://example.com"
+hopper --agent --tools web "Summarize the homepage of https://example.com"
 # → model calls: web_fetch { "url": "https://example.com" }
 
 # Fetch a JSON API endpoint
-az-ai --agent --tools web "Get the current Bitcoin price from CoinGecko"
+hopper --agent --tools web "Get the current Bitcoin price from CoinGecko"
 # → model calls: web_fetch { "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd" }
 
 # Fetch documentation
-az-ai --agent --tools web "What are the new features in Python 3.12?"
+hopper --agent --tools web "What are the new features in Python 3.12?"
 # → model calls: web_fetch { "url": "https://docs.python.org/3/whatsnew/3.12.html" }
 
 # Fetch release info
-az-ai --agent --tools web "What's the latest release of dotnet?"
+hopper --agent --tools web "What's the latest release of dotnet?"
 # → model calls: web_fetch { "url": "https://api.github.com/repos/dotnet/runtime/releases/latest" }
 ```
 
@@ -470,17 +470,17 @@ Cross-platform: uses `xclip`/`xsel` on Linux, `pbpaste` on macOS,
 
 ```bash
 # "What did I just copy?"
-az-ai --agent "What's in my clipboard? Explain it."
+hopper --agent "What's in my clipboard? Explain it."
 # → model calls: get_clipboard {}
 # → Returns clipboard contents, model explains them
 
 # Code review from clipboard
-az-ai --agent "Review the code I just copied for bugs"
+hopper --agent "Review the code I just copied for bugs"
 # → model calls: get_clipboard {}
 # → Model analyzes the pasted code
 
 # Clipboard as context
-az-ai --agent "I copied a URL -- fetch it and summarize the page"
+hopper --agent "I copied a URL -- fetch it and summarize the page"
 # → Round 1: get_clipboard {} → "https://example.com/article"
 # → Round 2: web_fetch { "url": "https://example.com/article" }
 # → Model summarizes
@@ -516,17 +516,17 @@ parameter (e.g., `America/New_York`, `Asia/Tokyo`, `Europe/London`).
 
 ```bash
 # Current local time
-az-ai --agent --tools datetime "What time is it?"
+hopper --agent --tools datetime "What time is it?"
 # → model calls: get_datetime {}
 # → 2025-01-15 14:32:07 -05:00 (Wednesday) -- (UTC-05:00) Eastern Time (US & Canada)
 
 # Specific timezone
-az-ai --agent --tools datetime "What time is it in Tokyo?"
+hopper --agent --tools datetime "What time is it in Tokyo?"
 # → model calls: get_datetime { "timezone": "Asia/Tokyo" }
 # → 2025-01-16 04:32:07 +09:00 (Thursday) -- (UTC+09:00) Osaka, Sapporo, Tokyo
 
 # Multiple timezone comparison
-az-ai --agent --tools datetime "What time is it in London, New York, and Sydney?"
+hopper --agent --tools datetime "What time is it in London, New York, and Sydney?"
 # → Round 1: get_datetime { "timezone": "Europe/London" }
 #            get_datetime { "timezone": "America/New_York" }
 #            get_datetime { "timezone": "Australia/Sydney" }
@@ -537,11 +537,11 @@ az-ai --agent --tools datetime "What time is it in London, New York, and Sydney?
 
 ```bash
 # Meeting scheduling across timezones
-az-ai --agent --tools datetime "I need to schedule a meeting at 3pm EST. What time is that in London, Tokyo, and Mumbai?"
+hopper --agent --tools datetime "I need to schedule a meeting at 3pm EST. What time is that in London, Tokyo, and Mumbai?"
 # → Multiple get_datetime calls, model calculates offsets
 
 # Day-of-week calculation
-az-ai --agent --tools datetime "What day of the week is it today?"
+hopper --agent --tools datetime "What day of the week is it today?"
 # → get_datetime {} → includes day name in output (e.g., "Wednesday")
 ```
 
@@ -571,19 +571,19 @@ az-ai --agent --tools datetime "What day of the week is it today?"
 ## 9. Delegate Task Tool (`delegate_task`)
 
 Spawns a **child agent** process to handle a focused sub-task. The child is a
-separate `az-ai --agent` invocation that runs autonomously and returns its result.
+separate `hopper --agent` invocation that runs autonomously and returns its result.
 
 ### Real-World Examples
 
 ```bash
 # Research and summarize
-az-ai --agent "Research the top 3 JavaScript frameworks in 2025 and summarize their pros and cons"
+hopper --agent "Research the top 3 JavaScript frameworks in 2025 and summarize their pros and cons"
 # → model calls: delegate_task { "task": "Research top 3 JavaScript frameworks in 2025, summarize pros/cons" }
 # → Child agent uses web_fetch to research, returns summary
 # → Parent agent formats final response
 
 # Multi-step file analysis
-az-ai --agent "Read all the Python files in src/ and identify any security vulnerabilities"
+hopper --agent "Read all the Python files in src/ and identify any security vulnerabilities"
 # → model may delegate: delegate_task { "task": "Read all .py files in src/ and identify SQL injection, XSS, or hardcoded credentials", "tools": "shell,file" }
 ```
 
@@ -635,7 +635,7 @@ single round**. The CLI executes them **concurrently** via `Task.WhenAll`.
 
 ```bash
 # Ask for three unrelated things at once
-az-ai --agent "Get the current time, read my .gitignore, and check disk space"
+hopper --agent "Get the current time, read my .gitignore, and check disk space"
 ```
 
 **Round 1** (parallel):
@@ -657,14 +657,14 @@ a single response from all three results in one round.
 
 ```bash
 # System health check -- multiple tools in parallel
-az-ai --agent "Give me a system health report: CPU load, memory usage, disk space, and uptime"
+hopper --agent "Give me a system health report: CPU load, memory usage, disk space, and uptime"
 # → Round 1 (parallel):
 #    shell_exec { "command": "uptime" }
 #    shell_exec { "command": "free -h" }
 #    shell_exec { "command": "df -h" }
 
 # Multi-timezone query -- parallel datetime calls
-az-ai --agent --tools datetime "What time is it in all US timezones?"
+hopper --agent --tools datetime "What time is it in all US timezones?"
 # → Round 1 (parallel):
 #    get_datetime { "timezone": "America/New_York" }
 #    get_datetime { "timezone": "America/Chicago" }
@@ -705,11 +705,11 @@ Here's what I found...               ← Final response on stdout
 
 ```bash
 # Status goes to stderr -- stdout is clean for piping
-az-ai --agent "What time is it?" 2>/dev/null
+hopper --agent "What time is it?" 2>/dev/null
 # → Only the model's text response appears
 
 # JSON mode suppresses the status display on stdout
-az-ai --agent --json "What time is it?"
+hopper --agent --json "What time is it?"
 # → Clean JSON on stdout, status on stderr
 ```
 
@@ -720,7 +720,7 @@ is automatically suppressed for clean scripting:
 
 ```bash
 # Capture response, discard status
-RESPONSE=$(az-ai --agent "Check disk space" 2>/dev/null)
+RESPONSE=$(hopper --agent "Check disk space" 2>/dev/null)
 echo "$RESPONSE"
 ```
 
@@ -733,7 +733,7 @@ Real-world multi-step workflows that demonstrate how tools chain together.
 ### Scenario: "Read my package.json and suggest updates"
 
 ```bash
-az-ai --agent --tools file,shell "Read my package.json, check which dependencies are outdated, and suggest updates"
+hopper --agent --tools file,shell "Read my package.json, check which dependencies are outdated, and suggest updates"
 ```
 
 **Expected agent flow:**
@@ -751,7 +751,7 @@ produces a summary table with recommended updates.
 ### Scenario: "Check what's running on port 8080 and kill it"
 
 ```bash
-az-ai --agent --tools shell "What process is using port 8080?"
+hopper --agent --tools shell "What process is using port 8080?"
 ```
 
 **Expected agent flow:**
@@ -773,7 +773,7 @@ To stop it, run: kill 12345
 ### Scenario: "Fetch weather data and summarize it"
 
 ```bash
-az-ai --agent --tools web,datetime "What's the weather forecast for today? Use wttr.in"
+hopper --agent --tools web,datetime "What's the weather forecast for today? Use wttr.in"
 ```
 
 **Expected agent flow:**
@@ -789,7 +789,7 @@ parses the response, and gives you a human-friendly summary with the current dat
 ### Scenario: "Read all .py files and find security issues"
 
 ```bash
-az-ai --agent --tools shell,file --max-rounds 10 "Find all Python files in src/, read each one, and identify security vulnerabilities like SQL injection, hardcoded secrets, or unsafe deserialization"
+hopper --agent --tools shell,file --max-rounds 10 "Find all Python files in src/, read each one, and identify security vulnerabilities like SQL injection, hardcoded secrets, or unsafe deserialization"
 ```
 
 **Expected agent flow:**
@@ -809,7 +809,7 @@ or higher since multi-file analysis needs more rounds.
 ### Scenario: "Set up project overview"
 
 ```bash
-az-ai --agent --max-rounds 8 "Give me a complete overview of this project: read the README, check the directory structure, look at the main source files, and summarize the architecture"
+hopper --agent --max-rounds 8 "Give me a complete overview of this project: read the README, check the directory structure, look at the main source files, and summarize the architecture"
 ```
 
 **Expected agent flow:**
@@ -825,7 +825,7 @@ az-ai --agent --max-rounds 8 "Give me a complete overview of this project: read 
 ### Scenario: "DevOps health check"
 
 ```bash
-az-ai --agent --tools shell,datetime "Run a full system health check: uptime, load, memory, disk, and network interfaces"
+hopper --agent --tools shell,datetime "Run a full system health check: uptime, load, memory, disk, and network interfaces"
 ```
 
 **Expected agent flow:**
@@ -847,7 +847,7 @@ Disk:   142 GB / 500 GB (28%)
 ### Scenario: "Multi-tool research with delegation"
 
 ```bash
-az-ai --agent --max-rounds 8 "I need a comparison of Redis vs Memcached. Research both online, check if either is installed on my system, and give me a recommendation"
+hopper --agent --max-rounds 8 "I need a comparison of Redis vs Memcached. Research both online, check if either is installed on my system, and give me a recommendation"
 ```
 
 **Expected agent flow:**
@@ -874,26 +874,26 @@ Or the model might delegate the research portion:
 
 ```bash
 # Basic agent mode
-az-ai --agent "your question"
+hopper --agent "your question"
 
 # With tool restriction
-az-ai --agent --tools shell,file "your question"
+hopper --agent --tools shell,file "your question"
 
 # With round limit (default 5, max 20)
-az-ai --agent --max-rounds 10 "your question"
+hopper --agent --max-rounds 10 "your question"
 
 # Combined flags
-az-ai --agent --tools shell,file,web --max-rounds 8 "complex task description"
+hopper --agent --tools shell,file,web --max-rounds 8 "complex task description"
 
 # JSON errors for scripting (content still streams on stdout)
-az-ai --agent --json "your question"
+hopper --agent --json "your question"
 
 # Quiet mode (suppress stderr banners/spinner)
-az-ai --agent "your question" 2>/dev/null
+hopper --agent "your question" 2>/dev/null
 
 # Predict cost without calling the API
-az-ai --estimate --agent "your question"
+hopper --estimate --agent "your question"
 
 # Persona overlay -- implies --agent, persona's tools win over --tools
-az-ai --persona security "audit src/auth.py"
+hopper --persona security "audit src/auth.py"
 ```

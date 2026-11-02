@@ -110,7 +110,7 @@ meters. "Too many distinct meters" is itself a yellow flag -- see §5.
 
 ### 2b. Stderr token-count summation (ground truth for the CLI)
 
-Every `az-ai` invocation emits a `[tokens: X→Y, Z total]` line on
+Every `hopper` invocation emits a `[tokens: X→Y, Z total]` line on
 stderr (see [`cost-optimization.md §2`](../cost-optimization.md)).
 If your team pipes stderr to a log sink -- and they should -- sum it:
 

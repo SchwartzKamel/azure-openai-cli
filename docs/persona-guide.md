@@ -39,7 +39,7 @@ allow-list overrides `--tools` on the command line.
 
 ```bash
 # 1. Scaffold a Squad in the current directory.
-az-ai --squad-init
+hopper --squad-init
 # Writes:
 #   .squad.json           -- 5 default personas + routing rules
 #   .squad/history/       -- empty; memory files are created on first use
@@ -47,14 +47,14 @@ az-ai --squad-init
 #   .squad/README.md      -- inline reference
 
 # 2. Run a task under a named persona.
-az-ai --persona coder "Refactor BUG-142 out of src/auth.py"
+hopper --persona coder "Refactor BUG-142 out of src/auth.py"
 
 # 3. Let the coordinator pick the persona for you.
-az-ai --persona auto "Review the new token-refresh flow for vulnerabilities"
+hopper --persona auto "Review the new token-refresh flow for vulnerabilities"
 # → 🎭 Auto-routed to: security (Security Auditor)
 
 # 4. See who's on the team.
-az-ai --personas
+hopper --personas
 ```
 
 Interactive runs print a one-line banner to **stderr**:
@@ -254,11 +254,11 @@ do" boundary that keeps personas in their lane.
 prefers direct cast-name matches over generic keyword scoring:
 
 ```bash
-az-ai --persona auto "kramer review this csproj"
+hopper --persona auto "kramer review this csproj"
 # -> 🎭 Auto-routed to: kramer (Engineer)
 # (NOT 'reviewer', even though "review" is in reviewer's keyword list.)
 
-az-ai --persona auto "ask larry-david to greenlight the next episode"
+hopper --persona auto "ask larry-david to greenlight the next episode"
 # -> 🎭 Auto-routed to: larry-david (Showrunner)
 ```
 
@@ -275,7 +275,7 @@ not be rewritten. To pull in the cast on an existing repo:
 
 ```bash
 mv .squad.json .squad.json.bak
-az-ai --squad-init                # writes the 17-persona default
+hopper --squad-init                # writes the 17-persona default
 # Then merge any custom personas from .squad.json.bak into .squad.json by hand.
 ```
 
@@ -297,30 +297,30 @@ development; they just are not seeded into your local `.squad.json`).
 
 ```bash
 # One-shot coding task.
-az-ai --persona coder "Implement a Redis-backed rate limiter in src/ratelimit/"
+hopper --persona coder "Implement a Redis-backed rate limiter in src/ratelimit/"
 
 # Security review of a specific file.
-az-ai --persona security "Audit src/api/tokens.py for injection and SSRF bugs"
+hopper --persona security "Audit src/api/tokens.py for injection and SSRF bugs"
 
 # Documentation from scratch -- note the 'docs' keyword triggers --persona auto.
-az-ai --persona auto "Write docs for FR-014 (multi-provider support)"
+hopper --persona auto "Write docs for FR-014 (multi-provider support)"
 # → 🎭 Auto-routed to: writer (Technical Writer)
 
 # Architecture trade-off, piped prompt.
-git diff main..feature/payments | az-ai --persona architect \
+git diff main..feature/payments | hopper --persona architect \
   "Evaluate this diff for scaling risks and log your decision"
 
 # Script-friendly: silent banner, JSON errors.
-az-ai --persona coder --json "$(cat task.md)"
+hopper --persona coder --json "$(cat task.md)"
 
 # Espanso / AHK safe: --raw suppresses banners and telemetry.
-echo "Rephrase this politely: $CLIPBOARD" | az-ai --raw --persona writer
+echo "Rephrase this politely: $CLIPBOARD" | hopper --raw --persona writer
 ```
 
 Combine with Ralph for autonomous review loops:
 
 ```bash
-az-ai --ralph --validate "pytest -x" --persona coder \
+hopper --ralph --validate "pytest -x" --persona coder \
   "Fix the failing auth tests until the suite is green"
 ```
 
@@ -346,7 +346,7 @@ change the tie-break.
 
 **Where is memory stored?**
 `./.squad/history/<name>.md` relative to the current working directory. If
-you run `az-ai --persona coder` from two different project roots, the
+you run `hopper --persona coder` from two different project roots, the
 `coder` persona has two independent memories. This is intentional -- each
 project gets its own Squad.
 
@@ -376,7 +376,7 @@ Not directly. Use `delegate_task` in agent mode for sub-agent recursion.
 You invoked `--persona` without a Squad config. Fix:
 
 ```bash
-az-ai --squad-init
+hopper --squad-init
 ```
 
 If `.squad.json` exists but is in a parent directory, `cd` into the project
@@ -388,7 +388,7 @@ Typo in `--persona <name>`, or the persona was removed from `.squad.json`.
 List the available names:
 
 ```bash
-az-ai --personas
+hopper --personas
 ```
 
 Names are case-insensitive.
@@ -416,7 +416,7 @@ read. To compact, edit the file by hand and keep the summary you want.
 ### Persona-mode tools don't match what I passed with `--tools`
 
 Expected. A persona with a non-empty `tools` array **overrides** `--tools`.
-Inspect `az-ai --personas` to see each persona's configured tools, or edit
+Inspect `hopper --personas` to see each persona's configured tools, or edit
 `.squad.json` to widen the allow-list.
 
 ### I see the 🎭 banner in my Espanso output
@@ -425,9 +425,9 @@ You forgot `--raw`. The banner is emitted on stderr, but some text expanders
 capture combined output. Either add `--raw` or redirect stderr:
 
 ```bash
-az-ai --raw --persona writer "Rephrase: $INPUT"
+hopper --raw --persona writer "Rephrase: $INPUT"
 # or
-az-ai --persona writer "Rephrase: $INPUT" 2>/dev/null
+hopper --persona writer "Rephrase: $INPUT" 2>/dev/null
 ```
 
 ### Decisions or memory don't survive across machines

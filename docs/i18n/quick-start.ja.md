@@ -1,4 +1,4 @@
-# az-ai -- クイックスタート
+# hopper -- クイックスタート
 
 > **翻訳注:** このドキュメントはベストエフォート翻訳です。v3.0 以前にネイティブスピーカーによる
 > レビューを歓迎します。誤訳を見つけた場合は、`s04off1-the-translation` を参照して
@@ -18,16 +18,16 @@
 ```bash
 # Linux x64 の例（バージョン番号は最新のものに置き換えてください）
 tar -xf az-ai-2.2.0-linux-x64.tar.gz
-mv az-ai ~/.local/bin/
-chmod +x ~/.local/bin/az-ai
+mv hopper ~/.local/bin/
+chmod +x ~/.local/bin/hopper
 ```
 
 macOS (Apple Silicon) の場合：
 
 ```bash
 tar -xf az-ai-2.2.0-osx-arm64.tar.gz
-mv az-ai ~/.local/bin/
-chmod +x ~/.local/bin/az-ai
+mv hopper ~/.local/bin/
+chmod +x ~/.local/bin/hopper
 ```
 
 ### ソースからビルド（.NET 10 SDK が必要）
@@ -41,7 +41,7 @@ make setup && make install
 インストール後の確認：
 
 ```bash
-az-ai --version
+hopper --version
 ```
 
 ---
@@ -69,7 +69,7 @@ chmod 600 ~/.config/az-ai/env
 シェルで `source` する必要はありません。
 
 > **ヒント:** 初回起動時に認証情報が未設定の場合、対話型セットアップウィザードが起動します。
-> `az-ai --setup` でいつでも再実行できます。
+> `hopper --setup` でいつでも再実行できます。
 
 ---
 
@@ -78,13 +78,13 @@ chmod 600 ~/.config/az-ai/env
 シンプルなテスト：
 
 ```bash
-az-ai "こんにちは。日本語で返事をしてください。"
+hopper "こんにちは。日本語で返事をしてください。"
 ```
 
 ファイルの内容を要約する例：
 
 ```bash
-az-ai --raw "次のファイルを日本語で3行に要約してください: $(cat README.md)"
+hopper --raw "次のファイルを日本語で3行に要約してください: $(cat README.md)"
 ```
 
 `--raw` フラグを使うと、スピナーや余分な改行なしで出力されます。
@@ -93,7 +93,7 @@ Espanso や AutoHotkey などのテキスト展開ツールとの連携に最適
 モデルを指定する場合：
 
 ```bash
-az-ai --model gpt-4o "詳細な技術解説をお願いします。"
+hopper --model gpt-4o "詳細な技術解説をお願いします。"
 ```
 
 ---
@@ -105,10 +105,10 @@ az-ai --model gpt-4o "詳細な技術解説をお願いします。"
 
 主な機能：
 
-- `az-ai --agent "タスク"` -- ツール呼び出しエージェントモード
-- `az-ai --ralph "タスク" --validate "検証コマンド"` -- 自律修正ループ
-- `az-ai --image "プロンプト"` -- 画像生成モード
-- `az-ai --doctor` -- 設定の診断
+- `hopper --agent "タスク"` -- ツール呼び出しエージェントモード
+- `hopper --ralph "タスク" --validate "検証コマンド"` -- 自律修正ループ
+- `hopper --image "プロンプト"` -- 画像生成モード
+- `hopper --doctor` -- 設定の診断
 
 他の言語のクイックスタートは [`docs/i18n/`](README.md) を参照してください。
 

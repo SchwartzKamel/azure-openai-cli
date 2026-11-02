@@ -81,7 +81,7 @@ Override with `AZAI_PRICE_TABLE=/path/to/prices.json` -- JSON must match
 
 - **Default state is off.** Omit all flags and leave `AZ_TELEMETRY` unset -- the ActivitySource
   and Meter have no listeners, so `StartActivity` / counter calls are no-op.
-- **Audit what would be sent:** run `az-ai --telemetry --metrics "hi"` and inspect the
+- **Audit what would be sent:** run `hopper --telemetry --metrics "hi"` and inspect the
   single cost-event line on stderr before enabling an OTLP collector.
 - **Purge:** nothing is persisted by the CLI itself. Telemetry is delivered to the OTLP
   collector (your responsibility to retain or purge) and to stderr (your terminal buffer).

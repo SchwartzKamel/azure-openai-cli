@@ -60,7 +60,7 @@ so it has to be safe by omission.
 - Tested empirically with `gpt-4o`, `gpt-5.x` family, and Azure-deployed
   o-series. Behaviour is stable across these.
 - This prompt has not changed in months. Deliberate -- it is the implicit
-  contract every "did az-ai answer my one-shot question?" interaction
+  contract every "did hopper answer my one-shot question?" interaction
   rests on. Changes here ripple through every downstream mode because
   agent / Ralph / persona prompts compose *on top* of this one.
 - The word "concise" interacts with `DEFAULT_MAX_TOKENS` (10,000). At
@@ -204,7 +204,7 @@ returns non-empty content. Memory file lives at
 ```
 
 **Intent:** Personas survive across CLI invocations. When you say
-`az-ai --persona coder "remember we use xUnit not NUnit"`, that
+`hopper --persona coder "remember we use xUnit not NUnit"`, that
 preference should still be in scope next week. The header tells the
 model "the following text is *your* memory, treat it as state, not as
 the user's current ask".
@@ -418,7 +418,7 @@ codebase: see `ToolHardeningTests`.
 ## delegate-task-context
 
 **Used by:** `delegate_task` tool. The child agent is invoked as
-`az-ai --agent --tools <tools> "<task>"` -- it inherits all of the
+`hopper --agent --tools <tools> "<task>"` -- it inherits all of the
 prompts above, but the *user prompt* it receives is whatever the
 parent passed as the `task` parameter.
 

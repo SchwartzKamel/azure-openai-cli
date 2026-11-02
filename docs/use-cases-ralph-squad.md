@@ -1,6 +1,6 @@
 # Use Cases: Ralph Mode & Squad/Persona System
 
-> **Binary:** `az-ai`
+> **Binary:** `hopper`
 > **Required environment variables:** `AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`,
 > `AZUREOPENAIMODEL` -- see [`prerequisites.md`](prerequisites.md).
 
@@ -32,7 +32,7 @@ datetime).
 **Basic usage -- ask Ralph to complete a coding task:**
 
 ```bash
-az-ai --ralph "Create a Python function that parses ISO 8601 dates with timezone support"
+hopper --ralph "Create a Python function that parses ISO 8601 dates with timezone support"
 ```
 
 **What happens:**
@@ -65,27 +65,27 @@ for the next attempt.
 
 ```bash
 # .NET project
-az-ai --ralph --validate "dotnet test" \
+hopper --ralph --validate "dotnet test" \
   "Fix the failing test in UserServiceTests.cs"
 
 # Python project
-az-ai --ralph --validate "python -m pytest tests/ -x" \
+hopper --ralph --validate "python -m pytest tests/ -x" \
   "Add input validation to the parse_config function"
 
 # Node.js project
-az-ai --ralph --validate "npm test" \
+hopper --ralph --validate "npm test" \
   "Refactor the auth middleware to support JWT refresh tokens"
 
 # Go project
-az-ai --ralph --validate "go test ./..." \
+hopper --ralph --validate "go test ./..." \
   "Fix the race condition in the connection pool"
 
 # Linting pass
-az-ai --ralph --validate "eslint src/ --max-warnings 0" \
+hopper --ralph --validate "eslint src/ --max-warnings 0" \
   "Fix all ESLint warnings in the src directory"
 
 # Docker build
-az-ai --ralph --validate "docker build -t myapp ." \
+hopper --ralph --validate "docker build -t myapp ." \
   "Fix the Dockerfile so it builds successfully"
 ```
 
@@ -111,7 +111,7 @@ The validation command is run via `/bin/sh -c "<command>"`, so standard shell
 syntax (pipes, `&&`, etc.) works:
 
 ```bash
-az-ai --ralph --validate "dotnet build && dotnet test --no-build" \
+hopper --ralph --validate "dotnet build && dotnet test --no-build" \
   "Fix the build errors in the Data project"
 ```
 
@@ -123,7 +123,7 @@ For complex task descriptions, write the requirements in a file and pass it
 with `--task-file`. The file contents replace the inline prompt.
 
 ```bash
-az-ai --ralph --validate "npm test" --task-file requirements.md
+hopper --ralph --validate "npm test" --task-file requirements.md
 ```
 
 **Sample task file (`requirements.md`):**
@@ -155,10 +155,10 @@ az-ai --ralph --validate "npm test" --task-file requirements.md
 
 ```bash
 # Standard one-shot (no ralph loop)
-az-ai --task-file design-doc-prompt.md
+hopper --task-file design-doc-prompt.md
 
 # Agentic mode with task file
-az-ai --agent --task-file migration-steps.md
+hopper --agent --task-file migration-steps.md
 ```
 
 ---
@@ -170,15 +170,15 @@ Controls how many times Ralph will retry before giving up. Accepts values from
 
 ```bash
 # Quick fix -- give Ralph only 3 tries
-az-ai --ralph --max-iterations 3 --validate "cargo test" \
+hopper --ralph --max-iterations 3 --validate "cargo test" \
   "Fix the lifetime error in lib.rs"
 
 # Complex migration -- allow more iterations
-az-ai --ralph --max-iterations 25 --validate "dotnet build" \
+hopper --ralph --max-iterations 25 --validate "dotnet build" \
   --task-file migration-plan.md
 
 # Single-shot with validation (try once, pass or fail)
-az-ai --ralph --max-iterations 1 --validate "make check" \
+hopper --ralph --max-iterations 1 --validate "make check" \
   "Run the full check suite and report status"
 ```
 
@@ -253,7 +253,7 @@ don't want it checked in.
 #### Fix a Failing Test
 
 ```bash
-az-ai --ralph --validate "dotnet test" \
+hopper --ralph --validate "dotnet test" \
   "Fix the NullReferenceException in UserService.cs -- the GetUser method
    returns null when the database query finds no match but the caller
    doesn't check for null."
@@ -265,7 +265,7 @@ re-runs `dotnet test` until it passes.
 #### Build a Feature from a Spec
 
 ```bash
-az-ai --ralph --validate "npm run build && npm test" \
+hopper --ralph --validate "npm run build && npm test" \
   --task-file feature-spec.md
 ```
 
@@ -275,7 +275,7 @@ build + tests, and loops until both pass.
 #### Fix a Docker Build
 
 ```bash
-az-ai --ralph --validate "docker build -t myapp ." \
+hopper --ralph --validate "docker build -t myapp ." \
   "Fix the Dockerfile so it builds successfully -- currently failing
    on the COPY step because the build context is wrong."
 ```
@@ -286,7 +286,7 @@ Ralph reads the Dockerfile, fixes the `COPY` path, and validates with
 #### Self-Correcting Migration
 
 ```bash
-az-ai --ralph --max-iterations 20 \
+hopper --ralph --max-iterations 20 \
   --validate "python manage.py migrate --check && python manage.py test" \
   "Create a Django migration that adds a 'status' enum field to the
    Order model with values: pending, confirmed, shipped, delivered.
@@ -296,7 +296,7 @@ az-ai --ralph --max-iterations 20 \
 #### Lint-Clean Refactor
 
 ```bash
-az-ai --ralph --validate "npx eslint src/ --max-warnings 0" \
+hopper --ralph --validate "npx eslint src/ --max-warnings 0" \
   "Refactor src/utils/helpers.js -- split it into separate modules
    under src/utils/ with one function per file. Keep all exports
    backward-compatible."
@@ -306,7 +306,7 @@ az-ai --ralph --validate "npx eslint src/ --max-warnings 0" \
 
 ## Part 2 -- Squad / Persona System
 
-The Squad system gives `az-ai` **persistent, role-specific personas** -- each
+The Squad system gives `hopper` **persistent, role-specific personas** -- each
 with its own system prompt, tool set, and accumulated memory. Think of it as a
 team of specialists that live in your repo.
 
@@ -317,7 +317,7 @@ team of specialists that live in your repo.
 Run this once in any project directory to scaffold the Squad:
 
 ```bash
-az-ai --squad-init
+hopper --squad-init
 ```
 
 **Output:**
@@ -360,7 +360,7 @@ enables agentic mode.
 #### Coder -- Software Engineer
 
 ```bash
-az-ai --persona coder "Implement a binary search in Python with type hints"
+hopper --persona coder "Implement a binary search in Python with type hints"
 ```
 
 ```text
@@ -373,7 +373,7 @@ project conventions and prefers small, focused changes.
 #### Reviewer -- Code Reviewer
 
 ```bash
-az-ai --persona reviewer "Review this PR for security issues"
+hopper --persona reviewer "Review this PR for security issues"
 ```
 
 ```text
@@ -387,7 +387,7 @@ ignores style/formatting unless it hides a bug.
 #### Architect -- System Architect
 
 ```bash
-az-ai --persona architect "Design a microservice for user authentication"
+hopper --persona architect "Design a microservice for user authentication"
 ```
 
 ```text
@@ -401,7 +401,7 @@ trade-offs. Important decisions are logged to `.squad/decisions.md`.
 #### Writer -- Technical Writer
 
 ```bash
-az-ai --persona writer "Write docs for the /api/v2/users endpoint"
+hopper --persona writer "Write docs for the /api/v2/users endpoint"
 ```
 
 ```text
@@ -415,7 +415,7 @@ edge cases).
 #### Security -- Security Auditor
 
 ```bash
-az-ai --persona security "Audit this codebase for vulnerabilities"
+hopper --persona security "Audit this codebase for vulnerabilities"
 ```
 
 ```text
@@ -436,7 +436,7 @@ It scores each routing rule's keywords against your prompt and picks the
 best match.
 
 ```bash
-az-ai --persona auto "Fix the authentication bug in the login handler"
+hopper --persona auto "Fix the authentication bug in the login handler"
 ```
 
 ```text
@@ -464,22 +464,22 @@ match count wins.
 
 ```bash
 # Matches "fix" + "bug" → coder (2 keyword hits)
-az-ai --persona auto "Fix the bug in the payment processor"
+hopper --persona auto "Fix the bug in the payment processor"
 
 # Matches "review" + "check" → reviewer (2 keyword hits)
-az-ai --persona auto "Review and check the new middleware for issues"
+hopper --persona auto "Review and check the new middleware for issues"
 
 # Matches "design" + "architecture" + "scale" → architect (3 keyword hits)
-az-ai --persona auto "Design the architecture for a system that needs to scale"
+hopper --persona auto "Design the architecture for a system that needs to scale"
 
 # Matches "document" + "docs" → writer (2 keyword hits)
-az-ai --persona auto "Document the new API -- update the docs folder"
+hopper --persona auto "Document the new API -- update the docs folder"
 
 # Matches "security" + "vulnerability" → security (2 keyword hits)
-az-ai --persona auto "Check for security vulnerabilities in our dependencies"
+hopper --persona auto "Check for security vulnerabilities in our dependencies"
 
 # No keyword matches → falls back to first persona (coder)
-az-ai --persona auto "Tell me a joke"
+hopper --persona auto "Tell me a joke"
 ```
 
 If no routing rule matches (zero keyword hits in all rules), the coordinator
@@ -492,7 +492,7 @@ falls back to the **first persona** in the list (by default, `coder`).
 List all configured personas without running a task:
 
 ```bash
-az-ai --personas
+hopper --personas
 ```
 
 **Output:**
@@ -649,9 +649,9 @@ structure of a persona entry:
 After editing, use the new persona immediately:
 
 ```bash
-az-ai --persona devops "Set up a GitHub Actions workflow for this repo"
-az-ai --persona data-scientist "Analyze the CSV in data/sales.csv and find trends"
-az-ai --persona dba "Optimize the slow query in reports/monthly.sql"
+hopper --persona devops "Set up a GitHub Actions workflow for this repo"
+hopper --persona data-scientist "Analyze the CSV in data/sales.csv and find trends"
+hopper --persona dba "Optimize the slow query in reports/monthly.sql"
 ```
 
 ---
@@ -664,22 +664,22 @@ Use multiple personas in sequence to simulate a full team review:
 
 ```bash
 # Step 1: Architect reviews the design
-az-ai --persona architect \
+hopper --persona architect \
   "Review the proposed microservice split in docs/architecture.md.
    Log your decision about the service boundaries."
 
 # Step 2: Coder implements the changes
-az-ai --persona coder \
+hopper --persona coder \
   "Implement the UserService as a standalone service based on the
    architecture decision in .squad/decisions.md"
 
 # Step 3: Reviewer checks the implementation
-az-ai --persona reviewer \
+hopper --persona reviewer \
   "Review the new UserService implementation in src/services/user/
    for bugs, error handling, and edge cases"
 
 # Step 4: Security audits the result
-az-ai --persona security \
+hopper --persona security \
   "Audit src/services/user/ for authentication bypasses,
    injection vulnerabilities, and secret exposure"
 ```
@@ -695,17 +695,17 @@ specialist:
 
 ```bash
 # Security auditor that auto-fixes what it finds
-az-ai --ralph --persona security \
+hopper --ralph --persona security \
   --validate "npm audit --audit-level=high" \
   "Fix all high-severity vulnerabilities in this project"
 
 # Coder persona with Ralph validation
-az-ai --ralph --persona coder \
+hopper --ralph --persona coder \
   --validate "dotnet test" \
   "Implement the repository pattern for the Order entity"
 
 # DevOps persona fixing a CI pipeline (requires custom persona from §12)
-az-ai --ralph --persona devops \
+hopper --ralph --persona devops \
   --validate "act -j build" \
   "Fix the GitHub Actions workflow -- the build job is failing"
 ```
@@ -717,17 +717,17 @@ persona:
 
 ```bash
 # "design" + "architecture" + "scale" → architect (3 hits)
-az-ai --persona auto \
+hopper --persona auto \
   "Design the architecture for a notification system that needs
    to scale to 10M users. Include the database schema and API design."
 
 # "implement" + "feature" → coder (2 hits)
-az-ai --persona auto \
+hopper --persona auto \
   "Implement the feature described in docs/notifications.md"
 
 # "review" + "security" → tie between reviewer(1) and security(1),
 # highest-scoring rule wins; if tied, first match wins → reviewer
-az-ai --persona auto \
+hopper --persona auto \
   "Review this code for security problems"
 ```
 
@@ -735,23 +735,23 @@ az-ai --persona auto \
 
 ```bash
 # Planning phase -- routes to architect
-az-ai --persona auto "Design the system architecture for a URL shortener"
+hopper --persona auto "Design the system architecture for a URL shortener"
 
 # Implementation -- routes to coder
-az-ai --persona auto "Implement the URL shortener based on the design"
+hopper --persona auto "Implement the URL shortener based on the design"
 
 # Validation -- coder + ralph for self-correction
-az-ai --ralph --persona coder --validate "go test ./..." \
+hopper --ralph --persona coder --validate "go test ./..." \
   "Implement and test the URL shortener redirect logic"
 
 # Documentation -- routes to writer
-az-ai --persona auto "Document the URL shortener API endpoints"
+hopper --persona auto "Document the URL shortener API endpoints"
 
 # Security review -- routes to security
-az-ai --persona auto "Check the URL shortener for security vulnerabilities"
+hopper --persona auto "Check the URL shortener for security vulnerabilities"
 
 # Final review -- routes to reviewer
-az-ai --persona auto "Review the complete URL shortener implementation for quality"
+hopper --persona auto "Review the complete URL shortener implementation for quality"
 ```
 
 ---

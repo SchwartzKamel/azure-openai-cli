@@ -69,7 +69,7 @@ earlier episode left as a B-plot.
   See the "Not shipped" section of `docs/exec-reports/s02e13-*.md` once
   it lands; pre-S02E13, the standing ask is a one-page "what data leaves
   your machine" summary that cross-links [`docs/telemetry.md`](docs/telemetry.md).
-- **Improve a `--help` example.** Run `az-ai <subcommand> --help`,
+- **Improve a `--help` example.** Run `hopper <subcommand> --help`,
   find a flag whose example is thin or missing, and add one. The strings
   live in `azureopenai-cli/`; the test pattern lives in
   `tests/AzureOpenAI_CLI.Tests/`.

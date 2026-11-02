@@ -14,7 +14,7 @@ because the [cast itself is](../../AGENTS.md).
 | **S01** | The Pilot Years                          | Aired (back-fill pending)        | --        |
 | **S02** | Production & Polish (v2 era)             | In production (24-arc + specials) | --        |
 | **S03** | Local & Multi-Provider                   | Aired (30 episodes; index back-fill pending) | [s03-blueprint.md](s03-blueprint.md) |
-| **S04** | Model Intelligence                       | In production (E01-E14 + 8 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
+| **S04** | Model Intelligence                       | In production (E01-E14 + 9 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
 | **S05** | Protocols & Plugins (incl. MCP)          | Pre-production                  | [s05-blueprint.md](s05-blueprint.md) |
 | **S06** | Dogfooding (`az-ai` is the main tool)    | Pre-production (showrunner override) | [s06-blueprint.md](s06-blueprint.md) |
 | **S07+** | Roadmap pad (Enterprise, Multimodal, ...) | Slate                            | [seasons-roadmap.md](seasons-roadmap.md) |
@@ -99,6 +99,7 @@ range recorded in each report. E06 is the mid-season cast-balance audit.
 | S04SP6   | *The Name Game, Part II* | [s04sp6-the-name-game-part-ii.md](s04sp6-the-name-game-part-ii.md) | docs + script | 719 names screened incl. US trademarks; first shortlist withdrawn; `dunlin` selected, clearance open |
 | S04SP7   | *The Name Game, Part III* | [s04sp7-the-name-game-part-iii.md](s04sp7-the-name-game-part-iii.md) | docs only | The owner: "those names don't make sense"; meaning-first rounds; `anymux` recommended |
 | S04SP8   | *The Name Game, Part IV* | [s04sp8-the-name-game-part-iv.md](s04sp8-the-name-game-part-iv.md) | docs + script | The owner drops trademarks and asks for a competitor comparison; 26-tool table, 186 names, `hopper` recommended |
+| S04SP9   | *The Sweep*            | [s04sp9-the-sweep.md](s04sp9-the-sweep.md) | docs only | 46 living docs say `hopper`; history and packaging docs left under the name they were written in |
 
 ### Season 3 -- Local & Multi-Provider
 

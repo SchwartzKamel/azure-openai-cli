@@ -1,4 +1,4 @@
-# az-ai -- Inicio rápido
+# hopper -- Inicio rápido
 
 > **Nota de traducción:** Este documento es una traducción de mejor esfuerzo del inglés.
 > Se agradece la revisión de hablantes nativos antes de la versión v3.0.
@@ -18,16 +18,16 @@ Descarga el binario para tu plataforma desde la
 ```bash
 # Ejemplo para Linux x64 (reemplaza el número de versión con el más reciente)
 tar -xf az-ai-2.2.0-linux-x64.tar.gz
-mv az-ai ~/.local/bin/
-chmod +x ~/.local/bin/az-ai
+mv hopper ~/.local/bin/
+chmod +x ~/.local/bin/hopper
 ```
 
 Para macOS (Apple Silicon):
 
 ```bash
 tar -xf az-ai-2.2.0-osx-arm64.tar.gz
-mv az-ai ~/.local/bin/
-chmod +x ~/.local/bin/az-ai
+mv hopper ~/.local/bin/
+chmod +x ~/.local/bin/hopper
 ```
 
 ### Compilar desde el código fuente (requiere .NET 10 SDK)
@@ -41,7 +41,7 @@ make setup && make install
 Verifica la instalación:
 
 ```bash
-az-ai --version
+hopper --version
 ```
 
 ---
@@ -65,12 +65,12 @@ EOF
 chmod 600 ~/.config/az-ai/env
 ```
 
-Este archivo se carga automáticamente al iniciar `az-ai`.
+Este archivo se carga automáticamente al iniciar `hopper`.
 No es necesario ejecutar `source` manualmente en el shell.
 
-> **Consejo:** Si no hay credenciales configuradas la primera vez que ejecutas `az-ai`,
+> **Consejo:** Si no hay credenciales configuradas la primera vez que ejecutas `hopper`,
 > el programa iniciará un asistente de configuración interactivo.
-> Puedes volver a ejecutarlo en cualquier momento con `az-ai --setup`.
+> Puedes volver a ejecutarlo en cualquier momento con `hopper --setup`.
 
 ---
 
@@ -79,13 +79,13 @@ No es necesario ejecutar `source` manualmente en el shell.
 Prueba básica:
 
 ```bash
-az-ai "Hola, por favor responde en español."
+hopper "Hola, por favor responde en español."
 ```
 
 Ejemplo para resumir el contenido de un archivo:
 
 ```bash
-az-ai --raw "Resume este archivo en tres líneas, en español: $(cat README.md)"
+hopper --raw "Resume este archivo en tres líneas, en español: $(cat README.md)"
 ```
 
 El parámetro `--raw` elimina el indicador de progreso y los saltos de línea adicionales.
@@ -94,7 +94,7 @@ Es ideal para integrarlo con herramientas de expansión de texto como Espanso o 
 Especificar un modelo concreto:
 
 ```bash
-az-ai --model gpt-4o "Dame una explicación técnica detallada."
+hopper --model gpt-4o "Dame una explicación técnica detallada."
 ```
 
 ---
@@ -106,10 +106,10 @@ Para la documentación completa, consulta el [README](../../README.md) en inglé
 
 Funcionalidades principales:
 
-- `az-ai --agent "tarea"` -- modo agente con llamadas a herramientas
-- `az-ai --ralph "tarea" --validate "comando"` -- bucle autónomo de autocorrección
-- `az-ai --image "descripción"` -- generación de imágenes
-- `az-ai --doctor` -- diagnóstico de la configuración
+- `hopper --agent "tarea"` -- modo agente con llamadas a herramientas
+- `hopper --ralph "tarea" --validate "comando"` -- bucle autónomo de autocorrección
+- `hopper --image "descripción"` -- generación de imágenes
+- `hopper --doctor` -- diagnóstico de la configuración
 
 Guías de inicio rápido en otros idiomas: [`docs/i18n/`](README.md).
 
@@ -120,7 +120,7 @@ Guías de inicio rápido en otros idiomas: [`docs/i18n/`](README.md).
 Los caracteres con tilde y acento del español están presentes en este documento:
 vocales con acento agudo (á, é, í, ó, ú); ñ con virgulilla; signos de interrogación
 e exclamación invertidos (¿, ¡) donde corresponde. Todos son secuencias UTF-8 válidas
-y pasan por la tubería de az-ai sin modificación -- la infraestructura UTF-8 existente
+y pasan por la tubería de hopper sin modificación -- la infraestructura UTF-8 existente
 los maneja sin ningún tratamiento especial.
 
 | Término original | Traducción | Nota |

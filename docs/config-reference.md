@@ -4,7 +4,7 @@ A local JSON file that lets you define model aliases, a default model, and
 preference defaults so you don't have to pass `--model`, `--temperature`,
 `--max-tokens`, etc. on every invocation.
 
-> Scope: **v2.0.0+** (`az-ai`). v1 reads a compatible subset (see
+> Scope: **v2.0.0+** (`hopper`, formerly `az-ai`). v1 reads a compatible subset (see
 > [v1→v2 migration guide](migration-v1-to-v2.md) once published).
 
 ---
@@ -17,18 +17,18 @@ curl -sSL https://raw.githubusercontent.com/SchwartzKamel/azure-openai-cli/main/
   -o ~/.azureopenai-cli.json
 
 # Or use the CLI
-az-ai --set-model fast=gpt-4o-mini
-az-ai --set-model smart=gpt-4o
-az-ai --config set default_model=fast
-az-ai --config set defaults.temperature=0.7
+hopper --set-model fast=gpt-4o-mini
+hopper --set-model smart=gpt-4o
+hopper --config set default_model=fast
+hopper --config set defaults.temperature=0.7
 
 # Verify
-az-ai --config list
-az-ai --models
-az-ai --current-model
+hopper --config list
+hopper --models
+hopper --current-model
 ```
 
-Now `az-ai --model smart "…"` resolves `smart` → `gpt-4o` automatically,
+Now `hopper --model smart "…"` resolves `smart` → `gpt-4o` automatically,
 and omitting `--model` uses `fast`.
 
 ---
@@ -127,7 +127,7 @@ At startup the CLI automatically loads `~/.config/az-ai/env` if it
 exists. The file uses shell `export KEY="value"` syntax:
 
 ```bash
-# ~/.config/az-ai/env -- auto-loaded by az-ai at startup
+# ~/.config/az-ai/env -- auto-loaded by hopper at startup
 export AZUREOPENAIENDPOINT="https://my-resource.openai.azure.com/"
 export AZUREOPENAIAPI="ab12cd34ef56..."
 export AZUREOPENAIMODEL="gpt-4o"
@@ -166,9 +166,9 @@ Example:
 
 ```bash
 # Config has default_model=fast → gpt-4o-mini
-az-ai "hi"                            # uses gpt-4o-mini (config)
-AZUREOPENAIMODEL=gpt-4o az-ai "hi"    # uses gpt-4o (env beats config)
-az-ai --model smart "hi"              # uses gpt-4o (smart alias, CLI beats env)
+hopper "hi"                            # uses gpt-4o-mini (config)
+AZUREOPENAIMODEL=gpt-4o hopper "hi"    # uses gpt-4o (env beats config)
+hopper --model smart "hi"              # uses gpt-4o (smart alias, CLI beats env)
 ```
 
 ---
@@ -177,19 +177,19 @@ az-ai --model smart "hi"              # uses gpt-4o (smart alias, CLI beats env)
 
 ```bash
 # Models
-az-ai --set-model <alias>=<deployment>    # add an alias; first alias is auto-default
-az-ai --models                            # list all aliases + mark default
-az-ai --current-model                     # print default alias
-az-ai --model <alias> "…"                 # use a specific alias
-az-ai --model <deployment> "…"            # literal deployment also works
+hopper --set-model <alias>=<deployment>    # add an alias; first alias is auto-default
+hopper --models                            # list all aliases + mark default
+hopper --current-model                     # print default alias
+hopper --model <alias> "…"                 # use a specific alias
+hopper --model <deployment> "…"            # literal deployment also works
 
 # Config CRUD
-az-ai --config show                       # dump as JSON
-az-ai --config list                       # one "key=value" line per field
-az-ai --config get <dotted.key>           # e.g., defaults.temperature
-az-ai --config set <dotted.key>=<value>   # e.g., default_model=smart
-az-ai --config reset                      # empty the file
-az-ai --config <path>                     # use a specific file for this invocation
+hopper --config show                       # dump as JSON
+hopper --config list                       # one "key=value" line per field
+hopper --config get <dotted.key>           # e.g., defaults.temperature
+hopper --config set <dotted.key>=<value>   # e.g., default_model=smart
+hopper --config reset                      # empty the file
+hopper --config <path>                     # use a specific file for this invocation
 ```
 
 Dotted keys: `default_model`, `models.<alias>`, `defaults.<temperature|max_tokens|timeout_seconds|system_prompt>`.
@@ -204,7 +204,7 @@ ways this bites people:
 
 ### 1. `~` resolves to the Linux home, not Windows
 
-When you run `az-ai` inside WSL, `~/.azureopenai-cli.json` means
+When you run `hopper` inside WSL, `~/.azureopenai-cli.json` means
 `/home/<you>/.azureopenai-cli.json` (Linux), **not**
 `C:\Users\<you>\.azureopenai-cli.json` (Windows).
 
@@ -221,7 +221,7 @@ Or copy it:
 cp /mnt/c/Users/<YourName>/.azureopenai-cli.json ~/
 ```
 
-If you run **both** `az-ai` (Windows binary via espanso) and `az-ai`
+If you run **both** `hopper` (Windows binary via espanso) and `hopper`
 (Linux binary from WSL) from the same keyboard, keep the two files in
 sync -- a symlink is the zero-maintenance option.
 
@@ -243,9 +243,9 @@ file from Windows into a here-doc on Linux, the stray `\r` can
 corrupt the last value. Stick to a Unix-aware editor (VS Code with
 "LF" in the status bar, `vim`, `nano`) when editing from WSL.
 
-### 4. Path precedence when `az-ai` runs from `cmd.exe` inside WSL
+### 4. Path precedence when `hopper` runs from `cmd.exe` inside WSL
 
-If you wrap `wsl az-ai …` inside a Windows espanso trigger, the
+If you wrap `wsl hopper …` inside a Windows espanso trigger, the
 current working directory on the WSL side is **your WSL home**, not
 the Windows directory you launched from. So the project-local
 precedence (`./.azureopenai-cli.json`) points at your WSL `~/` by
@@ -254,25 +254,25 @@ across the boundary, use `--config /path/to/cfg.json` explicitly.
 
 ### 5. Shared espanso triggers across Linux and Windows
 
-Your Linux and Windows espanso configs may both call `az-ai`. The
+Your Linux and Windows espanso configs may both call `hopper`. The
 two hosts have independent config files. If you want identical
 behavior, either:
 
 - Keep one config on Windows (`C:\Users\<you>\.azureopenai-cli.json`)
   and symlink it into WSL (case 1 above), **and** sync that same
   file path into your Windows `%USERPROFILE%\.azureopenai-cli.json`
-  if the Windows `az-ai.exe` looks there too, or
+  if the Windows `hopper.exe` (or its old name `az-ai.exe`) looks there too, or
 - Keep separate configs per host and accept the drift.
 
 ### 6. Environment variables cross the boundary, config files don't
 
 If your espanso config on Windows sets `AZUREOPENAIMODEL=…` and
-shells out to `wsl az-ai …`, WSL inherits that env via
+shells out to `wsl hopper …`, WSL inherits that env via
 `/etc/wsl.conf` or `WSLENV`. But the config **file** does not
 travel; only the symlink or copy trick above does. Because env
 beats config in the precedence chain (see above), a stray env
 var from the Windows side can silently override your WSL config.
-Confirm with `az-ai --config show` and `env | grep AZURE`.
+Confirm with `hopper --config show` and `env | grep AZURE`.
 
 See also the [Espanso + AHK integration guide](espanso-ahk-integration.md)
 for full Path A (Windows-native) and Path B (WSL) setups that use
@@ -296,7 +296,7 @@ this config file consistently across both hosts.
 
 **`--current-model` prints nothing**
 > `default_model` isn't set. Fix with:
-> `az-ai --config set default_model=<one-of-your-aliases>`.
+> `hopper --config set default_model=<one-of-your-aliases>`.
 
 **Alias resolves to itself (literal deployment)**
 > If you pass `--model smart` but `smart` isn't in the `models`

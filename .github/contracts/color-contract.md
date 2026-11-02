@@ -1,7 +1,7 @@
 # Color & terminal output contract
 
 > *Us little guys gotta stick together.* This file is the **source of truth**
-> for how `az-ai` must treat color, ANSI escapes, and terminal decoration.
+> for how `hopper` must treat color, ANSI escapes, and terminal decoration.
 > `CONTRIBUTING.md` links here. Any PR that adds color output **must** conform
 > to every rule below; reviewers will block on this file.
 >

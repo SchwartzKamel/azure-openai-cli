@@ -69,7 +69,7 @@ See [rtl-audit.md §5](rtl-audit.md#5-what-would-break-the-byte-transparent-cont
 | `שלום`     | Hebrew   | RTL base.                                |
 | `سلام`     | Persian  | Extended Arabic (includes U+067E etc.).  |
 | `עִבְרִית`  | Hebrew + niqqud | RTL with combining vowel points.   |
-| `Mixed: az-ai is כלי CLI` | Mixed LTR/RTL | BiDi run transitions.    |
+| `Mixed: hopper is כלי CLI` | Mixed LTR/RTL | BiDi run transitions.    |
 
 ### 2.5 Emoji & ZWJ sequences
 

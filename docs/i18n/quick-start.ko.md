@@ -1,4 +1,4 @@
-# az-ai -- 빠른 시작
+# hopper -- 빠른 시작
 
 > **번역 참고:** 이 문서는 영어 원문의 최선 번역입니다. v3.0 출시 전에 한국어 원어민의
 > 검토를 환영합니다. 오류를 발견하신 경우 `s04off1-the-translation`을 참조하여
@@ -18,16 +18,16 @@
 ```bash
 # Linux x64 예시 (버전 번호를 최신 버전으로 교체하세요)
 tar -xf az-ai-2.2.0-linux-x64.tar.gz
-mv az-ai ~/.local/bin/
-chmod +x ~/.local/bin/az-ai
+mv hopper ~/.local/bin/
+chmod +x ~/.local/bin/hopper
 ```
 
 macOS (Apple Silicon) 사용자:
 
 ```bash
 tar -xf az-ai-2.2.0-osx-arm64.tar.gz
-mv az-ai ~/.local/bin/
-chmod +x ~/.local/bin/az-ai
+mv hopper ~/.local/bin/
+chmod +x ~/.local/bin/hopper
 ```
 
 ### 소스 코드에서 빌드 (.NET 10 SDK 필요)
@@ -41,7 +41,7 @@ make setup && make install
 설치 확인:
 
 ```bash
-az-ai --version
+hopper --version
 ```
 
 ---
@@ -65,12 +65,12 @@ EOF
 chmod 600 ~/.config/az-ai/env
 ```
 
-이 파일은 `az-ai` 시작 시 자동으로 로드됩니다.
+이 파일은 `hopper` 시작 시 자동으로 로드됩니다.
 셸에서 `source`를 실행할 필요가 없습니다.
 
-> **팁:** `az-ai`를 처음 실행할 때 자격 증명이 설정되어 있지 않으면
+> **팁:** `hopper`를 처음 실행할 때 자격 증명이 설정되어 있지 않으면
 > 대화형 설정 마법사가 시작됩니다.
-> `az-ai --setup` 명령으로 언제든지 다시 실행할 수 있습니다.
+> `hopper --setup` 명령으로 언제든지 다시 실행할 수 있습니다.
 
 ---
 
@@ -79,13 +79,13 @@ chmod 600 ~/.config/az-ai/env
 기본 테스트:
 
 ```bash
-az-ai "안녕하세요. 한국어로 대답해 주세요."
+hopper "안녕하세요. 한국어로 대답해 주세요."
 ```
 
 파일 내용 요약 예시:
 
 ```bash
-az-ai --raw "이 파일을 한국어로 세 줄로 요약해 주세요: $(cat README.md)"
+hopper --raw "이 파일을 한국어로 세 줄로 요약해 주세요: $(cat README.md)"
 ```
 
 `--raw` 플래그를 사용하면 스피너와 불필요한 줄 바꿈 없이 출력됩니다.
@@ -94,7 +94,7 @@ Espanso나 AutoHotkey 같은 텍스트 확장 도구와 연동할 때 유용합�
 모델을 지정하는 경우:
 
 ```bash
-az-ai --model gpt-4o "자세한 기술 설명을 부탁합니다."
+hopper --model gpt-4o "자세한 기술 설명을 부탁합니다."
 ```
 
 ---
@@ -106,10 +106,10 @@ az-ai --model gpt-4o "자세한 기술 설명을 부탁합니다."
 
 주요 기능:
 
-- `az-ai --agent "작업"` -- 도구 호출 에이전트 모드
-- `az-ai --ralph "작업" --validate "검증 명령"` -- 자율 자기 수정 루프 [?]
-- `az-ai --image "프롬프트"` -- 이미지 생성 모드
-- `az-ai --doctor` -- 설정 진단
+- `hopper --agent "작업"` -- 도구 호출 에이전트 모드
+- `hopper --ralph "작업" --validate "검증 명령"` -- 자율 자기 수정 루프 [?]
+- `hopper --image "프롬프트"` -- 이미지 생성 모드
+- `hopper --doctor` -- 설정 진단
 
 다른 언어의 빠른 시작 가이드: [`docs/i18n/`](README.md).
 
@@ -118,7 +118,7 @@ az-ai --model gpt-4o "자세한 기술 설명을 부탁합니다."
 ## 번역 참고 사항
 
 한글은 사전 구성된 음절 블록(U+AC00..U+D7A3)으로 표현되며,
-az-ai의 `ReadFileTool`은 분해된 자모(NFD) 형식을 NFKC로 정규화합니다.
+hopper의 `ReadFileTool`은 분해된 자모(NFD) 형식을 NFKC로 정규화합니다.
 macOS에서 생성된 한글 파일 경로도 올바르게 처리됩니다.
 
 | 원어 | 번역 | 비고 |

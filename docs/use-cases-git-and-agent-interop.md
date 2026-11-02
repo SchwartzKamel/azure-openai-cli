@@ -1,20 +1,20 @@
 # Git Ecosystem, Agent Interop & Lightweight CLI Use Cases
 
-> Concrete recipes for using `az-ai` inside **Git hooks**, **PR review pipelines**, **custom JSON manifest plugins**, and **MCP (Model Context Protocol) agent workflows**, plus how `az-ai` stacks up against the 2026 CLI AI ecosystem.
+> Concrete recipes for using `hopper` inside **Git hooks**, **PR review pipelines**, **custom JSON manifest plugins**, and **MCP (Model Context Protocol) agent workflows**, plus how `hopper` stacks up against the 2026 CLI AI ecosystem.
 
 ---
 
 ## Part 1: Lightweight Git & Shell Automation Recipes
 
-Because `az-ai` is a **~13 MiB Native AOT binary with ~10.7 ms cold start**, it has zero Python/Node interpreter startup tax. That makes it fast enough to run synchronously inside Git hooks, shell keybindings, and Unix pipes.
+Because `hopper` is a **~13 MiB Native AOT binary with ~10.7 ms cold start**, it has zero Python/Node interpreter startup tax. That makes it fast enough to run synchronously inside Git hooks, shell keybindings, and Unix pipes.
 
 ### 1. Instant Conventional Commit Generator (`prepare-commit-msg` hook)
 
-With combined `stdin` + argument piping and the built-in `commit-message` pattern (`-p commit-message`), `az-ai` can draft your commit message from staged changes:
+With combined `stdin` + argument piping and the built-in `commit-message` pattern (`-p commit-message`), `hopper` can draft your commit message from staged changes:
 
 ```bash
 # One-liner in your terminal:
-git diff --cached | az-ai -p commit-message --raw > .git/COMMIT_EDITMSG && git commit -e -F .git/COMMIT_EDITMSG
+git diff --cached | hopper -p commit-message --raw > .git/COMMIT_EDITMSG && git commit -e -F .git/COMMIT_EDITMSG
 ```
 
 Or drop it into `.git/hooks/prepare-commit-msg` (executable via `chmod +x`):
@@ -28,7 +28,7 @@ COMMIT_SOURCE="$2"
 if [ -z "$COMMIT_SOURCE" ]; then
   DIFF="$(git diff --cached --diff-algorithm=minimal)"
   if [ -n "$DIFF" ]; then
-    printf "%s" "$DIFF" | az-ai -p commit-message --raw --prewarm > "$COMMIT_MSG_FILE.tmp" \
+    printf "%s" "$DIFF" | hopper -p commit-message --raw --prewarm > "$COMMIT_MSG_FILE.tmp" \
       && cat "$COMMIT_MSG_FILE" >> "$COMMIT_MSG_FILE.tmp" \
       && mv "$COMMIT_MSG_FILE.tmp" "$COMMIT_MSG_FILE"
   fi
@@ -45,7 +45,7 @@ set -euo pipefail
 
 SCHEMA='{"type":"object","properties":{"safe":{"type":"boolean"},"blocking_issues":{"type":"array","items":{"type":"string"}}},"required":["safe","blocking_issues"],"additionalProperties":false}'
 
-VERDICT=$(git diff origin/main...HEAD | az-ai -p security-audit --schema "$SCHEMA" --json "Audit this diff for hardcoded secrets, SSRF, or injection bugs.")
+VERDICT=$(git diff origin/main...HEAD | hopper -p security-audit --schema "$SCHEMA" --json "Audit this diff for hardcoded secrets, SSRF, or injection bugs.")
 
 SAFE=$(printf "%s" "$VERDICT" | jq -r '.response | fromjson | .safe')
 if [ "$SAFE" != "true" ]; then
@@ -61,10 +61,10 @@ fi
 
 ```bash
 # Generate a script or config directly into a file
-git log -n 20 --oneline | az-ai --code "Write a bash script that groups these commits by Conventional Commit type" > scripts/summarize-commits.sh
+git log -n 20 --oneline | hopper --code "Write a bash script that groups these commits by Conventional Commit type" > scripts/summarize-commits.sh
 
 # Pipe an existing file in + write refactored code out
-cat Dockerfile | az-ai --code "Harden this Dockerfile for non-root execution and multi-stage build" > Dockerfile.hardened
+cat Dockerfile | hopper --code "Harden this Dockerfile for non-root execution and multi-stage build" > Dockerfile.hardened
 ```
 
 ### 4. CI FinOps Budget Gate (`--estimate --json`)
@@ -72,7 +72,7 @@ cat Dockerfile | az-ai --code "Harden this Dockerfile for non-root execution and
 Before running an expensive LLM job over a large diff in GitHub Actions, check the exact estimated token cost offline (no API key required):
 
 ```bash
-COST_JSON=$(git diff origin/main...HEAD | az-ai --estimate --estimate-with-output 1000 --model gpt-4o --json "Review this PR")
+COST_JSON=$(git diff origin/main...HEAD | hopper --estimate --estimate-with-output 1000 --model gpt-4o --json "Review this PR")
 MAX_USD=$(printf "%s" "$COST_JSON" | jq -r '.total_usd_max')
 echo "Estimated worst-case PR review cost: \$${MAX_USD}"
 ```
@@ -82,7 +82,7 @@ echo "Estimated worst-case PR review cost: \$${MAX_USD}"
 When an external dashboard, IDE extension, or parent script wants live token-by-token progress *plus* final token telemetry at the end, use `--jsonl`:
 
 ```bash
-git show HEAD | az-ai -p explain-code --jsonl | while IFS= read -r line; do
+git show HEAD | hopper -p explain-code --jsonl | while IFS= read -r line; do
   TYPE=$(printf "%s" "$line" | jq -r '.type')
   if [ "$TYPE" = "delta" ]; then
     printf "%s" "$(printf "%s" "$line" | jq -r '.text')"
@@ -96,9 +96,9 @@ done
 
 ---
 
-## Part 2: Extending `az-ai` with Zero-Reflection Git Tool Plugins (FR-012)
+## Part 2: Extending `hopper` with Zero-Reflection Git Tool Plugins (FR-012)
 
-You can give `az-ai --agent` and `az-ai --ralph` custom Git tools **without recompiling the AOT binary** by dropping JSON manifests into `~/.config/azureopenai-cli/tools/` (or repo-local `./.azureopenai-cli/tools/` with `--allow-local-plugins`).
+You can give `hopper --agent` and `hopper --ralph` custom Git tools **without recompiling the AOT binary** by dropping JSON manifests into `~/.config/azureopenai-cli/tools/` (or repo-local `./.azureopenai-cli/tools/` with `--allow-local-plugins`).
 
 Example `~/.config/azureopenai-cli/tools/git_status_short.json`:
 
@@ -136,10 +136,10 @@ Verify and run:
 
 ```bash
 # 1. Inspect all built-in + custom plugin tools as JSON
-az-ai --list-tools --json | jq '.[] | {name, source, dangerous}'
+hopper --list-tools --json | jq '.[] | {name, source, dangerous}'
 
 # 2. Let the agent use your custom git tools with a hard 3-round ceiling
-az-ai --agent --tools file,git_status_short,git_log_file --max-rounds 3 \
+hopper --agent --tools file,git_status_short,git_log_file --max-rounds 3 \
   "Which files are modified right now, and who last touched them?"
 ```
 
@@ -151,17 +151,17 @@ az-ai --agent --tools file,git_status_short,git_log_file --max-rounds 3 \
 
 ---
 
-## Part 3: Agent-to-Agent Interop via MCP (`az-ai mcp serve` & `--mcp-server`)
+## Part 3: Agent-to-Agent Interop via MCP (`hopper mcp serve` & `--mcp-server`)
 
-### A. Plugging `az-ai` into Claude Code, GitHub Copilot CLI, or Cursor (`az-ai mcp serve`)
+### A. Plugging `hopper` into Claude Code, GitHub Copilot CLI, or Cursor (`hopper mcp serve`)
 
-Add `az-ai` to your host agent's MCP configuration (`~/.claude.json`, `.copilot/mcp-config.json`, or `.cursor/mcp.json`):
+Add `hopper` to your host agent's MCP configuration (`~/.claude.json`, `.copilot/mcp-config.json`, or `.cursor/mcp.json`):
 
 ```json
 {
   "mcpServers": {
-    "az-ai": {
-      "command": "az-ai",
+    "hopper": {
+      "command": "hopper",
       "args": ["mcp", "serve"]
     }
   }
@@ -174,19 +174,19 @@ What the host agent immediately gains over `stdio` JSON-RPC 2.0 (supporting both
 - **Prompts (`prompts/list`, `prompts/get`):** All 8 built-in patterns (`commit-message`, `code-review`, `security-audit`, `summarize`, etc.), custom user patterns, and all `.squad.json` personas (`persona:coder`, `persona:reviewer`, etc.).
 - **Resources (`resources/list`, `resources/read`):** Active `.squad.json` (`squad://config`) and per-persona persistent session memory (`squad://memory/<persona>`).
 
-### B. Plugging External MCP Servers *into* `az-ai` (`--mcp-server`, `az-ai mcp tools/call`)
+### B. Plugging External MCP Servers *into* `hopper` (`--mcp-server`, `hopper mcp tools/call`)
 
-`az-ai` also acts as an outbound MCP stdio client:
+`hopper` also acts as an outbound MCP stdio client:
 
 ```bash
 # 1. Inspect tools exposed by any MCP server
-az-ai mcp tools "npx -y @modelcontextprotocol/server-filesystem ." --json
+hopper mcp tools "npx -y @modelcontextprotocol/server-filesystem ." --json
 
 # 2. Call an MCP tool directly from a shell script
-az-ai mcp call "az-ai mcp serve" get_datetime '{"timezone":"UTC"}' --json
+hopper mcp call "hopper mcp serve" get_datetime '{"timezone":"UTC"}' --json
 
-# 3. Bridge external MCP servers into az-ai's autonomous Ralph loop
-az-ai --ralph \
+# 3. Bridge external MCP servers into hopper's autonomous Ralph loop
+hopper --ralph \
   --mcp-server "fs=npx -y @modelcontextprotocol/server-filesystem ." \
   --validate "dotnet test" \
   "Fix the failing unit test and verify the build passes"
@@ -194,9 +194,9 @@ az-ai --ralph \
 
 ---
 
-## Part 4: How `az-ai` Compares Across the Git / CLI Ecosystem (2026)
+## Part 4: How `hopper` Compares Across the Git / CLI Ecosystem (2026)
 
-| Dimension | `az-ai` (v2.1+) | `aichat` (Rust) | `crush` (Go, ex-`mods`) | `fabric` (Go) | `llm` / `sgpt` (Python) | `gh copilot` / `claude` / `codex` |
+| Dimension | `hopper` (v2.1+) | `aichat` (Rust) | `crush` (Go, ex-`mods`) | `fabric` (Go) | `llm` / `sgpt` (Python) | `gh copilot` / `claude` / `codex` |
 |---|---|---|---|---|---|---|
 | **Cold Start (p50)** | **~10.7 ms** (.NET 10 Native AOT) | ~30-60 ms | ~40-90 ms | ~40-80 ms | ~350-900 ms (Python VM tax) | ~200-500 ms (Node/bundled runtime) |
 | **Binary Footprint** | **~13 MiB single binary** | ~12-18 MiB | ~25-35 MiB | ~25+ MiB | Requires Python + venv | 50-150+ MiB |

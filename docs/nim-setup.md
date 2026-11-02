@@ -139,7 +139,7 @@ systemctl --user status az-ai-nim.service
 
 ---
 
-## Integrating with az-ai
+## Integrating with hopper
 
 Add a local provider to `~/.config/az-ai/preferences.json`:
 
@@ -159,7 +159,7 @@ Add a local provider to `~/.config/az-ai/preferences.json`:
 Then:
 
 ```bash
-az-ai --trigger grammar "their going home"
+hopper --trigger grammar "their going home"
 # → "They're going home."
 ```
 
@@ -172,7 +172,7 @@ directly.
 
 ## Espanso / AHK integration
 
-Once the provider works from `az-ai` on the command line, wire it to your
+Once the provider works from `hopper` on the command line, wire it to your
 text-expansion tool. The canonical `:aifix` recipe lives in
 [docs/espanso-ahk-integration.md](espanso-ahk-integration.md). The relevant
 Espanso match:
@@ -184,7 +184,7 @@ Espanso match:
     - name: out
       type: shell
       params:
-        cmd: 'az-ai --raw --trigger grammar "{{clipboard}}"'
+        cmd: 'hopper --raw --trigger grammar "{{clipboard}}"'
 ```
 
 Latency target (per ADR-006): **≤ 300 ms p95 end-to-end** for short grammar
