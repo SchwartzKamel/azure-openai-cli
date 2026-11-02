@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **fix(security):** the shell tool now refuses destructive remote git operations
+  (`--force`, `--force-with-lease`, `-f`/`-d` clusters, `+refspec`, `:ref` delete,
+  `--mirror`), including when wrapped in `sh -c` or chained. Defense in depth, not
+  a sandbox: git aliases and scripts are not seen. Carried over from an
+  unfinished branch and fixed: its version missed `+refspec` and `sh -c` wrappers.
 - **feat(wizard):** S04E08 *The Onboarding* -- the setup wizard now ends with
   a plain-language "why this model" panel (`Resolution/WizardModelExplainer.cs`)
   that names the default model and how to change it, using the same picker the

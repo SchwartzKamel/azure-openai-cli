@@ -46,6 +46,88 @@ internal static class ShellExecTool
         "ANTHROPIC_API_KEY",
     };
 
+    // git global options that consume the NEXT token as their value.
+    private static readonly HashSet<string> GitGlobalOptionsWithValue = new(StringComparer.Ordinal)
+    {
+        "-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix",
+    };
+
+    /// <summary>
+    /// True when <paramref name="command"/> would run <c>git push</c> in a destructive
+    /// mode: a force flag (<c>--force</c>, <c>--force-with-lease</c>, <c>--force-if-includes</c>,
+    /// or any short cluster containing <c>f</c>), a <c>+refspec</c>, <c>--mirror</c>, or remote
+    /// ref deletion (<c>--delete</c>, <c>-d</c>, <c>:ref</c>).
+    ///
+    /// Design notes:
+    /// <list type="bullet">
+    ///   <item>Quotes are treated as separators, so a wrapper such as
+    ///     <c>sh -c 'git push -f'</c> is seen. (<c>sh</c>/<c>bash</c> are not in
+    ///     <see cref="BlockedCommands"/>, so a per-segment first-token check alone misses it.)</item>
+    ///   <item><c>push</c> must be the git <em>subcommand</em> (after any global options such as
+    ///     <c>-C dir</c> or <c>--no-pager</c>), so a commit message that merely contains the
+    ///     words "git push -f" is not blocked.</item>
+    ///   <item>Known limits, by design: a literal mention such as <c>echo git push --force</c> is
+    ///     refused (indistinguishable from <c>env git push --force</c> without a full shell
+    ///     parser), and indirection such as a git alias (<c>git p</c> where
+    ///     <c>alias.p = push -f</c>) or a script is not seen. This is defense in depth, not a
+    ///     sandbox.</item>
+    ///   <item>Fail-closed on ambiguity: this is a guard, not a parser. A false positive costs the
+    ///     agent one refused command; a false negative costs a collaborator their history.</item>
+    /// </list>
+    /// </summary>
+    internal static bool ContainsDestructiveGitOperation(string? command)
+    {
+        if (string.IsNullOrWhiteSpace(command)) return false;
+
+        // Quotes become separators; shell grouping characters split commands.
+        var flat = command.Replace('\'', ' ').Replace('"', ' ').Replace('`', ' ');
+        foreach (var segment in flat.Split(new[] { '|', ';', '&', '\n', '(', ')', '{', '}' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var tokens = segment.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+            for (var i = 0; i < tokens.Length; i++)
+            {
+                var exe = tokens[i].Split('/').LastOrDefault() ?? string.Empty;
+                if (!exe.Equals("git", StringComparison.OrdinalIgnoreCase)) continue;
+
+                // Find the subcommand: first token after git that is not a global option or its value.
+                var j = i + 1;
+                while (j < tokens.Length && tokens[j].StartsWith('-'))
+                {
+                    j += GitGlobalOptionsWithValue.Contains(tokens[j]) ? 2 : 1;
+                }
+                // Everything after this git is its own arguments, never a second git
+                // command (separators were already split above), so inspect it once
+                // and move on. This is what keeps `git commit -m 'never git push -f'` allowed.
+                if (j >= tokens.Length || !tokens[j].Equals("push", StringComparison.OrdinalIgnoreCase)) break;
+
+                for (var k = j + 1; k < tokens.Length; k++)
+                {
+                    var t = tokens[k];
+                    if (t.StartsWith("--"))
+                    {
+                        if (t.StartsWith("--force", StringComparison.OrdinalIgnoreCase)   // --force, --force-with-lease[=], --force-if-includes
+                            || t.Equals("--mirror", StringComparison.OrdinalIgnoreCase)
+                            || t.Equals("--delete", StringComparison.OrdinalIgnoreCase))
+                            return true;
+                    }
+                    else if (t.StartsWith('-'))
+                    {
+                        // short cluster, e.g. -f, -fu, -d
+                        if (t.Skip(1).Any(c => c == 'f' || c == 'd')) return true;
+                    }
+                    else if (t.Length > 1 && (t[0] == '+' || t[0] == ':'))
+                    {
+                        // +refspec forces the update; :ref deletes the remote ref
+                        return true;
+                    }
+                }
+                break;
+            }
+        }
+        return false;
+    }
+
     [Description("Execute a shell command and return its stdout. Use for running git, ls, cat, grep, curl, etc. Commands that delete or modify system state are blocked.")]
     public static async Task<string> ExecuteAsync(
         [Description("The shell command to execute")] string command,
@@ -86,6 +168,13 @@ internal static class ShellExecTool
             if (BlockedCommands.Contains(token))
                 return $"Error: command '{token}' is blocked for safety.";
         }
+
+        // Destructive remote git operations (force push, '+' refspec, mirror, remote
+        // ref deletion) are irreversible for other collaborators and are never needed
+        // to inspect or validate a repository, so text in a repo cannot talk the
+        // agent into running them.
+        if (ContainsDestructiveGitOperation(command))
+            return "Error: destructive git operations (force push, mirror, remote ref delete) are blocked for safety.";
 
         // Block curl/wget body + upload forms (write-side HTTP). Read-only GETs
         // stay allowed so the model can fetch public metadata, but any flag that
