@@ -32,6 +32,7 @@
 | [FR-018](FR-018-local-model-provider-llamacpp.md) | Local-Model Provider (llama.cpp / Ollama) | P2 | M | 📝 DRAFT -- v2.1 | Blocked by FR-014; blocks FR-019, FR-020 |
 | [FR-019](FR-019-gemma-cpp-direct-adapter.md) | gemma.cpp Direct Adapter | P3 | M | 📝 DRAFT -- niche | Blocked by FR-018 |
 | [FR-020](FR-020-nvidia-nim-provider-per-trigger-routing.md) | NVIDIA NIM Provider with Per-Trigger Routing (2B-first) | P2 | M | 📝 DRAFT -- implements ADR-006 | Blocked by FR-018 |
+| [FR-024](FR-024-rebrand-away-from-third-party-marks.md) | Rename away from third-party marks (staged) | P2 | M | 📝 PROPOSED -- three gates open (name, clearance, go); see [ADR-016](../adr/ADR-016-rebrand-away-from-third-party-marks.md) | Reverses the earlier no-rename verdict; counsel review pending |
 
 Legend: ✅ shipped · 🔄 partial · 📋 planned · 📝 draft · 🪦 superseded · ⚠️ regression or partial-infra
 
