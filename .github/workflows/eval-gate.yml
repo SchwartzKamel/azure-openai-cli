@@ -49,7 +49,7 @@ jobs:
 
       - name: Run the eval gate
         env:
-          BIN: ./azureopenai-cli/bin/Release/net10.0/az-ai
+          BIN: ./azureopenai-cli/bin/Release/net10.0/hopper
           EVAL_GATE_MODEL: ${{ vars.EVAL_GATE_MODEL }}
           EVAL_GATE_REQUIRED: ${{ vars.EVAL_GATE_REQUIRED }}
           AZUREOPENAIENDPOINT: ${{ secrets.AZUREOPENAIENDPOINT }}

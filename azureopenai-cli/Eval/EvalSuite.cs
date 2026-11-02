@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace AzureOpenAI_CLI.Eval;
 
-// S04E10 -- The Score. The shipping fixture schema for `az-ai eval`.
+// S04E10 -- The Score. The shipping fixture schema for `hopper eval`.
 //
 // It is a strict superset of the design in docs/prompts/eval-harness.md, so the existing
 // fixtures (docs/prompts/fixtures/coder.json) load unchanged. What is new is

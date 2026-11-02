@@ -1,5 +1,5 @@
 name: ❓ Question
-description: Ask how to use az-ai, or about expected behavior.
+description: Ask how to use hopper, or about expected behavior.
 title: "[Question]: "
 labels: ["question", "needs-triage"]
 body:

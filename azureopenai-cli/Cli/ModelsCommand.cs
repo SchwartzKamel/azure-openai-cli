@@ -5,12 +5,12 @@ using AzureOpenAI_CLI.Registry;
 
 namespace AzureOpenAI_CLI.Cli;
 
-// S04E04 -- Reading Room (Elaine, lead). The `az-ai models` sub-command
+// S04E04 -- Reading Room (Elaine, lead). The `hopper models` sub-command
 // surface. Three read-only sub-commands over the model registry:
 //
-//   az-ai models list
-//   az-ai models show <name>
-//   az-ai models capabilities
+//   hopper models list
+//   hopper models show <name>
+//   hopper models capabilities
 //
 // All three honour --json (AOT-safe via AppJsonContext), --raw (no headers,
 // no markers, no truncation), --no-color (and the NO_COLOR env var). Empty
@@ -40,7 +40,7 @@ namespace AzureOpenAI_CLI.Cli;
 // marker / JSON / truncation / empty-cell conventions enforced here.
 
 /// <summary>
-/// Entry-point for the <c>az-ai models</c> sub-command tree (S04E04).
+/// Entry-point for the <c>hopper models</c> sub-command tree (S04E04).
 /// Read-only inspection of the model registry loaded at startup; no I/O
 /// beyond what <see cref="ModelRegistry.Load"/> already did. Output paths
 /// are table (default) or JSON (<c>--json</c>); <c>--raw</c> emits
@@ -163,7 +163,7 @@ internal static class ModelsCommand
             // Acceptance criterion 6: rc=2 + single stderr line.
             Console.Error.WriteLine(
                 $"[ERROR] model '{opts.Positional}' not found in registry. "
-                + "Use 'az-ai models list' to see available models.");
+                + "Use 'hopper models list' to see available models.");
             return 2;
         }
 
@@ -455,7 +455,7 @@ internal static class ModelsCommand
         }
         else
         {
-            Console.Error.WriteLine($"[ERROR] {msg}. Run 'az-ai models --help'.");
+            Console.Error.WriteLine($"[ERROR] {msg}. Run 'hopper models --help'.");
         }
         return 2;
     }
@@ -463,10 +463,10 @@ internal static class ModelsCommand
     // -- help text (Bookman-tier brevity; Elaine self-reviewed) -------------
 
     private const string HelpRoot =
-@"az-ai models -- inspect the model registry
+@"hopper models -- inspect the model registry
 
 Usage:
-  az-ai models <subcommand> [--json] [--raw] [--no-color]
+  hopper models <subcommand> [--json] [--raw] [--no-color]
 
 Subcommands:
   list           Tabular index of registered models.
@@ -479,18 +479,18 @@ Flags:
   --no-color     Disable colour (NO_COLOR env is also honoured).
 
 Examples:
-  az-ai models list
-  az-ai models show gpt-4o-mini --json
-  az-ai models capabilities
+  hopper models list
+  hopper models show gpt-4o-mini --json
+  hopper models capabilities
 
 See docs/adr/ADR-014-output-formatting-standard.md for the full output contract.
 ";
 }
 
-// -- AOT-safe JSON DTOs for `az-ai models` (registered in AppJsonContext) ---
+// -- AOT-safe JSON DTOs for `hopper models` (registered in AppJsonContext) ---
 
 /// <summary>
-/// One row in <c>az-ai models list --json</c>. Field order matches the
+/// One row in <c>hopper models list --json</c>. Field order matches the
 /// table column order. <c>default</c> and <c>allowlisted</c> are booleans
 /// (not strings) so <c>jq</c> can filter without parsing markers.
 /// </summary>
@@ -503,7 +503,7 @@ internal record ModelListEntryJson(
 );
 
 /// <summary>
-/// Single-object payload for <c>az-ai models show &lt;name&gt; --json</c>.
+/// Single-object payload for <c>hopper models show &lt;name&gt; --json</c>.
 /// Keys follow snake_case per ADR-014 (criterion 5 in the S04E04 brief).
 /// Optional fields are null-skipped on serialize.
 /// </summary>

@@ -4,7 +4,7 @@ using AzureOpenAI_CLI.Cli;
 namespace AzureOpenAI_CLI.Resolution;
 
 /// <summary>
-/// S04E09 -- The Override. The answer to "which model would az-ai use, and why?",
+/// S04E09 -- The Override. The answer to "which model would hopper use, and why?",
 /// for <c>--why-this-model</c>. Snake_case keys so it sits next to the other machine
 /// envelopes (<c>--json</c>, <c>--jsonl</c>).
 /// </summary>

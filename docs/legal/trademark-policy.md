@@ -2,7 +2,7 @@
 
 **Effective:** as of repository adoption date
 **Maintainer:** project maintainers, via GitHub issue tracker
-**Short name:** "Azure OpenAI CLI" / `az-ai`
+**Short name:** `hopper` (formerly "Azure OpenAI CLI" / `az-ai`; see ADR-016)
 
 ---
 
@@ -23,7 +23,9 @@ grant any right in any third-party mark (see §3).
 
 This policy covers:
 
-- The project name **"Azure OpenAI CLI"** and the command/binary name **`az-ai`**
+- The project name **hopper** and the command/binary name **`hopper`**
+- The former project name **"Azure OpenAI CLI"** and former command name **`az-ai`**,
+  which still work as an alias, so that releases made under them stay covered
 - Any logos, wordmarks, or graphical identifiers distributed from this
   repository (collectively, the "Project Marks")
 
@@ -78,8 +80,8 @@ You may, without asking:
 - **Refer to the project by name** in articles, tutorials, blog posts, talks,
   social media, bug reports, and academic work -- that's descriptive, that's
   honest, that's fine.
-- State factual compatibility: *"works with Azure OpenAI CLI,"* *"tested
-  against `az-ai` v1.x,"* *"a plugin for Azure OpenAI CLI."*
+- State factual compatibility: *"works with hopper,"* *"tested
+  against `az-ai` v1.x,"* *"a plugin for hopper."*
 - Link to the repository, releases, or documentation using the project name.
 - Quote the name in package manifests, dependency lists, `README` files, and
   bill-of-materials output.
@@ -96,8 +98,8 @@ You may **not**:
   it is not, it has never been, it is not becoming one.
 - Imply the project **endorses** your product, service, company, or fork when
   it does not.
-- Use the Project Marks -- or confusingly similar variants (`az-ai-pro`,
-  `AzureOpenAI-CLI-Plus`, `az_ai`, and similar near-misses) -- as the **primary
+- Use the Project Marks -- or confusingly similar variants (`hopper-pro`,
+  `az-ai-pro`, `AzureOpenAI-CLI-Plus`, `az_ai`, and similar near-misses) -- as the **primary
   identifier of a fork or derivative** whose behavior materially diverges
   from upstream (see §6).
 - Reproduce any logo, wordmark, or graphical identifier from this repository
@@ -118,7 +120,8 @@ Forking is encouraged -- that's the MIT license working as intended. But:
 - If your fork's behavior **materially diverges** from upstream (incompatible
   CLI surface, different auth model, different output formats, different
   security posture) -- **rename it.** Pick a name that does not begin with
-  `az-ai-`, does not include "Azure OpenAI CLI" as the leading phrase, and
+  `hopper-` or `az-ai-`, does not include "hopper" or "Azure OpenAI CLI" as the
+  leading phrase, and
   does not invite confusion with the upstream project.
 - Unmodified or near-unmodified redistributions may retain the name,
   provided they clearly identify themselves as redistributions and do not

@@ -92,7 +92,7 @@ internal static class ModelRegistry
     /// seed, or the user override that replaced it).
     /// </summary>
     /// <remarks>
-    /// S04E04 -- consumed by <c>ModelsCommand</c> for <c>az-ai models list</c>
+    /// S04E04 -- consumed by <c>ModelsCommand</c> for <c>hopper models list</c>
     /// and as the tie-break source for the alphabetical sort (registration
     /// order breaks ties; see brief acceptance criterion 9).
     /// </remarks>
@@ -105,7 +105,7 @@ internal static class ModelRegistry
     /// Case-sensitive name lookup against the loaded registry. Returns
     /// <c>true</c> and the matching entry, or <c>false</c> and <c>null</c>
     /// when no registry is loaded, the name is null/empty, or no entry
-    /// matches. Use this to back <c>az-ai models show &lt;name&gt;</c>.
+    /// matches. Use this to back <c>hopper models show &lt;name&gt;</c>.
     /// </summary>
     /// <remarks>
     /// S04E04 -- ordinal comparison only, consistent with

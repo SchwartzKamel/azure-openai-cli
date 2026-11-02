@@ -4,7 +4,7 @@ using System.IO;
 namespace AzureOpenAI_CLI;
 
 /// <summary>
-/// Single chokepoint for every color / ANSI decision in <c>az-ai</c>.
+/// Single chokepoint for every color / ANSI decision in <c>hopper</c>.
 ///
 /// <para>
 /// This helper implements the 7-rule precedence documented in

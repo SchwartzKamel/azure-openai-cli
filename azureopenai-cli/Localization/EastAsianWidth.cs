@@ -10,7 +10,7 @@ namespace AzureOpenAI_CLI.Localization;
 ///
 /// <para>
 /// Implements a pragmatic subset of Unicode TR-11 (East Asian Width) so that
-/// <c>az-ai</c> table renderers, progress bars, and truncation helpers can
+/// <c>hopper</c> table renderers, progress bars, and truncation helpers can
 /// compute the *display column* footprint of a string -- not its
 /// <c>string.Length</c> in UTF-16 code units, which would be wrong for CJK,
 /// fullwidth forms, emoji, and combining marks.

@@ -600,3 +600,19 @@ This is the owner's decision (gate G1) and nothing is renamed. Caveat as before:
 screen of open-source collisions, not a legal clearance.
 
 Reproduce with `scripts/name-screen.py --oss <name>`.
+
+## Status: stage 1 implemented (S04E14)
+
+The owner confirmed `hopper` (gate G1) and waived the legal gate (G2) for this open-source
+project. Stage 1 is built: the command is `hopper`, `az-ai` stays as an alias, and the
+config directory and environment variables are unchanged. See ADR-016 for the stages as
+built, and S04E14 for what was verified and what was not.
+
+What remains, in order:
+
+1. **Stage 2, with a release:** move the archive names to `hopper-<ver>-<rid>`, the Homebrew
+   formula (`bin.install "hopper"` plus an `az-ai` symlink), the Scoop manifest (`bin` entries
+   for both names, and the `autoupdate` URL), the Nix flake (`pname`, `mainProgram`,
+   `tarballPrefixFor`), the `release.yml` globs and release body, and `packaging/README.md`.
+2. **The docs migration** (`elaine-2026-11-E-1`).
+3. **Stage 3, a separate decision:** the GitHub repository name.

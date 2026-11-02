@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stage.sh — build and stage az-ai release tarballs.
+# stage.sh — build and stage the release tarballs (the `hopper` binary, formerly `az-ai`).
 #
 # Usage:
 #   packaging/tarball/stage.sh <rid>
@@ -58,7 +58,14 @@ for doc in LICENSE NOTICE THIRD_PARTY_NOTICES.md README.md; do
     [[ -f "$doc" ]] || die "missing '$doc' at repo root — every distributed artifact must include it"
 done
 
-BIN_NAME="az-ai"
+# The binary is `hopper` (AssemblyName). The old command name `az-ai` ships beside it, as a
+# hard link where the archive format allows one (tar) and as a copy where it does not (zip), so
+# the Homebrew formula, the Scoop manifest (and its autoupdate) and every script that calls
+# `az-ai` keep working until the manifests are moved to the new name (FR-024, ADR-016 stage 2).
+# The archive and directory names below stay `az-ai-<version>-<rid>` for the same reason: the
+# release workflow globs them and the manifests download them by that name.
+BIN_NAME="hopper"
+ALIAS_NAME="az-ai"
 [[ "$RID" == win-* ]] && BIN_EXT=".exe" || BIN_EXT=""
 
 PUBLISH_DIR="$REPO_ROOT/artifacts/publish/$RID"
@@ -81,6 +88,8 @@ PUBLISHED_BIN="$PUBLISH_DIR/${BIN_NAME}${BIN_EXT}"
 
 echo ">> Staging artifact tree at $STAGE_DIR"
 cp "$PUBLISHED_BIN" "$STAGE_DIR/"
+ln "$STAGE_DIR/${BIN_NAME}${BIN_EXT}" "$STAGE_DIR/${ALIAS_NAME}${BIN_EXT}" 2>/dev/null \
+    || cp "$STAGE_DIR/${BIN_NAME}${BIN_EXT}" "$STAGE_DIR/${ALIAS_NAME}${BIN_EXT}"
 cp LICENSE NOTICE THIRD_PARTY_NOTICES.md README.md "$STAGE_DIR/"
 
 if [[ "$RID" == win-* ]]; then

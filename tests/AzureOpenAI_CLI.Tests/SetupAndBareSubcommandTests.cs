@@ -108,13 +108,13 @@ public class SetupAndBareSubcommandTests
         var output = sw.ToString();
         Assert.Contains("--setup", output);
         Assert.Contains("--init-wizard", output);
-        Assert.Contains("az-ai help", output);
-        Assert.Contains("az-ai setup", output);
+        Assert.Contains("hopper help", output);
+        Assert.Contains("hopper setup", output);
     }
 
     // ── ShouldAutoLaunchSetup decision helper ─────────────────────────────
     // Pure predicate (no Console / env reads): the caller passes terminal
-    // facts in. Tests cover both the positive path (bare az-ai with no
+    // facts in. Tests cover both the positive path (bare hopper with no
     // creds on a TTY -> launch) and the four documented negative gates.
 
     [Fact]

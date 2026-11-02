@@ -4,7 +4,7 @@ namespace AzureOpenAI_CLI;
 
 /// <summary>
 /// Interactive setup wizard (<c>--setup</c> / <c>--init-wizard</c> /
-/// <c>az-ai setup</c>). S03E11 *The Wizard, Reprise* extends the original
+/// <c>hopper setup</c>). S03E11 *The Wizard, Reprise* extends the original
 /// Azure-only flow into a provider-aware sequence:
 ///
 /// <list type="number">
@@ -147,7 +147,7 @@ internal static class SetupWizard
     private static void PrintBanner()
     {
         Console.WriteLine();
-        Console.WriteLine("Welcome to az-ai setup!");
+        Console.WriteLine("Welcome to hopper setup!");
         Console.WriteLine("This wizard will configure your providers and save them to");
         Console.WriteLine($"  {WizardSession.DefaultEnvFilePath()}");
         Console.WriteLine("(file mode 0600 on Unix; existing files are backed up first).");
@@ -398,9 +398,9 @@ internal static class SetupWizard
 
         Console.WriteLine();
         Console.WriteLine("You're all set. Try:");
-        Console.WriteLine("  az-ai \"Hello, world\"");
+        Console.WriteLine("  hopper \"Hello, world\"");
         Console.WriteLine();
-        Console.WriteLine("Re-run the wizard with: az-ai --setup");
+        Console.WriteLine("Re-run the wizard with: hopper --setup");
         Console.WriteLine();
     }
 

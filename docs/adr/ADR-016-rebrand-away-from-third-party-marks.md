@@ -1,6 +1,6 @@
 # ADR-016: Rename the project away from third-party marks (staged)
 
-- **Status**: Proposed
+- **Status**: Accepted (stage 1 implemented; stages 2 and 3 open)
 - **Deciders**: the maintainer (gates G1 to G3 below); review lenses run in
   [FR-024](../proposals/FR-024-rebrand-away-from-third-party-marks.md)
 - **Related**: [FR-024](../proposals/FR-024-rebrand-away-from-third-party-marks.md),
@@ -31,11 +31,19 @@ the binary, the packaging manifests, the docs, and the environment variables.
 
 We rename in two reversible stages and leave the rest alone.
 
-1. **Stage 1:** the display name and the repository (README title, help banner,
-   docs, trademark policy short name, GitHub repo name). The binary stays `az-ai`.
-2. **Stage 2:** the binary, with `az-ai` shipped as a working alias so existing
-   Espanso, AHK and shell scripts keep working. The alias gets a sunset review at
-   the next major version.
+1. **Stage 1 (done, S04E14):** the name and the command. The binary is `hopper` and
+   `az-ai` ships beside it as a working alias, so existing Espanso, AHK and shell
+   scripts keep working. README title, help banner, completions, trademark policy
+   short name, the Docker image's binary, `make install` and the archive contents all
+   follow. The alias gets a sunset review at the next major version.
+2. **Stage 2 (with the release that carries Stage 1):** the release archive names
+   (`az-ai-<ver>-<rid>` to `hopper-<ver>-<rid>`), the Homebrew formula, the Scoop
+   manifest and the Nix flake. These are held back on purpose: the manifests download
+   published assets by their current names, and Scoop's autoupdate builds the next
+   URL from the old pattern. Until they move, archives keep the old names and
+   contain both binaries.
+3. **Stage 3 (a separate decision):** the GitHub repository name. The container image
+   path follows it, so old tags stay under the old package name.
 
 We do **not** rename the `AZUREOPENAIENDPOINT`-style environment variables (they
 name the Azure service they configure, which is nominative use), the `AZ_AI_*`
@@ -51,11 +59,12 @@ Earlier picks were withdrawn: `pith` and `usher` on trademark evidence, and `dun
 `curlew` because the owner found them meaningless. No irreversible step runs until three
 gates clear:
 
-- **G1:** the maintainer confirms the name.
+- **G1:** the maintainer confirms the name. Done: `hopper`, 2026-11-02.
 - **G2:** counsel, or at least a full trademark and common-law search, clears it and
-  rules on whether the current name needs to change. A preliminary US-federal screen
-  is done (`scripts/name-screen.py`); it is not clearance.
-- **G3:** approval to start Stage 1.
+  rules on whether the current name needs to change. Waived by the maintainer for this
+  open-source project; the open-source screen is `scripts/name-screen.py --oss` and is
+  not clearance.
+- **G3:** approval to start. Stage 1: given. Stage 3 (the repository): not yet given.
 
 ## Consequences
 

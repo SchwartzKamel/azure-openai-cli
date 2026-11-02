@@ -13,7 +13,7 @@
 # Files under azureopenai-cli/Eval/Corpora/ are compiled into the binary, so they must also carry an
 # "Origin: synthetic" provenance header; the others do not.
 #
-# Environment:  BIN  the az-ai binary (default: azureopenai-cli/bin/Release/net10.0/az-ai)
+# Environment:  BIN  the hopper binary (default: azureopenai-cli/bin/Release/net10.0/hopper)
 # Exit codes:   0 clean | 1 findings | 2 the binary is missing or a file is missing
 #
 # There is deliberately NO opt-out trailer: a check that guards against publishing secrets should not
@@ -21,7 +21,7 @@
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-BIN="${BIN:-azureopenai-cli/bin/Release/net10.0/az-ai}"
+BIN="${BIN:-azureopenai-cli/bin/Release/net10.0/hopper}"
 
 if [ ! -x "$BIN" ] && ! command -v "$BIN" >/dev/null 2>&1; then
   echo "eval-lint: no binary at $BIN. Build first: make dotnet-build" >&2

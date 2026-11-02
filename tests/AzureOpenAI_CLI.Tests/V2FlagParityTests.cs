@@ -243,7 +243,8 @@ public class V2FlagParityTests
             Assert.Equal(0, rc);
             var output = stdout.ToString();
             Assert.NotEmpty(output);
-            // Each script mentions az-ai.
+            // Each script registers the command and the old name that still works.
+            Assert.Contains("hopper", output);
             Assert.Contains("az-ai", output);
         }
         finally { Console.SetOut(oldOut); }

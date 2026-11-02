@@ -6,7 +6,7 @@ namespace AzureOpenAI_CLI.Tools;
 
 /// <summary>
 /// Built-in tools (<c>queue_add</c>, <c>queue_status</c>) that allow an in-process
-/// agent or an external MCP host (<c>az-ai mcp serve</c>) to enqueue tasks into
+/// agent or an external MCP host (<c>hopper mcp serve</c>) to enqueue tasks into
 /// the Commander Work Queue (<c>.az-ai/queue.json</c>) and inspect queue status.
 /// </summary>
 internal static class QueueTools

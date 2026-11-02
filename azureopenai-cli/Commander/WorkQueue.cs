@@ -85,7 +85,7 @@ internal sealed class WorkQueueFile
 }
 
 /// <summary>
-/// Summary report emitted by <c>az-ai queue status [--json]</c> and <c>az-ai queue run [--json]</c>.
+/// Summary report emitted by <c>hopper queue status [--json]</c> and <c>hopper queue run [--json]</c>.
 /// </summary>
 internal sealed record QueueStatusSummary(
     [property: JsonPropertyName("queue_file")] string QueueFile,

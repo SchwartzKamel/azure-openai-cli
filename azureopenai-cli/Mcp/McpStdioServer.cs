@@ -10,7 +10,7 @@ namespace AzureOpenAI_CLI.Mcp;
 /// <summary>
 /// FR-013 Phase 2: Model Context Protocol (MCP) server over <c>stdio</c>
 /// (newline-delimited JSON-RPC 2.0). Allows external AI agents (Claude Code,
-/// GitHub Copilot CLI, Cursor, Codex, etc.) to discover and invoke <c>az-ai</c>'s
+/// GitHub Copilot CLI, Cursor, Codex, etc.) to discover and invoke <c>hopper</c>'s
 /// built-in tools and custom manifest plugins in-process with zero reflection
 /// (100% Native AOT compatible via <see cref="AppJsonContext"/>).
 /// </summary>
@@ -250,7 +250,7 @@ internal static class McpStdioServer
                                 Tools: new McpToolsCapability(ListChanged: false),
                                 Prompts: new McpPromptsCapability(ListChanged: false),
                                 Resources: new McpResourcesCapability(ListChanged: false)),
-                            ServerInfo: new McpServerInfo(Name: "az-ai", Version: Program.VersionSemver));
+                            ServerInfo: new McpServerInfo(Name: "hopper", Version: Program.VersionSemver));
                         var element = JsonSerializer.SerializeToElement(initResult, McpJsonContext.Default.McpInitializeResult);
                         return SerializeResult(idClone, element);
                     }

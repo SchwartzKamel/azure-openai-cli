@@ -1,6 +1,8 @@
-# Azure OpenAI CLI ⚡
+# hopper ⚡
 
-> A **sub-15 ms cold-start, ~13 MiB single-binary** Azure OpenAI agent for text injection, shell automation, and scripted AI workflows.
+> Pipe a prompt in, hop to any model, get plain text back. A **sub-15 ms cold-start, ~13 MiB single-binary** command-line agent for text injection, shell automation, and scripted AI workflows, working with Azure OpenAI, OpenAI, Groq, Together, Cloudflare and other OpenAI-compatible providers.
+>
+> **Renamed.** `hopper` is the new name of `az-ai`, the *Azure OpenAI CLI*. The `az-ai` command still works and is installed next to `hopper`; your settings in `~/.config/az-ai/` and the `AZUREOPENAI*` variables are unchanged. Why, and what changes when: [ADR-016](docs/adr/ADR-016-rebrand-away-from-third-party-marks.md).
 
 [![CI](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/ci.yml)
 [![Release](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/release.yml/badge.svg)](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/release.yml)
@@ -19,12 +21,12 @@
 
 ## First run
 
-Run `az-ai` with no credentials configured and it drops you into a short interactive wizard. As of S03E11 *The Wizard, Reprise* the wizard is provider-aware: pick a default provider (azure, openai, groq, together, cloudflare), enter that provider's credentials, and optionally loop to add a second:
+Run `hopper` with no credentials configured and it drops you into a short interactive wizard. As of S03E11 *The Wizard, Reprise* the wizard is provider-aware: pick a default provider (azure, openai, groq, together, cloudflare), enter that provider's credentials, and optionally loop to add a second:
 
 ```text
-$ az-ai
+$ hopper
 
-Welcome to az-ai setup!
+Welcome to hopper setup!
 This wizard will configure your providers and save them to
   /home/user/.config/az-ai/env
 (file mode 0600 on Unix; existing files are backed up first).
@@ -64,32 +66,32 @@ Azure default model: gpt-4o-mini
   Why: it is first in your list, and the first model is the default.
   Also in your list: gpt-5.4-nano.
   Use one for a single call with: --model <name>
-  To change the default, re-run 'az-ai --setup' and list that model first.
+  To change the default, re-run 'hopper --setup' and list that model first.
 ```
 
 The wizard writes `~/.config/az-ai/env` with E10-format `[provider:NAME]` sections plus a default unsectioned block carrying `AZUREOPENAIENDPOINT`, `AZUREOPENAIAPI`, `AZUREOPENAIMODEL`, and `AZ_AI_COMPAT_MODELS` for back-compat. Compat model strings are validated through `OpenAiCompatAdapter.ParseCompatModels` before the file is written, so a typo never makes it to disk. If a file already exists, the wizard prompts to back it up to `env.bak.<timestamp>` before overwriting; identical re-runs are no-ops (no spurious backup).
 
 - The wizard **auto-runs** when creds are missing *and* you're on an interactive terminal. Scripts, pipes, `--raw`, `--json`, and containers bypass it -- they fail loud with an `[ERROR]` and exit code 1, so nothing in your CI/Espanso/AHK setup loops on closed stdin.
-- Re-run it anytime with `az-ai --setup` (aliases: `--init-wizard`, bare `setup`).
-- It ends by telling you which model is your default and why. The first model you list wins; to change it, re-run `az-ai --setup` and list the one you want first.
+- Re-run it anytime with `hopper --setup` (aliases: `--init-wizard`, bare `setup`).
+- It ends by telling you which model is your default and why. The first model you list wins; to change it, re-run `hopper --setup` and list the one you want first.
 - **Environment variables still win.** `AZUREOPENAIENDPOINT` / `AZUREOPENAIAPI` / `AZUREOPENAIMODEL` override stored config every time -- the wizard is for humans, env vars are for machines.
 
 ### Where is my key stored?
 
 | How you set it | Location | Protection |
 |---|---|---|
-| `az-ai --setup` (the wizard) | `~/.config/az-ai/env` (`$XDG_CONFIG_HOME/az-ai/env`); `%APPDATA%\az-ai\env` on Windows | Plaintext. File mode `0600` on Linux and macOS. On Windows no permission change is applied, so the file relies on your user profile's default access rules. |
-| `az-ai --config set api_key=...` | `~/.azureopenai-cli.json` (`%USERPROFILE%\.azureopenai-cli.json` on Windows) | Plaintext. File mode `0600` on Linux and macOS. Redacted when listed. |
+| `hopper --setup` (the wizard) | `~/.config/az-ai/env` (`$XDG_CONFIG_HOME/az-ai/env`); `%APPDATA%\az-ai\env` on Windows | Plaintext. File mode `0600` on Linux and macOS. On Windows no permission change is applied, so the file relies on your user profile's default access rules. |
+| `hopper --config set api_key=...` | `~/.azureopenai-cli.json` (`%USERPROFILE%\.azureopenai-cli.json` on Windows) | Plaintext. File mode `0600` on Linux and macOS. Redacted when listed. |
 | Docker / CI | env vars only | No on-disk storage |
 
-`az-ai` does **not** use an OS keystore (Windows DPAPI, macOS Keychain, Linux libsecret). That design is proposed in [FR-023](docs/proposals/FR-023-first-run-wizard.md) and is not implemented. Today the key is a plaintext file readable only by your user, the same posture as the AWS CLI's `~/.aws/credentials`. On a shared machine, prefer environment variables fed from your own secret manager. Honest trade-off over security theater; the compensating control is rotation.
+`hopper` does **not** use an OS keystore (Windows DPAPI, macOS Keychain, Linux libsecret). That design is proposed in [FR-023](docs/proposals/FR-023-first-run-wizard.md) and is not implemented. Today the key is a plaintext file readable only by your user, the same posture as the AWS CLI's `~/.aws/credentials`. On a shared machine, prefer environment variables fed from your own secret manager. Honest trade-off over security theater; the compensating control is rotation.
 
 ### Key rotation
 
 The Azure OpenAI key ring gives you two active keys per resource, which means you can rotate with **zero downtime**:
 
 1. In the Azure portal, open your resource → **Keys and Endpoint** → **Regenerate Key 2**.
-2. Swap your local config to Key 2 (`az-ai --setup`, paste the new key).
+2. Swap your local config to Key 2 (`hopper --setup`, paste the new key).
 3. Regenerate Key 1 to finish the cycle.
 
 Recommendations:
@@ -102,9 +104,9 @@ Recommendations:
 
 ```bash
 git clone https://github.com/SchwartzKamel/azure-openai-cli && cd azure-openai-cli
-make setup && make install        # installs ~/.local/bin/az-ai
+make setup && make install        # installs ~/.local/bin/hopper (and an az-ai alias)
 cp azureopenai-cli/.env.example .env && $EDITOR .env   # add Azure creds (template is shared across v1/v2)
-az-ai --raw "Summarize this file in 5 words: $(cat README.md)"
+hopper --raw "Summarize this file in 5 words: $(cat README.md)"
 ```
 
 You need an Azure OpenAI resource -- grab the [endpoint](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource), a [deployed model](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/deploy-models), and the [API key](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource#retrieve-key-and-endpoint).
@@ -120,9 +122,9 @@ You need an Azure OpenAI resource -- grab the [endpoint](https://learn.microsoft
 | **Persona / Squad** | `--persona <name>` | Named AI team members with per-persona system prompts, tools, and persistent memory in `.squad/`. |
 | **Image** | `--image` | Generate an image from a text prompt (DALL-E / FLUX.2-pro via the same provider dispatch). |
 
-Full flag reference: `az-ai --help`.
+Full flag reference: `hopper --help`.
 
-Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) -- ideal for packaging scripts, release automation, and shell `$()` substitutions.
+Scripting tip: `hopper --version --short` emits bare semver (e.g. `2.0.0`) -- ideal for packaging scripts, release automation, and shell `$()` substitutions.
 
 ### New in v2.0.0
 
@@ -130,24 +132,24 @@ Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) -- ide
 |------|--------------|
 | `--json` | Machine-readable output. Happy-path completions emit a single JSON object (`response`, `model`, `mode`, `input_tokens`, `output_tokens`, `total_tokens`, `duration_ms`, `cached`) on stdout; errors emit structured JSON (`error`, `message`, `exit_code`) on stderr. |
 | `--jsonl` | Stream single-line NDJSON events (`delta` chunks + final `done` summary) on stdout for real-time agent/pipeline consumption. |
-| `--code` | Extract only fenced code blocks from the model response to stdout (ideal for `az-ai --code "..." > script.py`). |
+| `--code` | Extract only fenced code blocks from the model response to stdout (ideal for `hopper --code "..." > script.py`). |
 | `--pattern <name>` (`-p`), `--patterns [--json]` | Apply or list curated prompt patterns (`summarize`, `fix-grammar`, `commit-message`, `explain-code`, `shell-oneliner`, `json-extract`, `code-review`, `security-audit`, plus user `~/.config/azureopenai-cli/patterns/*.json`). |
 | `--schema <json>` | Enforce a strict JSON schema on the model's completion (`ChatResponseFormat.ForJsonSchema`). |
 | `--max-rounds <n>` | Enforced agent tool-call round cap. Default `5`, range `1–20`. |
 | `--list-tools [--json]` | Enumerate all built-in tools and discovered JSON manifest plugins with their source and schema. |
 | `--plugin-dir <path>` / `--allow-local-plugins` / `--no-plugins` | Discover AOT-safe external tool manifests (`*.json`) from `~/.config/azureopenai-cli/tools/`, a custom directory, or opt-in `./.azureopenai-cli/tools/`. |
-| `az-ai mcp serve` (`--mcp-serve`) | Run `az-ai` as an MCP (Model Context Protocol) JSON-RPC 2.0 server over `stdio` exposing tools, prompts (patterns + personas), and squad resources (`--allow-shell` to opt in `shell_exec`, `--read-only` for read-only tools). |
-| `--mcp-server <spec>` / `az-ai mcp tools` / `az-ai mcp call` | Connect `az-ai` as an MCP `stdio` client to external MCP servers, inspect their tools, call them directly, or bridge them into `--agent` and `--ralph` runs. |
-| `az-ai queue` / `az-ai commander` (`init\|add\|plan\|status\|run\|clear`) | Built-in DAG Work Queue orchestrator (`.az-ai/queue.json`) with dependency cycle detection, atomic persistence, `--concurrency 1..8`, `--dry-run`, `--recover-stale`, and per-task provider/model/persona/pattern/validator routing. |
-| `--provider <name>` / `--profile <name>` | Select a provider or a named profile from `preferences.json` (precedence: flag, env, profile, default). See the preferences section below. Queued tasks (`az-ai queue run`) route through the same stack by model name. |
+| `hopper mcp serve` (`--mcp-serve`) | Run `hopper` as an MCP (Model Context Protocol) JSON-RPC 2.0 server over `stdio` exposing tools, prompts (patterns + personas), and squad resources (`--allow-shell` to opt in `shell_exec`, `--read-only` for read-only tools). |
+| `--mcp-server <spec>` / `hopper mcp tools` / `hopper mcp call` | Connect `hopper` as an MCP `stdio` client to external MCP servers, inspect their tools, call them directly, or bridge them into `--agent` and `--ralph` runs. |
+| `hopper queue` / `hopper commander` (`init\|add\|plan\|status\|run\|clear`) | Built-in DAG Work Queue orchestrator (`.az-ai/queue.json`) with dependency cycle detection, atomic persistence, `--concurrency 1..8`, `--dry-run`, `--recover-stale`, and per-task provider/model/persona/pattern/validator routing. |
+| `--provider <name>` / `--profile <name>` | Select a provider or a named profile from `preferences.json` (precedence: flag, env, profile, default). See the preferences section below. Queued tasks (`hopper queue run`) route through the same stack by model name. |
 | `--prefer <cost\|latency\|quality>` | When `AZUREOPENAIMODEL` lists several models, pick by that axis instead of taking the first. Needs tier data in the model registry (a stock install has cost tiers only). `--model` wins over `--prefer`. |
 | `--why-this-model [--json]` | Print which model would be used and why, then exit. No credentials, no network, no tokens. |
-| `az-ai eval <suite.json>` | Run a prompt-fixture suite and score its deterministic assertions. Exit `0` pass, `1` fail (including a suite that grades nothing, or any safety failure), `2` unusable suite. Supports `--json`, `--fail-under <pct>`, `--filter <substr>`, and `--model`/`--prefer`. |
-| `az-ai eval --corpus <name>` / `--list-corpora [--json]` | Run one of the built-in corpora (`smoke`, `persona-voice`, `refusal`) with no file, or list them. Same scoring, exit codes and flags as `az-ai eval <suite.json>`. |
-| `az-ai eval ... --repeat <n>` / `--baseline <file>` / `--write-baseline <file>` | Run each fixture n times (flaky fixtures reported) and gate on regressions against a recorded run. Outcomes only, never model text. |
-| `az-ai --lint-suite <file>` (repeatable) / `--require-provenance` | Check an eval suite, fixture file or baseline for anything that must not be committed (keys, real emails and hosts, home paths, PII shapes, non-ASCII). Findings are masked, never printed in full. Exit `0` clean, `1` findings. Needs no credentials. |
+| `hopper eval <suite.json>` | Run a prompt-fixture suite and score its deterministic assertions. Exit `0` pass, `1` fail (including a suite that grades nothing, or any safety failure), `2` unusable suite. Supports `--json`, `--fail-under <pct>`, `--filter <substr>`, and `--model`/`--prefer`. |
+| `hopper eval --corpus <name>` / `--list-corpora [--json]` | Run one of the built-in corpora (`smoke`, `persona-voice`, `refusal`) with no file, or list them. Same scoring, exit codes and flags as `hopper eval <suite.json>`. |
+| `hopper eval ... --repeat <n>` / `--baseline <file>` / `--write-baseline <file>` | Run each fixture n times (flaky fixtures reported) and gate on regressions against a recorded run. Outcomes only, never model text. |
+| `hopper --lint-suite <file>` (repeatable) / `--require-provenance` | Check an eval suite, fixture file or baseline for anything that must not be committed (keys, real emails and hosts, home paths, PII shapes, non-ASCII). Findings are masked, never printed in full. Exit `0` clean, `1` findings. Needs no credentials. |
 | `--config <path>` | Use an alternate config file instead of `./.azureopenai-cli.json` or `~/.azureopenai-cli.json`. |
-| `--config set/get/list/reset/show` | Full CRUD for the persistent user config (e.g. `az-ai --config set defaults.temperature=0.3`). |
+| `--config set/get/list/reset/show` | Full CRUD for the persistent user config (e.g. `hopper --config set defaults.temperature=0.3`). |
 | `--completions <bash\|zsh\|fish>` | Emit a shell-completion script to stdout. Source it or drop it into your completions dir. |
 | `--models`, `--list-models`, `--current-model`, `--set-model <alias>=<deployment>` | Persist alias → deployment mappings in `~/.azureopenai-cli.json`. First `--set-model` also becomes the default. |
 | `--telemetry` (or `AZ_TELEMETRY=1`) | Opt-in OpenTelemetry spans + per-call cost events on stderr. Zero overhead when off. |
@@ -187,7 +189,7 @@ matches:
       - name: output
         type: shell
         params:
-          cmd: "xclip -selection clipboard -o | az-ai --raw --system 'Fix grammar. Output ONLY corrected text.'"
+          cmd: "xclip -selection clipboard -o | hopper --raw --system 'Fix grammar. Output ONLY corrected text.'"
 ```
 
 Type `:aifix` → clipboard text goes in → corrected prose comes out in-place. `--raw` strips spinner/formatting so only clean text is injected.
@@ -196,9 +198,9 @@ Type `:aifix` → clipboard text goes in → corrected prose comes out in-place.
 
 ## Configuration
 
-Most humans should just run `az-ai` and let the [first-run wizard](#first-run) handle it. This section is for everything downstream of that: precedence rules, the full env-var surface, and the scripted-setup path.
+Most humans should just run `hopper` and let the [first-run wizard](#first-run) handle it. This section is for everything downstream of that: precedence rules, the full env-var surface, and the scripted-setup path.
 
-Precedence (highest → lowest): **CLI flag > environment variable > user config > built-in default** (`gpt-4o-mini` for model). An explicit `--config <path>` takes priority over `./.azureopenai-cli.json`, which takes priority over `~/.azureopenai-cli.json`. Inspect the effective config with `az-ai --config show`.
+Precedence (highest → lowest): **CLI flag > environment variable > user config > built-in default** (`gpt-4o-mini` for model). An explicit `--config <path>` takes priority over `./.azureopenai-cli.json`, which takes priority over `~/.azureopenai-cli.json`. Inspect the effective config with `hopper --config show`.
 
 The binary also auto-loads `~/.config/az-ai/env` at startup (shell `export KEY="value"` format, written by `make setup-secrets`). Existing env vars are not overwritten, so your shell profile still wins. This is critical for non-login-shell contexts like Espanso, AHK, and cron where your profile isn't sourced.
 
@@ -254,7 +256,7 @@ Or drop them in a `.env` file (`cp azureopenai-cli/.env.example .env`) and sourc
 | `AZURE_FOUNDRY_MODELS` |  | -- | Comma-separated model names routed to Foundry instead of Azure OpenAI |
 | `AZURE_IMAGE_MODEL` |  | -- | Image model deployment name. Resolution: `AZURE_IMAGE_MODEL` > first model in `AZURE_FOUNDRY_MODELS` > chat model fallback |
 
-Switch models on the fly: `az-ai --models`, `az-ai --set-model gpt-4o` (persisted to `~/.azureopenai-cli.json`).
+Switch models on the fly: `hopper --models`, `hopper --set-model gpt-4o` (persisted to `~/.azureopenai-cli.json`).
 
 Keeping token spend sane -- model selection, caching, and per-persona budgets: [docs/cost-optimization.md](docs/cost-optimization.md).
 
@@ -272,8 +274,8 @@ Route specific models with `AZ_AI_COMPAT_MODELS` (comma-separated `preset:model`
 export AZ_AI_COMPAT_MODELS="openai:gpt-4o-mini,groq:llama-3.1-70b"
 export OPENAI_API_KEY="sk-..."
 export GROQ_API_KEY="gsk-..."
-az-ai --model gpt-4o-mini "Summarize this changelog"   # routes to api.openai.com
-az-ai --model llama-3.1-70b "Same, but on Groq"        # routes to api.groq.com
+hopper --model gpt-4o-mini "Summarize this changelog"   # routes to api.openai.com
+hopper --model llama-3.1-70b "Same, but on Groq"        # routes to api.groq.com
 ```
 
 Cloudflare Workers AI additionally requires `CLOUDFLARE_ACCOUNT_ID` (substituted into the endpoint URL). See [docs/adr/ADR-010-first-non-azure-cloud.md](docs/adr/ADR-010-first-non-azure-cloud.md).
@@ -304,7 +306,7 @@ model   : --model     >  AZ_MODEL     >  profile.model     >  AZUREOPENAIMODEL[0
 The default heuristic for provider follows a documented six-rung ladder (ADR-011, S03E22 *The Default*): (1) `azure` when both `AZUREOPENAIENDPOINT` and `AZUREOPENAIAPI` are set; (2) the single preset whose `AZ_AI_<PRESET>_ENDPOINT` is set when exactly one is present; (3) when ≥2 preset endpoints are set, `AZ_AI_LOCAL_PROVIDERS=1`, and at least one endpoint URL points to a loopback host on a known local-runtime port (ollama 11434, llamacpp 8080, lmstudio 1234), the first such preset alphabetically with the label `default:<preset>:local-detected`; (4) `openai` when `OPENAI_API_KEY` is set; (5) the alphabetically first preset endpoint when ≥2 are set and no other signal applies (with a `multiple-presets-no-cli-no-profile-no-env-pin` warning so you know the cascade went there); (6) `azure:fallback` when nothing matched (BuildChatClient will then fail closed with a friendly error). The match is URL-string only -- no socket probe; ProviderDoctor (`--diag`) keeps the live probe. `--config show` reports every rail's source label so you can see exactly where the resolved value came from:
 
 ```bash
-$ az-ai --profile work --config show | grep -A4 'Switch resolution'
+$ hopper --profile work --config show | grep -A4 'Switch resolution'
 Switch resolution (S03E20):
   source:           profile:work:provider
   provider source:  profile:work:provider
@@ -312,16 +314,16 @@ Switch resolution (S03E20):
   profile source:   cli
 
 # Override a profile's provider for one invocation:
-$ az-ai --profile work --provider openai "draft a release note"
+$ hopper --profile work --provider openai "draft a release note"
 ```
 
 ### Picking by cost, latency or quality (S04E09 *The Override*)
 
-List more than one model in `AZUREOPENAIMODEL` and `az-ai` uses the first by default. `--prefer` ranks them by an axis instead, and `--why-this-model` shows the decision without calling the API:
+List more than one model in `AZUREOPENAIMODEL` and `hopper` uses the first by default. `--prefer` ranks them by an axis instead, and `--why-this-model` shows the decision without calling the API:
 
 ```bash
 $ export AZUREOPENAIMODEL="gpt-4o,gpt-4o-mini"
-$ az-ai --why-this-model --prefer cost
+$ hopper --why-this-model --prefer cost
 Model: gpt-4o-mini
 Reason code: PREFER_AXIS
 Why: model 'gpt-4o-mini' chosen for axis 'cost' (tier low; runner-up gpt-4o)
@@ -352,12 +354,12 @@ A stock install ships `costTier` only, so `--prefer latency` and `--prefer quali
 
 `--why-this-model --json` emits `model`, `reason_code`, `reason`, `candidates`, and (when set) `prefer` and `note`. It explains the model pick only; it does not evaluate `--profile` or `--provider` overrides.
 
-### Scoring prompts with `az-ai eval` (S04E10 *The Score*)
+### Scoring prompts with `hopper eval` (S04E10 *The Score*)
 
-An eval suite is a JSON file of fixtures. Each fixture is a prompt plus `assertions`: deterministic checks on the model's answer (`contains`, `regex`, `max_chars`, `json_valid`, ...). `az-ai eval` runs each prompt the way the CLI would, scores the assertions, and exits non-zero when the suite fails, so it can gate CI.
+An eval suite is a JSON file of fixtures. Each fixture is a prompt plus `assertions`: deterministic checks on the model's answer (`contains`, `regex`, `max_chars`, `json_valid`, ...). `hopper eval` runs each prompt the way the CLI would, scores the assertions, and exits non-zero when the suite fails, so it can gate CI.
 
 ```bash
-$ az-ai eval examples/eval/smoke.json
+$ hopper eval examples/eval/smoke.json
 Suite: smoke (3 fixtures, model gpt-4o-mini)
   PASS     smoke-capital -- 2/2 assertions
   PASS     smoke-json -- 2/2 assertions
@@ -367,19 +369,19 @@ Fail under: 100%
 Result: PASS
 ```
 
-The policy is deliberately strict: a suite that grades nothing **fails** (never a green "0 of 0"), a fixture that errors counts against the score, and a safety fixture (one with a `safety_assertion`) that fails or cannot be verified blocks the run regardless of `--fail-under`. Freeform `expected_traits` are reported as *ungraded*: judging them needs a human or an LLM, and `az-ai eval` does not pretend otherwise. Full schema and policy: [`docs/prompts/eval-harness.md`](docs/prompts/eval-harness.md). The command calls your configured model, so it spends tokens; a bad suite is rejected before any call is made.
+The policy is deliberately strict: a suite that grades nothing **fails** (never a green "0 of 0"), a fixture that errors counts against the score, and a safety fixture (one with a `safety_assertion`) that fails or cannot be verified blocks the run regardless of `--fail-under`. Freeform `expected_traits` are reported as *ungraded*: judging them needs a human or an LLM, and `hopper eval` does not pretend otherwise. Full schema and policy: [`docs/prompts/eval-harness.md`](docs/prompts/eval-harness.md). The command calls your configured model, so it spends tokens; a bad suite is rejected before any call is made.
 
 #### Built-in corpora (S04E11 *The Corpus*)
 
 Three suites ship inside the binary, so you can validate a provider or model with no file path:
 
 ```bash
-$ az-ai eval --list-corpora
-Built-in corpora (run with: az-ai eval --corpus <name>)
+$ hopper eval --list-corpora
+Built-in corpora (run with: hopper eval --corpus <name>)
   smoke           7 fixtures,  0 safety,  2603 bytes -- Does this deployment work at all? ...
   persona-voice  10 fixtures,  0 safety,  5124 bytes -- Does each built-in persona still sound like itself? ...
   refusal         8 fixtures,  8 safety,  5349 bytes -- Does the safety clause fire? ...
-$ az-ai eval --corpus smoke
+$ hopper eval --corpus smoke
 ```
 
 `smoke` is the first thing to run against a new model. `persona-voice` checks that each built-in persona keeps the promises its own prompt makes (the reviewer cites line numbers, security classifies by severity, the architect documents trade-offs); personas come from `./.squad.json` when present, else the built-in defaults, and the report says which. `refusal` is the safety contract: every fixture is a safety fixture, so any failure blocks regardless of `--fail-under`.
@@ -388,7 +390,7 @@ The corpora are small (about 13 KiB in total, capped by a test), synthetic (no u
 
 #### Gating CI on evals (S04E12 *The Gate*)
 
-`az-ai eval` has three options for turning a score into a gate:
+`hopper eval` has three options for turning a score into a gate:
 
 - `--repeat <n>` runs each fixture *n* times. A fixture passes only if **every** run passes, and a fixture that passes some runs but not all is reported as **flaky**. This is how you find out how stable a model really is.
 - `--write-baseline <file>` records the run (per-fixture outcomes only, never model text) and `--baseline <file>` compares a later run with it. A fixture that passed in the baseline and does not now is a **regression** and fails the run, even when the overall score is above `--fail-under`.
@@ -398,7 +400,7 @@ The repository's own gate is `.github/workflows/eval-gate.yml`, driven by `scrip
 
 #### Keeping real data out of eval files (S04E13 *The Redaction*)
 
-Eval corpora ship inside the binary and baselines live in the repository, so a real prompt or key in one is published. `az-ai --lint-suite <file>` refuses it. It runs in `make preflight`, in CI, and in the pre-push hook (`make install-hooks`), has **no opt-out**, and never prints what it matched. See the redaction policy in [`docs/prompts/eval-harness.md`](docs/prompts/eval-harness.md). It finds shapes, not meaning; review still matters.
+Eval corpora ship inside the binary and baselines live in the repository, so a real prompt or key in one is published. `hopper --lint-suite <file>` refuses it. It runs in `make preflight`, in CI, and in the pre-push hook (`make install-hooks`), has **no opt-out**, and never prints what it matched. See the redaction policy in [`docs/prompts/eval-harness.md`](docs/prompts/eval-harness.md). It finds shapes, not meaning; review still matters.
 
 ### Makefile targets
 
@@ -414,7 +416,7 @@ The core targets (`make setup`, `make install`, `make test`, `make preflight`) a
 | `make load-env` | Print the `source` command for `~/.config/az-ai/env` |
 | `make run-native ARGS="..."` | Run the native binary with env auto-loaded |
 | `make espanso-install` | Install hardened Espanso config for WSL Path B |
-| `make espanso-test` | Verify Espanso can reach az-ai through WSL |
+| `make espanso-test` | Verify Espanso can reach hopper through WSL |
 | `make set-image-model MODEL=<name>` | Set the default image model deployment name |
 
 ## Image Generation
@@ -423,13 +425,13 @@ The core targets (`make setup`, `make install`, `make test`, `make preflight`) a
 
 ```bash
 # Generate an image (saves PNG to temp file, copies to clipboard)
-az-ai --image "a cat in a top hat, oil painting"
+hopper --image "a cat in a top hat, oil painting"
 
 # Specify dimensions and output path
-az-ai --image --size 512x512 --output cat.png "a cat in space"
+hopper --image --size 512x512 --output cat.png "a cat in space"
 
 # Pipe-friendly: base64 on stdout, no file saved
-echo "sunset" | az-ai --image --raw | base64 -d > sunset.png
+echo "sunset" | hopper --image --raw | base64 -d > sunset.png
 ```
 
 | Flag | Purpose |
@@ -458,16 +460,16 @@ The CLI is meant to be given shell and file access inside agent mode, so defense
 
 ```sh
 # Air-gapped demo against a loopback Ollama
-AZ_AI_LOCAL_PROVIDERS=1 az-ai --offline --model ollama-llama3 "..."
+AZ_AI_LOCAL_PROVIDERS=1 hopper --offline --model ollama-llama3 "..."
 ```
 
-For paranoid runs (a guarantee that no syscall can reach a non-loopback socket), pair the flag with kernel-level isolation: `unshare -n az-ai --offline ...` on Linux. The flag is a logical gate, not a network namespace. Audit details: [docs/audits/security-v2.1.4-offline.md](docs/audits/security-v2.1.4-offline.md).
+For paranoid runs (a guarantee that no syscall can reach a non-loopback socket), pair the flag with kernel-level isolation: `unshare -n hopper --offline ...` on Linux. The flag is a logical gate, not a network namespace. Audit details: [docs/audits/security-v2.1.4-offline.md](docs/audits/security-v2.1.4-offline.md).
 
 **Best-effort fallback chain (S03E22).** Pass `--fallback openai,groq` (or set `AZ_AI_FALLBACK=openai,groq`, CLI wins) to opt in to a fallback chain. When the primary provider returns a transient failure (5xx / 429 / network timeout) the chain is tried in order, max 3 alternates, no duplicates. Auth (401/403), other 4xx, capability mismatches, and user-cancel (Ctrl-C) all short-circuit -- no point asking another provider when the request itself is the problem. Streaming has a load-bearing invariant: once the first chunk has been yielded, fallback is OFF; mid-stream truncation prints a one-line `[fallback] stream-truncated` warn on stderr and re-throws the original exception. The transcript is never corrupted by a provider switch mid-flight. Default is off; opt-in only. Telemetry adds two opt-in event shapes (`fallback_attempt`, `fallback_outcome`) under the existing `AZ_AI_TELEMETRY=1` strict-equality gate. Reliability charter: [docs/observability/slo.md](docs/observability/slo.md) §2 / §5 (the new `fallback.rate` SLI + alert thresholds).
 
 ```sh
 # Try OpenAI then Groq if Azure 5xx's
-az-ai --fallback openai,groq --model gpt-4o-mini "..."
+hopper --fallback openai,groq --model gpt-4o-mini "..."
 ```
 
 Full threat model and hardening checklist: [SECURITY.md](SECURITY.md). Report vulnerabilities per the policy there. To cryptographically verify a downloaded binary, container, or SBOM against the build attestations, see [docs/verifying-releases.md](docs/verifying-releases.md).
@@ -486,7 +488,7 @@ Local run: `make cve-report` (requires Trivy + jq).
 
 ### Rotating credentials
 
-`az-ai --rotate-creds [provider]` (S03E25) rotates the API key for one
+`hopper --rotate-creds [provider]` (S03E25) rotates the API key for one
 configured provider in `~/.config/az-ai/env`. The flow takes a
 timestamped backup (`env.bak.<ISO-8601-Z>`, never overwritten -- bumps
 to `.bak.<ts>.1` on collision), then atomically writes the new file
@@ -494,11 +496,11 @@ to `.bak.<ts>.1` on collision), then atomically writes the new file
 never logged on any success, failure, or exception path; every textual
 line is routed through `SecretRedactor`. Interactive only -- refuses
 under `--raw` or when stdin/stdout are redirected. To change the
-endpoint or add a new provider, run `az-ai --setup` instead.
+endpoint or add a new provider, run `hopper --setup` instead.
 
 ## Accessibility
 
-`az-ai` honors [no-color.org](https://no-color.org) (`NO_COLOR`),
+`hopper` honors [no-color.org](https://no-color.org) (`NO_COLOR`),
 `TERM=dumb`, `FORCE_COLOR`, and `CLICOLOR` / `CLICOLOR_FORCE`. The
 `--plain` flag (and `AZ_AI_PLAIN=1` env var, S03E14) suppress banner /
 color / unicode glyphs / spinner for screen-reader, low-bandwidth, and
@@ -509,7 +511,7 @@ VoiceOver), and the plain-mode test matrix.
 
 ### Diagnosing your setup
 
-`az-ai --doctor` (S03E15) probes every configured provider and prints a
+`hopper --doctor` (S03E15) probes every configured provider and prints a
 health table -- DNS reachability, credential presence (boolean only,
 never the value), and model-allowlist count. No authenticated API call
 is ever issued; output is routed through `SecretRedactor` as
@@ -518,7 +520,7 @@ for ASCII key:value stanzas. Exit code 0 = all healthy, 1 = at least
 one unhealthy.
 
 ```text
-$ az-ai --doctor
+$ hopper --doctor
 +--------------------+----------------------------------------------+-------------+-------+--------+
 | provider           | endpoint                                     | dns         | creds | models |
 +--------------------+----------------------------------------------+-------------+-------+--------+
@@ -540,6 +542,8 @@ Download for your platform from [Releases](https://github.com/SchwartzKamel/azur
 | Linux x64 (musl / Alpine) | `az-ai-2.2.0-linux-musl-x64.tar.gz` |
 | macOS (Apple Silicon) | `az-ai-2.2.0-osx-arm64.tar.gz` |
 | Windows x64 | `az-ai-2.2.0-win-x64.zip` |
+
+The archive names keep the old `az-ai-` prefix for now, because the Homebrew and Scoop manifests download them by that name. Inside each archive is `hopper` (the command) and `az-ai` (the old name; the same binary).
 
 > **Note:** `osx-x64` (Intel macOS) was dropped from the release matrix in **v2.0.4** after sustained runner instability. Intel-Mac users should run the Docker image or build from source until the leg is reinstated -- see [docs/runbooks/macos-runner-triage.md](docs/runbooks/macos-runner-triage.md) for the triage plan and current status. `linux-arm64` and `win-arm64` are also not built in v2; track the ADR in [docs/adr/](docs/adr/) for plans to reintroduce them.
 

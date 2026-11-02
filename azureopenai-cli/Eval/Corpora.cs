@@ -4,7 +4,7 @@ namespace AzureOpenAI_CLI.Eval;
 
 /// <summary>
 /// S04E11 -- The Corpus. The eval suites that ship inside the binary, run with
-/// <c>az-ai eval --corpus &lt;name&gt;</c> so no file path is needed (a Homebrew install has no repo).
+/// <c>hopper eval --corpus &lt;name&gt;</c> so no file path is needed (a Homebrew install has no repo).
 ///
 /// Policy, each line earned by a failure mode:
 /// <list type="bullet">

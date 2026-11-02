@@ -45,7 +45,7 @@ public class VersionContractTests
     public void VersionFull_contains_semver_and_framework_tag()
     {
         Assert.Contains(Program.VersionSemver, Program.VersionFull);
-        Assert.Contains("az-ai", Program.VersionFull);
+        Assert.Contains("hopper", Program.VersionFull);
         Assert.Contains("Microsoft Agent Framework", Program.VersionFull);
     }
 

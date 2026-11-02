@@ -27,7 +27,7 @@ calls, no credentials required.
 ```bash
 # Build a Season-3 binary if you do not have one
 DOTNET_ROOT=/usr/lib/dotnet make publish-aot
-make install   # copies dist/aot/az-ai to ~/.local/bin/az-ai
+make install   # copies dist/aot/hopper to ~/.local/bin/hopper (plus an az-ai alias)
 
 # Run end-to-end
 bash scripts/demo/season3-finale.sh
