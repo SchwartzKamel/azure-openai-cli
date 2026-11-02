@@ -17,6 +17,7 @@ scripts/*
 !scripts/exec-report-check.sh
 !scripts/pre-push.sh
 !scripts/brand-inventory.sh
+!scripts/name-screen.py
 !scripts/lint-espanso-yml.sh
 !scripts/provider-deps.json
 !scripts/provider-deps.schema.json

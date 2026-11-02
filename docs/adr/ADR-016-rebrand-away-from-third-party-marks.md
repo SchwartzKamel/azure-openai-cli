@@ -42,12 +42,16 @@ name the Azure service they configure, which is nominative use), the `AZ_AI_*`
 variables, the C# namespace, or the source directory. Neutral env aliases may be
 added later, additively.
 
-The recommended name is `pith` (runner-up `usher`); the choice is the
-maintainer's. No irreversible step runs until three gates clear:
+The recommended name is `dunlin` (runner-up `curlew`), selected in the FR-024
+addendum after 719 candidates were screened against package channels, GitHub and the
+US trademark register. An earlier shortlist (`pith`, `usher`, `herald`) was withdrawn
+when that screen found live software-class marks. The choice is the maintainer's to
+confirm. No irreversible step runs until three gates clear:
 
-- **G1:** the maintainer chooses the name.
-- **G2:** counsel, or at least a trademark and common-law search, clears it and
-  rules on whether the current name needs to change. Not done yet.
+- **G1:** the maintainer confirms the name.
+- **G2:** counsel, or at least a full trademark and common-law search, clears it and
+  rules on whether the current name needs to change. A preliminary US-federal screen
+  is done (`scripts/name-screen.py`); it is not clearance.
 - **G3:** approval to start Stage 1.
 
 ## Consequences
