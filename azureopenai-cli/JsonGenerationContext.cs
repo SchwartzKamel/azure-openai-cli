@@ -5,6 +5,7 @@ using AzureOpenAI_CLI.Commander;
 using AzureOpenAI_CLI.Mcp;
 using AzureOpenAI_CLI.Patterns;
 using AzureOpenAI_CLI.Registry;
+using AzureOpenAI_CLI.Resolution;
 using AzureOpenAI_CLI.Squad;
 using AzureOpenAI_CLI.Tools;
 
@@ -136,6 +137,7 @@ internal record JsonlStreamEvent(
 [JsonSerializable(typeof(UnknownFlagJsonError))]
 [JsonSerializable(typeof(UnknownFlagDetail))]
 [JsonSerializable(typeof(ChatJsonResponse))]
+[JsonSerializable(typeof(ModelDecision))]
 [JsonSerializable(typeof(ExportEnvJson))]
 [JsonSerializable(typeof(AzureOpenAI_CLI.Observability.EstimateResult))]
 // ── FR-008 prompt/response cache ────────────────────────────────
