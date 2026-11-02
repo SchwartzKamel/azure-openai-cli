@@ -149,6 +149,9 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | lloyd-2026-11-L-4 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | LOW | open | Elaine | `docs/user-stories.md` and `docs/accessibility.md` still describe v1 `--init` / `--configure` / `--login` flags that do not exist | 2026-11-01 |
 | newman-2026-11-N-1 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | MEDIUM | open | Newman | `WizardSession.SetRestrictivePermissions` is a no-op on Windows, so the plaintext key in `%APPDATA%\az-ai\env` relies on default profile ACLs (README now says so) | 2026-11-01 |
 | fdr-2026-11-F-1 | [PR 22: shell git-safety](https://github.com/SchwartzKamel/azure-openai-cli/pull/22) | MEDIUM | open | Newman + FDR | `shell_exec` blocklist only checks the first token of each `\|`/`;`/`&` segment and `sh`/`bash` are not blocked, so `bash -c 'rm ...'` and `sh -c "sudo ..."` run (verified by probe) | 2026-11-01 |
+| russell-2026-11-R-1 | [s04e09-the-override.md](exec-reports/s04e09-the-override.md) | MEDIUM | open | Maestro + Kramer | Stock registry has `costTier` only, so `--prefer latency` and `--prefer quality` have no data to rank on a fresh install (the flag reports this in a `Note:` line, but cannot help) | 2026-11-01 |
+| russell-2026-11-R-2 | [s04e09-the-override.md](exec-reports/s04e09-the-override.md) | LOW | open | Costanza | No env var or config key for a default `--prefer`; a user who always wants the cheapest model must type the flag every call | 2026-11-01 |
+| sue-ellen-2026-11-S-1 | [s04e09-the-override.md](exec-reports/s04e09-the-override.md) | INFO | open | Sue Ellen | `docs/competitive-analysis.md` is silent on how other CLIs expose model-preference flags, so S04E09 made no competitive claim | 2026-11-01 |
 
 ## Resolved (last 90 days)
 
@@ -168,6 +171,7 @@ matching row here. See [`scripts/exec-report-check.sh`](../scripts/exec-report-c
 | newman-2026-05-F-16 | [security-v2.1.1-reaudit.md](audits/security-v2.1.1-reaudit.md) | LOW | resolved | Kramer | Lint false-positive on bash comment lines containing `{{ns.field}}` -- skip comment-only lines in bash cmd bodies before form-substitution check; commit pending | 2026-05-06 |
 | lloyd-2026-11-L-1 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | HIGH | resolved | Elaine + Newman | README key-storage table promised DPAPI / macOS Keychain / libsecret encryption that is not implemented (FR-023 is still Proposed); corrected to describe the plaintext `0600` files the code writes | 2026-11-01 |
 | lloyd-2026-11-L-2 | [s04e08-the-onboarding.md](exec-reports/s04e08-the-onboarding.md) | MEDIUM | resolved | Elaine | README and `docs/onboarding.md` told newcomers to run `az-ai --init`, which fails with "unknown flag"; replaced with `--setup` | 2026-11-01 |
+| kramer-2026-11-K-1 | [s04e09-the-override.md](exec-reports/s04e09-the-override.md) | LOW | resolved | Kramer | Shell completions (bash, zsh, fish) omitted the agent-interop flags merged earlier (`--jsonl`, `--code`, `--list-tools`, `--plugin-dir`, `--pattern`, `--mcp-server`, ...); added with the S04E09 flags | 2026-11-01 |
 
 ## Deferred / wontfix
 

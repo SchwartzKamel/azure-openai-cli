@@ -150,7 +150,9 @@ internal class Program
         int Priority = 100,          // --priority <int>
         int Concurrency = 1,         // --concurrency <1..8>
         bool DryRun = false,         // --dry-run
-        bool RecoverStale = false    // --recover-stale
+        bool RecoverStale = false,   // --recover-stale
+        string? Prefer = null,       // --prefer <cost|latency|quality> (S04E09)
+        bool WhyThisModel = false    // --why-this-model (S04E09)
     );
 
     private static async Task<int> Main(string[] args)
@@ -518,6 +520,13 @@ internal class Program
             return RunEstimate(opts);
         }
 
+        // S04E09 -- The Override. --why-this-model answers "which model, and why" with no
+        // credentials and no network, so it works on a fresh install and in CI.
+        if (opts.WhyThisModel)
+        {
+            return WhyThisModelCommand(opts, userConfig);
+        }
+
         // Resolve endpoint and API key. Precedence: env > UserConfig (set via the
         // setup wizard or `--config set`) > error/auto-wizard. Environment variables
         // win so a project-local .env / shell export always overrides the persisted
@@ -603,15 +612,12 @@ internal class Program
         // for Wave 1 (E09 wires --prefer). Empty-result FALLBACK still
         // translates to a null envDefaultModel so the existing chain
         // (profile -> smart default -> hardcoded fallback) is preserved.
-        var pickerAllowlistRaw = Environment.GetEnvironmentVariable("AZUREOPENAIMODEL");
-        var pickerAllowlist = string.IsNullOrWhiteSpace(pickerAllowlistRaw)
-            ? Array.Empty<string>()
-            : pickerAllowlistRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var pickerAllowlist = PickerAllowlist();
         var pickerResult = AzureOpenAI_CLI.Resolution.ResolveSmartDefault.Pick(
             new AzureOpenAI_CLI.Resolution.ArrayModelRegistry(RegistryEntries ?? Array.Empty<Registry.ModelRegistryEntry>()),
             new AzureOpenAI_CLI.Resolution.ResolverInputs(
                 ExplicitModel: null,
-                PreferAxis: null,
+                PreferAxis: opts.Prefer,
                 Allowlist: pickerAllowlist));
         // S04E05 W3 -- emit resolver decision through the existing
         // TelemetryEmitter NDJSON surface (AZ_AI_TELEMETRY=1). Pick() stays
@@ -1565,6 +1571,8 @@ internal class Program
         bool dryRun = false;
         bool recoverStale = false;
         var mcpServers = new List<string>();
+        string? prefer = null;
+        bool whyThisModel = false;
         bool afterDoubleDash = false;
         var positionalArgs = new List<string>();
 
@@ -1923,6 +1931,24 @@ internal class Program
                     break;
                 case "--telemetry":
                     enableTelemetry = true;
+                    break;
+                // S04E09 -- The Override. Case-insensitive on input; the picker itself is
+                // ordinal and case-sensitive, so normalize here and reject anything else
+                // loudly (exit 2) instead of letting the picker silently ignore a typo.
+                case "--prefer":
+                    if (i + 1 < args.Length)
+                    {
+                        var axis = AzureOpenAI_CLI.Resolution.ModelDecisionExplainer.NormalizeAxis(args[++i]);
+                        if (!AzureOpenAI_CLI.Resolution.ModelDecisionExplainer.IsValidAxis(axis))
+                        {
+                            Fail("--prefer must be one of: cost, latency, quality");
+                        }
+                        prefer = axis;
+                    }
+                    else { Fail("--prefer requires an axis: cost, latency, or quality"); }
+                    break;
+                case "--why-this-model":
+                    whyThisModel = true;
                     break;
                 case "--estimate":
                 case "--dry-run-cost":
@@ -2347,6 +2373,8 @@ internal class Program
             Concurrency = concurrency,
             DryRun = dryRun,
             RecoverStale = recoverStale,
+            Prefer = prefer,
+            WhyThisModel = whyThisModel,
             Plain = plain,
             Offline = offline,
             Provider = provider,
@@ -4032,6 +4060,10 @@ Usage:
 
 Core Options:
   --model, -m <alias|name>  Model deployment or alias (env: AZUREOPENAIMODEL, AZ_MODEL)
+  --prefer <axis>           Pick from AZUREOPENAIMODEL by cost, latency or quality (needs tier
+                            data in the model registry; --model wins over --prefer)
+  --why-this-model          Explain which model would be used and why, then exit
+                            (no credentials needed; supports --json)
   --provider <name>         Provider override: azure | openai | groq | together |
                             cloudflare | foundry. Wins over AZ_PROVIDER and over
                             any profile pin. (env: AZ_PROVIDER) (S03E20)
@@ -4238,7 +4270,7 @@ _az_ai_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-serve --allow-shell --read-only""
 
     case ""${prev}"" in
         --completions)
@@ -4247,6 +4279,10 @@ _az_ai_completions()
             ;;
         --config)
             COMPREPLY=( $(compgen -W ""set get list reset show export-env"" -- ${cur}) )
+            return 0
+            ;;
+        --prefer)
+            COMPREPLY=( $(compgen -W ""cost latency quality"" -- ${cur}) )
             return 0
             ;;
         --set-model|--model)
@@ -4305,6 +4341,20 @@ _az-ai() {
         '--task-file[Ralph task file]:path:'
         '--setup[Interactive setup wizard]'
         '--init-wizard[Alias for --setup]'
+        '--prefer[Pick model by axis]:axis:(cost latency quality)'
+        '--why-this-model[Explain the model pick and exit]'
+        '--code[Print only fenced code blocks]'
+        '--jsonl[Stream NDJSON events]'
+        '--list-tools[List built-in and plugin tools]'
+        '--plugin-dir[Load tool manifests from dir]:path:_files -/'
+        '--allow-local-plugins[Allow repo-local tool manifests]'
+        '--no-plugins[Disable manifest plugins]'
+        '--pattern[Apply a prompt pattern]:name:'
+        '--patterns[List prompt patterns]'
+        '--mcp-server[Connect to an MCP stdio server]:spec:'
+        '--mcp-serve[Run as an MCP stdio server]'
+        '--allow-shell[Allow shell tool over MCP]'
+        '--read-only[Read-only MCP server]'
     )
     _arguments -s $opts
 }
@@ -4349,6 +4399,20 @@ complete -c az-ai -l validate -d 'Ralph validator' -r
 complete -c az-ai -l task-file -d 'Ralph task file' -r
 complete -c az-ai -l setup -d 'Interactive setup wizard'
 complete -c az-ai -l init-wizard -d 'Alias for --setup'
+complete -c az-ai -l prefer -d 'Pick model by axis' -xa 'cost latency quality'
+complete -c az-ai -l why-this-model -d 'Explain the model pick and exit'
+complete -c az-ai -l code -d 'Print only fenced code blocks'
+complete -c az-ai -l jsonl -d 'Stream NDJSON events'
+complete -c az-ai -l list-tools -d 'List built-in and plugin tools'
+complete -c az-ai -l plugin-dir -d 'Load tool manifests from dir' -r
+complete -c az-ai -l allow-local-plugins -d 'Allow repo-local tool manifests'
+complete -c az-ai -l no-plugins -d 'Disable manifest plugins'
+complete -c az-ai -l pattern -d 'Apply a prompt pattern' -r
+complete -c az-ai -l patterns -d 'List prompt patterns'
+complete -c az-ai -l mcp-server -d 'Connect to an MCP stdio server' -r
+complete -c az-ai -l mcp-serve -d 'Run as an MCP stdio server'
+complete -c az-ai -l allow-shell -d 'Allow shell tool over MCP'
+complete -c az-ai -l read-only -d 'Read-only MCP server'
 complete -c az-ai -w az-ai
 ";
 
@@ -4366,6 +4430,45 @@ complete -c az-ai -w az-ai
     }
 
     // ── Model-alias commands (FR-010) ──────────────────────────────────────────
+
+    /// <summary>AZUREOPENAIMODEL entries in typed order; empty when unset.</summary>
+    private static string[] PickerAllowlist()
+    {
+        var raw = Environment.GetEnvironmentVariable("AZUREOPENAIMODEL");
+        return string.IsNullOrWhiteSpace(raw)
+            ? Array.Empty<string>()
+            : raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    /// <summary>
+    /// S04E09 -- <c>--why-this-model</c>: print which model az-ai would use and why, then exit 0.
+    /// No credentials, no network, no tokens. Explains the picker's decision (--model,
+    /// --prefer, AZUREOPENAIMODEL); it does not evaluate --profile / --provider overrides.
+    /// </summary>
+    internal static int WhyThisModelCommand(CliOptions opts, UserConfig config)
+    {
+        var decision = AzureOpenAI_CLI.Resolution.ModelDecisionExplainer.Decide(
+            new AzureOpenAI_CLI.Resolution.ArrayModelRegistry(
+                RegistryEntries ?? Array.Empty<Registry.ModelRegistryEntry>()),
+            explicitModel: config.ResolveModel(opts.Model),
+            preferAxis: opts.Prefer,
+            allowlist: PickerAllowlist(),
+            configDefault: config.ResolveSmartDefault(),
+            hardFallback: DefaultModelFallback);
+
+        if (opts.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(decision, AppJsonContext.Default.ModelDecision));
+        }
+        else
+        {
+            foreach (var line in AzureOpenAI_CLI.Resolution.ModelDecisionExplainer.Render(decision))
+            {
+                Console.WriteLine(line);
+            }
+        }
+        return 0;
+    }
 
     /// <summary>
     /// --models --json: machine-readable alias map for scripts and parent agents.

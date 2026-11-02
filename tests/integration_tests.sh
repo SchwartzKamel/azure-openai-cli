@@ -792,6 +792,99 @@ KCEOF2
         rm -rf "$oc_home" "$oc_answers" "$oc_log"
     fi
 
+    # ── S04E09 -- The Override (--prefer / --why-this-model) ────────────
+    # Real binary, hermetic HOME, NO credentials: --why-this-model must answer on a
+    # fresh install. The user registry carries tiers so each axis visibly re-orders
+    # the list (slow-big leads the list but loses latency and cost).
+    echo "▸ S04E09 -- --prefer and --why-this-model"
+    local ov_home; ov_home=$(mktemp -d)
+    mkdir -p "$ov_home/.config/az-ai"
+    cat > "$ov_home/.config/az-ai/registry.json" <<'REGJSON'
+[
+  {"name":"slow-big","provider":"azure","capabilities":["streaming"],"contextWindow":128000,"costTier":"high","latencyTier":"slow","qualityTier":"premium"},
+  {"name":"fast-small","provider":"azure","capabilities":["streaming"],"contextWindow":128000,"costTier":"low","latencyTier":"fast","qualityTier":"basic"}
+]
+REGJSON
+    ov_run() {
+        env -i HOME="$ov_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+            AZUREOPENAIMODEL="slow-big,fast-small" "$BIN" "$@" 2>/dev/null
+    }
+    local ov_out
+
+    ov_out=$(ov_run --why-this-model); local ov_rc=$?
+    if [ "$ov_rc" -eq 0 ] && printf '%s' "$ov_out" | grep -qF 'Model: slow-big' \
+        && printf '%s' "$ov_out" | grep -qF 'Reason code: ALLOWLIST_HEAD'; then
+        pass "S04E09 why-this-model: no preference, head of list, no credentials needed"
+    else
+        fail "S04E09 why-this-model: no preference, head of list, no credentials needed" "rc=$ov_rc out=$ov_out"
+    fi
+
+    local ov_axis ov_want
+    for pair in "latency:fast-small" "cost:fast-small" "quality:slow-big"; do
+        ov_axis="${pair%%:*}"; ov_want="${pair##*:}"
+        ov_out=$(ov_run --why-this-model --prefer "$ov_axis")
+        if printf '%s' "$ov_out" | grep -qF "Model: $ov_want" \
+            && printf '%s' "$ov_out" | grep -qF 'Reason code: PREFER_AXIS'; then
+            pass "S04E09 prefer $ov_axis picks $ov_want"
+        else
+            fail "S04E09 prefer $ov_axis picks $ov_want" "out=$ov_out"
+        fi
+    done
+
+    ov_out=$(ov_run --why-this-model --model slow-big --prefer latency)
+    if printf '%s' "$ov_out" | grep -qF 'Model: slow-big' \
+        && printf '%s' "$ov_out" | grep -qF 'Reason code: EXPLICIT' \
+        && printf '%s' "$ov_out" | grep -qF -- '--prefer was ignored'; then
+        pass "S04E09 --model beats --prefer and says --prefer was ignored"
+    else
+        fail "S04E09 --model beats --prefer and says --prefer was ignored" "out=$ov_out"
+    fi
+
+    ov_out=$(ov_run --why-this-model --prefer latency --json)
+    if printf '%s' "$ov_out" | grep -qF '"reason_code": "PREFER_AXIS"' \
+        && printf '%s' "$ov_out" | grep -qF '"model": "fast-small"'; then
+        pass "S04E09 why-this-model --json emits the envelope"
+    else
+        fail "S04E09 why-this-model --json emits the envelope" "out=$ov_out"
+    fi
+
+    local ov_bad_rc
+    set +e
+    env -i HOME="$ov_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        "$BIN" --prefer speed --why-this-model >/dev/null 2>&1
+    ov_bad_rc=$?
+    set -e
+    if [ "$ov_bad_rc" -ne 0 ]; then
+        pass "S04E09 --prefer rejects an unknown axis (rc=$ov_bad_rc)"
+    else
+        fail "S04E09 --prefer rejects an unknown axis" "expected non-zero, got 0"
+    fi
+    rm -rf "$ov_home"
+
+    # Honesty case: a STOCK install (no user registry) ships cost tiers only. --prefer
+    # latency must say it had nothing to rank instead of pretending to decide.
+    local ov_stock; ov_stock=$(mktemp -d)
+    ov_out=$(env -i HOME="$ov_stock" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIMODEL="gpt-4o-mini,gpt-5.4-nano" "$BIN" --why-this-model --prefer latency 2>/dev/null)
+    if printf '%s' "$ov_out" | grep -qF "No 'latency' tier data" \
+        && printf '%s' "$ov_out" | grep -qF 'Model: gpt-4o-mini'; then
+        pass "S04E09 stock install: --prefer latency reports it had no tier data"
+    else
+        fail "S04E09 stock install: --prefer latency reports it had no tier data" "out=$ov_out"
+    fi
+    rm -rf "$ov_stock"
+
+    # Completions must carry the new flags or tab-completion silently omits them.
+    local ov_comp
+    for shell in bash zsh fish; do
+        ov_comp=$(env -i HOME="${TMPDIR:-/tmp}" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" --completions "$shell" 2>/dev/null)
+        if printf '%s' "$ov_comp" | grep -qF -- 'why-this-model' && printf '%s' "$ov_comp" | grep -qF -- 'prefer'; then
+            pass "S04E09 $shell completions include --prefer and --why-this-model"
+        else
+            fail "S04E09 $shell completions include --prefer and --why-this-model" "missing"
+        fi
+    done
+
     # ── S03E25 -- The Rotation (Newman BYOK rotation flow) ───────────────
     echo ""
     echo "▸ S03E25 -- creds rotate (--rotate-creds)"

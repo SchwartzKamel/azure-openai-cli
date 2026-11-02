@@ -140,6 +140,8 @@ Scripting tip: `az-ai --version --short` emits bare semver (e.g. `2.0.0`) -- ide
 | `--mcp-server <spec>` / `az-ai mcp tools` / `az-ai mcp call` | Connect `az-ai` as an MCP `stdio` client to external MCP servers, inspect their tools, call them directly, or bridge them into `--agent` and `--ralph` runs. |
 | `az-ai queue` / `az-ai commander` (`init\|add\|plan\|status\|run\|clear`) | Built-in DAG Work Queue orchestrator (`.az-ai/queue.json`) with dependency cycle detection, atomic persistence, `--concurrency 1..8`, `--dry-run`, `--recover-stale`, and per-task provider/model/persona/pattern/validator routing. |
 | `--provider <name>` / `--profile <name>` | Select a provider or a named profile from `preferences.json` (precedence: flag, env, profile, default). See the preferences section below. Queued tasks (`az-ai queue run`) route through the same stack by model name. |
+| `--prefer <cost\|latency\|quality>` | When `AZUREOPENAIMODEL` lists several models, pick by that axis instead of taking the first. Needs tier data in the model registry (a stock install has cost tiers only). `--model` wins over `--prefer`. |
+| `--why-this-model [--json]` | Print which model would be used and why, then exit. No credentials, no network, no tokens. |
 | `--config <path>` | Use an alternate config file instead of `./.azureopenai-cli.json` or `~/.azureopenai-cli.json`. |
 | `--config set/get/list/reset/show` | Full CRUD for the persistent user config (e.g. `az-ai --config set defaults.temperature=0.3`). |
 | `--completions <bash\|zsh\|fish>` | Emit a shell-completion script to stdout. Source it or drop it into your completions dir. |
@@ -308,6 +310,43 @@ Switch resolution (S03E20):
 # Override a profile's provider for one invocation:
 $ az-ai --profile work --provider openai "draft a release note"
 ```
+
+### Picking by cost, latency or quality (S04E09 *The Override*)
+
+List more than one model in `AZUREOPENAIMODEL` and `az-ai` uses the first by default. `--prefer` ranks them by an axis instead, and `--why-this-model` shows the decision without calling the API:
+
+```bash
+$ export AZUREOPENAIMODEL="gpt-4o,gpt-4o-mini"
+$ az-ai --why-this-model --prefer cost
+Model: gpt-4o-mini
+Reason code: PREFER_AXIS
+Why: model 'gpt-4o-mini' chosen for axis 'cost' (tier low; runner-up gpt-4o)
+Prefer: cost
+Candidates: gpt-4o, gpt-4o-mini
+```
+
+Precedence is `--model` first (it names the model directly, so `--prefer` is ignored and the output says so), then `--prefer`, then the first model in the list. The reason code is one of `EXPLICIT`, `PREFER_AXIS`, `ALLOWLIST_HEAD` or `FALLBACK`.
+
+**`--prefer` only helps if the registry has the data.** The ranking reads tiers from the model registry:
+
+| Axis | Field | Best to worst |
+|---|---|---|
+| `cost` | `costTier` | `low`, `medium`, `high` |
+| `latency` | `latencyTier` | `fast`, `medium`, `slow` |
+| `quality` | `qualityTier` | `premium`, `standard`, `basic` |
+
+`costTier` is a coarse label, not a price: two `low` models tie and keep your list order. For dollars, use `--estimate`.
+
+A stock install ships `costTier` only, so `--prefer latency` and `--prefer quality` have nothing to rank. They keep your list order and `--why-this-model` says so in a `Note:` line, so a flag never looks like a decision it did not make. To add tiers, create `~/.config/az-ai/registry.json`. **That file replaces the built-in list entirely** (no merge), so include every model you want:
+
+```json
+[
+  {"name":"gpt-4o","provider":"azure","capabilities":["tool_calls","streaming"],"contextWindow":128000,"costTier":"high","latencyTier":"medium","qualityTier":"premium"},
+  {"name":"gpt-4o-mini","provider":"azure","capabilities":["tool_calls","streaming"],"contextWindow":128000,"costTier":"low","latencyTier":"fast","qualityTier":"standard"}
+]
+```
+
+`--why-this-model --json` emits `model`, `reason_code`, `reason`, `candidates`, and (when set) `prefer` and `note`. It explains the model pick only; it does not evaluate `--profile` or `--provider` overrides.
 
 ### Makefile targets
 

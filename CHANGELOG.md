@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(models):** S04E09 *The Override* -- `--prefer <cost|latency|quality>` ranks the
+  models in `AZUREOPENAIMODEL` by an axis (`--model` still wins), and
+  `--why-this-model [--json]` explains the pick with no credentials, network or
+  tokens. A preference with no registry data keeps list order and says so in a
+  `Note:` line instead of posing as a decision. Tab-completion for bash, zsh and fish
+  now includes these flags and the earlier agent-interop flags (`--jsonl`, `--code`,
+  `--list-tools`, `--pattern`, `--mcp-server`, ...), which were missing.
 - **fix(security):** the shell tool now refuses destructive remote git operations
   (`--force`, `--force-with-lease`, `-f`/`-d` clusters, `+refspec`, `:ref` delete,
   `--mirror`), including when wrapped in `sh -c` or chained. Defense in depth, not

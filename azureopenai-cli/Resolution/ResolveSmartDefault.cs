@@ -263,6 +263,21 @@ internal static class ResolveSmartDefault
         return a.Index - b.Index;
     }
 
+    /// <summary>
+    /// True when <paramref name="name"/> is in the registry AND carries a tier for
+    /// <paramref name="axis"/> that the ranker can order (inside the pinned vocabulary).
+    /// Uses the same rule as <see cref="RankByAxis"/>, so "had data" can never disagree
+    /// with "was ranked". S04E09 uses it to say so when a preference had nothing to rank.
+    /// </summary>
+    internal static bool HasUsableTier(IModelRegistry registry, string name, string axis)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        return registry.TryGet(name, out var entry)
+            && entry is not null
+            && SelectTier(entry, axis) is { } tier
+            && RankTier(axis, tier) != int.MaxValue;
+    }
+
     private static string? SelectTier(ModelRegistryEntry entry, string axis)
     {
         if (string.Equals(axis, "cost", StringComparison.Ordinal))
