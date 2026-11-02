@@ -1024,6 +1024,93 @@ EVSUITE
         fail "S04E13 eval-lint: a missing binary fails loudly (exit 2), never a silent pass" "rc=$ev_rc out=$ev_out"
     fi
 
+    # ── S04E14 -- The Rebrand: the old names keep working ────────────────
+    # hopper is the command; az-ai (and az-ai-wrap) stay as aliases. These cases pin the parts of
+    # that promise that live outside the binary: the WSL wrapper's fallback and the install link.
+    echo "▸ S04E14 aliases keep working"
+    al_repo="$(pwd)"
+    al_dir=$(mktemp -d "${TMPDIR:-/tmp}/hopper-alias.XXXXXX")
+    al_stub() { printf '#!/bin/sh\necho "ran:$(basename "$0") args:$* stdin:$(cat)"\n' > "$1"; chmod +x "$1"; }
+
+    if [ -x /usr/local/bin/hopper ] || [ -x /usr/local/bin/az-ai ]; then
+        skip "S04E14 wrapper: fallback between hopper and az-ai" "a real /usr/local/bin/hopper or az-ai is installed and the wrapper prefers it"
+    else
+        mkdir -p "$al_dir/new" "$al_dir/old" "$al_dir/both"
+        al_stub "$al_dir/new/hopper"; al_stub "$al_dir/old/az-ai"
+        al_stub "$al_dir/both/hopper"; ln -s hopper "$al_dir/both/az-ai"
+        al_run() { # $1 = bin dir, $2 = wrapper to run
+            # `|| true`: this suite runs under set -e, and a wrapper that exits non-zero must be
+            # reported as a FAIL below, not abort the whole run.
+            echo hi | env -i HOME="$al_dir" PATH="$1:/usr/bin:/bin" AZUREOPENAIENDPOINT=x AZUREOPENAIAPI=y \
+                bash "$2" --raw 2>&1 || true
+        }
+        al_wrap="$al_repo/examples/espanso-ahk-wsl/wsl-wrapper/hopper-wrap.sh"
+
+        al_out=$(al_run "$al_dir/new" "$al_wrap")
+        if [ "$al_out" = "ran:hopper args:--raw stdin:hi" ]; then
+            pass "S04E14 wrapper: runs hopper when it is installed"
+        else
+            fail "S04E14 wrapper: runs hopper when it is installed" "out=$al_out"
+        fi
+
+        al_out=$(al_run "$al_dir/old" "$al_wrap")
+        if [ "$al_out" = "ran:az-ai args:--raw stdin:hi" ]; then
+            pass "S04E14 wrapper: falls back to az-ai on an install that predates the rename"
+        else
+            fail "S04E14 wrapper: falls back to az-ai on an install that predates the rename" "out=$al_out"
+        fi
+
+        al_out=$(al_run "$al_dir/both" "$al_wrap")
+        if [ "$al_out" = "ran:hopper args:--raw stdin:hi" ]; then
+            pass "S04E14 wrapper: prefers hopper when both names exist"
+        else
+            fail "S04E14 wrapper: prefers hopper when both names exist" "out=$al_out"
+        fi
+
+        # The install step links az-ai-wrap to hopper-wrap; the script must not depend on its own name.
+        ln -s "$al_wrap" "$al_dir/az-ai-wrap"
+        al_out=$(al_run "$al_dir/new" "$al_dir/az-ai-wrap")
+        if [ "$al_out" = "ran:hopper args:--raw stdin:hi" ]; then
+            pass "S04E14 wrapper: invoked as az-ai-wrap (the old name) still works"
+        else
+            fail "S04E14 wrapper: invoked as az-ai-wrap (the old name) still works" "out=$al_out"
+        fi
+    fi
+
+    # make install must leave both names; make uninstall must remove both. A stand-in binary keeps
+    # this independent of an AOT build.
+    mkdir -p "$al_dir/mk/dist/aot"
+    al_stub "$al_dir/mk/dist/aot/hopper"
+    if make -C "$al_dir/mk" -f "$al_repo/Makefile" install PREFIX="$al_dir/mk/prefix" >/dev/null 2>&1 \
+        && [ -x "$al_dir/mk/prefix/bin/hopper" ] && [ "$(readlink "$al_dir/mk/prefix/bin/az-ai")" = "hopper" ]; then
+        pass "S04E14 make install: installs hopper and links az-ai to it"
+    else
+        fail "S04E14 make install: installs hopper and links az-ai to it" "$(ls -l "$al_dir/mk/prefix/bin" 2>&1 | tr '\n' ' ')"
+    fi
+    # An older install left a regular az-ai file; upgrading must replace it with the link.
+    rm -f "$al_dir/mk/prefix/bin/az-ai"; printf '#!/bin/sh\necho old\n' > "$al_dir/mk/prefix/bin/az-ai"; chmod +x "$al_dir/mk/prefix/bin/az-ai"
+    make -C "$al_dir/mk" -f "$al_repo/Makefile" install PREFIX="$al_dir/mk/prefix" >/dev/null 2>&1 || true
+    if [ "$(readlink "$al_dir/mk/prefix/bin/az-ai")" = "hopper" ]; then
+        pass "S04E14 make install: an older az-ai file is replaced by the link"
+    else
+        fail "S04E14 make install: an older az-ai file is replaced by the link" "$(ls -l "$al_dir/mk/prefix/bin" 2>&1 | tr '\n' ' ')"
+    fi
+    make -C "$al_dir/mk" -f "$al_repo/Makefile" uninstall PREFIX="$al_dir/mk/prefix" >/dev/null 2>&1 || true
+    if [ ! -e "$al_dir/mk/prefix/bin/hopper" ] && [ ! -e "$al_dir/mk/prefix/bin/az-ai" ] && [ ! -L "$al_dir/mk/prefix/bin/az-ai" ]; then
+        pass "S04E14 make uninstall: removes hopper and the az-ai link"
+    else
+        fail "S04E14 make uninstall: removes hopper and the az-ai link" "$(ls -l "$al_dir/mk/prefix/bin" 2>&1 | tr '\n' ' ')"
+    fi
+
+    # The shell completions the real binary prints register both names.
+    al_comp=$("$BIN" --completions bash 2>&1 || true)
+    if printf '%s' "$al_comp" | grep -qF 'complete -F _hopper_completions hopper az-ai'; then
+        pass "S04E14 completions: the binary registers hopper and az-ai"
+    else
+        fail "S04E14 completions: the binary registers hopper and az-ai" "out=$al_comp"
+    fi
+    rm -rf "$al_dir"
+
 
     if ! command -v python3 >/dev/null 2>&1; then
         skip "S04E10 eval: end-to-end against a fake model server" "python3 not available"

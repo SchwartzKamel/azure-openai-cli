@@ -284,14 +284,21 @@ function Invoke-Verify {
         $fail = 1
     }
 
-    # Probe 3: az-ai binary resolvable
-    $azAi = Get-Command az-ai -ErrorAction SilentlyContinue
-    if (-not $azAi) { $azAi = Get-Command az-ai.exe -ErrorAction SilentlyContinue }
+    # Probe 3: binary resolvable. hopper is the command; az-ai is its old name and still works.
+    $azAi = Get-Command hopper -ErrorAction SilentlyContinue
     if ($azAi) {
-        Write-Ok "az-ai binary resolves → $($azAi.Source)"
+        Write-Ok "hopper binary resolves → $($azAi.Source)"
     } else {
-        Write-Warn 'az-ai binary is NOT on PATH'
-        Write-Warn '  install (AOT): copy dist\aot\AzureOpenAI_CLI.exe to a folder on PATH, rename to az-ai.exe'
+        $azAi = Get-Command az-ai -ErrorAction SilentlyContinue
+        if (-not $azAi) { $azAi = Get-Command az-ai.exe -ErrorAction SilentlyContinue }
+        if ($azAi) {
+            Write-Ok "az-ai (the old name of hopper) resolves → $($azAi.Source)"
+            Write-Warn '  hopper itself is not installed; the release archive contains both hopper.exe and az-ai.exe'
+        }
+    }
+    if (-not $azAi) {
+        Write-Warn 'hopper binary is NOT on PATH'
+        Write-Warn '  install (AOT): copy hopper.exe (and az-ai.exe, the old name) from the release archive to a folder on PATH'
         Write-Warn '  or add its folder to User PATH via System Properties → Environment Variables'
     }
 
@@ -351,10 +358,10 @@ function Main {
     if ($UseColor) { Write-Host '━━━ done ━━━' -ForegroundColor Green } else { Write-Host '━━━ done ━━━' }
     Write-Host 'Next steps:'
     Write-Host '  1. Open a NEW PowerShell window (or restart espanso so it picks up the change).'
-    Write-Host "  2. Test:    az-ai --raw --system 'Say hi.' <<< 'test'     # PS 7+ only, use -i on PS 5.1"
-    Write-Host "     PS 5.1:  'test' | az-ai --raw --system 'Say hi.'"
+    Write-Host "  2. Test:    hopper --raw --system 'Say hi.' <<< 'test'     # PS 7+ only, use -i on PS 5.1"
+    Write-Host "     PS 5.1:  'test' | hopper --raw --system 'Say hi.'"
     Write-Host '  3. Test espanso sim:'
-    Write-Host "     powershell -NoLogo -Command 'Get-Clipboard | az-ai --raw --system ''Fix grammar.'''"
+    Write-Host "     powershell -NoLogo -Command 'Get-Clipboard | hopper --raw --system ''Fix grammar.'''"
     Write-Host '  4. Rotate creds? Just re-run this script — it is idempotent.'
     Write-Host '  5. Recheck without re-prompting:'
     Write-Host '     .\scripts\setup-secrets.ps1 -VerifyOnly'

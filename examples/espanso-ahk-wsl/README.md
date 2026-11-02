@@ -1,10 +1,16 @@
-# az-ai Espanso + AutoHotkey Kit (WSL edition)
+# hopper Espanso + AutoHotkey Kit (WSL edition)
 
-Turnkey text-expansion kit for [`az-ai`](https://github.com/SchwartzKamel/azure-openai-cli)
+Turnkey text-expansion kit for [`hopper`](https://github.com/SchwartzKamel/azure-openai-cli)
 on a **WSL-on-Windows** setup. Every snippet is paste-ready, uses `--raw`, routes
 spinner noise to `/dev/null` / `NUL`, and sends user input over **stdin** (never
 shell-interpolated args).
 
+> **Renamed.** The command was `az-ai`; it is now `hopper`. **Nothing you already set up breaks:**
+> `az-ai` is installed as an alias (`make install` and the release archives do it), the wrapper
+> `az-ai-wrap` still works, and your settings stay in `~/.config/az-ai/`. The files in this kit
+> call `hopper`. If your install predates the rename and only has `az-ai`, either upgrade, or
+> run `sudo ln -s "$(command -v az-ai)" /usr/local/bin/hopper` once.
+>
 > **Latency budget:** plan for **2-3 s** per response in steady state. First call
 > after a warm-less WSL distro may add ~1 s. Azure round-trip dominates; local
 > overhead is <100 ms on either path below.
@@ -20,22 +26,22 @@ shell-interpolated args).
 | `espanso/ai.yml`               | Espanso matches for **Option A** (Espanso runs inside WSL): `:ai`, `:aifix`, `:aiexp`, `:aitldr`, `:aic`, etc. |
 | `espanso/ai-windows-to-wsl.yml`| Espanso matches for **Option B** (Espanso on Windows → `wsl.exe`). |
 | `espanso/ai-macos.yml`         | Espanso matches for **Option C** (Espanso on macOS, native). |
-| `ahk/az-ai.ahk`                | AutoHotkey v2 script for global Windows hotkeys (Ctrl+Shift+A, Ctrl+Shift+E, etc.) → WSL. |
-| `wsl-wrapper/az-ai-wrap.sh`    | Optional login-shell wrapper so Windows callers inherit env vars. |
+| `ahk/hopper.ahk`                | AutoHotkey v2 script for global Windows hotkeys (Ctrl+Shift+A, Ctrl+Shift+E, etc.) → WSL. |
+| `wsl-wrapper/hopper-wrap.sh`    | Optional login-shell wrapper so Windows callers inherit env vars. |
 
 ### Prompt Templates (NEW)
 
 | File | Purpose |
 |------|---------|
 | `espanso/ai-prompts.yml`       | **Espanso triggers** for five canonical prompting templates (`:aiquestion`, `:aiarch`, `:aicode`, `:aidataworkflow`, `:aicost`). |
-| `ahk/az-ai-prompts.ahk`        | **AutoHotkey v2 hotkeys** for five canonical templates (Ctrl+Shift+Q, Ctrl+Shift+R, etc.). |
+| `ahk/hopper-prompts.ahk`        | **AutoHotkey v2 hotkeys** for five canonical templates (Ctrl+Shift+Q, Ctrl+Shift+R, etc.). |
 | `PROMPT-TEMPLATES-INTEGRATION.md` | **Setup guide** and reference for using the five prompting templates. |
 
 ### Documentation
 
 | File | Purpose |
 |------|---------|
-| `docs/prompts/system-prompt-master.md` | Master system prompt (foundation for all az-ai interactions). |
+| `docs/prompts/system-prompt-master.md` | Master system prompt (foundation for all hopper interactions). |
 | `docs/prompts/task-templates.md` | Five canonical task templates (A–E) with output format specs and quick-start prompts. |
 
 **Pick one Espanso option** (A, B, or C) for your platform. **AHK is independent** and complements A or B. **Prompt templates are optional** — use them if you want structured output for planning, architecture, code generation, data workflows, or cost analysis.
@@ -61,13 +67,14 @@ All commands below run **inside WSL** (Ubuntu 24.04 assumed).
 # From the repo root, or download from Releases:
 cd ~/tools/azure-openai-cli
 make publish-aot
-sudo install -m 0755 dist/aot/AzureOpenAI_CLI /usr/local/bin/az-ai
-az-ai --help | head -5
+sudo install -m 0755 dist/aot/hopper /usr/local/bin/hopper
+sudo ln -sf hopper /usr/local/bin/az-ai   # the old name keeps working
+hopper --help | head -5
 ```
 
 ### 1.2 Set up credentials
 
-**Preferred (v2.1.1+):** write a config-env file that `az-ai` auto-loads on
+**Preferred (v2.1.1+):** write a config-env file that `hopper` auto-loads on
 every invocation -- no shell-profile hook needed, and non-login contexts
 (Espanso, AHK, cron) pick up the vars automatically:
 
@@ -81,13 +88,13 @@ EOF
 chmod 600 ~/.config/az-ai/env
 ```
 
-**Alternative:** export in `~/.bashrc` (works but requires `az-ai-wrap` for
+**Alternative:** export in `~/.bashrc` (works but requires `hopper-wrap` for
 Windows-side callers since `wsl.exe` skips login profiles):
 
 ```bash
 cat >> ~/.bashrc <<'BASHRC'
 
-# --- az-ai (Azure OpenAI CLI) ---
+# --- hopper (Azure OpenAI CLI) ---
 export AZUREOPENAIENDPOINT="https://YOUR-RESOURCE.openai.azure.com"
 export AZUREOPENAIAPI="YOUR-API-KEY"
 export AZUREOPENAIMODEL="gpt-4o-mini"
@@ -105,7 +112,7 @@ source ~/.bashrc
 ### 1.3 Verify the happy path
 
 ```bash
-echo "say hello in 3 words" | az-ai --raw 2>/dev/null
+echo "say hello in 3 words" | hopper --raw 2>/dev/null
 # → should print ~3 words, no spinner, no trailing newline, exit 0
 ```
 
@@ -114,7 +121,7 @@ If that fails, **fix it before continuing** -- every path below depends on it.
 ### 1.4 Install the optional wrapper (Option B / AHK with bashrc-only creds)
 
 > **v2.1.1+ users who store creds in `~/.config/az-ai/env` (section 1.2) can
-> skip this step** -- `az-ai` auto-loads that file at startup, even in
+> skip this step** -- `hopper` auto-loads that file at startup, even in
 > non-login shells. The wrapper is only needed if creds live exclusively in
 > `~/.bashrc`.
 
@@ -122,13 +129,14 @@ If that fails, **fix it before continuing** -- every path below depends on it.
 sourced and env vars are missing. Install the wrapper:
 
 ```bash
-sudo install -m 0755 wsl-wrapper/az-ai-wrap.sh /usr/local/bin/az-ai-wrap
+sudo install -m 0755 wsl-wrapper/hopper-wrap.sh /usr/local/bin/hopper-wrap
+sudo ln -sf hopper-wrap /usr/local/bin/az-ai-wrap   # existing AHK/Espanso configs keep working
 # Smoke test:
-echo "test" | /usr/local/bin/az-ai-wrap --raw 2>/dev/null
+echo "test" | /usr/local/bin/hopper-wrap --raw 2>/dev/null
 ```
 
-Windows-side callers (Espanso-on-Windows, AHK) should invoke `az-ai-wrap`
-instead of `az-ai`. Inside WSL, either one works.
+Windows-side callers (Espanso-on-Windows, AHK) should invoke `hopper-wrap`
+instead of `hopper`. Inside WSL, either one works.
 
 ### 1.5 Install a clipboard tool (Option A only)
 
@@ -212,14 +220,14 @@ VS Code, Terminal, any Cocoa text field).
 
 ### Prerequisites
 
-1. Install `az-ai` (the AOT binary or via `dotnet tool`).
+1. Install `hopper` (the AOT binary or via `dotnet tool`).
 2. Set up credentials in `~/.config/az-ai/env` (same as section 1.2, works on
    macOS too).
 3. **Accessibility permission:** the first time a trigger fires, macOS will
    prompt you to grant Accessibility access. Go to:
    **System Settings → Privacy & Security → Accessibility → enable Espanso**.
    Without this, the "yada yada yada" placeholder will silently fail (but
-   `az-ai` itself will still work).
+   `hopper` itself will still work).
 
 ### Install Espanso for macOS
 
@@ -241,7 +249,7 @@ espanso restart
 
 ### Placeholder UX
 
-While `az-ai` processes, the text **yada yada yada** appears at the cursor
+While `hopper` processes, the text **yada yada yada** appears at the cursor
 so you know something is happening. Once the response arrives, the placeholder
 is deleted via backspaces and replaced with the actual response. This uses
 `osascript` (AppleScript) to simulate keystrokes -- hence the Accessibility
@@ -264,8 +272,8 @@ Complements Espanso Option A or B (or stands alone).
 
 1. Install **AutoHotkey v2** from <https://www.autohotkey.com/>. (**Not v1** --
    the script uses v2-only syntax.)
-2. Install `az-ai-wrap` inside WSL (section 1.4).
-3. Double-click `ahk/az-ai.ahk`, or drop a shortcut in `shell:startup` for
+2. Install `hopper-wrap` inside WSL (section 1.4).
+3. Double-click `ahk/hopper.ahk`, or drop a shortcut in `shell:startup` for
    auto-start on login.
 
 ### Hotkeys
@@ -292,9 +300,9 @@ Complements Espanso Option A or B (or stands alone).
 skipped. Two fixes:
 
 1. **(v2.1.1+ recommended)** Put credentials in `~/.config/az-ai/env`
-   (section 1.2). `az-ai` auto-loads this file at startup regardless of shell
+   (section 1.2). `hopper` auto-loads this file at startup regardless of shell
    context -- no wrapper needed.
-2. **Legacy:** Use `az-ai-wrap` (section 1.4) -- it sources `~/.bashrc`
+2. **Legacy:** Use `hopper-wrap` (section 1.4) -- it sources `~/.bashrc`
    explicitly before forwarding args.
 
 ### 6.2 Env-var inheritance across WSL boundary
@@ -306,7 +314,7 @@ genuinely need a Windows env var visible inside WSL:
 setx WSLENV "SOME_VAR/u:$env:WSLENV"
 ```
 
-(But for `az-ai` secrets -- don't. Put them in `~/.bashrc` inside WSL.)
+(But for `hopper` secrets -- don't. Put them in `~/.bashrc` inside WSL.)
 
 ### 6.3 Clipboard bridging
 
@@ -322,7 +330,7 @@ setx WSLENV "SOME_VAR/u:$env:WSLENV"
 
 ### 6.4 CRLF / newline handling
 
-PowerShell's `Get-Clipboard` emits **CRLF**. When piped into `az-ai` that's
+PowerShell's `Get-Clipboard` emits **CRLF**. When piped into `hopper` that's
 fine (the model tolerates it), but if the *output* goes back through a
 Windows-aware tool you may see doubled newlines. `ai-windows-to-wsl.yml` pipes
 clipboard via PowerShell and lets WSL strip CRs; if you see stray `^M` in
@@ -348,7 +356,7 @@ which disables all shell expansion inside the body.
 
 ### 6.7 WSL binary lives on a Windows drive
 
-Don't install `az-ai` into `/mnt/c/...`. Every syscall pays for 9P translation
+Don't install `hopper` into `/mnt/c/...`. Every syscall pays for 9P translation
 and cold-start balloons from ~10 ms to ~150 ms. Install into `/usr/local/bin`
 on the ext4 root.
 
@@ -356,13 +364,13 @@ on the ext4 root.
 
 ```bash
 # Inside WSL:
-which az-ai && which az-ai-wrap
+which hopper && which hopper-wrap
 echo $AZUREOPENAIENDPOINT ; echo $AZUREOPENAIMODEL
-echo "ping" | az-ai --raw 2>/dev/null
+echo "ping" | hopper --raw 2>/dev/null
 
 # From Windows PowerShell:
-wsl.exe -e /usr/local/bin/az-ai-wrap --raw "ping" 2>$null
-"ping" | wsl.exe -e /usr/local/bin/az-ai-wrap --raw 2>$null
+wsl.exe -e /usr/local/bin/hopper-wrap --raw "ping" 2>$null
+"ping" | wsl.exe -e /usr/local/bin/hopper-wrap --raw 2>$null
 ```
 
 All four should print a short response in under 3 s.
@@ -377,8 +385,8 @@ All four should print a short response in under 3 s.
   text-expansion transforms. Override with `AZUREOPENAIMODEL` if you want
   `gpt-4o`.
 - **Persona system (`:aic`).** The `:aic` trigger assumes you've run
-  `az-ai --squad-init` at some point and have a `reviewer` persona. If not,
+  `hopper --squad-init` at some point and have a `reviewer` persona. If not,
   it falls back to a plain `--system` prompt automatically -- see the comment in
   `ai.yml`.
 - **Hotkey collisions.** `Ctrl+Shift+S` is "Save As" in some apps. Remap in
-  `ahk/az-ai.ahk` if needed (e.g., to `Ctrl+Alt+S`).
+  `ahk/hopper.ahk` if needed (e.g., to `Ctrl+Alt+S`).

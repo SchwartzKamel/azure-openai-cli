@@ -759,7 +759,7 @@ set-image-model:
 	@echo "The image model also needs to be in AZURE_FOUNDRY_MODELS if it's"
 	@echo "hosted on Foundry (e.g. FLUX.2-pro). Use 'make set-foundry' first."
 
-## Install hardened Espanso config for WSL Path B (Windows Espanso -> WSL -> az-ai).
+## Install hardened Espanso config for WSL Path B (Windows Espanso -> WSL -> hopper).
 ## Copies examples/espanso-ahk-wsl/espanso/ai-windows-to-wsl.yml to the Windows
 ## Espanso match directory. Requires WSL with /mnt/c access.
 ESPANSO_WIN_DIR ?= /mnt/c/Users/$(shell cmd.exe /c "echo %USERNAME%" 2>/dev/null | tr -d '\r')/AppData/Roaming/espanso/match
@@ -773,16 +773,24 @@ espanso-install:
 	@echo "✓ Installed ai-wsl.yml to $(ESPANSO_WIN_DIR)/ai-wsl.yml"
 	@echo "  Restart Espanso on Windows to pick up changes."
 
-## Verify Espanso can reach az-ai through the WSL boundary.
-## Simulates the exact PowerShell -> wsl.exe -> bash -lc -> az-ai chain.
+# The command Espanso calls: hopper, or the old az-ai on an install that predates the rename.
+# Lazy (`=`), so the login shell is only asked when espanso-test runs.
+ESPANSO_CMD = $(shell bash -lc 'if command -v hopper >/dev/null 2>&1; then echo hopper; elif command -v az-ai >/dev/null 2>&1; then echo az-ai; else echo hopper; fi')
+
+## Verify Espanso can reach hopper (or the old az-ai name) through the WSL boundary.
+## Simulates the exact PowerShell -> wsl.exe -> bash -lc -> hopper chain.
 espanso-test:
-	@echo "Testing az-ai reachability from login shell..."
-	@bash -lc 'command -v az-ai' > /dev/null 2>&1 || { \
-		echo "FAIL: az-ai not found in login shell PATH." >&2; \
+	@echo "Testing $(ESPANSO_CMD) reachability from login shell..."
+	@bash -lc 'command -v $(ESPANSO_CMD)' > /dev/null 2>&1 || { \
+		echo "FAIL: $(ESPANSO_CMD) not found in login shell PATH." >&2; \
 		echo "  Run: make install" >&2; \
 		exit 1; \
 	}
-	@echo "  ✓ az-ai found at: $$(bash -lc 'command -v az-ai')"
+	@echo "  ✓ $(ESPANSO_CMD) found at: $$(bash -lc 'command -v $(ESPANSO_CMD)')"
+	@if [ "$(ESPANSO_CMD)" = "az-ai" ]; then \
+		echo "  note: only the old name az-ai is installed; the Espanso templates call hopper."; \
+		echo "        Run 'make install' (it installs both), then 'make espanso-install'."; \
+	fi
 	@echo "Testing env vars load in login shell..."
 	@bash -lc 'test -n "$$AZUREOPENAIENDPOINT"' || { \
 		echo "FAIL: AZUREOPENAIENDPOINT not set in login shell." >&2; \
@@ -792,8 +800,8 @@ espanso-test:
 	@echo "  ✓ AZUREOPENAIENDPOINT set"
 	@echo "Testing env auto-load (clean env, no shell profile)..."
 	@env -i HOME=$(HOME) PATH="$(HOME)/.local/bin:/usr/local/bin:/usr/bin:/bin" \
-		az-ai --version > /dev/null 2>&1 || { \
-		echo "FAIL: az-ai --version failed with clean env." >&2; \
+		$(ESPANSO_CMD) --version > /dev/null 2>&1 || { \
+		echo "FAIL: $(ESPANSO_CMD) --version failed with clean env." >&2; \
 		exit 1; \
 	}
 	@echo "  ✓ LoadConfigEnv works (auto-loads ~/.config/az-ai/env)"

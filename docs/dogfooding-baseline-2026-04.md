@@ -35,7 +35,7 @@ queried (see *What this baseline does NOT cover*).
    behind `:ai`, `:aifix`, `:aisum`, `:aiexp` Espanso triggers
    (`examples/espanso-ahk-wsl/espanso/ai.yml`) and the `Ctrl+Shift+A`
    / `+E` / `+G` / `+S` AutoHotkey v2 hotkeys
-   (`examples/espanso-ahk-wsl/ahk/az-ai.ahk`). Invoked by developers
+   (`examples/espanso-ahk-wsl/ahk/hopper.ahk`). Invoked by developers
    from any Windows/WSL editor; ad-hoc cadence; this is the canonical
    "primary use case" the README opens with.
 2. **CLI standard mode (one-shot prompts)** -- developers who have

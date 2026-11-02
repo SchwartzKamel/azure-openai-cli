@@ -462,8 +462,8 @@ the patterns.
 - [`accessibility/low-bandwidth-ssh.md`](accessibility/low-bandwidth-ssh.md)
   -- byte-budget guidance for 56 kbps / satellite / multi-hop SSH.
   `--raw`, `ControlMaster`, `--cache`, and a worked byte table.
-- [`../man/az-ai.1`](../man/az-ai.1) -- Unix man page (groff).
-  Preview with `man -l man/az-ai.1`. Stub: NAME, SYNOPSIS,
+- [`../man/hopper.1`](../man/hopper.1) -- Unix man page (groff).
+  Preview with `man -l man/hopper.1`. Stub: NAME, SYNOPSIS,
   DESCRIPTION, OPTIONS, ENVIRONMENT, EXIT STATUS, FILES, EXAMPLES,
   ACCESSIBILITY, BUGS, SEE ALSO, AUTHORS.
 
