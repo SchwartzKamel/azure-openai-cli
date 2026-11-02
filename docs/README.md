@@ -59,6 +59,7 @@ that shipped it, and where to read more.
 - [`config-reference.md`](config-reference.md) -- every flag and env var.
 - [`persona-guide.md`](persona-guide.md) -- `--persona`, `.squad.json`, persona memory.
 - [`espanso-ahk-integration.md`](espanso-ahk-integration.md) -- text-expander setup.
+- [`agent-ecosystem-field-guide.md`](agent-ecosystem-field-guide.md) -- using hopper with coding agents, MCP servers and ops tools, with measured results.
 - [`cost-optimization.md`](cost-optimization.md) -- model selection and budgeting.
 - [`accessibility.md`](accessibility.md) -- `NO_COLOR`, `--raw`, keyboard workflows. Deeper notes in [`accessibility/`](accessibility/).
 - [`i18n.md`](i18n.md) -- invariant globalization contract; deeper notes in [`i18n/`](i18n/).
