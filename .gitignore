@@ -20,6 +20,7 @@ scripts/*
 !scripts/name-screen.py
 !scripts/eval-gate.sh
 !scripts/eval-lint.sh
+!scripts/check-ignored-scripts.sh
 !scripts/lint-espanso-yml.sh
 !scripts/provider-deps.json
 !scripts/provider-deps.schema.json

@@ -46,7 +46,7 @@ DOTNET := $(shell command -v dotnet 2>/dev/null || echo "$$HOME/.dotnet/dotnet")
 
 .DEFAULT_GOAL := help
 
-.PHONY: all build dotnet-build eval-lint run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight exec-report-check docs-lint ascii-check findings-backlog-test install-hooks publish publish-fast publish-aot publish-r2r release-precheck release-notes-preview setup setup-secrets \
+.PHONY: all build dotnet-build eval-lint scripts-ignore-check run clean alias scan test integration-test docker-test smoke-test check help lint color-contract-lint format format-check audit all-tests preflight exec-report-check docs-lint ascii-check findings-backlog-test install-hooks publish publish-fast publish-aot publish-r2r release-precheck release-notes-preview setup setup-secrets \
 	publish-linux-x64 publish-linux-musl-x64 publish-linux-arm64 \
 	publish-osx-x64 publish-osx-arm64 \
 	publish-win-x64 publish-win-arm64 \
@@ -262,7 +262,7 @@ format-check:
 ## `docs-lint` and `ascii-check` slot between format-check and build: cheap, fail-fast,
 ## and they mirror the server-side `.github/workflows/docs-lint.yml` gates that were
 ## silently red on every push from 2026-05-13 (S04E01 close) onward. See S04SP3.
-preflight: format-check color-contract-lint docs-lint ascii-check dotnet-build test integration-test eval-lint exec-report-check
+preflight: format-check color-contract-lint docs-lint ascii-check scripts-ignore-check dotnet-build test integration-test eval-lint exec-report-check
 	@echo "[preflight] all gates green — safe to commit"
 
 ## Docs-lint: run markdownlint-cli2 locally with the exact args CI uses.
@@ -305,6 +305,10 @@ ascii-check:
 ## Lint eval corpora, fixtures and baselines for leaked secrets, PII and non-ASCII (needs a built binary).
 eval-lint: dotnet-build
 	@bash scripts/eval-lint.sh
+
+## Fail when a script is ignored by .gitignore (`scripts/*`) yet a tracked build file calls it.
+scripts-ignore-check:
+	@bash scripts/check-ignored-scripts.sh
 
 exec-report-check:
 	@bash scripts/exec-report-check.sh

@@ -33,6 +33,17 @@ cd "$repo_root"
 bash scripts/exec-report-check.sh
 
 # ---------------------------------------------------------------------------
+# Gate: ignored-but-referenced scripts. `.gitignore` carries `scripts/*`, so a new script is silently
+# left out of `git add -A` until it is whitelisted. If a tracked build file already calls it, a clean
+# checkout is broken. Independent of the push range, so it runs before the range logic below.
+# ---------------------------------------------------------------------------
+if ! bash scripts/check-ignored-scripts.sh >&2; then
+    echo "" >&2
+    echo "[pre-push] FAIL: a script the build needs is ignored by .gitignore (see above)." >&2
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
 # Determine the push range. Mirror exec-report-check.sh's discovery logic so
 # the two gates always agree on what "the push" means.
 # ---------------------------------------------------------------------------
