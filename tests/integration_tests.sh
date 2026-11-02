@@ -1111,6 +1111,77 @@ EVSUITE
     fi
     rm -rf "$al_dir"
 
+    # ── S04SP10 -- The Housekeeping: a script the build needs must not be hidden by .gitignore ──
+    # `.gitignore` carries `scripts/*` (it hides agent scratch files), so a NEW script is ignored until
+    # whitelisted. check-ignored-scripts.sh fails when a tracked build file already references one. Each
+    # case runs in a throwaway git repo so it does not depend on the state of this one.
+    echo "▸ S04SP10 ignored-script check"
+    ig_check="$(pwd)/scripts/check-ignored-scripts.sh"
+    ig_new() { # makes a fresh repo with the scripts/* rule and one whitelisted script
+        ig_dir=$(mktemp -d "${TMPDIR:-/tmp}/ignored-scripts.XXXXXX")
+        ( cd "$ig_dir" && git init -q . && mkdir scripts .github && printf 'scripts/*\n!scripts/known.sh\n' > .gitignore \
+            && echo 'echo known' > scripts/known.sh )
+    }
+    ig_run() { # prints output, then "rc=N"; never aborts the suite
+        ( cd "$ig_dir" && bash "$ig_check" 2>&1; echo "rc=$?" ) || true
+    }
+
+    ig_new
+    ( cd "$ig_dir" && echo 'echo new' > scripts/new.sh && printf 'test:\n\tbash scripts/new.sh\n' > Makefile && git add .gitignore Makefile scripts/known.sh ) >/dev/null 2>&1
+    ig_out=$(ig_run)
+    if printf '%s' "$ig_out" | grep -qF 'rc=1' && printf '%s' "$ig_out" | grep -qF '!scripts/new.sh' && printf '%s' "$ig_out" | grep -qF 'Makefile'; then
+        pass "S04SP10 ignored-script: an ignored script the Makefile calls fails, and says how to fix it"
+    else
+        fail "S04SP10 ignored-script: an ignored script the Makefile calls fails, and says how to fix it" "$ig_out"
+    fi
+
+    ( cd "$ig_dir" && echo '!scripts/new.sh' >> .gitignore )
+    ig_out=$(ig_run)
+    if printf '%s' "$ig_out" | grep -qF 'rc=0'; then
+        pass "S04SP10 ignored-script: whitelisting the script clears the failure"
+    else
+        fail "S04SP10 ignored-script: whitelisting the script clears the failure" "$ig_out"
+    fi
+    rm -rf "$ig_dir"
+
+    ig_new
+    ( cd "$ig_dir" && echo 'echo scratch' > scripts/scratch.sh && printf 'test:\n\tbash scripts/known.sh\n' > Makefile && git add .gitignore Makefile scripts/known.sh ) >/dev/null 2>&1
+    ig_out=$(ig_run)
+    if printf '%s' "$ig_out" | grep -qF 'rc=0'; then
+        pass "S04SP10 ignored-script: an unreferenced scratch script is left alone (no noise)"
+    else
+        fail "S04SP10 ignored-script: an unreferenced scratch script is left alone (no noise)" "$ig_out"
+    fi
+    rm -rf "$ig_dir"
+
+    ig_new
+    ( cd "$ig_dir" && echo 'echo doc' > scripts/doc-only.sh && mkdir docs && echo 'see scripts/doc-only.sh' > docs/notes.md && git add .gitignore docs/notes.md scripts/known.sh ) >/dev/null 2>&1
+    ig_out=$(ig_run)
+    if printf '%s' "$ig_out" | grep -qF 'rc=0'; then
+        pass "S04SP10 ignored-script: a mention in docs is not evidence the build needs it"
+    else
+        fail "S04SP10 ignored-script: a mention in docs is not evidence the build needs it" "$ig_out"
+    fi
+    rm -rf "$ig_dir"
+
+    ig_new
+    ( cd "$ig_dir" && echo 'echo ci' > scripts/ci-step.sh && printf 'jobs:\n  x:\n    steps:\n      - run: bash scripts/ci-step.sh\n' > .github/workflows.yml \
+        && git add .gitignore .github/workflows.yml scripts/known.sh ) >/dev/null 2>&1
+    ig_out=$(ig_run)
+    if printf '%s' "$ig_out" | grep -qF 'rc=1' && printf '%s' "$ig_out" | grep -qF '.github/workflows.yml'; then
+        pass "S04SP10 ignored-script: a reference from a workflow file counts"
+    else
+        fail "S04SP10 ignored-script: a reference from a workflow file counts" "$ig_out"
+    fi
+    rm -rf "$ig_dir"
+
+    ig_out=$(bash "$ig_check" 2>&1; echo "rc=$?") || true
+    if printf '%s' "$ig_out" | grep -qF 'rc=0'; then
+        pass "S04SP10 ignored-script: this repository is clean"
+    else
+        fail "S04SP10 ignored-script: this repository is clean" "$ig_out"
+    fi
+
 
     if ! command -v python3 >/dev/null 2>&1; then
         skip "S04E10 eval: end-to-end against a fake model server" "python3 not available"

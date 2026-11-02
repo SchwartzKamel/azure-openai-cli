@@ -1,6 +1,6 @@
 # Feature Requests -- Index & Verified Status
 
-> Last updated: 2026-04-24 -- After v1.9.1 release, FR-014 design landed, FR-003/009/010 superseded.
+> Last updated: 2026-11-02 -- FR-021 to FR-023 added, FR-007 corrected. Every other row was last verified on 2026-04-24 (after the v1.9.1 release) and may be stale; see `wilhelm-2026-11-W-4`.
 >
 > This document is the **single source of truth** for FR status. Each row in the priority matrix reflects verified code state; the Status Details and v2.0.0 cutover-blocker sections below are evidence-based (grep + view against `azureopenai-cli/` (v1) and `azureopenai-cli-v2/` (v2)).
 >
@@ -18,7 +18,7 @@
 | [FR-004](FR-004-latency-and-startup-optimization.md) | Latency & Startup Optimization | P0 | Phased | ✅ LARGELY SHIPPED -- Spinner (v1.1.0) + AOT (v1.8.0); daemon (Phase 2b) + distribution (Phase 3) deferred | -- |
 | [FR-005](FR-005-shell-integration-and-output-intelligence.md) | Shell Integration & Output Intelligence | P1 | M | 🔄 PARTIAL -- `--json`, `--raw` shipped; `--code` / `--shell` / markdown pending | -- |
 | [FR-006](FR-006-unblock-native-aot-compilation.md) | Unblock Native AOT Compilation | P0 | S | ✅ SHIPPED v1.8.0 -- ~5.4 ms cold start at ship; current v2.0.6: 10.7 ms p50 ([baseline](../perf/v2.0.5-baseline.md)) | Unblocked FR-008, FR-011 |
-| [FR-007](FR-007-parallel-startup-and-connection-prewarming.md) | Parallel Startup & Connection Pre-warming | P1 | S | 📋 PLANNED -- **quick win, 3-5 h, 200-300 ms TTFT** | Independent |
+| [FR-007](FR-007-parallel-startup-and-connection-prewarming.md) | Parallel Startup & Connection Pre-warming | P1 | S | ✅ SHIPPED -- `--prewarm` / `AZ_PREWARM=1` (`Program.cs`, `PrewarmTests`); verified 2026-11-02 | Independent |
 | [FR-008](FR-008-prompt-response-cache.md) | Prompt Response Cache | P1 | M | 📋 PLANNED -- Espanso/AHK use case | -- |
 | [FR-009](FR-009-config-set-and-directory-overrides.md) | `--config set` Commands & Per-Directory Overrides | P1 | M | 🪦 **SUPERSEDED by [FR-014](FR-014-local-preferences-and-multi-provider.md)** -- directory overrides subsumed into FR-014 precedence chain | -- |
 | [FR-010](FR-010-model-aliases-and-smart-defaults.md) | Model Aliases & Smart Defaults | P2 | S | 🪦 **SUPERSEDED by [FR-014](FR-014-local-preferences-and-multi-provider.md)** -- aliases + env-var normalization subsumed into FR-014 schema | -- |
@@ -32,6 +32,9 @@
 | [FR-018](FR-018-local-model-provider-llamacpp.md) | Local-Model Provider (llama.cpp / Ollama) | P2 | M | 📝 DRAFT -- v2.1 | Blocked by FR-014; blocks FR-019, FR-020 |
 | [FR-019](FR-019-gemma-cpp-direct-adapter.md) | gemma.cpp Direct Adapter | P3 | M | 📝 DRAFT -- niche | Blocked by FR-018 |
 | [FR-020](FR-020-nvidia-nim-provider-per-trigger-routing.md) | NVIDIA NIM Provider with Per-Trigger Routing (2B-first) | P2 | M | 📝 DRAFT -- implements ADR-006 | Blocked by FR-018 |
+| [FR-021](FR-021-persona-argumentexception-ux-wrap.md) | PersonaMemory `ArgumentException` UX wrap | -- | -- | ✅ SHIPPED v2.0.1 (`e07697e`) | -- |
+| [FR-022](FR-022-native-setup-wizard.md) | Native `setup` credential wizard | -- | -- | 🔄 PARTIAL -- the `--setup` wizard (S03E11) and `--rotate-creds` (S03E25) shipped; per-OS storage backends (Keychain, DPAPI, libsecret) did not (keys are plaintext files, mode 0600); partly superseded by FR-023 | Related: FR-023 |
+| [FR-023](FR-023-first-run-wizard.md) | First-run setup wizard with per-OS credential storage | -- | -- | 🔄 PARTIAL -- the first-run wizard shipped (S03E11, S04E08); per-OS credential storage did not (plaintext, mode 0600; see the README key-storage table) | Related: FR-022 |
 | [FR-024](FR-024-rebrand-away-from-third-party-marks.md) | Rename away from third-party marks (staged) | P2 | M | 📝 PROPOSED -- three gates open (name, clearance, go); see [ADR-016](../adr/ADR-016-rebrand-away-from-third-party-marks.md) | Reverses the earlier no-rename verdict; counsel review pending |
 
 Legend: ✅ shipped · 🔄 partial · 📋 planned · 📝 draft · 🪦 superseded · ⚠️ regression or partial-infra

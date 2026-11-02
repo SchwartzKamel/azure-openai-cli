@@ -9,9 +9,9 @@
 - Any change to `Dockerfile` or integration test scripts
 - Any change to `*.md` outside `docs/exec-reports/` (since S04SP3)
 
-## The seven checks
+## The nine checks
 
-All seven must be green. Exit code 0 or the soup is closed.
+All nine must be green. Exit code 0 or the soup is closed.
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
@@ -26,20 +26,24 @@ NODE_OPTIONS=--max-old-space-size=4096 npx --yes markdownlint-cli2
 # 3. Ascii-check gate -- bans U+2018/U+2019/U+201C/U+201D/U+2013/U+2014 (S04SP3)
 make ascii-check
 
-# 4. Build gate
+# 4. Ignored-script gate -- `.gitignore` carries `scripts/*`, so a new script is silently left out
+#    of `git add -A` until it is whitelisted. Fails if a tracked build file already calls one (S04SP10)
+make scripts-ignore-check
+
+# 5. Build gate
 dotnet build azureopenai-cli/AzureOpenAI_CLI.csproj -c Release --nologo
 
-# 5. Test gate
+# 6. Test gate
 dotnet test tests/AzureOpenAI_CLI.Tests/AzureOpenAI_CLI.Tests.csproj --verbosity minimal --nologo
 
-# 6. Integration gate (only if you changed CLI surface or Program.cs)
+# 7. Integration gate (only if you changed CLI surface or Program.cs)
 bash tests/integration_tests.sh
 
-# 7. Eval-lint gate -- eval corpora, fixtures and baselines must not leak secrets,
+# 8. Eval-lint gate -- eval corpora, fixtures and baselines must not leak secrets,
 #    real addresses, paths or PII (S04E13). Needs the built binary; no opt-out.
 bash scripts/eval-lint.sh
 
-# 8. Exec-report gate -- enforces docs/exec-reports/sNNeMM-*.md per push
+# 9. Exec-report gate -- enforces docs/exec-reports/sNNeMM-*.md per push
 bash scripts/exec-report-check.sh
 ```
 
