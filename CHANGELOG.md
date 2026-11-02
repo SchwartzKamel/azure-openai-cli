@@ -103,6 +103,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Security
+- **fix(redaction):** S04E16 *The Bare Token* -- `SecretRedactor` recognised a secret by where it
+  sat (a header, an assignment, a secret-named field), so a provider error that echoed a bare
+  key in a sentence passed through. It now also masks a credential by its own shape: OpenAI-style
+  keys (`sk-`, `sk-proj-`), AWS access key ids, GitHub tokens (classic and fine-grained), Slack
+  tokens, JWTs and PEM private keys (the whole block, or to the end of the text if the footer was
+  cut off). The eval-file lint reads the same rule list, so the two cannot disagree.
+  (`azureopenai-cli/SecretRedactor.cs`, s04e16-the-bare-token)
 - **fix(shell):** S04E15 *The Denylist* -- the agent's `shell_exec` blocklist only checked the
   first word of each segment, so 30 of 32 trivial variations of a blocked command ran
   (`bash -c 'rm x'`, `\rm x`, `env rm x`, `(rm x)`, `timeout 5 rm x`, `echo x | xargs rm`,

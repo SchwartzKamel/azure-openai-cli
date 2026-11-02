@@ -20,6 +20,11 @@ namespace AzureOpenAI_CLI;
 /// Centralised secret-scrubber. Pass any string headed for stderr,
 /// stdout, structured-error JSON, or a log sink through <see cref="Redact"/>.
 /// Mask format: <c>[REDACTED:&lt;kind&gt;]</c>.
+///
+/// Two families of rule. The structured ones recognise a secret by where it sits (a Bearer header, an
+/// <c>api-key:</c> header, an env assignment, URL credentials, a secret-named JSON field). The bare-token
+/// rules (S04E16, <see cref="BareTokenRules"/>) recognise a credential by its own shape, so a key that a
+/// provider error echoes back in the middle of a sentence is caught too.
 /// </summary>
 internal static class SecretRedactor
 {
@@ -30,6 +35,39 @@ internal static class SecretRedactor
     internal static long TimeoutCount;
 
     private static readonly TimeSpan MatchTimeout = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
+    /// A credential recognised by its own shape, wherever it appears. <see cref="Kind"/> is the label in the
+    /// mask; <see cref="Description"/> is the sentence a linter uses. <c>EvalLint</c> reads this list, so
+    /// the runtime redactor and the eval-file lint cannot disagree about what a secret looks like.
+    /// </summary>
+    internal sealed record BareTokenRule(string Kind, string Description, Regex Pattern);
+
+    // The prefixes are fixed-case, so these are case-sensitive: IgnoreCase would only add false positives
+    // (a word that happens to start "SK-"). Every pattern keeps the 500 ms match timeout.
+    private const RegexOptions BareOpts = RegexOptions.Compiled | RegexOptions.CultureInvariant;
+
+    /// <summary>
+    /// Bare-token shapes: OpenAI-style keys (<c>sk-</c>, including <c>sk-proj-</c>), AWS access key ids,
+    /// GitHub tokens (classic and fine-grained), Slack tokens, JWTs, and PEM private keys. A private key is
+    /// matched as a whole block, or from its header to the end of the text when the footer was cut off,
+    /// so the key body is masked and not just its first line.
+    /// </summary>
+    internal static readonly IReadOnlyList<BareTokenRule> BareTokenRules = new BareTokenRule[]
+    {
+        new("openai-key", "looks like an API key (sk-...)",
+            new Regex(@"\bsk-[A-Za-z0-9_-]{16,}", BareOpts, MatchTimeout)),
+        new("aws-key", "looks like an AWS access key id",
+            new Regex(@"\bAKIA[0-9A-Z]{16}\b", BareOpts, MatchTimeout)),
+        new("github-token", "looks like a GitHub token",
+            new Regex(@"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{22,})", BareOpts, MatchTimeout)),
+        new("slack-token", "looks like a Slack token",
+            new Regex(@"\bxox[baprs]-[A-Za-z0-9-]{10,}", BareOpts, MatchTimeout)),
+        new("jwt", "looks like a JWT",
+            new Regex(@"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}", BareOpts, MatchTimeout)),
+        new("private-key", "contains a private-key header",
+            new Regex(@"-----BEGIN [A-Z ]*PRIVATE KEY-----(?:[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----|[\s\S]*$)", BareOpts, MatchTimeout)),
+    };
 
     private const RegexOptions Opts =
         RegexOptions.Compiled |
@@ -89,7 +127,15 @@ internal static class SecretRedactor
     /// (and increments <see cref="TimeoutCount"/>). Static / non-secret
     /// strings are no-ops.
     /// </summary>
-    public static string Redact(string? input)
+    public static string Redact(string? input) => RedactCore(input, includeBareTokens: true);
+
+    /// <summary>
+    /// Only the structured rules (headers, assignments, URL credentials, secret-named fields), not the
+    /// bare-token shapes. For a caller that reports bare tokens separately and must not report them twice.
+    /// </summary>
+    internal static string RedactStructured(string? input) => RedactCore(input, includeBareTokens: false);
+
+    private static string RedactCore(string? input, bool includeBareTokens)
     {
         if (string.IsNullOrEmpty(input))
         {
@@ -105,6 +151,17 @@ internal static class SecretRedactor
             s = UrlCredRx.Replace(s, m => m.Groups["scheme"].Value + "[REDACTED:url-cred]@");
             s = JsonSecretFieldRx.Replace(s, m => "\"" + m.Groups["name"].Value + "\": \"[REDACTED:api-key]\"");
             s = KvSecretRx.Replace(s, m => m.Groups["name"].Value + "=[REDACTED:api-key]");
+            // S04E16: a credential sitting bare in prose. Order against the structured rules does not change
+            // any output: they also match the mask text, so `api_key=sk-...` ends up `api_key=[REDACTED:api-key]`
+            // whichever runs first (BareTokenRedactionTests pins that). It sits before ProviderKeyEnvRx, which
+            // must stay last so the provider label wins.
+            if (includeBareTokens)
+            {
+                foreach (var rule in BareTokenRules)
+                {
+                    s = rule.Pattern.Replace(s, "[REDACTED:" + rule.Kind + "]");
+                }
+            }
             // ProviderKeyEnvRx runs LAST so the specific provider-key label
             // overrides any generic api-key label that KvSecretRx wrote
             // earlier for the same variable (S03E10).
