@@ -22,6 +22,14 @@ namespace AzureOpenAI_CLI.Resilience;
 /// 400 (a bad schema, a bad parameter) still surfaces as an error. A model that has rejected a temperature is
 /// remembered for the rest of the process, so an agent loop does not pay a failed round trip every round.
 /// </para>
+///
+/// <para>
+/// S04E24: a one-shot CLI call is a new process every time, so the CLI also passes a <c>memoryPath</c> and the
+/// lesson is kept on disk (<c>temperature-rejecting-models</c> in the prompt-cache directory). GitHub Copilot's
+/// GPT-5.x/6.x reasoning models otherwise cost a failed round trip (~1 s) on every invocation. A stale entry only
+/// means the model gets its default temperature, which is what such a model requires anyway; delete the file to
+/// relearn. Best effort: an unreadable or unwritable file never fails a call.
+/// </para>
 /// </summary>
 internal sealed class TemperatureTolerantChatClient : DelegatingChatClient
 {
@@ -29,18 +37,84 @@ internal sealed class TemperatureTolerantChatClient : DelegatingChatClient
     // same host behaves the same way for the lifetime of a run.
     private static readonly ConcurrentDictionary<string, byte> RejectingModels = new(StringComparer.OrdinalIgnoreCase);
 
+    // Memory files already read into RejectingModels in this process.
+    private static readonly ConcurrentDictionary<string, byte> LoadedMemoryPaths = new(StringComparer.Ordinal);
+
+    // Bounds on the on-disk memory: entries read, and file size beyond which nothing more is appended.
+    internal const int MaxRememberedModels = 256;
+    private const long MaxMemoryBytes = 32 * 1024;
+
     private readonly string _model;
     private readonly Action<string> _note;
+    private readonly string? _memoryPath;
 
-    public TemperatureTolerantChatClient(IChatClient inner, string model, Action<string>? note = null)
+    public TemperatureTolerantChatClient(IChatClient inner, string model, Action<string>? note = null, string? memoryPath = null)
         : base(inner)
     {
         _model = model;
         _note = note ?? (line => Console.Error.WriteLine(line));
+        _memoryPath = string.IsNullOrWhiteSpace(memoryPath) ? null : memoryPath;
+        if (_memoryPath is not null && LoadedMemoryPaths.TryAdd(_memoryPath, 0))
+        {
+            LoadMemory(_memoryPath);
+        }
     }
 
+    /// <summary>Where the CLI keeps the cross-process memory: beside the prompt cache.</summary>
+    internal static string DefaultMemoryPath() =>
+        Path.Combine(AzureOpenAI_CLI.Cache.PromptCache.ResolveCacheDir(), "temperature-rejecting-models");
+
     /// <summary>Forgets every remembered model. For tests; nothing in the product calls it.</summary>
-    internal static void ForgetAll() => RejectingModels.Clear();
+    internal static void ForgetAll()
+    {
+        RejectingModels.Clear();
+        LoadedMemoryPaths.Clear();
+    }
+
+    /// <summary>
+    /// Model names safe to write to and read from the memory file: one short line of plain identifier characters.
+    /// </summary>
+    internal static bool IsPersistableModel(string model) =>
+        model.Length is > 0 and <= 128
+        && model.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_' or ':' or '/' or '@' or '+');
+
+    private static void LoadMemory(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return;
+            foreach (var line in File.ReadLines(path).Take(MaxRememberedModels))
+            {
+                var name = line.Trim();
+                if (IsPersistableModel(name)) RejectingModels.TryAdd(name, 0);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Best effort: without the memory the reactive retry still works.
+        }
+    }
+
+    private void Remember()
+    {
+        if (_memoryPath is null || !IsPersistableModel(_model)) return;
+        try
+        {
+            var dir = Path.GetDirectoryName(_memoryPath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                if (OperatingSystem.IsWindows()) Directory.CreateDirectory(dir);
+                else Directory.CreateDirectory(dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+            var info = new FileInfo(_memoryPath);
+            if (info.Exists && info.Length >= MaxMemoryBytes) return;
+            File.AppendAllText(_memoryPath, _model + "\n");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Best effort: the in-process memory still holds for this run.
+        }
+    }
 
     public override async Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
@@ -108,6 +182,7 @@ internal sealed class TemperatureTolerantChatClient : DelegatingChatClient
         if (RejectingModels.TryAdd(_model, 0))
         {
             _note($"[note] model '{_model}' does not accept a temperature setting (reasoning models take only the default); retrying without it.");
+            Remember();
         }
     }
 

@@ -74,6 +74,52 @@ internal static class CompatCostRates
     }
 
     /// <summary>
+    /// S04E24 -- The Copilot. Per-model list prices (USD per 1K tokens) for
+    /// presets whose catalogue spans orders of magnitude, so a per-preset
+    /// median would mislead. Copilot bills per token on the operator's plan;
+    /// source: docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing
+    /// (snapshot 2026-11-03). Models not listed fall through to "$?".
+    /// </summary>
+    internal const string ModelRatesAsOf = "2026-11-03";
+
+    private static readonly Dictionary<string, Dictionary<string, (double InputPer1K, double OutputPer1K)>> ModelRates =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["copilot"] = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["gpt-6-luna"] = (0.00010, 0.00050),
+                ["claude-haiku-5.5"] = (0.00010, 0.00050),
+                ["gpt-5.6-luna"] = (0.00020, 0.00120),
+                ["gpt-6.1-terra"] = (0.00100, 0.00500),
+                ["gpt-6-sol"] = (0.00200, 0.01000),
+                ["claude-sonnet-5.5"] = (0.00200, 0.01000),
+                ["gemini-4-argon"] = (0.00200, 0.01000),
+                ["gpt-5.6-sol"] = (0.00400, 0.02000),
+                ["claude-opus-5.5"] = (0.00400, 0.02000),
+                ["gpt-6-astra"] = (0.01000, 0.05000),
+            },
+        };
+
+    /// <summary>
+    /// Look up a per-model list price for <paramref name="preset"/>. Returns
+    /// <c>false</c> when the preset has no per-model table or the model is
+    /// not in it.
+    /// </summary>
+    public static bool TryGetModelRates(string? preset, string? model, out double inputPer1K, out double outputPer1K)
+    {
+        inputPer1K = 0;
+        outputPer1K = 0;
+        if (string.IsNullOrWhiteSpace(preset) || string.IsNullOrWhiteSpace(model)) return false;
+        if (ModelRates.TryGetValue(preset.Trim(), out var table) && table.TryGetValue(model.Trim(), out var rate))
+        {
+            inputPer1K = rate.InputPer1K;
+            outputPer1K = rate.OutputPer1K;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Enumerate known compat preset names in stable, case-insensitive order.
     /// Used by the estimator to render an actionable "Known: ..." list when
     /// an unknown preset is requested.

@@ -109,6 +109,11 @@ internal static class CostEstimator
             label = "[REDACTED:provider]";
             approxNote = "unknown rate, $? estimate (preset unresolved -- emitting [REDACTED:provider])";
         }
+        else if (CompatCostRates.TryGetModelRates(preset, modelHint, out inputPer1K, out outputPer1K))
+        {
+            label = $"{preset.Trim()}:{modelHint!.Trim()}";
+            approxNote = $"chars/{CharsPerTokenApprox:0.#} -- {preset.Trim()} list price as of {CompatCostRates.ModelRatesAsOf}.";
+        }
         else if (CompatCostRates.TryGetRates(preset, out inputPer1K, out outputPer1K))
         {
             var modelTail = string.IsNullOrWhiteSpace(modelHint) ? "" : $":{modelHint!.Trim()}";
