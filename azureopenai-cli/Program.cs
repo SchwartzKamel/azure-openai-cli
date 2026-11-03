@@ -138,6 +138,8 @@ internal class Program
         string? Pattern = null,      // FR-015: --pattern / -p <name>: curated prompt pattern
         bool ListPatterns = false,   // FR-015: --patterns / --list-patterns
         IReadOnlyList<string>? McpServers = null, // FR-013: --mcp-server <spec> (repeatable)
+        IReadOnlyList<string>? McpAllow = null,   // S04E22: --mcp-allow <glob> (repeatable): expose only matching MCP tools
+        IReadOnlyList<string>? McpDeny = null,    // S04E22: --mcp-deny <glob> (repeatable): hide matching MCP tools (deny wins)
         string? McpSubcommand = null, // FR-013: hopper mcp tools|call
         string? McpTargetServer = null,
         string? McpTargetTool = null,
@@ -1051,14 +1053,31 @@ internal class Program
             using var mcpClientScope = new AzureOpenAI_CLI.Mcp.McpClientScope(mcpClients);
             if (opts.McpServers is { Count: > 0 })
             {
+                var mcpFilter = new AzureOpenAI_CLI.Mcp.McpToolFilter(opts.McpAllow, opts.McpDeny);
+                var mcpOffered = new List<string>();
                 foreach (var serverSpec in opts.McpServers)
                 {
                     var mcpClient = await AzureOpenAI_CLI.Mcp.McpStdioClient.ConnectSubprocessAsync(
                         serverSpec,
                         timeoutSeconds: opts.TimeoutSeconds);
                     mcpClients.Add(mcpClient);
-                    var clientTools = await mcpClient.CreateMafToolsAsync();
+                    var (clientTools, offeredNames) = await mcpClient.CreateMafToolsAsync(mcpFilter);
                     extraMcpTools.AddRange(clientTools);
+                    mcpOffered.AddRange(offeredNames);
+                    if (mcpFilter.IsActive)
+                    {
+                        Console.Error.WriteLine(
+                            $"[mcp] '{mcpClient.ServerName}': exposing {clientTools.Count} of {offeredNames.Count} tool(s) to the model "
+                            + $"({offeredNames.Count - clientTools.Count} hidden by --mcp-allow/--mcp-deny)");
+                    }
+                }
+                // A pattern that matches nothing is inert. For a deny pattern that is the dangerous kind of typo: the tool it
+                // was meant to hide is still exposed.
+                foreach (var (kind, pattern) in mcpFilter.UnmatchedPatterns(mcpOffered))
+                {
+                    Console.Error.WriteLine($"[warn] {kind} '{pattern}' matched no tool on any connected MCP server"
+                        + (kind == "--mcp-deny" ? "; the tool you meant to hide is still exposed" : "; nothing it was meant to keep is exposed")
+                        + $" (offered: {string.Join(", ", mcpOffered.Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal))})");
                 }
             }
 
@@ -1603,6 +1622,8 @@ internal class Program
         bool dryRun = false;
         bool recoverStale = false;
         var mcpServers = new List<string>();
+        var mcpAllow = new List<string>();
+        var mcpDeny = new List<string>();
         string? prefer = null;
         bool whyThisModel = false;
         string? evalSuite = null;
@@ -1833,6 +1854,14 @@ internal class Program
                         agentMode = true; // --mcp-server implies --agent
                     }
                     else { Fail("--mcp-server requires a server command or <name>=<command>"); }
+                    break;
+                case "--mcp-allow":
+                    if (i + 1 < args.Length) mcpAllow.Add(args[++i]);
+                    else { Fail("--mcp-allow requires a tool name or glob (for example 'read_*')"); }
+                    break;
+                case "--mcp-deny":
+                    if (i + 1 < args.Length) mcpDeny.Add(args[++i]);
+                    else { Fail("--mcp-deny requires a tool name or glob (for example '*_run')"); }
                     break;
                 case "--stdio":
                     // Accepted as an explicit transport flag for `hopper mcp serve --stdio` (FR-013 §6.2)
@@ -2466,6 +2495,8 @@ internal class Program
             Pattern = pattern,
             ListPatterns = listPatterns,
             McpServers = mcpServers.Count > 0 ? mcpServers : null,
+            McpAllow = mcpAllow.Count > 0 ? mcpAllow : null,
+            McpDeny = mcpDeny.Count > 0 ? mcpDeny : null,
             McpSubcommand = mcpSubcommand,
             McpTargetServer = mcpTargetServer,
             McpTargetTool = mcpTargetTool,
@@ -2763,7 +2794,13 @@ internal class Program
 
             if (string.Equals(opts.McpSubcommand, "tools", StringComparison.OrdinalIgnoreCase))
             {
-                var tools = (await client.ListToolsAsync()).ToList();
+                var allTools = (await client.ListToolsAsync()).ToList();
+                var previewFilter = new AzureOpenAI_CLI.Mcp.McpToolFilter(opts.McpAllow, opts.McpDeny);
+                var tools = allTools.Where(t => previewFilter.Allows(t.Name)).ToList();
+                foreach (var (kind, pattern) in previewFilter.UnmatchedPatterns(allTools.Select(t => t.Name)))
+                {
+                    Console.Error.WriteLine($"[warn] {kind} '{pattern}' matched no tool on this server");
+                }
                 if (opts.Json)
                 {
                     Console.WriteLine(JsonSerializer.Serialize(tools, AppJsonContext.Default.ListMcpToolInfo));
@@ -4253,6 +4290,10 @@ Agent / Tools:
 MCP Client & Server (FR-013, stdio JSON-RPC 2.0):
   --mcp-server <spec>       Connect to an external MCP stdio server and expose its tools
                             in agent/ralph mode (e.g. --mcp-server ""fs=npx -y @modelcontextprotocol/server-filesystem ."")
+  --mcp-allow <glob>        Expose only MCP tools whose name matches (repeatable; '*' and '?'). With
+                            none given, every tool is exposed. Also filters 'hopper mcp tools'.
+  --mcp-deny <glob>         Hide MCP tools whose name matches (repeatable; deny always wins), e.g.
+                            --mcp-deny '*_run' so the model never sees a destructive tool
   hopper mcp tools <cmd>     List tools exposed by an external MCP stdio server (supports --json)
   hopper mcp call <c> <t>    Invoke a tool on an external MCP stdio server (optional JSON args)
   hopper mcp serve           Expose hopper tools, prompts, and resources over MCP stdio (alias: --mcp-serve)
@@ -4438,7 +4479,7 @@ _hopper_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-serve --allow-shell --read-only --fail-under --filter --corpus --list-corpora --repeat --baseline --write-baseline --lint-suite --require-provenance""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-allow --mcp-deny --mcp-serve --allow-shell --read-only --fail-under --filter --corpus --list-corpora --repeat --baseline --write-baseline --lint-suite --require-provenance""
 
     case ""${prev}"" in
         --completions)
@@ -4523,6 +4564,8 @@ _hopper() {
         '--pattern[Apply a prompt pattern]:name:'
         '--patterns[List prompt patterns]'
         '--mcp-server[Connect to an MCP stdio server]:spec:'
+        '--mcp-allow[Expose only MCP tools matching a glob]:glob:'
+        '--mcp-deny[Hide MCP tools matching a glob]:glob:'
         '--mcp-serve[Run as an MCP stdio server]'
         '--allow-shell[Allow shell tool over MCP]'
         '--read-only[Read-only MCP server]'
@@ -4597,6 +4640,8 @@ complete -c hopper -l no-plugins -d 'Disable manifest plugins'
 complete -c hopper -l pattern -d 'Apply a prompt pattern' -r
 complete -c hopper -l patterns -d 'List prompt patterns'
 complete -c hopper -l mcp-server -d 'Connect to an MCP stdio server' -r
+complete -c hopper -l mcp-allow -d 'Expose only MCP tools matching a glob' -r
+complete -c hopper -l mcp-deny -d 'Hide MCP tools matching a glob' -r
 complete -c hopper -l mcp-serve -d 'Run as an MCP stdio server'
 complete -c hopper -l allow-shell -d 'Allow shell tool over MCP'
 complete -c hopper -l read-only -d 'Read-only MCP server'

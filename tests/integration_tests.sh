@@ -1269,6 +1269,146 @@ EVSUITE
         fi
     fi
 
+    # ── S04E22 -- The Allowlist: --mcp-allow / --mcp-deny decide which MCP tools the model is told about ──
+    # Subject: hopper's own MCP server (7 tools, read-only by default). The last cases check what reaches the MODEL:
+    # the request body a fake model server receives, because hiding a tool only matters if it is not in that list.
+    local mf_srv_cmd="$BIN mcp serve"
+    mf_names() { printf '%s\n' "$1" | sed -n 's/^  • \([a-z_]*\) .*/\1/p' | sort | tr '\n' ' ' | sed 's/ $//'; }
+
+    local mf_out
+    set +e
+    mf_out=$("$BIN" mcp tools "$mf_srv_cmd" --mcp-allow 'get_*' --mcp-allow read_file 2>&1)
+    set -e
+    if [ "$(mf_names "$mf_out")" = "get_clipboard get_datetime read_file" ]; then
+        pass "S04E22 mcp filter: --mcp-allow keeps only the matching tools"
+    else
+        fail "S04E22 mcp filter: --mcp-allow keeps only the matching tools" "$(mf_names "$mf_out") / $mf_out"
+    fi
+
+    set +e
+    mf_out=$("$BIN" mcp tools "$mf_srv_cmd" --mcp-deny 'queue_*' --mcp-deny web_fetch --mcp-deny delegate_task 2>&1)
+    set -e
+    if [ "$(mf_names "$mf_out")" = "get_clipboard get_datetime read_file" ]; then
+        pass "S04E22 mcp filter: --mcp-deny hides the matching tools"
+    else
+        fail "S04E22 mcp filter: --mcp-deny hides the matching tools" "$(mf_names "$mf_out")"
+    fi
+
+    set +e
+    mf_out=$("$BIN" mcp tools "$mf_srv_cmd" --mcp-allow '*' --mcp-deny read_file 2>&1)
+    set -e
+    if ! printf '%s' "$mf_out" | grep -qF 'read_file' && printf '%s' "$mf_out" | grep -qF 'get_datetime'; then
+        pass "S04E22 mcp filter: deny wins over an allow that matches the same tool"
+    else
+        fail "S04E22 mcp filter: deny wins over an allow that matches the same tool" "$mf_out"
+    fi
+
+    set +e
+    mf_out=$("$BIN" mcp tools "$mf_srv_cmd" --mcp-deny web_fech 2>&1)
+    set -e
+    if printf '%s' "$mf_out" | grep -qF "[warn] --mcp-deny 'web_fech' matched no tool" && printf '%s' "$mf_out" | grep -qF 'web_fetch'; then
+        pass "S04E22 mcp filter: a deny pattern that matches nothing warns (and the tool is still exposed)"
+    else
+        fail "S04E22 mcp filter: a deny pattern that matches nothing warns (and the tool is still exposed)" "$mf_out"
+    fi
+
+    set +e
+    mf_out=$("$BIN" mcp tools "$mf_srv_cmd" 2>&1)
+    set -e
+    if [ "$(printf '%s\n' "$mf_out" | grep -c '^  • ')" = "7" ]; then
+        pass "S04E22 mcp filter: with no flags every tool is still listed (unchanged)"
+    else
+        fail "S04E22 mcp filter: with no flags every tool is still listed (unchanged)" "$mf_out"
+    fi
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        skip "S04E22 mcp filter: what reaches the model" "python3 not available"
+    else
+        local mf_dir; mf_dir=$(mktemp -d)
+        cat > "$mf_dir/server.py" <<'MFPY'
+import json, sys, http.server, socketserver
+LOG, PORTFILE = sys.argv[1], sys.argv[2]
+class H(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get("Content-Length", 0)) or 0).decode()
+        # The SDK pretty-prints a request that carries tools; log it as ONE compact line so a reader can split on newlines.
+        try: body = json.dumps(json.loads(body))
+        except Exception: body = body.replace("\n", " ")
+        with open(LOG, "a") as f: f.write(body + "\n")
+        def chunk(delta, finish):
+            return "data: " + json.dumps({"id": "x", "object": "chat.completion.chunk", "created": 0, "model": "fake-model",
+                                          "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}) + "\n\n"
+        data = (chunk({"role": "assistant", "content": "ok"}, None) + chunk({}, "stop") + "data: [DONE]\n\n").encode()
+        self.send_response(200); self.send_header("Content-Type", "text/event-stream"); self.end_headers(); self.wfile.write(data)
+srv = socketserver.TCPServer(("127.0.0.1", 0), H)
+open(PORTFILE, "w").write(str(srv.server_address[1]))
+srv.serve_forever()
+MFPY
+        python3 "$mf_dir/server.py" "$mf_dir/req.log" "$mf_dir/port" >/dev/null 2>&1 &
+        local mf_srv=$!
+        local mf_wait=0
+        while [ ! -s "$mf_dir/port" ] && [ "$mf_wait" -lt 50 ]; do sleep 0.1; mf_wait=$((mf_wait + 1)); done
+        local mf_port; mf_port=$(cat "$mf_dir/port" 2>/dev/null || true)
+
+        if [ -z "$mf_port" ]; then
+            kill "$mf_srv" 2>/dev/null || true
+            skip "S04E22 mcp filter: what reaches the model" "fake server did not start"
+        else
+            mf_model_run() {
+                : > "$mf_dir/req.log"
+                env -i HOME="$mf_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+                    AZUREOPENAIENDPOINT="https://example.openai.azure.com/" AZUREOPENAIAPI="dummy-key-0123456789" \
+                    AZURE_FOUNDRY_ENDPOINT="http://127.0.0.1:$mf_port" AZURE_FOUNDRY_KEY="fake-key-0123456789" \
+                    AZURE_FOUNDRY_MODELS="fake-model" "$BIN" --agent --tools none --raw --model fake-model \
+                    --mcp-server "h=$mf_srv_cmd" "$@" "hello" >/dev/null 2>"$mf_dir/err" || true
+                python3 -c '
+import json, sys
+names = set()
+for line in open(sys.argv[1]):
+    line = line.strip()
+    if not line: continue
+    try:
+        for t in json.loads(line).get("tools", []): names.add(t["function"]["name"])
+    except Exception as e:
+        print("UNPARSEABLE REQUEST LOG: %s" % e); sys.exit(0)
+print(" ".join(sorted(names)))' "$mf_dir/req.log" || true
+            }
+
+            local mf_seen
+            mf_seen=$(mf_model_run)
+            if [ "$mf_seen" = "delegate_task get_clipboard get_datetime queue_add queue_status read_file web_fetch" ]; then
+                pass "S04E22 mcp filter: with no flags the model is offered all 7 MCP tools (unchanged)"
+            else
+                fail "S04E22 mcp filter: with no flags the model is offered all 7 MCP tools (unchanged)" "$mf_seen"
+            fi
+
+            mf_seen=$(mf_model_run --mcp-allow 'get_*' --mcp-allow read_file)
+            if [ "$mf_seen" = "get_clipboard get_datetime read_file" ]; then
+                pass "S04E22 mcp filter: --mcp-allow limits the tools in the request the model receives"
+            else
+                fail "S04E22 mcp filter: --mcp-allow limits the tools in the request the model receives" "$mf_seen"
+            fi
+
+            mf_seen=$(mf_model_run --mcp-deny 'queue_*' --mcp-deny web_fetch --mcp-deny delegate_task)
+            if [ "$mf_seen" = "get_clipboard get_datetime read_file" ] && grep -qF "exposing 3 of 7" "$mf_dir/err"; then
+                pass "S04E22 mcp filter: --mcp-deny removes tools from the request, and the run says how many were hidden"
+            else
+                fail "S04E22 mcp filter: --mcp-deny removes tools from the request, and the run says how many were hidden" "$mf_seen / $(head -c 200 "$mf_dir/err")"
+            fi
+            # The dangerous typo: a mistyped deny pattern hides nothing. The run must say so, and the tool is still offered.
+            mf_seen=$(mf_model_run --mcp-deny web_fech)
+            if [ "$mf_seen" = "delegate_task get_clipboard get_datetime queue_add queue_status read_file web_fetch" ] \
+                && grep -qF "[warn] --mcp-deny 'web_fech' matched no tool on any connected MCP server; the tool you meant to hide is still exposed" "$mf_dir/err"; then
+                pass "S04E22 mcp filter: in a real run, a mistyped deny pattern warns that the tool is still exposed"
+            else
+                fail "S04E22 mcp filter: in a real run, a mistyped deny pattern warns that the tool is still exposed" "$mf_seen / $(head -c 240 "$mf_dir/err")"
+            fi
+            kill "$mf_srv" 2>/dev/null || true
+        fi
+        rm -rf "$mf_dir"
+    fi
+
     # ── S04SP12 -- The Bridge: hopper reaches an HTTP MCP server through examples/mcp/http-bridge.py ──
     # Hopper's MCP client only launches a command, so an HTTP MCP server needs a stdio bridge. The stand-in server
     # below keeps the parts of scouter's host that matter to a bridge: bearer auth, an Mcp-Session-Id, a cap on
