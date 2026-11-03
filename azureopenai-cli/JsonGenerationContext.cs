@@ -211,6 +211,7 @@ internal record JsonlStreamEvent(
 [JsonSerializable(typeof(WorkQueueFile))]
 [JsonSerializable(typeof(QueueStatusSummary))]
 [JsonSerializable(typeof(McpToolInfo))]
+[JsonSerializable(typeof(McpToolAnnotations))]
 [JsonSerializable(typeof(List<McpToolInfo>))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
@@ -239,6 +240,7 @@ internal partial class AppJsonContext : JsonSerializerContext
 [JsonSerializable(typeof(McpResourcesCapability))]
 [JsonSerializable(typeof(McpServerInfo))]
 [JsonSerializable(typeof(McpToolInfo))]
+[JsonSerializable(typeof(McpToolAnnotations))]
 [JsonSerializable(typeof(List<McpToolInfo>))]
 [JsonSerializable(typeof(McpToolsListResult))]
 [JsonSerializable(typeof(McpContentItem))]

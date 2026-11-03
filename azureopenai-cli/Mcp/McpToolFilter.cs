@@ -8,7 +8,9 @@ namespace AzureOpenAI_CLI.Mcp;
 /// </para>
 /// <para>
 /// Rules: a name matching any <c>deny</c> pattern is hidden (deny always wins); when any <c>allow</c> pattern is given,
-/// only names matching one of them are kept; with neither, everything is kept (the historical behaviour). Patterns are
+/// only names matching one of them are kept; with neither, everything is kept (the historical behaviour) unless
+/// <b>strict</b> mode is on, which keeps only tools the server declares <c>readOnlyHint: true</c> (and not also
+/// <c>destructiveHint: true</c>). An explicit allow list always wins over hints: you named the tools. Patterns are
 /// globs over the tool name: <c>*</c> matches any run of characters, <c>?</c> exactly one; matching is case-sensitive.
 /// There is no regex, so no pattern can be slow.
 /// </para>
@@ -18,26 +20,46 @@ internal sealed class McpToolFilter
     private readonly string[] _allow;
     private readonly string[] _deny;
 
-    public McpToolFilter(IEnumerable<string>? allow, IEnumerable<string>? deny)
+    public McpToolFilter(IEnumerable<string>? allow, IEnumerable<string>? deny, bool strict = false)
     {
         _allow = Clean(allow);
         _deny = Clean(deny);
+        Strict = strict;
     }
 
-    /// <summary>True when at least one pattern was given, so the filter changes what is exposed.</summary>
-    public bool IsActive => _allow.Length > 0 || _deny.Length > 0;
+    /// <summary>
+    /// Strict mode: with no allow list, expose only tools that declare <c>readOnlyHint: true</c> instead of everything, and
+    /// treat a pattern that matches no tool as an error rather than a warning. The hints are the server's own claims.
+    /// </summary>
+    public bool Strict { get; }
+
+    /// <summary>True when the filter changes what is exposed (a pattern was given, or strict mode is on).</summary>
+    public bool IsActive => Strict || _allow.Length > 0 || _deny.Length > 0;
+
+    /// <summary>True when an allow list was given: the user named the tools, so hints are not consulted.</summary>
+    public bool HasAllowList => _allow.Length > 0;
 
     public IReadOnlyList<string> AllowPatterns => _allow;
     public IReadOnlyList<string> DenyPatterns => _deny;
 
-    public bool Allows(string toolName)
+    /// <summary>Whether the model may be told about <paramref name="toolName"/>, ignoring any hints the server declared.</summary>
+    public bool Allows(string toolName) => Allows(toolName, null, null);
+
+    /// <summary>As above, with the hints the server declared for the tool (only consulted in strict mode with no allow list).</summary>
+    public bool Allows(string toolName, bool? readOnlyHint, bool? destructiveHint)
     {
         foreach (var d in _deny)
             if (GlobMatch(d, toolName)) return false;
-        if (_allow.Length == 0) return true;
-        foreach (var a in _allow)
-            if (GlobMatch(a, toolName)) return true;
-        return false;
+        if (_allow.Length > 0)
+        {
+            foreach (var a in _allow)
+                if (GlobMatch(a, toolName)) return true;
+            return false;
+        }
+        if (!Strict) return true;
+        // Strict, no allow list: only what the server itself says is read-only. A tool that claims both read-only and
+        // destructive contradicts itself, and the safe reading of a contradiction is to hide it.
+        return readOnlyHint == true && destructiveHint != true;
     }
 
     /// <summary>

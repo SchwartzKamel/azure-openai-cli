@@ -1316,7 +1316,7 @@ EVSUITE
     local mf_srv_cmd="$BIN mcp serve"
     mf_names() { printf '%s\n' "$1" | sed -n 's/^  • \([a-z_]*\) .*/\1/p' | sort | tr '\n' ' ' | sed 's/ $//'; }
 
-    local mf_out
+    local mf_out mf_rc
     set +e
     mf_out=$("$BIN" mcp tools "$mf_srv_cmd" --mcp-allow 'get_*' --mcp-allow read_file 2>&1)
     set -e
@@ -1360,6 +1360,35 @@ EVSUITE
         pass "S04E22 mcp filter: with no flags every tool is still listed (unchanged)"
     else
         fail "S04E22 mcp filter: with no flags every tool is still listed (unchanged)" "$mf_out"
+    fi
+
+    # ── S04E27 -- The Strict Door: --mcp-strict exposes only tools the server declares read-only ──
+    set +e
+    mf_out=$("$BIN" mcp tools "$mf_srv_cmd" --mcp-strict 2>&1)
+    set -e
+    if [ "$(mf_names "$mf_out")" = "get_clipboard get_datetime queue_status read_file web_fetch" ] \
+        && [ "$(printf '%s\n' "$mf_out" | grep -c '\[read-only\]')" = "5" ] && ! printf '%s' "$mf_out" | grepq -F 'queue_add'; then
+        pass "S04E27 mcp strict: 'hopper mcp tools --mcp-strict' lists exactly the 5 tools hopper's server declares read-only"
+    else
+        fail "S04E27 mcp strict: 'hopper mcp tools --mcp-strict' lists exactly the 5 tools hopper's server declares read-only" "$(mf_names "$mf_out")"
+    fi
+
+    set +e
+    mf_out=$("$BIN" mcp tools "$mf_srv_cmd" --mcp-strict --mcp-deny web_fech 2>&1); mf_rc=$?
+    set -e
+    if [ "$mf_rc" = "2" ] && printf '%s' "$mf_out" | grepq -F -- "--mcp-strict: --mcp-deny 'web_fech' matched no tool"; then
+        pass "S04E27 mcp strict: a pattern that matches nothing is an error (exit 2), not a warning"
+    else
+        fail "S04E27 mcp strict: a pattern that matches nothing is an error (exit 2), not a warning" "rc=$mf_rc $(printf '%s' "$mf_out" | head -c 200)"
+    fi
+
+    set +e
+    mf_out=$("$BIN" mcp tools "$mf_srv_cmd" --mcp-strict --mcp-allow queue_add 2>&1)
+    set -e
+    if [ "$(mf_names "$mf_out")" = "queue_add" ]; then
+        pass "S04E27 mcp strict: an explicit --mcp-allow is the opt-in for a tool with no read-only hint"
+    else
+        fail "S04E27 mcp strict: an explicit --mcp-allow is the opt-in for a tool with no read-only hint" "$(mf_names "$mf_out")"
     fi
 
     if ! command -v python3 >/dev/null 2>&1; then
@@ -1444,6 +1473,27 @@ print(" ".join(sorted(names)))' "$mf_dir/req.log" || true
                 pass "S04E22 mcp filter: in a real run, a mistyped deny pattern warns that the tool is still exposed"
             else
                 fail "S04E22 mcp filter: in a real run, a mistyped deny pattern warns that the tool is still exposed" "$mf_seen / $(head -c 240 "$mf_dir/err")"
+            fi
+            mf_seen=$(mf_model_run --mcp-strict)
+            if [ "$mf_seen" = "get_clipboard get_datetime queue_status read_file web_fetch" ] && grepq -F -- "hidden by --mcp-allow/--mcp-deny/--mcp-strict" "$mf_dir/err"; then
+                pass "S04E27 mcp strict: in a real run the model is offered only the declared read-only tools, and the run says so"
+            else
+                fail "S04E27 mcp strict: in a real run the model is offered only the declared read-only tools, and the run says so" "$mf_seen / $(head -c 240 "$mf_dir/err")"
+            fi
+
+            mf_seen=$(mf_model_run --mcp-strict --mcp-allow queue_add)
+            if [ "$mf_seen" = "queue_add" ]; then
+                pass "S04E27 mcp strict: with an allow list the request carries exactly the named tools"
+            else
+                fail "S04E27 mcp strict: with an allow list the request carries exactly the named tools" "$mf_seen"
+            fi
+
+            # A typo under --mcp-strict must stop the run BEFORE any model call: nothing may be sent with the tool still exposed.
+            mf_seen=$(mf_model_run --mcp-strict --mcp-deny web_fech)
+            if [ -z "$mf_seen" ] && [ ! -s "$mf_dir/req.log" ] && grepq -F -- "--mcp-strict: --mcp-deny 'web_fech' matched no tool" "$mf_dir/err"; then
+                pass "S04E27 mcp strict: a mistyped pattern in a real run stops it before any request reaches the model"
+            else
+                fail "S04E27 mcp strict: a mistyped pattern in a real run stops it before any request reaches the model" "$mf_seen / $(wc -c < "$mf_dir/req.log") bytes sent / $(head -c 240 "$mf_dir/err")"
             fi
             kill "$mf_srv" 2>/dev/null || true
         fi

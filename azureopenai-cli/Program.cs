@@ -140,6 +140,7 @@ internal class Program
         IReadOnlyList<string>? McpServers = null, // FR-013: --mcp-server <spec> (repeatable)
         IReadOnlyList<string>? McpAllow = null,   // S04E22: --mcp-allow <glob> (repeatable): expose only matching MCP tools
         IReadOnlyList<string>? McpDeny = null,    // S04E22: --mcp-deny <glob> (repeatable): hide matching MCP tools (deny wins)
+        bool McpStrict = false,                   // S04E27: --mcp-strict: expose only tools declaring readOnlyHint (or named by --mcp-allow); a pattern matching nothing is an error
         string? McpSubcommand = null, // FR-013: hopper mcp tools|call
         string? McpTargetServer = null,
         string? McpTargetTool = null,
@@ -1058,7 +1059,7 @@ internal class Program
             using var mcpClientScope = new AzureOpenAI_CLI.Mcp.McpClientScope(mcpClients);
             if (opts.McpServers is { Count: > 0 })
             {
-                var mcpFilter = new AzureOpenAI_CLI.Mcp.McpToolFilter(opts.McpAllow, opts.McpDeny);
+                var mcpFilter = new AzureOpenAI_CLI.Mcp.McpToolFilter(opts.McpAllow, opts.McpDeny, opts.McpStrict);
                 var mcpOffered = new List<string>();
                 foreach (var serverSpec in opts.McpServers)
                 {
@@ -1073,12 +1074,27 @@ internal class Program
                     {
                         Console.Error.WriteLine(
                             $"[mcp] '{mcpClient.ServerName}': exposing {clientTools.Count} of {offeredNames.Count} tool(s) to the model "
-                            + $"({offeredNames.Count - clientTools.Count} hidden by --mcp-allow/--mcp-deny)");
+                            + $"({offeredNames.Count - clientTools.Count} hidden by {(mcpFilter.Strict ? "--mcp-allow/--mcp-deny/--mcp-strict" : "--mcp-allow/--mcp-deny")})");
+                        if (mcpFilter.Strict && !mcpFilter.HasAllowList && clientTools.Count == 0 && offeredNames.Count > 0)
+                        {
+                            Console.Error.WriteLine(
+                                $"[mcp] '{mcpClient.ServerName}': strict mode exposes only tools that declare readOnlyHint: true, and this server declares none; "
+                                + "name the tools you trust with --mcp-allow");
+                        }
                     }
                 }
                 // A pattern that matches nothing is inert. For a deny pattern that is the dangerous kind of typo: the tool it
                 // was meant to hide is still exposed.
-                foreach (var (kind, pattern) in mcpFilter.UnmatchedPatterns(mcpOffered))
+                var mcpUnmatched = mcpFilter.UnmatchedPatterns(mcpOffered);
+                if (mcpFilter.Strict && mcpUnmatched.Count > 0)
+                {
+                    // Strict: a typo must not be a quiet fail-open. Refuse to run rather than continue with the tool still exposed.
+                    return ErrorAndExit(
+                        $"--mcp-strict: {string.Join("; ", mcpUnmatched.Select(u => $"{u.Kind} '{u.Pattern}' matched no tool on any connected MCP server"))}. "
+                        + $"Offered: {string.Join(", ", mcpOffered.Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal))}",
+                        2, jsonMode: opts.Json);
+                }
+                foreach (var (kind, pattern) in mcpUnmatched)
                 {
                     Console.Error.WriteLine($"[warn] {kind} '{pattern}' matched no tool on any connected MCP server"
                         + (kind == "--mcp-deny" ? "; the tool you meant to hide is still exposed" : "; nothing it was meant to keep is exposed")
@@ -1629,6 +1645,7 @@ internal class Program
         var mcpServers = new List<string>();
         var mcpAllow = new List<string>();
         var mcpDeny = new List<string>();
+        bool mcpStrict = false;
         string? prefer = null;
         bool whyThisModel = false;
         string? evalSuite = null;
@@ -1863,6 +1880,9 @@ internal class Program
                 case "--mcp-allow":
                     if (i + 1 < args.Length) mcpAllow.Add(args[++i]);
                     else { Fail("--mcp-allow requires a tool name or glob (for example 'read_*')"); }
+                    break;
+                case "--mcp-strict":
+                    mcpStrict = true;
                     break;
                 case "--mcp-deny":
                     if (i + 1 < args.Length) mcpDeny.Add(args[++i]);
@@ -2502,6 +2522,7 @@ internal class Program
             McpServers = mcpServers.Count > 0 ? mcpServers : null,
             McpAllow = mcpAllow.Count > 0 ? mcpAllow : null,
             McpDeny = mcpDeny.Count > 0 ? mcpDeny : null,
+            McpStrict = mcpStrict,
             McpSubcommand = mcpSubcommand,
             McpTargetServer = mcpTargetServer,
             McpTargetTool = mcpTargetTool,
@@ -2800,11 +2821,24 @@ internal class Program
             if (string.Equals(opts.McpSubcommand, "tools", StringComparison.OrdinalIgnoreCase))
             {
                 var allTools = (await client.ListToolsAsync()).ToList();
-                var previewFilter = new AzureOpenAI_CLI.Mcp.McpToolFilter(opts.McpAllow, opts.McpDeny);
-                var tools = allTools.Where(t => previewFilter.Allows(t.Name)).ToList();
-                foreach (var (kind, pattern) in previewFilter.UnmatchedPatterns(allTools.Select(t => t.Name)))
+                var previewFilter = new AzureOpenAI_CLI.Mcp.McpToolFilter(opts.McpAllow, opts.McpDeny, opts.McpStrict);
+                var tools = allTools.Where(t => previewFilter.Allows(t.Name, t.Annotations?.ReadOnlyHint, t.Annotations?.DestructiveHint)).ToList();
+                var previewUnmatched = previewFilter.UnmatchedPatterns(allTools.Select(t => t.Name));
+                if (previewFilter.Strict && previewUnmatched.Count > 0)
+                {
+                    return ErrorAndExit(
+                        $"--mcp-strict: {string.Join("; ", previewUnmatched.Select(u => $"{u.Kind} '{u.Pattern}' matched no tool on this server"))}",
+                        2, jsonMode: opts.Json);
+                }
+                foreach (var (kind, pattern) in previewUnmatched)
                 {
                     Console.Error.WriteLine($"[warn] {kind} '{pattern}' matched no tool on this server");
+                }
+                if (previewFilter.Strict && !previewFilter.HasAllowList && tools.Count == 0 && allTools.Count > 0)
+                {
+                    Console.Error.WriteLine(
+                        "[mcp] strict mode exposes only tools that declare readOnlyHint: true, and this server declares none; "
+                        + "name the tools you trust with --mcp-allow");
                 }
                 if (opts.Json)
                 {
@@ -2815,7 +2849,7 @@ internal class Program
                 Console.WriteLine($"MCP server '{client.ServerName}' tools ({tools.Count}):");
                 foreach (var t in tools)
                 {
-                    Console.WriteLine($"  • {t.Name} — {t.Description}");
+                    Console.WriteLine($"  • {t.Name}{(t.Annotations?.ReadOnlyHint == true ? " [read-only]" : "")} — {t.Description}");
                 }
                 return 0;
             }
@@ -4323,6 +4357,9 @@ MCP Client & Server (FR-013, stdio JSON-RPC 2.0):
                             none given, every tool is exposed. Also filters 'hopper mcp tools'.
   --mcp-deny <glob>         Hide MCP tools whose name matches (repeatable; deny always wins), e.g.
                             --mcp-deny '*_run' so the model never sees a destructive tool
+  --mcp-strict              With no --mcp-allow, expose only tools the server declares readOnlyHint: true
+                            (not everything), and make a pattern that matches nothing an error (exit 2).
+                            The hints are the server's own claims: use it with servers you trust
   hopper mcp tools <cmd>     List tools exposed by an external MCP stdio server (supports --json)
   hopper mcp call <c> <t>    Invoke a tool on an external MCP stdio server (optional JSON args)
   hopper mcp serve           Expose hopper tools, prompts, and resources over MCP stdio (alias: --mcp-serve)
@@ -4508,7 +4545,7 @@ _hopper_completions()
     COMPREPLY=()
     cur=""${COMP_WORDS[COMP_CWORD]}""
     prev=""${COMP_WORDS[COMP_CWORD-1]}""
-    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-allow --mcp-deny --mcp-serve --allow-shell --read-only --fail-under --filter --corpus --list-corpora --repeat --baseline --write-baseline --lint-suite --require-provenance""
+    opts=""--agent --ralph --persona --personas --squad-init --raw --plain --offline --fallback --json --version --help --model --provider --profile --set-model --current-model --models --list-models --completions --temperature --max-tokens --timeout --system --schema --tools --max-rounds --max-iterations --config --short --estimate --estimate-with-output --telemetry --otel --metrics --validate --task-file --cache --cache-ttl --setup --init-wizard --prefer --why-this-model --code --jsonl --list-tools --plugin-dir --allow-local-plugins --no-plugins --pattern --patterns --mcp-server --mcp-allow --mcp-deny --mcp-strict --mcp-serve --allow-shell --read-only --fail-under --filter --corpus --list-corpora --repeat --baseline --write-baseline --lint-suite --require-provenance""
 
     case ""${prev}"" in
         --completions)
@@ -4595,6 +4632,7 @@ _hopper() {
         '--mcp-server[Connect to an MCP stdio server]:spec:'
         '--mcp-allow[Expose only MCP tools matching a glob]:glob:'
         '--mcp-deny[Hide MCP tools matching a glob]:glob:'
+        '--mcp-strict[Expose only read-only MCP tools unless allowed]'
         '--mcp-serve[Run as an MCP stdio server]'
         '--allow-shell[Allow shell tool over MCP]'
         '--read-only[Read-only MCP server]'
@@ -4671,6 +4709,7 @@ complete -c hopper -l patterns -d 'List prompt patterns'
 complete -c hopper -l mcp-server -d 'Connect to an MCP stdio server' -r
 complete -c hopper -l mcp-allow -d 'Expose only MCP tools matching a glob' -r
 complete -c hopper -l mcp-deny -d 'Hide MCP tools matching a glob' -r
+complete -c hopper -l mcp-strict -d 'Expose only read-only MCP tools unless allowed'
 complete -c hopper -l mcp-serve -d 'Run as an MCP stdio server'
 complete -c hopper -l allow-shell -d 'Allow shell tool over MCP'
 complete -c hopper -l read-only -d 'Read-only MCP server'
