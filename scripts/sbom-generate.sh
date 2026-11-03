@@ -53,7 +53,7 @@ dotnet list "$CSPROJ" package --include-transitive --format json >"$RAW" 2>/dev/
 
 GENERATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-if head -c 1 "$RAW" | grep -q '{'; then
+if head -c 1 "$RAW" | grep '{' >/dev/null; then
   # JSON shape (modern SDK).
   jq --arg generated_at "$GENERATED_AT" --arg csproj "$CSPROJ" '
     {

@@ -108,12 +108,12 @@ for file in "${candidate_files[@]}"; do
 
         # Skip pure-comment lines: ^\s*// or ^\s**
         # (doc block continuation `* ...` or ordinary `// ...`).
-        if printf '%s' "${content}" | grep -Eq '^[[:space:]]*(//|\*)'; then
+        if printf '%s' "${content}" | grep -E '^[[:space:]]*(//|\*)' >/dev/null; then
             continue
         fi
 
         # Skip lines explicitly approved for raw ANSI (e.g. spinner).
-        if printf '%s' "${content}" | grep -qF "${APPROVED_MARKER}"; then
+        if printf '%s' "${content}" | grep -F "${APPROVED_MARKER}" >/dev/null; then
             continue
         fi
 

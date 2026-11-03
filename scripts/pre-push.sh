@@ -95,7 +95,7 @@ fi
 # for legitimate edge cases (bulk renames where lint will be cleaned in a
 # follow-up, generated-content imports, etc.).
 # ---------------------------------------------------------------------------
-if git log "$range" --pretty=%B | grep -qiE '^Skip-Docs-Lint:[[:space:]]'; then
+if git log "$range" --pretty=%B | grep -iE '^Skip-Docs-Lint:[[:space:]]' >/dev/null; then
     echo "[pre-push] docs-lint + ascii-check skipped via Skip-Docs-Lint: trailer" >&2
     exit 0
 fi

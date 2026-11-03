@@ -190,7 +190,7 @@ fi
 # (start-of-line, colon-separated, like git's standard trailer convention).
 # Using a trailer rather than a free-text tag avoids false positives when
 # a commit message *describes* the opt-out mechanism.
-if git log "$range" --pretty=%B | grep -qiE '^Skip-Exec-Report:[[:space:]]'; then
+if git log "$range" --pretty=%B | grep -iE '^Skip-Exec-Report:[[:space:]]' >/dev/null; then
     echo "[exec-report-check] opted out via Skip-Exec-Report: trailer in commit body" >&2
     exit 0
 fi
