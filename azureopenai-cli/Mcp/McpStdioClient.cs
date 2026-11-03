@@ -54,6 +54,18 @@ internal sealed class McpStdioClient : IDisposable
         int timeoutSeconds = 15,
         CancellationToken ct = default)
     {
+        // A URL here would otherwise be run as a program name and fail with "error trying to start process 'http://...'",
+        // which says nothing about the real cause. Check the raw spec: ParseServerSpec would split a URL that has a
+        // query string (?token=x) at its '=' and mistake the rest for a command.
+        if (DescribeUrlSpec(serverSpec) is { } url)
+        {
+            throw new ArgumentException(
+                $"'{url}' is a URL, but hopper's MCP client only launches a command and talks to it over stdio; it has no HTTP transport. "
+                + "Put a stdio bridge in front of the server and pass the bridge command instead, for example: "
+                + $"--mcp-server \"name=python3 examples/mcp/http-bridge.py {url}\" "
+                + "(a bearer token goes in the file named by MCP_BRIDGE_TOKEN_FILE; see docs/agent-ecosystem-field-guide.md).");
+        }
+
         var (serverName, argv) = ParseServerSpec(serverSpec);
         if (argv.Count == 0 || string.IsNullOrWhiteSpace(argv[0]))
         {
@@ -288,6 +300,33 @@ internal sealed class McpStdioClient : IDisposable
     /// Parses <c>"name=cmd arg1 arg2"</c> or <c>"cmd arg1 arg2"</c> into
     /// <c>(ServerName, ArgvList)</c>, honoring single and double quotes.
     /// </summary>
+    /// <summary>
+    /// When the server spec is a URL (<c>http</c>, <c>https</c>, <c>ws</c>, <c>wss</c>), returns it with anything
+    /// secret removed (userinfo, query string and fragment never appear in an error message); otherwise null.
+    /// Only the FIRST word counts, after an optional <c>name=</c>: a URL passed as an argument to a bridge command
+    /// (<c>python3 http-bridge.py https://host/mcp</c>) is the intended use and must not be flagged.
+    /// </summary>
+    internal static string? DescribeUrlSpec(string spec)
+    {
+        if (string.IsNullOrWhiteSpace(spec)) return null;
+        var rest = spec.Trim();
+
+        // optional "name=" prefix: letters, digits, '_', '.', '-' only, so a URL (which has ':' and '/') is never a name
+        int i = 0;
+        while (i < rest.Length && (char.IsAsciiLetterOrDigit(rest[i]) || rest[i] is '_' or '.' or '-')) i++;
+        if (i > 0 && i < rest.Length && rest[i] == '=') rest = rest[(i + 1)..].TrimStart();
+
+        var first = rest.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+        if (!Uri.TryCreate(first.Trim('"', '\''), UriKind.Absolute, out var uri)) return null;
+        if (uri.Scheme is not ("http" or "https" or "ws" or "wss")) return null;
+
+        // Uri.Host already carries the brackets of an IPv6 literal.
+        var host = uri.Host.Contains(':') && !uri.Host.StartsWith('[') ? $"[{uri.Host}]" : uri.Host;
+        var port = uri.IsDefaultPort ? "" : $":{uri.Port}";
+        var path = uri.AbsolutePath == "/" ? "" : uri.AbsolutePath;
+        return $"{uri.Scheme}://{host}{port}{path}";
+    }
+
     internal static (string Name, List<string> Argv) ParseServerSpec(string spec)
     {
         if (string.IsNullOrWhiteSpace(spec))
