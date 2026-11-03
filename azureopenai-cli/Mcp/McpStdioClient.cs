@@ -192,14 +192,25 @@ internal sealed class McpStdioClient : IDisposable
     /// <see cref="AITool"/> instances for MAF agent consumption.
     /// </summary>
     public async Task<IReadOnlyList<AITool>> CreateMafToolsAsync(CancellationToken ct = default)
+        => (await CreateMafToolsAsync(filter: null, ct).ConfigureAwait(false)).Exposed;
+
+    /// <summary>
+    /// As <see cref="CreateMafToolsAsync(CancellationToken)"/>, but only tools the <paramref name="filter"/> allows are
+    /// exposed to the model. Also returns every name the server offered, so the caller can tell which patterns matched nothing.
+    /// </summary>
+    public async Task<(IReadOnlyList<AITool> Exposed, IReadOnlyList<string> AllNames)> CreateMafToolsAsync(
+        McpToolFilter? filter, CancellationToken ct = default)
     {
         var remoteTools = await ListToolsAsync(ct).ConfigureAwait(false);
         var result = new List<AITool>(remoteTools.Count);
+        var all = new List<string>(remoteTools.Count);
         foreach (var info in remoteTools)
         {
+            all.Add(info.Name);
+            if (filter is not null && !filter.Allows(info.Name)) continue;
             result.Add(new McpClientAIFunction(this, info));
         }
-        return result;
+        return (result, all);
     }
 
     internal async Task<McpJsonRpcResponse> SendRequestAsync(

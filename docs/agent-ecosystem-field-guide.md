@@ -83,26 +83,31 @@ model for this, and treat the output as one independent signal, not as the audit
 
 ## Recipe 3: ask a tool server a question in English
 
-Hopper's agent can call any MCP stdio server's tools. Against the `agent-toolkit` ops server:
+Hopper's agent can call any MCP stdio server's tools. Against the `agent-toolkit` ops server, showing the model only
+the four read-only reports:
 
 ```bash
-MCP_ALLOW='janitor_report,janitor_health,updater_report,updater_health' \
-  hopper --agent --tools datetime --temperature 1 --max-tokens 4000 \
-  --mcp-server "toolkit=python3 examples/mcp/read-only-proxy.py agent-toolkit-mcp" \
+hopper --agent --tools datetime --max-tokens 4000 \
+  --mcp-server "toolkit=agent-toolkit-mcp" \
+  --mcp-allow janitor_report --mcp-allow janitor_health \
+  --mcp-allow updater_report --mcp-allow updater_health \
   "Is the janitor or the updater unhealthy, when did each last run, and what should I do?"
 ```
 
-It answered in 19 s and every fact was checked against the tools' own output (status, an idle streak of 15,
-integrity, `dpkg --audit` clean, both timestamps).
+It prints `[mcp] 'toolkit': exposing 4 of 9 tool(s) to the model (5 hidden by --mcp-allow/--mcp-deny)`, answers in
+about 6 s, and every fact was checked against the tools' own output (the janitor `degraded` with exit 4 because
+`aged_logs` has an idle streak of 20, its last run ID and time; the updater `healthy` with exit 0, its last run and ID).
 
-**The filter matters.** Hopper's MCP client exposes every tool the server lists, and `--read-only` only
-governs hopper's own server. The toolkit lists `janitor_run` (cleans disk) and `updater_run` (upgrades
-packages) beside its reports, declares no `readOnlyHint`, and nothing else would stop a model from calling
-them. `examples/mcp/read-only-proxy.py` puts an allow and a deny pattern in front of any server and refuses to
-start with no policy. Tracked as `newman-2026-11-N-11`.
+**The filter matters.** An MCP client exposes every tool the server lists. The toolkit lists `janitor_run` (cleans disk)
+and `updater_run` (upgrades packages) beside its reports, declares no `readOnlyHint`, and nothing else would stop a
+model from calling them. Since S04E22 hopper has `--mcp-allow` and `--mcp-deny` (repeatable globs; deny wins; a tool
+the model is not told about cannot be called). Run `hopper mcp tools <server> --mcp-allow ...` first to preview exactly
+what the model will see.
 
-For **pi**, skip the proxy: its `toolExposure` setting in `~/.pi/agent/mcp.json` does this natively
-(`"*_run": "hidden"`).
+- The default is still **everything**, unchanged, so nothing that works today breaks. Say what you want to allow.
+- A pattern that matches no tool prints a warning: a mistyped `--mcp-deny` leaves the tool you meant to hide exposed.
+- `examples/mcp/read-only-proxy.py` still has a use: it enforces the same policy outside the process, for hosts that
+  have no such flag.
 
 ## Recipe 4: a first draft of a commit message
 

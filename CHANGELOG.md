@@ -128,6 +128,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`azureopenai-cli/Mcp/McpStdioClient.cs`, s04e18-the-clean-exit)
 
 ### Security
+- **feat(mcp):** S04E22 *The Allowlist* -- hopper's MCP client handed the model every tool a server
+  listed, including ones that clean disk or upgrade packages. New `--mcp-allow <glob>` and
+  `--mcp-deny <glob>` (repeatable; `*` and `?`; deny wins; an allow list that matches nothing
+  exposes nothing) choose which tools the model is told about, and a tool it is not told about
+  cannot be called. A pattern that matches no tool prints a warning, since a mistyped deny leaves
+  the tool exposed. `hopper mcp tools` applies the same filter, so the result can be previewed. With
+  neither flag every tool is still exposed. (`Mcp/McpToolFilter.cs`, s04e22-the-allowlist)
 - **fix(shell):** S04E17 *The Long Tail* -- the `shell_exec` guard from S04E15 could still be
   walked past. An independent reviewer model found `bash -c 'coproc rm x'`, and measuring its
   neighbours found six more routes that ran a blocked command through the full guard:

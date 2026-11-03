@@ -14,7 +14,7 @@ because the [cast itself is](../../AGENTS.md).
 | **S01** | The Pilot Years                          | Aired (back-fill pending)        | --        |
 | **S02** | Production & Polish (v2 era)             | In production (24-arc + specials) | --        |
 | **S03** | Local & Multi-Provider                   | Aired (30 episodes; index back-fill pending) | [s03-blueprint.md](s03-blueprint.md) |
-| **S04** | Model Intelligence                       | In production (E01-E21 + 12 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
+| **S04** | Model Intelligence                       | In production (E01-E22 + 12 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
 | **S05** | Protocols & Plugins (incl. MCP)          | Pre-production                  | [s05-blueprint.md](s05-blueprint.md) |
 | **S06** | Dogfooding (`az-ai` is the main tool)    | Pre-production (showrunner override) | [s06-blueprint.md](s06-blueprint.md) |
 | **S07+** | Roadmap pad (Enterprise, Multimodal, ...) | Slate                            | [seasons-roadmap.md](seasons-roadmap.md) |
@@ -98,6 +98,7 @@ range recorded in each report. E06 is the mid-season cast-balance audit.
 | S04E19   | *The Stale Install*    | [s04e19-the-stale-install.md](s04e19-the-stale-install.md) | build + docs | `make install` copied the previous build under a new timestamp; the AOT binary now depends on its sources |
 | S04E20   | *The Default*          | [s04e20-the-default.md](s04e20-the-default.md) | code + docs | A model that rejects `temperature` is retried once without it; 2 of 3 live deployments failed before, 0 after |
 | S04E21   | *The Silence*          | [s04e21-the-silence.md](s04e21-the-silence.md) | code + docs | An empty reply that stopped at the output limit or the content filter exits 1 instead of 0; 2 of 3 small-budget live calls were silent before |
+| S04E22   | *The Allowlist*        | [s04e22-the-allowlist.md](s04e22-the-allowlist.md) | code + docs | `--mcp-allow` / `--mcp-deny` choose which MCP tools the model is told about; a mistyped deny pattern warns instead of silently exposing the tool |
 | S04SP1   | *The Reruns*           | [s04sp1-the-reruns.md](s04sp1-the-reruns.md) | `eecfd74` | Release matrix retag after v2.2.0 |
 | S04SP2   | *The Stenographer*     | [s04sp2-the-stenographer.md](s04sp2-the-stenographer.md) | docs-only | Paperwork audit; artifact contract locked for v2.3.0 |
 | S04SP3   | *The Pre-Push*         | [s04sp3-the-pre-push.md](s04sp3-the-pre-push.md) | `1c8c787` | Pre-push docs-lint after ten consecutive red runs |
