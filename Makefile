@@ -571,7 +571,7 @@ INSTALL_BIN := $(PREFIX)/bin/hopper
 ALIAS_BIN := $(PREFIX)/bin/az-ai
 
 ## Install host-AOT binary to ~/.local/bin/hopper, plus an az-ai alias (Linux/macOS/WSL).
-## Requires `make publish-aot` to have been run first.
+## Rebuilds the AOT binary first whenever a source file is newer than it, so an install is never a stale build.
 ## Add ~/.local/bin to PATH if it isn't already (most distros do this).
 install: dist/aot/$(BIN_NAME)
 	@mkdir -p $(PREFIX)/bin
@@ -582,8 +582,15 @@ install: dist/aot/$(BIN_NAME)
 	@echo "   Invoke with: hopper \"your prompt\""
 	@echo "   Espanso:     command: [\"hopper\", \"--raw\", \"{{prompt}}\"]"
 
-## If the host-AOT binary doesn't exist, build it first.
-dist/aot/$(BIN_NAME):
+# Everything that can change the binary: sources, project files and embedded resources under azureopenai-cli/
+# (build output excluded), plus the solution-wide MSBuild files. Evaluated once per make run.
+AOT_SOURCES := $(shell find azureopenai-cli -type f -not -path '*/obj/*' -not -path '*/bin/*' 2>/dev/null) \
+               $(wildcard Directory.Build.props Directory.Packages.props global.json)
+
+## Build the host-AOT binary when it is missing OR when any source is newer than it. This rule used to depend on
+## nothing, so `make install` after a source change quietly copied the old build to ~/.local/bin (S04E19: found
+## when a "newest" install still let `env rm FILE` through the shell guard).
+dist/aot/$(BIN_NAME): $(AOT_SOURCES)
 	@$(MAKE) publish-aot
 
 uninstall:
