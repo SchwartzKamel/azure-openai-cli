@@ -1450,6 +1450,37 @@ print(" ".join(sorted(names)))' "$mf_dir/req.log" || true
         rm -rf "$mf_dir"
     fi
 
+    # ── S04E25 -- The Wrong Door: a URL given to --mcp-server is named as the problem, with the way out ──
+    local ur_out ur_rc ur_home
+    set +e
+    ur_out=$("$BIN" mcp tools "https://user:SECRETPW@host.example/mcp?token=SECRETTOK" 2>&1); ur_rc=$?
+    set -e
+    if [ "$ur_rc" = "1" ] && printf '%s' "$ur_out" | grepq -F 'is a URL' && printf '%s' "$ur_out" | grepq -F 'http-bridge.py' \
+        && printf '%s' "$ur_out" | grepq -F 'https://host.example/mcp' && ! printf '%s' "$ur_out" | grepq -F 'trying to start process'; then
+        pass "S04E25 mcp url: 'hopper mcp tools <url>' says it is a URL and names the bridge (not 'trying to start process')"
+    else
+        fail "S04E25 mcp url: 'hopper mcp tools <url>' says it is a URL and names the bridge (not 'trying to start process')" "rc=$ur_rc $(printf '%s' "$ur_out" | head -c 300)"
+    fi
+    if ! printf '%s' "$ur_out" | grepq -F 'SECRETPW' && ! printf '%s' "$ur_out" | grepq -F 'SECRETTOK'; then
+        pass "S04E25 mcp url: credentials embedded in the URL are never echoed"
+    else
+        fail "S04E25 mcp url: credentials embedded in the URL are never echoed" "$(printf '%s' "$ur_out" | head -c 300)"
+    fi
+    set +e
+    # Supply credentials explicitly (and a throwaway HOME): without them hopper stops at "AZUREOPENAIENDPOINT not set"
+    # before it ever reaches the MCP connection. This case once passed only on a machine that happened to have an env file.
+    ur_home=$(mktemp -d)
+    ur_out=$(env -i HOME="$ur_home" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+        AZUREOPENAIENDPOINT="https://example.openai.azure.com/" AZUREOPENAIAPI="dummy-key-0123456789" \
+        "$BIN" --agent --mcp-server "x=https://example.invalid/mcp" "hi" 2>&1); ur_rc=$?
+    rm -rf "$ur_home"
+    set -e
+    if [ "$ur_rc" = "1" ] && printf '%s' "$ur_out" | grepq -F 'is a URL' && printf '%s' "$ur_out" | grepq -F 'http-bridge.py'; then
+        pass "S04E25 mcp url: the agent path (--mcp-server) gives the same explanation"
+    else
+        fail "S04E25 mcp url: the agent path (--mcp-server) gives the same explanation" "rc=$ur_rc $(printf '%s' "$ur_out" | head -c 300)"
+    fi
+
     # ── S04SP12 -- The Bridge: hopper reaches an HTTP MCP server through examples/mcp/http-bridge.py ──
     # Hopper's MCP client only launches a command, so an HTTP MCP server needs a stdio bridge. The stand-in server
     # below keeps the parts of scouter's host that matter to a bridge: bearer auth, an Mcp-Session-Id, a cap on

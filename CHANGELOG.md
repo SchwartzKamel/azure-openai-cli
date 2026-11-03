@@ -114,6 +114,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Fixed
+- **fix(mcp):** S04E25 *The Wrong Door* -- giving `--mcp-server` (or `hopper mcp tools|call`) a URL
+  failed with "error trying to start process 'http://...'", which named neither the cause nor the
+  way out. Hopper's MCP client launches a command and has no HTTP transport; the error now says so,
+  prints a ready-to-paste `http-bridge.py` command, and points at `MCP_BRIDGE_TOKEN_FILE`. Only
+  scheme, host, port and path are shown, so credentials in the URL are never echoed, and a URL
+  passed as an argument to a bridge command is not flagged. (s04e25-the-wrong-door)
 - **fix(providers):** S04E24 -- a multi-model `AZUREOPENAIMODEL` no longer vetoes models routed through
   `AZ_AI_COMPAT_MODELS` or `AZURE_FOUNDRY_MODELS`. Previously no compat preset was reachable in that setup, even
   though the README example promised it.
