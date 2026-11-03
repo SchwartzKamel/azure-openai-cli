@@ -375,6 +375,12 @@ internal sealed class McpStdioClient : IDisposable
         return JsonSerializer.SerializeToElement(strFallback, AppJsonContext.Default.String);
     }
 
+    /// <summary>
+    /// How long <see cref="Dispose"/> waits for an MCP server to exit by itself after its input is closed, before
+    /// it is killed. Internal and mutable so tests can shorten it.
+    /// </summary>
+    internal static int GracefulShutdownMs = 2000;
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -383,7 +389,17 @@ internal sealed class McpStdioClient : IDisposable
         {
             if (_process is not null && !_process.HasExited)
             {
-                _process.Kill(entireProcessTree: true);
+                // The MCP stdio shutdown sequence: close the server's input, give it a chance to exit on its own,
+                // and only then force it. Killing at once (what this did before S04E18) denies the server the
+                // chance to release what it holds: HTTP sessions it opened for a bridge, locks, temp files. A
+                // server that caps sessions (scouter admits 8 observers) fills up after eight hopper runs and
+                // then refuses everyone with HTTP 429. A server that ignores the closed input is still killed,
+                // with its whole process tree, after the grace period.
+                try { _process.StandardInput.Close(); } catch { }
+                if (!_process.WaitForExit(GracefulShutdownMs))
+                {
+                    _process.Kill(entireProcessTree: true);
+                }
             }
         }
         catch { }
