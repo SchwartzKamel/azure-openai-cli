@@ -1231,6 +1231,125 @@ EVSUITE
         fi
     fi
 
+    # ── S04SP12 -- The Bridge: hopper reaches an HTTP MCP server through examples/mcp/http-bridge.py ──
+    # Hopper's MCP client only launches a command, so an HTTP MCP server needs a stdio bridge. The stand-in server
+    # below keeps the parts of scouter's host that matter to a bridge: bearer auth, an Mcp-Session-Id, a cap on
+    # sessions and a DELETE to release one. Cap 2 is what makes a leak visible: a bridge that leaks one session per
+    # run fails on the third. No scouter, network or model is needed.
+    echo "▸ S04SP12 http mcp bridge"
+    hb_dir=$(mktemp -d "${TMPDIR:-/tmp}/http-bridge.XXXXXX")
+    hb_bridge="$(pwd)/examples/mcp/http-bridge.py"
+    hb_bin="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
+    if ! command -v python3 >/dev/null 2>&1; then
+        skip "S04SP12 http mcp bridge" "python3 not available"
+    else
+        cat > "$hb_dir/server.py" <<'MCPSTUB'
+import json, sys, uuid, http.server, socketserver
+PORTFILE, TOKEN, CAP = sys.argv[1], sys.argv[2], int(sys.argv[3])
+sessions = set()
+class H(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def _send(self, code, body="", headers=None):
+        data = body.encode() if isinstance(body, str) else body
+        self.send_response(code)
+        self.send_header("Content-Length", str(len(data)))
+        for k, v in (headers or {}).items(): self.send_header(k, v)
+        self.end_headers(); self.wfile.write(data)
+    def _ok(self): return self.headers.get("Authorization") == "Bearer " + TOKEN
+    def do_GET(self):
+        self._send(200, str(len(sessions)))          # test hook: how many sessions are open
+    def do_DELETE(self):
+        if not self._ok(): return self._send(401, "unauthorized")
+        sessions.discard(self.headers.get("Mcp-Session-Id")); self._send(200, "")
+    def do_POST(self):
+        if not self._ok(): return self._send(401, "unauthorized")
+        m = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        method = m.get("method")
+        if method == "initialize":
+            if len(sessions) >= CAP: return self._send(429, "session limit reached")
+            sid = uuid.uuid4().hex; sessions.add(sid)
+            return self._send(200, json.dumps({"jsonrpc": "2.0", "id": m["id"], "result": {"protocolVersion": "2025-06-18", "capabilities": {"tools": {}}, "serverInfo": {"name": "stub-http", "version": "1"}}}), {"Content-Type": "application/json", "Mcp-Session-Id": sid})
+        if self.headers.get("Mcp-Session-Id") not in sessions: return self._send(400, "missing Mcp-Session-Id")
+        if "id" not in m: return self._send(202, "")
+        if method == "tools/list":
+            res = {"tools": [{"name": "echo", "description": "Echo the text back.", "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}}}}]}
+        elif method == "tools/call":
+            res = {"content": [{"type": "text", "text": "echo:" + str((m["params"].get("arguments") or {}).get("text", ""))}], "isError": False}
+        else:
+            return self._send(200, json.dumps({"jsonrpc": "2.0", "id": m["id"], "error": {"code": -32601, "message": "no such method"}}), {"Content-Type": "application/json"})
+        self._send(200, json.dumps({"jsonrpc": "2.0", "id": m["id"], "result": res}), {"Content-Type": "application/json"})
+class S(socketserver.ThreadingMixIn, http.server.HTTPServer): daemon_threads = True
+srv = S(("127.0.0.1", 0), H); open(PORTFILE, "w").write(str(srv.server_address[1])); srv.serve_forever()
+MCPSTUB
+        hb_token=$(python3 -c 'import secrets; print(secrets.token_hex(24))'); printf '%s' "$hb_token" > "$hb_dir/tok"; chmod 600 "$hb_dir/tok"
+        python3 "$hb_dir/server.py" "$hb_dir/port" "$hb_token" 2 >/dev/null 2>&1 & hb_srv=$!
+        for _ in $(seq 1 50); do [ -s "$hb_dir/port" ] && break; sleep 0.1; done
+        hb_url="http://127.0.0.1:$(cat "$hb_dir/port" 2>/dev/null || echo 0)/mcp"
+        hb_count() { curl -s -m 5 "${hb_url%/mcp}/" 2>/dev/null; }
+
+        if [ ! -s "$hb_dir/port" ]; then
+            kill "$hb_srv" 2>/dev/null || true
+            skip "S04SP12 http mcp bridge" "stand-in server did not start"
+        else
+            hb_out=$(MCP_BRIDGE_TOKEN_FILE="$hb_dir/tok" "$hb_bin" mcp tools "python3 $hb_bridge $hb_url" 2>&1 || true)
+            if printf '%s' "$hb_out" | grep -qF 'echo'; then
+                pass "S04SP12 http bridge: hopper lists an HTTP server's tools through the bridge"
+            else
+                fail "S04SP12 http bridge: hopper lists an HTTP server's tools through the bridge" "$hb_out"
+            fi
+
+            hb_out=$(MCP_BRIDGE_TOKEN_FILE="$hb_dir/tok" "$hb_bin" mcp call "python3 $hb_bridge $hb_url" echo '{"text":"hello"}' 2>&1 || true)
+            if printf '%s' "$hb_out" | grep -qF 'echo:hello'; then
+                pass "S04SP12 http bridge: a tool call round-trips through the bridge"
+            else
+                fail "S04SP12 http bridge: a tool call round-trips through the bridge" "$hb_out"
+            fi
+
+            hb_ok=0
+            for _ in 1 2 3 4 5 6; do
+                hb_out=$(MCP_BRIDGE_TOKEN_FILE="$hb_dir/tok" "$hb_bin" mcp call "python3 $hb_bridge $hb_url" echo '{"text":"x"}' 2>&1 || true)
+                printf '%s' "$hb_out" | grep -qF 'echo:x' && hb_ok=$((hb_ok + 1))
+            done
+            if [ "$hb_ok" -eq 6 ] && [ "$(hb_count)" = "0" ]; then
+                pass "S04SP12 http bridge: six runs against a server that admits two sessions leak none (per-request mode)"
+            else
+                fail "S04SP12 http bridge: six runs against a server that admits two sessions leak none (per-request mode)" "ok=$hb_ok open_sessions=$(hb_count)"
+            fi
+
+            # sticky mode keeps one session and must release it when its input ends
+            printf '%s\n%s\n%s\n' \
+                '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' \
+                '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+                '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+                | MCP_BRIDGE_SESSION=sticky MCP_BRIDGE_TOKEN_FILE="$hb_dir/tok" python3 "$hb_bridge" "$hb_url" > "$hb_dir/sticky.out" 2>&1 || true
+            if grep -qF '"echo"' "$hb_dir/sticky.out" && [ "$(hb_count)" = "0" ]; then
+                pass "S04SP12 http bridge: sticky mode releases its session when its input ends"
+            else
+                fail "S04SP12 http bridge: sticky mode releases its session when its input ends" "open_sessions=$(hb_count) out=$(head -c 200 "$hb_dir/sticky.out")"
+            fi
+
+            printf '%s' "0123456789abcdef0123456789abcdef0123456789abcdef" > "$hb_dir/bad.tok"
+            # Drive the bridge directly: through hopper, its own SecretRedactor would mask a leaked `token=...` and hide
+            # a bridge that prints one. (A mutation that did exactly that survived the first version of this test.)
+            hb_out=$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' \
+                | MCP_BRIDGE_TOKEN_FILE="$hb_dir/bad.tok" python3 "$hb_bridge" "$hb_url" 2>&1 || true)
+            if printf '%s' "$hb_out" | grep -qF 'HTTP 401' && ! printf '%s' "$hb_out" | grep -qF "$(cat "$hb_dir/bad.tok")" && ! printf '%s' "$hb_out" | grep -qF "$hb_token"; then
+                pass "S04SP12 http bridge: a wrong token is refused (HTTP 401) and no token appears in the output"
+            else
+                fail "S04SP12 http bridge: a wrong token is refused (HTTP 401) and no token appears in the output" "$hb_out"
+            fi
+
+            hb_out=$(python3 "$hb_bridge" 2>&1 </dev/null; echo "rc=$?") || true
+            if printf '%s' "$hb_out" | grep -qF 'rc=2' && printf '%s' "$hb_out" | grep -qF 'usage'; then
+                pass "S04SP12 http bridge: with no URL it prints usage and exits 2"
+            else
+                fail "S04SP12 http bridge: with no URL it prints usage and exits 2" "$hb_out"
+            fi
+            kill "$hb_srv" 2>/dev/null || true
+        fi
+    fi
+    rm -rf "$hb_dir"
+
 
     if ! command -v python3 >/dev/null 2>&1; then
         skip "S04E10 eval: end-to-end against a fake model server" "python3 not available"
