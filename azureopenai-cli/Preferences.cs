@@ -310,7 +310,7 @@ internal static class PreferencesResolver
     // NOT touched here.
     private static readonly string[] KnownProviders =
     {
-        "azure", "foundry", "openai", "groq", "together", "cloudflare", "llamacpp",
+        "azure", "foundry", "openai", "groq", "together", "cloudflare", "llamacpp", "copilot",
     };
 
     // Compat preset name -> ApiKeyEnvVar. Mirrors OpenAiCompatAdapter.BuiltIn
@@ -338,6 +338,9 @@ internal static class PreferencesResolver
         // future preferences.json default_provider knob can rely on the
         // full set without a special-case.
         ("llamacpp",   "AZ_AI_LLAMACPP_API_KEY"),
+        // S04E24 -- The Copilot. The adapter also accepts GH_TOKEN /
+        // GITHUB_TOKEN / `gh auth token`; this row records the primary var.
+        ("copilot",    "COPILOT_GITHUB_TOKEN"),
     };
 
     // S03E22 -- The Default (ADR-011). Local-runtime preset -> default

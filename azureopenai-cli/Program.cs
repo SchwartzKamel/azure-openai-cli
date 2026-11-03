@@ -706,12 +706,17 @@ internal class Program
             ?? DefaultModelFallback;
 
         // Enforce model allowlist when AZUREOPENAIMODEL defines multiple models.
-        if (allowedModels != null && !allowedModels.Contains(model, StringComparer.OrdinalIgnoreCase))
+        // S04E24: models the operator routed via AZ_AI_COMPAT_MODELS or
+        // AZURE_FOUNDRY_MODELS are allowed too -- those env vars are the
+        // allowlists for their dispatchers (README "OpenAI-compatible
+        // providers"), so an Azure model list must not veto them.
+        if (!IsModelAllowed(model, allowedModels))
         {
-            var list = string.Join(", ", allowedModels);
+            var list = string.Join(", ", allowedModels!);
             return ErrorAndExit(
                 $"Model '{model}' is not in the allowed list. Allowed models: [{list}]. "
-                + "Add it to AZUREOPENAIMODEL (comma-separated) or use --set-model to create an alias to an allowed deployment.",
+                + "Add it to AZUREOPENAIMODEL (comma-separated), route it via AZ_AI_COMPAT_MODELS, "
+                + "or use --set-model to create an alias to an allowed deployment.",
                 1, jsonMode: opts.Json);
         }
 
@@ -922,9 +927,9 @@ internal class Program
                     // pins do not bypass the allowlist -- the operator opted
                     // into the gate at env-config time and the persona is
                     // not above it.
-                    if (allowedModels != null && !allowedModels.Contains(model, StringComparer.OrdinalIgnoreCase))
+                    if (!IsModelAllowed(model, allowedModels))
                     {
-                        var list = string.Join(", ", allowedModels);
+                        var list = string.Join(", ", allowedModels!);
                         return ErrorAndExit(
                             $"Persona '{activePersona.Name}' pinned model '{model}' which is not in the allowed list. "
                             + $"Allowed models: [{list}]. Add it to AZUREOPENAIMODEL or remove the persona model pin.",
@@ -2150,7 +2155,7 @@ internal class Program
                 // flags accept their value as the next argv entry.
                 case "--provider":
                     if (i + 1 < args.Length) { provider = args[++i]; }
-                    else { Fail("--provider requires a name (e.g. azure, openai, groq, together, cloudflare)"); }
+                    else { Fail("--provider requires a name (e.g. azure, openai, groq, together, cloudflare, copilot)"); }
                     break;
                 case "--profile":
                     if (i + 1 < args.Length) { profile = args[++i]; }
@@ -3379,7 +3384,7 @@ internal class Program
     private static readonly HashSet<string> KnownProviderSections =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "azure", "openai", "foundry", "groq", "together", "cloudflare",
+            "azure", "openai", "foundry", "groq", "together", "cloudflare", "copilot",
         };
 
     /// <summary>Testable overload that accepts a custom path.</summary>
@@ -3431,7 +3436,7 @@ internal class Program
                             if (!isRaw)
                             {
                                 Console.Error.WriteLine(
-                                    $"[WARNING] {path}: unknown provider section '[{hdr}]' -- skipping (known: azure, openai, foundry, groq, together, cloudflare)");
+                                    $"[WARNING] {path}: unknown provider section '[{hdr}]' -- skipping (known: azure, openai, foundry, groq, together, cloudflare, copilot)");
                             }
                         }
                     }
@@ -3567,6 +3572,27 @@ internal class Program
     /// that should be routed to the Foundry/GitHub Models endpoint instead of
     /// Azure OpenAI. Returns null if the env var is unset.
     /// </summary>
+    /// <summary>
+    /// S04E24 -- true when <paramref name="model"/> passes the AZUREOPENAIMODEL
+    /// allowlist (<paramref name="allowedModels"/>; null means no gate) or is
+    /// explicitly routed by the operator through <c>AZ_AI_COMPAT_MODELS</c> or
+    /// <c>AZURE_FOUNDRY_MODELS</c>. A malformed compat list counts as no
+    /// routing here; BuildChatClient reports the parse error.
+    /// </summary>
+    internal static bool IsModelAllowed(string model, HashSet<string>? allowedModels)
+    {
+        if (allowedModels == null || allowedModels.Contains(model, StringComparer.OrdinalIgnoreCase)) return true;
+        if (ParseFoundryModels()?.Contains(model) == true) return true;
+        try
+        {
+            return OpenAiCompatAdapter.ParseCompatModelsFromEnv()?.ContainsKey(model) == true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
     internal static HashSet<string>? ParseFoundryModels()
     {
         var raw = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_MODELS");
@@ -3637,7 +3663,10 @@ internal class Program
         var client = BuildChatClientCore(endpoint, apiKey, model, jsonMode);
         // S04E20: a model that refuses a temperature setting retries once without it. Wrapped here, once, because every
         // path (one-shot, agent, Ralph, the queue, eval, the doctor probe) builds its client through this method.
-        return client is null ? null : new AzureOpenAI_CLI.Resilience.TemperatureTolerantChatClient(client, model);
+        return client is null
+            ? null
+            : new AzureOpenAI_CLI.Resilience.TemperatureTolerantChatClient(
+                client, model, memoryPath: AzureOpenAI_CLI.Resilience.TemperatureTolerantChatClient.DefaultMemoryPath());
     }
 
     /// <summary>The routing described above; <see cref="BuildChatClient"/> adds the temperature fallback around it.</summary>
@@ -4251,7 +4280,7 @@ Core Options:
   --why-this-model          Explain which model would be used and why, then exit
                             (no credentials needed; supports --json)
   --provider <name>         Provider override: azure | openai | groq | together |
-                            cloudflare | foundry. Wins over AZ_PROVIDER and over
+                            cloudflare | foundry | copilot. Wins over AZ_PROVIDER and over
                             any profile pin. (env: AZ_PROVIDER) (S03E20)
   --profile <name>          Select a named profile from preferences.json. Profile
                             pins provider + optional model. Missing profile
@@ -4528,7 +4557,7 @@ _hopper() {
         '--version[Show version]'
         '--help[Show help]'
         '--model[Select model]:model:'
-        '--provider[Provider override (azure/openai/groq/together/cloudflare/foundry)]:provider:(azure openai groq together cloudflare foundry)'
+        '--provider[Provider override (azure/openai/groq/together/cloudflare/foundry/copilot)]:provider:(azure openai groq together cloudflare foundry copilot)'
         '--profile[Named profile from preferences.json]:profile:'
         '--set-model[Set model alias]:spec:'
         '--current-model[Show default alias]'
@@ -4604,7 +4633,7 @@ complete -c hopper -l code -d 'Extract code blocks only'
 complete -c hopper -l version -s v -d 'Show version'
 complete -c hopper -l help -s h -d 'Show help'
 complete -c hopper -l model -s m -d 'Select model' -r
-complete -c hopper -l provider -d 'Provider override (S03E20)' -xa 'azure openai groq together cloudflare foundry'
+complete -c hopper -l provider -d 'Provider override (S03E20)' -xa 'azure openai groq together cloudflare foundry copilot'
 complete -c hopper -l profile -d 'Named profile from preferences.json (S03E20)' -r
 complete -c hopper -l set-model -d 'Set model alias' -r
 complete -c hopper -l current-model -d 'Show default alias'

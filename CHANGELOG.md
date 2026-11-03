@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **feat(providers):** S04E24 *The Copilot* -- a `copilot` OpenAI-compat preset for GitHub Copilot
+  (`https://api.githubcopilot.com`). The token comes from `COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN` or
+  `gh auth token`, run without a shell and with a 5 s timeout. Copilot's client-identification headers are sent on
+  every request. Models Copilot serves only on the Responses API (GPT-5.x/6.x, Grok) go through it statelessly
+  (`store: false`), because Copilot rejects `previous_response_id`; that is what makes agent tool loops work. The
+  preset is built from four new generic preset knobs (fallback key env vars, a key command, static headers, Responses
+  model patterns), so ADR-010 still holds with no per-vendor adapter. Also adds a Copilot capability profile and
+  per-model list prices for `--estimate`.
+- **feat(resilience):** S04E24 -- the temperature-refusal memory now persists across runs
+  (`temperature-rejecting-models` in the prompt-cache directory), so a one-shot call to a reasoning model stops paying
+  a failed round trip (about 0.75 s on Copilot) every time.
 - **feat(eval):** S04E13 *The Redaction* -- `az-ai --lint-suite <file>` (repeatable, with
   `--require-provenance`) checks eval corpora, fixtures and baselines for secrets, real emails
   and hosts, non-reserved IPs, home paths, PII shapes, high-entropy tokens and non-ASCII. It is
@@ -103,6 +114,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Fixed
+- **fix(providers):** S04E24 -- a multi-model `AZUREOPENAIMODEL` no longer vetoes models routed through
+  `AZ_AI_COMPAT_MODELS` or `AZURE_FOUNDRY_MODELS`. Previously no compat preset was reachable in that setup, even
+  though the README example promised it.
 - **fix(ci):** S04E23 *The Early Exit* -- `producer | grep -q` inside a `set -o pipefail` script
   fails a match by itself: grep exits at its first match, the producer dies of SIGPIPE, and
   pipefail reports the pipeline as failed. Measured with an early match under load: 0.7% at

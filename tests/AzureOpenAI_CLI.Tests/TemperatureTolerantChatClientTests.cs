@@ -115,6 +115,73 @@ public class TemperatureTolerantChatClientTests : IDisposable
         Assert.Single(notes);
     }
 
+    // -- S04E24: the memory survives the process when the CLI gives it a file ---------
+
+    private static string TempMemoryPath() =>
+        Path.Combine(Path.GetTempPath(), "hopper-temp-memory-" + Guid.NewGuid().ToString("N"), "temperature-rejecting-models");
+
+    [Fact]
+    public async Task WithAMemoryFile_TheNextProcessSkipsTheFailedRoundTrip()
+    {
+        var path = TempMemoryPath();
+        try
+        {
+            var first = new RecordingClient(RejectAnyTemperature);
+            await new TemperatureTolerantChatClient(first, "gpt-6-luna", _ => { }, path).GetResponseAsync(Hello, WithTemperature(0.55f));
+            Assert.Equal(new[] { "gpt-6-luna" }, File.ReadAllLines(path));
+
+            TemperatureTolerantChatClient.ForgetAll(); // what a fresh process starts with
+
+            var notes = new List<string>();
+            var second = new RecordingClient(RejectAnyTemperature);
+            await new TemperatureTolerantChatClient(second, "gpt-6-luna", notes.Add, path).GetResponseAsync(Hello, WithTemperature(0.55f));
+            Assert.Equal(new float?[] { null }, second.Temperatures); // no failed round trip at all
+            Assert.Empty(notes);
+        }
+        finally { Directory.Delete(Path.GetDirectoryName(path)!, recursive: true); }
+    }
+
+    [Fact]
+    public async Task WithoutAMemoryFile_NothingIsWritten_AndANewProcessRelearns()
+    {
+        var first = new RecordingClient(RejectAnyTemperature);
+        await new TemperatureTolerantChatClient(first, "m-no-file", _ => { }).GetResponseAsync(Hello, WithTemperature(0.55f));
+        TemperatureTolerantChatClient.ForgetAll();
+
+        var second = new RecordingClient(RejectAnyTemperature);
+        await new TemperatureTolerantChatClient(second, "m-no-file", _ => { }).GetResponseAsync(Hello, WithTemperature(0.55f));
+        Assert.Equal(new float?[] { 0.55f, null }, second.Temperatures);
+    }
+
+    [Fact]
+    public async Task TheMemoryFile_IgnoresUnsafeOrJunkLines()
+    {
+        var path = TempMemoryPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        try
+        {
+            File.WriteAllText(path, "good-model\n\nbad model with spaces\n" + new string('x', 200) + "\n");
+            var good = new RecordingClient(_ => null);
+            await new TemperatureTolerantChatClient(good, "good-model", _ => { }, path).GetResponseAsync(Hello, WithTemperature(0.4f));
+            Assert.Equal(new float?[] { null }, good.Temperatures); // listed, so no temperature is sent
+            var other = new RecordingClient(_ => null);
+            await new TemperatureTolerantChatClient(other, "bad model with spaces", _ => { }, path).GetResponseAsync(Hello, WithTemperature(0.4f));
+            Assert.Equal(new float?[] { 0.4f }, other.Temperatures);
+        }
+        finally { Directory.Delete(Path.GetDirectoryName(path)!, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("gpt-6-luna", true)]
+    [InlineData("org/model:v1@latest", true)]
+    [InlineData("", false)]
+    [InlineData("has space", false)]
+    [InlineData("new\nline", false)]
+    public void IsPersistableModel_AcceptsOnlyPlainIdentifiers(string model, bool expected)
+    {
+        Assert.Equal(expected, TemperatureTolerantChatClient.IsPersistableModel(model));
+    }
+
     [Fact]
     public async Task TheMemoryIsPerModel()
     {

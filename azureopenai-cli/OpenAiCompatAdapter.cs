@@ -1,9 +1,11 @@
 using System.ClientModel;
 using System.ClientModel.Primitives;
+using System.Diagnostics;
 using AzureOpenAI_CLI.Net;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using OpenAI.Chat;
+using OpenAI.Responses;
 
 namespace AzureOpenAI_CLI;
 
@@ -44,7 +46,17 @@ internal sealed record OpenAiCompatPreset(
     string? EndpointEnvVar = null,
     bool RequiresApiKey = true,
     string? ModelEnvVar = null,
-    string? DefaultModel = null);
+    string? DefaultModel = null,
+    // S04E24 -- The Copilot. GitHub Copilot speaks the OpenAI wire protocol
+    // but (a) authenticates with a GitHub token found under several
+    // conventional env vars or via `gh auth token`, (b) requires
+    // client-identification headers on every request, and (c) serves the
+    // GPT-5.x/6.x and Grok families on /responses only. Generic knobs, so no
+    // per-vendor adapter (ADR-010). All optional -- existing presets unchanged.
+    string[]? ApiKeyFallbackEnvVars = null,
+    string[]? ApiKeyCommand = null,
+    IReadOnlyDictionary<string, string>? StaticHeaders = null,
+    string[]? ResponsesModelPatterns = null);
 
 /// <summary>
 /// ADR-010 OpenAI-compatible provider adapter. Builds an <see cref="IChatClient"/>
@@ -59,6 +71,21 @@ internal sealed record OpenAiCompatPreset(
 /// </summary>
 internal static class OpenAiCompatAdapter
 {
+    /// <summary>
+    /// Client-identification headers the Copilot API requires on every
+    /// request (it rejects anonymous OpenAI-SDK traffic). Declared before
+    /// <see cref="BuiltIn"/>: static initializers run in textual order.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, string> CopilotHeaders =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Copilot-Integration-Id"] = "vscode-chat",
+            ["Editor-Version"] = "vscode/1.103.2",
+            ["Editor-Plugin-Version"] = "copilot-chat/0.26.7",
+            ["Openai-Intent"] = "conversation-panel",
+            ["X-Github-Api-Version"] = "2025-04-01",
+        };
+
     /// <summary>
     /// Built-in presets (case-insensitive lookup). Cloudflare's preset uses a
     /// placeholder URL containing <c>{account_id}</c> -- callers MUST set
@@ -104,7 +131,103 @@ internal static class OpenAiCompatAdapter
                 RequiresApiKey: false,
                 ModelEnvVar: "AZ_AI_LLAMACPP_MODEL",
                 DefaultModel: "llamacpp"),
+            // S04E24 -- The Copilot. GitHub Copilot's chat API with the
+            // operator's GitHub token (COPILOT_GITHUB_TOKEN, GH_TOKEN,
+            // GITHUB_TOKEN, else `gh auth token`). Billing is per token on the
+            // operator's Copilot plan. Models whose Copilot catalog entry lists
+            // only /responses are dispatched through the Responses API.
+            // AZ_AI_COPILOT_ENDPOINT points at another Copilot host (e.g.
+            // api.business.githubcopilot.com).
+            ["copilot"] = new(
+                "copilot",
+                new Uri("https://api.githubcopilot.com"),
+                "COPILOT_GITHUB_TOKEN",
+                EndpointEnvVar: "AZ_AI_COPILOT_ENDPOINT",
+                ModelEnvVar: "AZ_AI_COPILOT_MODEL",
+                DefaultModel: "gpt-6-luna",
+                ApiKeyFallbackEnvVars: new[] { "GH_TOKEN", "GITHUB_TOKEN" },
+                ApiKeyCommand: new[] { "gh", "auth", "token" },
+                StaticHeaders: CopilotHeaders,
+                ResponsesModelPatterns: new[]
+                {
+                    "gpt-5.3-codex", "gpt-5.4-*", "gpt-5.6-*", "gpt-6*", "grok-*", "mai-code-1.1-*",
+                }),
         };
+
+    /// <summary>
+    /// Runs a preset's <c>ApiKeyCommand</c> and returns its trimmed stdout, or
+    /// null on any failure. Replaceable in tests so no real <c>gh</c> runs.
+    /// </summary>
+    internal static Func<string[], string?> ApiKeyCommandRunner { get; set; } = RunApiKeyCommand;
+
+    /// <summary>
+    /// Resolve a preset's credential: <c>ApiKeyEnvVar</c>, then each
+    /// <c>ApiKeyFallbackEnvVars</c> entry, then <c>ApiKeyCommand</c>. Returns
+    /// null when none yields a non-blank value. The value is never logged.
+    /// </summary>
+    internal static string? ResolveApiKey(OpenAiCompatPreset preset)
+    {
+        var key = Environment.GetEnvironmentVariable(preset.ApiKeyEnvVar);
+        if (!string.IsNullOrWhiteSpace(key)) return key.Trim();
+        foreach (var name in preset.ApiKeyFallbackEnvVars ?? Array.Empty<string>())
+        {
+            var v = Environment.GetEnvironmentVariable(name);
+            if (!string.IsNullOrWhiteSpace(v)) return v.Trim();
+        }
+        if (preset.ApiKeyCommand is { Length: > 0 } cmd)
+        {
+            var v = ApiKeyCommandRunner(cmd);
+            if (!string.IsNullOrWhiteSpace(v)) return v.Trim();
+        }
+        return null;
+    }
+
+    private static string? RunApiKeyCommand(string[] argv)
+    {
+        try
+        {
+            // No shell: argv is a fixed preset value, never user input.
+            var psi = new ProcessStartInfo(argv[0])
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            foreach (var a in argv.Skip(1)) psi.ArgumentList.Add(a);
+            using var proc = Process.Start(psi);
+            if (proc is null) return null;
+            var stdout = proc.StandardOutput.ReadToEndAsync();
+            if (!proc.WaitForExit(5000))
+            {
+                try { proc.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+                return null;
+            }
+            return proc.ExitCode == 0 ? stdout.GetAwaiter().GetResult().Trim() : null;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// True when the preset serves <paramref name="model"/> on the Responses
+    /// API only. Patterns are exact ids or prefixes ending in <c>*</c>.
+    /// </summary>
+    internal static bool UsesResponsesApi(OpenAiCompatPreset preset, string model)
+    {
+        foreach (var p in preset.ResponsesModelPatterns ?? Array.Empty<string>())
+        {
+            if (p.EndsWith('*')
+                ? model.StartsWith(p[..^1], StringComparison.OrdinalIgnoreCase)
+                : string.Equals(model, p, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /// <summary>
     /// Resolve a preset by name (case-insensitive). Returns null if unknown --
@@ -203,7 +326,7 @@ internal static class OpenAiCompatAdapter
         if (string.IsNullOrWhiteSpace(resolvedModel))
             throw new ArgumentException("Model must be non-empty.", nameof(modelOrAlias));
 
-        var apiKey = Environment.GetEnvironmentVariable(preset.ApiKeyEnvVar);
+        var apiKey = ResolveApiKey(preset);
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             // S03E17: presets that don't require an API key (llama.cpp,
@@ -216,9 +339,13 @@ internal static class OpenAiCompatAdapter
             }
             else
             {
+                var sources = new List<string> { $"env var '{preset.ApiKeyEnvVar}'" };
+                sources.AddRange((preset.ApiKeyFallbackEnvVars ?? Array.Empty<string>()).Select(v => $"'{v}'"));
+                if (preset.ApiKeyCommand is { Length: > 0 })
+                    sources.Add($"`{string.Join(' ', preset.ApiKeyCommand)}`");
                 throw new InvalidOperationException(
-                    $"OpenAI-compatible preset '{preset.Name}' requires env var "
-                    + $"'{preset.ApiKeyEnvVar}' but it is unset or empty.");
+                    $"OpenAI-compatible preset '{preset.Name}' requires a credential from "
+                    + string.Join(", ", sources) + " but none is set.");
             }
         }
 
@@ -314,6 +441,19 @@ internal static class OpenAiCompatAdapter
             }
         }
 
+        // S04E24: fixed client-identification headers (Copilot).
+        if (preset.StaticHeaders is { Count: > 0 } headers)
+        {
+            options.AddPolicy(new StaticHeaderPolicy(headers), PipelinePosition.PerCall);
+        }
+
+        if (UsesResponsesApi(preset, resolvedModel!))
+        {
+#pragma warning disable OPENAI001 // Responses API is evaluation-only in OpenAI 2.9; Copilot serves GPT-5.x/6.x only there.
+            return new StatelessResponsesChatClient(
+                new ResponsesClient(new ApiKeyCredential(apiKey), options).AsIChatClient(resolvedModel!));
+#pragma warning restore OPENAI001
+        }
         return new ChatClient(resolvedModel!, new ApiKeyCredential(apiKey), options).AsIChatClient();
     }
 
@@ -371,6 +511,71 @@ internal static class OpenAiCompatAdapter
     /// (e.g. <c>Token</c>, <c>ApiKey</c>). Reserved for future presets; not
     /// exercised by any built-in preset today.
     /// </summary>
+    /// <summary>
+    /// S04E24 -- runs the Responses API without server-side storage
+    /// (<c>store: false</c>). Copilot does not keep responses, so the default
+    /// stateful mode fails the second turn of any tool loop with
+    /// "previous_response_id is not supported". Stateless, the response has
+    /// no ConversationId and the tool loop resends the full history, as on
+    /// /chat/completions. Never mutates the caller's options.
+    /// </summary>
+    internal sealed class StatelessResponsesChatClient : DelegatingChatClient
+    {
+        public StatelessResponsesChatClient(IChatClient inner) : base(inner) { }
+
+        public override Task<ChatResponse> GetResponseAsync(
+            IEnumerable<Microsoft.Extensions.AI.ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+            => base.GetResponseAsync(messages, Stateless(options), cancellationToken);
+
+        public override IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<Microsoft.Extensions.AI.ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+            => base.GetStreamingResponseAsync(messages, Stateless(options), cancellationToken);
+
+#pragma warning disable OPENAI001
+        internal static ChatOptions Stateless(ChatOptions? options)
+        {
+            var copy = options?.Clone() ?? new ChatOptions();
+            var callerFactory = copy.RawRepresentationFactory;
+            copy.RawRepresentationFactory = client =>
+            {
+                var raw = callerFactory?.Invoke(client) as CreateResponseOptions ?? new CreateResponseOptions();
+                raw.StoredOutputEnabled = false;
+                return raw;
+            };
+            return copy;
+        }
+#pragma warning restore OPENAI001
+    }
+
+    /// <summary>
+    /// Sets a fixed set of request headers on every call (S04E24, Copilot's
+    /// client-identification headers).
+    /// </summary>
+    internal sealed class StaticHeaderPolicy : PipelinePolicy
+    {
+        private readonly IReadOnlyDictionary<string, string> _headers;
+
+        public StaticHeaderPolicy(IReadOnlyDictionary<string, string> headers) => _headers = headers;
+
+        public override void Process(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
+        {
+            Apply(message);
+            ProcessNext(message, pipeline, currentIndex);
+        }
+
+        public override async ValueTask ProcessAsync(PipelineMessage message, IReadOnlyList<PipelinePolicy> pipeline, int currentIndex)
+        {
+            Apply(message);
+            await ProcessNextAsync(message, pipeline, currentIndex).ConfigureAwait(false);
+        }
+
+        internal void Apply(PipelineMessage message)
+        {
+            foreach (var kv in _headers)
+                message.Request.Headers.Set(kv.Key, kv.Value);
+        }
+    }
+
     internal sealed class CompatAuthPolicy : PipelinePolicy
     {
         private readonly string _apiKey;

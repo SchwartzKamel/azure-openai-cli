@@ -84,6 +84,11 @@ public static class ProviderCapabilities
             ["llamacpp"] = new(ToolCalls: false, Streaming: true, Vision: false, JsonMode: false, MaxContextTokens: 8192),
 
             ["cloudflare"] = new(ToolCalls: false, Streaming: true, Vision: false, JsonMode: false, MaxContextTokens: null),
+
+            // S04E24 -- The Copilot. GitHub Copilot fronts frontier models
+            // (GPT-5.x/6.x, Claude, Gemini, Grok) that all take tools,
+            // streaming, images and JSON output. Context varies per model.
+            ["copilot"] = new(ToolCalls: true, Streaming: true, Vision: true, JsonMode: true, MaxContextTokens: null),
         };
 
     private static readonly Dictionary<string, Dictionary<string, CapabilityDescriptor>> ModelOverrides =

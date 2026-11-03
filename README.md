@@ -267,7 +267,7 @@ Set `AZURE_FOUNDRY_ENDPOINT`, `AZURE_FOUNDRY_KEY`, and `AZURE_FOUNDRY_MODELS` to
 
 ### OpenAI-compatible providers (S03E09 *The Compat*)
 
-ADR-010 ships an OpenAI-compat seam: any provider that speaks the OpenAI `/v1/chat/completions` wire protocol shows up as a *preset* against `OpenAiCompatAdapter`. Built-in presets: `openai`, `groq`, `together`, `cloudflare`, `llamacpp`. Each preset names the env var it reads its API key from -- credentials never live in code or config.
+ADR-010 ships an OpenAI-compat seam: any provider that speaks the OpenAI `/v1/chat/completions` wire protocol shows up as a *preset* against `OpenAiCompatAdapter`. Built-in presets: `openai`, `groq`, `together`, `cloudflare`, `llamacpp`, `copilot`. Each preset names the env var it reads its API key from -- credentials never live in code or config.
 
 Route specific models with `AZ_AI_COMPAT_MODELS` (comma-separated `preset:model` pairs). **Precedence:** Azure Foundry allowlist (`AZURE_FOUNDRY_MODELS`) wins, then OpenAI-compat allowlist, then default Azure OpenAI. Example:
 
@@ -280,6 +280,22 @@ hopper --model llama-3.1-70b "Same, but on Groq"        # routes to api.groq.com
 ```
 
 Cloudflare Workers AI additionally requires `CLOUDFLARE_ACCOUNT_ID` (substituted into the endpoint URL). See [docs/adr/ADR-010-first-non-azure-cloud.md](docs/adr/ADR-010-first-non-azure-cloud.md).
+
+#### GitHub Copilot (S04E24 *The Copilot*)
+
+The `copilot` preset sends requests to `https://api.githubcopilot.com` with your GitHub token, billed per token on your Copilot plan. The token comes from `COPILOT_GITHUB_TOKEN`, then `GH_TOKEN`, then `GITHUB_TOKEN`, then `gh auth token`, so a machine logged in with the GitHub CLI needs no extra setup:
+
+```bash
+export AZ_AI_COMPAT_MODELS="copilot:gpt-6-luna,copilot:gpt-6.1-terra,copilot:claude-haiku-5.5"
+hopper --model gpt-6-luna "Summarize this changelog"           # Responses API
+hopper --agent --tools datetime --model claude-haiku-5.5 "What day is it?"   # Chat Completions
+```
+
+- Models that Copilot serves only on the Responses API (GPT-5.3-codex, GPT-5.4, GPT-5.6, GPT-6.x, Grok, mai-code-1.1) go through it automatically, with server-side storage off because Copilot rejects `previous_response_id`; agent tool loops resend the history instead. Claude, Gemini and older GPT models use Chat Completions.
+- Models routed via `AZ_AI_COMPAT_MODELS` (or `AZURE_FOUNDRY_MODELS`) pass the `AZUREOPENAIMODEL` allowlist, so a multi-model Azure setup no longer blocks them.
+- `--estimate` uses Copilot list prices per model (snapshot 2026-11-03); unpriced models show `$?`.
+- `AZ_AI_COPILOT_ENDPOINT` points at another Copilot host (for example `https://api.business.githubcopilot.com`); `AZ_AI_COPILOT_MODEL` sets the default model (`gpt-6-luna` if unset).
+- A model that refuses a `temperature` is remembered in `temperature-rejecting-models` beside the prompt cache, so later runs skip the failed first request. Delete the file to relearn.
 
 ### Capability gate (S03E18 *The Capability Gate*)
 

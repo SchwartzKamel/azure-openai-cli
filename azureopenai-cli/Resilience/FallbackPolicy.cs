@@ -67,6 +67,7 @@ public sealed record FallbackPolicy(
             "together",
             "cloudflare",
             "ollama",
+            "copilot",
         };
 
     /// <summary>
