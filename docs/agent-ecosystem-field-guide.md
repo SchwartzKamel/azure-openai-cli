@@ -105,6 +105,10 @@ the model is not told about cannot be called). Run `hopper mcp tools <server> --
 what the model will see.
 
 - The default is still **everything**, unchanged, so nothing that works today breaks. Say what you want to allow.
+- `--mcp-strict` (S04E27) flips that for one run: with no `--mcp-allow`, only tools the server declares `readOnlyHint: true`
+  are exposed, and a pattern that matches nothing stops the run (exit 2) instead of warning. The ops toolkit declares no hints, so
+  strict alone exposes nothing from it and says why; `--mcp-strict --mcp-allow janitor_report ...` gives the same answer as Recipe 3.
+  The hints are the server's own claims, so strict is for servers you trust, not a sandbox.
 - A pattern that matches no tool prints a warning: a mistyped `--mcp-deny` leaves the tool you meant to hide exposed.
 - `examples/mcp/read-only-proxy.py` still has a use: it enforces the same policy outside the process, for hosts that
   have no such flag.

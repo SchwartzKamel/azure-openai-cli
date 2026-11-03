@@ -165,6 +165,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`azureopenai-cli/Mcp/McpStdioClient.cs`, s04e18-the-clean-exit)
 
 ### Security
+- **feat(mcp):** S04E27 *The Strict Door* -- new `--mcp-strict`: with no `--mcp-allow`, expose only
+  the MCP tools a server declares `readOnlyHint: true` (and not also `destructiveHint: true`)
+  instead of everything, and make a pattern that matches no tool an error (exit 2, before any
+  model call) instead of a warning. An explicit `--mcp-allow` still wins over hints, and deny
+  always wins. The client now reads MCP annotations, leniently (only a JSON true or false counts,
+  so a sloppy server cannot break the tool list); hopper's own server declares `readOnlyHint` for
+  its five read-only built-ins; `hopper mcp tools` marks them `[read-only]`. Hints are the server's
+  own claims: strict is for servers you trust, not a sandbox. The default is unchanged.
+  (s04e27-the-strict-door)
 - **feat(mcp):** S04E22 *The Allowlist* -- hopper's MCP client handed the model every tool a server
   listed, including ones that clean disk or upgrade packages. New `--mcp-allow <glob>` and
   `--mcp-deny <glob>` (repeatable; `*` and `?`; deny wins; an allow list that matches nothing

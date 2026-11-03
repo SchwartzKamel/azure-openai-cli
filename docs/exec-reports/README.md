@@ -14,7 +14,7 @@ because the [cast itself is](../../AGENTS.md).
 | **S01** | The Pilot Years                          | Aired (back-fill pending)        | --        |
 | **S02** | Production & Polish (v2 era)             | In production (24-arc + specials) | --        |
 | **S03** | Local & Multi-Provider                   | Aired (30 episodes; index back-fill pending) | [s03-blueprint.md](s03-blueprint.md) |
-| **S04** | Model Intelligence                       | In production (E01-E26 + 12 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
+| **S04** | Model Intelligence                       | In production (E01-E27 + 12 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
 | **S05** | Protocols & Plugins (incl. MCP)          | Pre-production                  | [s05-blueprint.md](s05-blueprint.md) |
 | **S06** | Dogfooding (`az-ai` is the main tool)    | Pre-production (showrunner override) | [s06-blueprint.md](s06-blueprint.md) |
 | **S07+** | Roadmap pad (Enterprise, Multimodal, ...) | Slate                            | [seasons-roadmap.md](seasons-roadmap.md) |
@@ -103,6 +103,7 @@ range recorded in each report. E06 is the mid-season cast-balance audit.
 | S04E24   | *The Copilot*          | [s04e24-the-copilot.md](s04e24-the-copilot.md) | code + docs | `copilot` preset: GitHub token from env or `gh auth token`, client headers, Responses API (stateless) for GPT-5.x/6.x and Grok; compat routes no longer vetoed by `AZUREOPENAIMODEL`; temperature-refusal memory persists across runs |
 | S04E25   | *The Wrong Door*       | [s04e25-the-wrong-door.md](s04e25-the-wrong-door.md) | code + docs | A URL given to `--mcp-server` is named as the problem and the bridge as the way out; credentials in the URL are never echoed |
 | S04E26   | *The Filter*           | [s04e26-the-filter.md](s04e26-the-filter.md) | code + docs | A platform content-filter block is its own eval outcome (`filtered`): unverified and fail-closed by default, `allow_filtered` per fixture; the live refusal suite goes from permanent FAIL to PASS, with the block shown |
+| S04E27   | *The Strict Door*      | [s04e27-the-strict-door.md](s04e27-the-strict-door.md) | code + docs | `--mcp-strict` exposes only tools a server declares `readOnlyHint: true` (or you name), and a mistyped pattern stops the run; hopper's own server now declares its read-only tools |
 | S04SP1   | *The Reruns*           | [s04sp1-the-reruns.md](s04sp1-the-reruns.md) | `eecfd74` | Release matrix retag after v2.2.0 |
 | S04SP2   | *The Stenographer*     | [s04sp2-the-stenographer.md](s04sp2-the-stenographer.md) | docs-only | Paperwork audit; artifact contract locked for v2.3.0 |
 | S04SP3   | *The Pre-Push*         | [s04sp3-the-pre-push.md](s04sp3-the-pre-push.md) | `1c8c787` | Pre-push docs-lint after ten consecutive red runs |

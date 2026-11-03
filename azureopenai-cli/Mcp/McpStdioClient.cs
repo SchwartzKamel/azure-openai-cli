@@ -219,7 +219,7 @@ internal sealed class McpStdioClient : IDisposable
         foreach (var info in remoteTools)
         {
             all.Add(info.Name);
-            if (filter is not null && !filter.Allows(info.Name)) continue;
+            if (filter is not null && !filter.Allows(info.Name, info.Annotations?.ReadOnlyHint, info.Annotations?.DestructiveHint)) continue;
             result.Add(new McpClientAIFunction(this, info));
         }
         return (result, all);

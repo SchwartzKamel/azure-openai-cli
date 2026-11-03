@@ -132,6 +132,12 @@ internal static class McpStdioServer
         return (null, false);
     }
 
+    /// <summary>
+    /// The built-in tools that only read. <c>--read-only</c> exposes exactly these, and <c>tools/list</c> declares them with
+    /// <c>readOnlyHint: true</c> so a client in strict mode can tell them from tools that write or run commands.
+    /// </summary>
+    internal static readonly string[] ReadOnlyToolNames = { "read_file", "web_fetch", "get_clipboard", "get_datetime", "queue_status" };
+
     internal static Dictionary<string, AIFunction> BuildExposedToolMap(
         bool allowShell,
         bool readOnly,
@@ -150,7 +156,7 @@ internal static class McpStdioServer
         }
         else if (readOnly)
         {
-            filter = new[] { "read_file", "web_fetch", "get_clipboard", "get_datetime", "queue_status" };
+            filter = ReadOnlyToolNames;
         }
 
         bool shellPermitted = !readOnly && (allowShell || explicitShellRequested);
@@ -331,10 +337,15 @@ internal static class McpStdioServer
                         var mcpTools = new List<McpToolInfo>(toolMap.Count);
                         foreach (var fn in toolMap.Values.OrderBy(f => f.Name, StringComparer.Ordinal))
                         {
+                            // Declare read-only only for built-ins named in ReadOnlyToolNames; a plugin that happens to share a
+                            // name is not assumed to be read-only.
+                            var readOnlyBuiltin = fn is not ManifestAIFunction
+                                && ReadOnlyToolNames.Contains(fn.Name, StringComparer.OrdinalIgnoreCase);
                             mcpTools.Add(new McpToolInfo(
                                 Name: fn.Name,
                                 Description: fn.Description ?? string.Empty,
-                                InputSchema: fn.JsonSchema));
+                                InputSchema: fn.JsonSchema,
+                                Annotations: readOnlyBuiltin ? new McpToolAnnotations(ReadOnlyHint: true) : null));
                         }
                         var listResult = new McpToolsListResult(mcpTools);
                         var element = JsonSerializer.SerializeToElement(listResult, McpJsonContext.Default.McpToolsListResult);
@@ -620,10 +631,63 @@ internal sealed record McpServerInfo(
     [property: JsonPropertyName("version")] string Version
 );
 
+/// <summary>
+/// MCP tool annotations (spec: "hints"). Only the two that matter for choosing what a model may call are modelled. They are the
+/// SERVER's own claims and the spec says clients must treat them as untrusted unless the server is: a server that lies about
+/// <c>readOnlyHint</c> defeats any policy built on it, so strict mode is for servers you already trust to describe themselves.
+/// </summary>
+[JsonConverter(typeof(McpToolAnnotationsConverter))]
+internal sealed record McpToolAnnotations(bool? ReadOnlyHint = null, bool? DestructiveHint = null);
+
+/// <summary>
+/// Reads annotations LENIENTLY. They are input from a server we may not trust, and a typed read would throw on a malformed value
+/// ("readOnlyHint": "true"), which would break every tool from a server that worked before annotations were parsed. Only a JSON
+/// <c>true</c> or <c>false</c> counts; anything else is "no hint", which strict mode treats as not read-only. Unknown fields,
+/// and an <c>annotations</c> value that is not an object, are ignored.
+/// </summary>
+internal sealed class McpToolAnnotationsConverter : JsonConverter<McpToolAnnotations>
+{
+    public override McpToolAnnotations? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.StartObject)
+        {
+            reader.Skip(); // a string, number or array where an object belongs: no hints, and no failure
+            return null;
+        }
+
+        bool? readOnly = null, destructive = null;
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+        {
+            if (reader.TokenType != JsonTokenType.PropertyName) continue;
+            var name = reader.GetString();
+            reader.Read();
+            bool? value = reader.TokenType switch
+            {
+                JsonTokenType.True => true,
+                JsonTokenType.False => false,
+                _ => null,
+            };
+            reader.Skip(); // a nested object or array is skipped whole; a plain value is already consumed
+            if (name == "readOnlyHint") readOnly = value;
+            else if (name == "destructiveHint") destructive = value;
+        }
+        return new McpToolAnnotations(readOnly, destructive);
+    }
+
+    public override void Write(Utf8JsonWriter writer, McpToolAnnotations value, JsonSerializerOptions options)
+    {
+        writer.WriteStartObject();
+        if (value.ReadOnlyHint is { } r) writer.WriteBoolean("readOnlyHint", r);
+        if (value.DestructiveHint is { } d) writer.WriteBoolean("destructiveHint", d);
+        writer.WriteEndObject();
+    }
+}
+
 internal sealed record McpToolInfo(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("description")] string Description,
-    [property: JsonPropertyName("inputSchema")] JsonElement InputSchema
+    [property: JsonPropertyName("inputSchema")] JsonElement InputSchema,
+    [property: JsonPropertyName("annotations")] McpToolAnnotations? Annotations = null
 );
 
 internal sealed record McpToolsListResult(
