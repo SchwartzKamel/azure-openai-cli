@@ -1388,6 +1388,87 @@ MCPSTUB
     fi
     rm -rf "$hb_dir"
 
+    # --- S04E21: a model that stopped without writing anything must not be an empty success --------------------
+    if ! command -v python3 >/dev/null 2>&1; then
+        skip "S04E21 empty reply: against a streaming fake model" "python3 not available"
+    else
+        local er_dir; er_dir=$(mktemp -d)
+        cat > "$er_dir/server.py" <<'ERPY'
+import json, sys, http.server, socketserver
+PORTFILE = sys.argv[1]
+class H(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get("Content-Length", 0)) or 0).decode()
+        try: msgs = json.loads(body).get("messages", [])
+        except Exception: msgs = []
+        user = next((m.get("content", "") for m in reversed(msgs) if m.get("role") == "user"), "")
+        user = user if isinstance(user, str) else json.dumps(user)
+        # (text, finish_reason) chosen by the prompt
+        if "EMPTY-LENGTH" in user: text, fin = "", "length"
+        elif "EMPTY-FILTER" in user: text, fin = "", "content_filter"
+        elif "EMPTY-STOP" in user: text, fin = "", "stop"
+        elif "PARTIAL-LENGTH" in user: text, fin = "partial", "length"
+        else: text, fin = "ok", "stop"
+        def chunk(delta, finish):
+            return "data: " + json.dumps({"id": "x", "object": "chat.completion.chunk", "created": 0, "model": "fake-model",
+                                          "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}) + "\n\n"
+        out = chunk({"role": "assistant"}, None)
+        if text: out += chunk({"content": text}, None)
+        out += chunk({}, fin) + "data: [DONE]\n\n"
+        data = out.encode()
+        self.send_response(200); self.send_header("Content-Type", "text/event-stream"); self.end_headers(); self.wfile.write(data)
+srv = socketserver.TCPServer(("127.0.0.1", 0), H)
+open(PORTFILE, "w").write(str(srv.server_address[1]))
+srv.serve_forever()
+ERPY
+        python3 "$er_dir/server.py" "$er_dir/port" >/dev/null 2>&1 &
+        local er_srv=$!
+        local er_wait=0
+        while [ ! -s "$er_dir/port" ] && [ "$er_wait" -lt 50 ]; do sleep 0.1; er_wait=$((er_wait + 1)); done
+        local er_port; er_port=$(cat "$er_dir/port" 2>/dev/null || true)
+
+        if [ -z "$er_port" ]; then
+            kill "$er_srv" 2>/dev/null || true
+            skip "S04E21 empty reply: against a streaming fake model" "fake server did not start"
+        else
+            er_run() {
+                env -i HOME="$er_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+                    AZUREOPENAIENDPOINT="https://example.openai.azure.com/" AZUREOPENAIAPI="dummy-key-0123456789" \
+                    AZURE_FOUNDRY_ENDPOINT="http://127.0.0.1:$er_port" AZURE_FOUNDRY_KEY="fake-key-0123456789" \
+                    AZURE_FOUNDRY_MODELS="fake-model" "$BIN" "$@"
+            }
+            er_case() { # <name> <expected rc> <stdout must equal> <stderr must contain ('' = nothing required)> -- args...
+                local name="$1" want_rc="$2" want_out="$3" want_err="$4"; shift 5
+                local out rc err
+                set +e
+                out=$(er_run "$@" 2>"$er_dir/err"); rc=$?
+                set -e
+                err=$(cat "$er_dir/err")
+                if [ "$rc" = "$want_rc" ] && [ "$out" = "$want_out" ] && { [ -z "$want_err" ] || printf '%s' "$err" | grep -qF -- "$want_err"; }; then
+                    pass "$name"
+                else
+                    fail "$name" "rc=$rc (want $want_rc) stdout='$out' stderr='$(printf '%s' "$err" | head -c 200)'"
+                fi
+            }
+
+            er_case "S04E21 empty reply: output limit reached with no text is an error naming --max-tokens" \
+                1 "" "--max-tokens 16" -- --raw --model fake-model --max-tokens 16 "EMPTY-LENGTH"
+            er_case "S04E21 empty reply: content filter with no text is an error" \
+                1 "" "content filter" -- --raw --model fake-model "EMPTY-FILTER"
+            er_case "S04E21 empty reply: a model that stopped normally with nothing to say is left alone (rc 0)" \
+                0 "" "" -- --raw --model fake-model "EMPTY-STOP"
+            er_case "S04E21 empty reply: a truncated but non-empty answer is unchanged (rc 0, text printed)" \
+                0 "partial" "" -- --raw --model fake-model --max-tokens 16 "PARTIAL-LENGTH"
+            er_case "S04E21 empty reply: a normal answer is unchanged" \
+                0 "ok" "" -- --raw --model fake-model "hello"
+            er_case "S04E21 empty reply: --json reports the failure as a structured error" \
+                1 "" '"error": true' -- --json --model fake-model --max-tokens 16 "EMPTY-LENGTH"
+            kill "$er_srv" 2>/dev/null || true
+        fi
+        rm -rf "$er_dir"
+    fi
+
 
     if ! command -v python3 >/dev/null 2>&1; then
         skip "S04E10 eval: end-to-end against a fake model server" "python3 not available"

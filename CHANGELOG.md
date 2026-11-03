@@ -103,6 +103,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Fixed
+- **fix(cli):** S04E21 *The Silence* -- a model that stopped without writing anything (a reasoning
++  model that spent a small `--max-tokens` on hidden reasoning, or a reply withheld by the content
++  filter) printed nothing and exited 0, which a text expander or a pipeline reads as success. It
++  now exits 1 with a message that names `--max-tokens` (or the content filter). A model that stops
++  normally with nothing to say, and a truncated but non-empty answer, are unchanged.
++  (`Program.DescribeEmptyReply`, s04e21-the-silence)
 - **fix(models):** S04E20 *The Default* -- reasoning and "chat-latest" deployments (for example
   `gpt-5-nano` and `gpt-5.2-chat`) accept only the default temperature and rejected hopper's
   default of 0.55 with HTTP 400 on every call, until you knew to pass `--temperature 1`. On that
