@@ -383,6 +383,65 @@ public class CopilotPresetTests : IDisposable
         Assert.False(Program.IsModelAllowed("gpt-6-luna", azure));
     }
 
+    // -- S04E28: --estimate prices routed models ---------------------------
+
+    private static (int Code, string StdOut, string StdErr) RunEstimateCli(params string[] args)
+    {
+        var origOut = Console.Out;
+        var origErr = Console.Error;
+        var outWriter = new StringWriter();
+        var errWriter = new StringWriter();
+        try
+        {
+            Console.SetOut(outWriter);
+            Console.SetError(errWriter);
+            int code = Program.RunEstimate(Program.ParseArgs(args));
+            return (code, outWriter.ToString(), errWriter.ToString());
+        }
+        finally
+        {
+            Console.SetOut(origOut);
+            Console.SetError(origErr);
+        }
+    }
+
+    [Fact]
+    public void Estimate_RoutedCopilotModel_UsesItsListPrice()
+    {
+        Environment.SetEnvironmentVariable("AZ_AI_COMPAT_MODELS", "copilot:gpt-6.1-terra");
+
+        var (code, stdout, stderr) = RunEstimateCli("--estimate", "--json", "--model", "gpt-6.1-terra", new string('x', 4000));
+
+        Assert.True(code == 0, stderr);
+        using var doc = System.Text.Json.JsonDocument.Parse(stdout);
+        Assert.Equal("copilot:gpt-6.1-terra", doc.RootElement.GetProperty("model").GetString());
+        Assert.True(doc.RootElement.GetProperty("input_usd").GetDouble() > 0);
+        Assert.Contains("list price", doc.RootElement.GetProperty("approximation").GetString());
+    }
+
+    [Fact]
+    public void Estimate_RoutedUnpricedCopilotModel_IsUnpricedNotUnknown()
+    {
+        Environment.SetEnvironmentVariable("AZ_AI_COMPAT_MODELS", "copilot:mai-code-2");
+
+        var (code, stdout, stderr) = RunEstimateCli("--estimate", "--json", "--model", "mai-code-2", "hello");
+
+        Assert.True(code == 0, stderr);
+        using var doc = System.Text.Json.JsonDocument.Parse(stdout);
+        Assert.Equal("copilot:mai-code-2", doc.RootElement.GetProperty("model").GetString());
+        Assert.Equal(0, doc.RootElement.GetProperty("input_usd").GetDouble());
+        Assert.Contains("unpriced", doc.RootElement.GetProperty("approximation").GetString());
+    }
+
+    [Fact]
+    public void Estimate_UnroutedUnknownModel_StillFails()
+    {
+        var (code, _, stderr) = RunEstimateCli("--estimate", "--model", "gpt-6.1-terra", "hello");
+
+        Assert.NotEqual(0, code);
+        Assert.Contains("Unknown model", stderr);
+    }
+
     [Fact]
     public void Dispatch_CompatModelsRoutesToCopilot()
     {

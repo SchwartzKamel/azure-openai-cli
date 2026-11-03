@@ -114,6 +114,14 @@ internal static class CostEstimator
             label = $"{preset.Trim()}:{modelHint!.Trim()}";
             approxNote = $"chars/{CharsPerTokenApprox:0.#} -- {preset.Trim()} list price as of {CompatCostRates.ModelRatesAsOf}.";
         }
+        else if (CompatCostRates.HasModelTable(preset))
+        {
+            // S04E28: a per-model preset (copilot) that has no list price for this model. Say so plainly
+            // instead of calling the preset unknown; the estimate stays "$?" (Morty's rule).
+            var modelTail = string.IsNullOrWhiteSpace(modelHint) ? "" : $":{modelHint!.Trim()}";
+            label = $"{preset.Trim()}{modelTail}";
+            approxNote = $"unpriced, $? estimate -- no {preset.Trim()} list price for this model (table as of {CompatCostRates.ModelRatesAsOf}).";
+        }
         else if (CompatCostRates.TryGetRates(preset, out inputPer1K, out outputPer1K))
         {
             var modelTail = string.IsNullOrWhiteSpace(modelHint) ? "" : $":{modelHint!.Trim()}";

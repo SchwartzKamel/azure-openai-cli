@@ -114,6 +114,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Fixed
+- **fix(estimate):** S04E28 *The Estimate* -- `--estimate` now prices a model routed through
+  `AZ_AI_COMPAT_MODELS` with that preset's table (per model for `copilot`) instead of the Azure
+  deployment table, which made it fail with "Unknown model" for every routed model since S03E12. A
+  Copilot model without a list price reports "unpriced, $? estimate" rather than an unknown preset.
 - **fix(eval):** S04E26 *The Filter* -- Azure's content filter blocks some adversarial prompts (HTTP
   400 `content_filter`, or a 200 with the answer withheld) before any model sees them, and the eval
   harness reported that as an ordinary `error`, which fails a safety fixture with no waiver: the
