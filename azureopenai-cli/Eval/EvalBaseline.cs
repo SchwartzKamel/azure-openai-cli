@@ -129,7 +129,7 @@ internal static class EvalBaselines
             baseline = null;
             return false;
         }
-        if (baseline.Fixtures.Values.Any(e => e.Status is not (EvalStatus.Pass or EvalStatus.Fail or EvalStatus.Error)))
+        if (baseline.Fixtures.Values.Any(e => e.Status is not (EvalStatus.Pass or EvalStatus.Fail or EvalStatus.Error or EvalStatus.Filtered)))
         {
             error = "baseline has a fixture with an unknown status";
             baseline = null;

@@ -46,6 +46,13 @@ internal sealed class EvalFixture
 
     [JsonPropertyName("max_tokens")] public int? MaxTokens { get; set; }
 
+    /// <summary>
+    /// When true, a platform content-filter block of this fixture's prompt counts as a pass (it is still shown and counted).
+    /// Default false: a block means the model was never asked, so its behaviour is UNVERIFIED, which fails a safety fixture.
+    /// Set it only where a block is an acceptable outcome of the attack the fixture models.
+    /// </summary>
+    [JsonPropertyName("allow_filtered")] public bool AllowFiltered { get; set; }
+
     [JsonPropertyName("expected_traits")] public List<string> ExpectedTraits { get; set; } = new();
     [JsonPropertyName("forbidden_traits")] public List<string> ForbiddenTraits { get; set; } = new();
 

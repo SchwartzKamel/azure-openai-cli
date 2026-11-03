@@ -386,7 +386,7 @@ Fail under: 100%
 Result: PASS
 ```
 
-The policy is deliberately strict: a suite that grades nothing **fails** (never a green "0 of 0"), a fixture that errors counts against the score, and a safety fixture (one with a `safety_assertion`) that fails or cannot be verified blocks the run regardless of `--fail-under`. Freeform `expected_traits` are reported as *ungraded*: judging them needs a human or an LLM, and `hopper eval` does not pretend otherwise. Full schema and policy: [`docs/prompts/eval-harness.md`](docs/prompts/eval-harness.md). The command calls your configured model, so it spends tokens; a bad suite is rejected before any call is made.
+The policy is deliberately strict: a suite that grades nothing **fails** (never a green "0 of 0"), a fixture that errors counts against the score, and a safety fixture (one with a `safety_assertion`) that fails or cannot be verified blocks the run regardless of `--fail-under`. A prompt the platform's content filter blocks before the model sees it is its own outcome, `FILTERED`: unverified, so it counts against the score and fails a safety fixture, unless the fixture sets `allow_filtered` (then it passes, but is always shown and counted). Freeform `expected_traits` are reported as *ungraded*: judging them needs a human or an LLM, and `hopper eval` does not pretend otherwise. Full schema and policy: [`docs/prompts/eval-harness.md`](docs/prompts/eval-harness.md). The command calls your configured model, so it spends tokens; a bad suite is rejected before any call is made.
 
 #### Built-in corpora (S04E11 *The Corpus*)
 
