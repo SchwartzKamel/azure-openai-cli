@@ -213,10 +213,10 @@ classify() {
   while IFS= read -r comp; do
     comp="${comp## }"; comp="${comp%% }"
     [[ -z "$comp" ]] && continue
-    if echo "$comp" | grep -qEi "$HARDFAIL_PATTERNS"; then
+    if echo "$comp" | grep -Ei "$HARDFAIL_PATTERNS" >/dev/null; then
       any_fail=1; all_allowed=0; continue
     fi
-    if echo "$comp" | grep -qEi "$WARN_PATTERNS"; then
+    if echo "$comp" | grep -Ei "$WARN_PATTERNS" >/dev/null; then
       any_warn=1; all_allowed=0; continue
     fi
     if ! grep -Fxq "$comp" "$ALLOWLIST_FILE" 2>/dev/null; then

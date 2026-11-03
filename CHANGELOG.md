@@ -103,6 +103,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Fixed
+- **fix(ci):** S04E23 *The Early Exit* -- `producer | grep -q` inside a `set -o pipefail` script
+  fails a match by itself: grep exits at its first match, the producer dies of SIGPIPE, and
+  pipefail reports the pipeline as failed. Measured with an early match under load: 0.7% at
+  300 bytes, 5% at 30 KB, 89% at 120 KB; the real `--help` check failed 2% to 4.5% of runs and
+  0 of 6,000 after. This was the cause of three phantom integration failures (completions and
+  `--help`). The integration suite now uses a `grepq` that reads all its input, the five CI gate
+  scripts that had the pattern (color-contract, exec-report-check, pre-push, license-audit,
+  sbom-generate) drop `-q`, and a guard fails if it returns. (s04e23-the-early-exit)
 - **fix(cli):** S04E21 *The Silence* -- a model that stopped without writing anything (a reasoning
 +  model that spent a small `--max-tokens` on hidden reasoning, or a reply withheld by the content
 +  filter) printed nothing and exited 0, which a text expander or a pipeline reads as success. It

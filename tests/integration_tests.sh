@@ -3,6 +3,13 @@
 # Runs the compiled binary end-to-end (no Azure credentials needed for most tests).
 set -euo pipefail
 
+# `producer | grepq ...` is a trap under `set -o pipefail`: grep -q exits at its first match, the producer can then
+# be killed by SIGPIPE while it is still writing, and pipefail reports the whole check as failed. It fails a few
+# runs in a thousand for a few hundred bytes of output and most runs for a large one, and more under load (S04E23).
+# grepq takes the arguments of grep (without -q), reads ALL of its input so the producer always finishes, and
+# answers only through its exit status.
+grepq() { grep "$@" >/dev/null; }
+
 # Binary path (override via env for CI / post-rename).
 BIN="${BIN:-./azureopenai-cli/bin/Release/net10.0/hopper}"
 
@@ -33,7 +40,7 @@ assert_contains() {
     local name="$1" pattern="$2"; shift 2
     local out
     set +e; out=$("$@" 2>&1); set -e
-    if printf '%s' "$out" | grep -qF -- "$pattern"; then pass "$name"
+    if printf '%s' "$out" | grepq -F -- "$pattern"; then pass "$name"
     else fail "$name" "output missing '$pattern'"; fi
 }
 
@@ -85,7 +92,7 @@ assert_output_contains() {
     set +e
     output=$(eval "$*" 2>&1)
     set -e
-    if echo "$output" | grep -qi "$pattern"; then
+    if echo "$output" | grepq -i "$pattern"; then
         green "  ✓ $desc"
         PASS=$((PASS + 1))
     else
@@ -101,7 +108,7 @@ assert_json_field() {
     set +e
     output=$(eval "$*" 2>&1)
     set -e
-    if echo "$output" | grep -q "\"$field\""; then
+    if echo "$output" | grepq "\"$field\""; then
         green "  ✓ $desc"
         PASS=$((PASS + 1))
     else
@@ -183,7 +190,7 @@ run_bin_tests() {
     assert_exit_code "--help exits 0" 0 "$BIN" --help
     local help_out; help_out=$("$BIN" --help 2>&1)
     for phrase in "Azure OpenAI" "--agent" "--raw" "--telemetry" "--estimate" "--persona"; do
-        if printf '%s' "$help_out" | grep -qF -- "$phrase"; then
+        if printf '%s' "$help_out" | grepq -F -- "$phrase"; then
             pass "--help contains '$phrase'"
         else
             fail "--help contains '$phrase'" "phrase not found in --help output"
@@ -193,7 +200,7 @@ run_bin_tests() {
     # ── 2. --version matches 2.x.y ────────────────────────────────────────
     assert_exit_code "--version exits 0" 0 "$BIN" --version
     local ver_out; ver_out=$("$BIN" --version 2>&1)
-    if printf '%s' "$ver_out" | grep -qE '2\.[0-9]+\.[0-9]+'; then
+    if printf '%s' "$ver_out" | grepq -E '2\.[0-9]+\.[0-9]+'; then
         pass "--version matches 2.x.y"
     else
         fail "--version matches 2.x.y" "got: $ver_out"
@@ -219,7 +226,7 @@ run_bin_tests() {
     assert_exit_code "--completions bash exits 0" 0 "$BIN" --completions bash
     local first_line
     first_line=$("$BIN" --completions bash 2>/dev/null | head -1)
-    if printf '%s' "$first_line" | grep -qE '^# bash completion for hopper'; then
+    if printf '%s' "$first_line" | grepq -E '^# bash completion for hopper'; then
         pass "--completions bash starts with bash-completion header"
     else
         fail "--completions bash starts with bash-completion header" "got first line: $first_line"
@@ -228,7 +235,7 @@ run_bin_tests() {
     # ── 5. --completions zsh ──────────────────────────────────────────────
     assert_exit_code "--completions zsh exits 0" 0 "$BIN" --completions zsh
     first_line=$("$BIN" --completions zsh 2>/dev/null | head -1)
-    if printf '%s' "$first_line" | grep -q '^#compdef'; then
+    if printf '%s' "$first_line" | grepq '^#compdef'; then
         pass "--completions zsh starts with #compdef"
     else
         fail "--completions zsh starts with #compdef" "got first line: $first_line"
@@ -239,7 +246,7 @@ run_bin_tests() {
     echo "▸ Estimator (no API call)"
     assert_exit_code "--estimate exits 0" 0 "$BIN" --estimate "hello world"
     local est_out; est_out=$("$BIN" --estimate "hello world" 2>&1)
-    if printf '%s' "$est_out" | grep -qE '\$0\.'; then
+    if printf '%s' "$est_out" | grepq -E '\$0\.'; then
         pass "--estimate prints a \$0. USD figure"
     else
         fail "--estimate prints a \$0. USD figure" "no \$0. in output: $est_out"
@@ -266,7 +273,7 @@ for f in ('model', 'input_tokens_est', 'total_usd_max'):
     else
         fail "--raw --estimate emits exactly 1 line" "got $raw_lines lines: $raw_out"
     fi
-    if printf '%s' "$raw_out" | grep -qiE 'cost estimate|input tokens|NO API CALL'; then
+    if printf '%s' "$raw_out" | grepq -iE 'cost estimate|input tokens|NO API CALL'; then
         fail "--raw --estimate suppresses banner text" "banner leaked: $raw_out"
     else
         pass "--raw --estimate suppresses banner text"
@@ -284,11 +291,11 @@ for f in ('model', 'input_tokens_est', 'total_usd_max'):
     _assert_clean() {
         # _assert_clean <label> <captured-text>
         local label="$1" text="$2"
-        if printf '%s' "$text" | LC_ALL=C grep -q "${_esc}\["; then
+        if printf '%s' "$text" | LC_ALL=C grepq "${_esc}\["; then
             fail "$label is ANSI-free" "found ESC[ in output"
             return
         fi
-        if printf '%s' "$text" | LC_ALL=C grep -q '[^[:print:][:space:]]'; then
+        if printf '%s' "$text" | LC_ALL=C grepq '[^[:print:][:space:]]'; then
             fail "$label is ASCII-only" "found non-printable / non-ASCII byte"
             return
         fi
@@ -298,7 +305,7 @@ for f in ('model', 'input_tokens_est', 'total_usd_max'):
     # 1. --help under --plain.
     local plain_help; plain_help=$("$BIN" --plain --help 2>&1)
     _assert_clean "--plain --help" "$plain_help"
-    if printf '%s' "$plain_help" | grep -qF -- "--plain"; then
+    if printf '%s' "$plain_help" | grepq -F -- "--plain"; then
         pass "--help advertises --plain"
     else
         fail "--help advertises --plain" "missing --plain in help output"
@@ -317,7 +324,7 @@ for f in ('model', 'input_tokens_est', 'total_usd_max'):
     _assert_clean "AZ_AI_PLAIN=1 --help" "$plain_env_help"
 
     # 5. Banner has no em-dash / arrow / mask glyph anywhere.
-    if printf '%s' "$plain_help" | LC_ALL=C grep -qE $'\xE2\x80\x94|\xE2\x86\x92|\xE2\x80\xA2|\xE2\x9C\x93'; then
+    if printf '%s' "$plain_help" | LC_ALL=C grepq -E $'\xE2\x80\x94|\xE2\x86\x92|\xE2\x80\xA2|\xE2\x9C\x93'; then
         fail "--help contains no unicode glyphs" "found em-dash / arrow / bullet / check"
     else
         pass "--help contains no unicode glyphs"
@@ -347,12 +354,12 @@ for f in ('model', 'input_tokens_est', 'total_usd_max'):
     else
         fail "--nope exits 2 (unknown_flag)" "exited $inv_rc"
     fi
-    if printf '%s' "$inv_stderr" | grep -qF '[ERROR] unknown flag: --nope'; then
+    if printf '%s' "$inv_stderr" | grepq -F '[ERROR] unknown flag: --nope'; then
         pass "--nope has [ERROR] unknown flag on stderr"
     else
         fail "--nope has [ERROR] unknown flag on stderr" "stderr was: $inv_stderr"
     fi
-    if printf '%s' "$inv_stderr" | grep -qF 'Run --help for usage.'; then
+    if printf '%s' "$inv_stderr" | grepq -F 'Run --help for usage.'; then
         pass "--nope stderr includes 'Run --help for usage.' hint"
     else
         fail "--nope stderr includes 'Run --help for usage.' hint" "stderr was: $inv_stderr"
@@ -482,14 +489,14 @@ FR021_JSON
         fi
 
         # (b) stderr contains the [ERROR] prefix ErrorAndExit emits.
-        if printf '%s' "$fr021_stderr" | grep -qF '[ERROR]'; then
+        if printf '%s' "$fr021_stderr" | grepq -F '[ERROR]'; then
             pass "FR-021 stderr contains [ERROR] prefix"
         else
             fail "FR-021 stderr contains [ERROR] prefix" "stderr: $fr021_stderr"
         fi
 
         # (c) stderr does NOT leak an unhandled-exception stack trace.
-        if printf '%s' "$fr021_stderr" | grep -qE 'Unhandled exception|System\.ArgumentException|^   at '; then
+        if printf '%s' "$fr021_stderr" | grepq -E 'Unhandled exception|System\.ArgumentException|^   at '; then
             fail "FR-021 stderr has no stack trace / unhandled exception" "stderr leaked: $fr021_stderr"
         else
             pass "FR-021 stderr has no stack trace / unhandled exception"
@@ -524,21 +531,21 @@ FR021_JSON
     fi
 
     # P1: stderr must NOT contain a literal bearer token.
-    if printf '%s' "$redact_stderr" | grep -qE 'Bearer[[:space:]]+[A-Za-z0-9._-]'; then
+    if printf '%s' "$redact_stderr" | grepq -E 'Bearer[[:space:]]+[A-Za-z0-9._-]'; then
         fail "S03E07 redactor: no bearer token in stderr" "stderr leaked: $redact_stderr"
     else
         pass "S03E07 redactor: no bearer token in stderr"
     fi
 
     # P1: stderr must NOT contain a raw 'api-key:' header value pair.
-    if printf '%s' "$redact_stderr" | grep -qiE 'api-key:[[:space:]]+[A-Za-z0-9._-]'; then
+    if printf '%s' "$redact_stderr" | grepq -iE 'api-key:[[:space:]]+[A-Za-z0-9._-]'; then
         fail "S03E07 redactor: no api-key header in stderr" "stderr leaked: $redact_stderr"
     else
         pass "S03E07 redactor: no api-key header in stderr"
     fi
 
     # Positive: the [REDACTED:bearer] tag must be present.
-    if printf '%s' "$redact_stderr" | grep -qF '[REDACTED:bearer]'; then
+    if printf '%s' "$redact_stderr" | grepq -F '[REDACTED:bearer]'; then
         pass "S03E07 redactor: [REDACTED:bearer] tag present"
     else
         fail "S03E07 redactor: [REDACTED:bearer] tag present" "stderr: $redact_stderr"
@@ -580,7 +587,7 @@ KCEOF
     fi
 
     # Default-section endpoint must be picked up.
-    if printf '%s' "$kc_out" | grep -qF 'kc-azure.example.com'; then
+    if printf '%s' "$kc_out" | grepq -F 'kc-azure.example.com'; then
         pass "S03E10 keychain: default section endpoint loaded"
     else
         fail "S03E10 keychain: default section endpoint loaded" "out=$kc_out"
@@ -589,12 +596,12 @@ KCEOF
     # Headline Newman invariant: the OpenAI section's secret value must
     # NEVER appear in any --config show output (the binary never prints
     # secrets; this asserts the loader didn't leak it into a printed slot).
-    if printf '%s' "$kc_out" | grep -qF 'sk-keychain-test-secret-OPENAI'; then
+    if printf '%s' "$kc_out" | grepq -F 'sk-keychain-test-secret-OPENAI'; then
         fail "S03E10 keychain: OPENAI_API_KEY value not leaked" "secret leaked into --config show: $kc_out"
     else
         pass "S03E10 keychain: OPENAI_API_KEY value not leaked"
     fi
-    if printf '%s' "$kc_out" | grep -qF 'gsk_keychain-test-secret-GROQ'; then
+    if printf '%s' "$kc_out" | grepq -F 'gsk_keychain-test-secret-GROQ'; then
         fail "S03E10 keychain: GROQ_API_KEY value not leaked" "secret leaked into --config show: $kc_out"
     else
         pass "S03E10 keychain: GROQ_API_KEY value not leaked"
@@ -619,7 +626,7 @@ KCEOF2
     else
         fail "S03E10 keychain: unknown section does not abort" "rc=$kc2_rc stderr=$kc2_stderr"
     fi
-    if printf '%s' "$kc2_stderr" | grep -qF '[WARNING]'; then
+    if printf '%s' "$kc2_stderr" | grepq -F '[WARNING]'; then
         pass "S03E10 keychain: unknown section warns to stderr"
     else
         fail "S03E10 keychain: unknown section warns to stderr" "stderr=$kc2_stderr"
@@ -631,7 +638,7 @@ KCEOF2
     kc3_stderr=$(env -i HOME="$keychain_home" PATH="$PATH" \
         DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" --raw --config show 2>&1 1>/dev/null)
     set -e
-    if printf '%s' "$kc3_stderr" | grep -qF '[WARNING]'; then
+    if printf '%s' "$kc3_stderr" | grepq -F '[WARNING]'; then
         fail "S03E10 keychain: --raw silences unknown-section warning" "stderr leaked under --raw: $kc3_stderr"
     else
         pass "S03E10 keychain: --raw silences unknown-section warning"
@@ -650,7 +657,7 @@ KCEOF2
     wiz_out=$(echo "" | "$BIN" --setup 2>&1)
     wiz_rc=$?
     set -e
-    if [ "$wiz_rc" -eq 1 ] && printf '%s' "$wiz_out" | grep -qF '[ERROR]'; then
+    if [ "$wiz_rc" -eq 1 ] && printf '%s' "$wiz_out" | grepq -F '[ERROR]'; then
         pass "S03E11 wizard: non-TTY refuses with [ERROR] (rc=1)"
     else
         fail "S03E11 wizard: non-TTY refuses with [ERROR]" "rc=$wiz_rc out=$wiz_out"
@@ -741,22 +748,22 @@ KCEOF2
         # Strip CR and any escape sequences so the assertions see plain text.
         local ob_text; ob_text=$(tr -d '\r' < "$ob_log" | sed 's/\x1b\[[0-9;?]*[A-Za-z]//g')
 
-        if [ "$ob_rc" -eq 0 ] && printf '%s' "$ob_text" | grep -qF 'Azure default model: my-gpt4'; then
+        if [ "$ob_rc" -eq 0 ] && printf '%s' "$ob_text" | grepq -F 'Azure default model: my-gpt4'; then
             pass "S04E08 wizard: panel names the default model"
         else
             fail "S04E08 wizard: panel names the default model" "rc=$ob_rc tail=$(printf '%s' "$ob_text" | tail -15)"
         fi
-        if printf '%s' "$ob_text" | grep -qF 'it is first in your list'; then
+        if printf '%s' "$ob_text" | grepq -F 'it is first in your list'; then
             pass "S04E08 wizard: panel states why (first in your list)"
         else
             fail "S04E08 wizard: panel states why (first in your list)" "tail=$(printf '%s' "$ob_text" | tail -15)"
         fi
-        if printf '%s' "$ob_text" | grep -qF "is not in hopper's built-in model list"; then
+        if printf '%s' "$ob_text" | grepq -F "is not in hopper's built-in model list"; then
             pass "S04E08 wizard: unregistered name explained as normal"
         else
             fail "S04E08 wizard: unregistered name explained as normal" "tail=$(printf '%s' "$ob_text" | tail -15)"
         fi
-        if printf '%s' "$ob_text" | grep -qF 'The first name you list becomes your default model'; then
+        if printf '%s' "$ob_text" | grepq -F 'The first name you list becomes your default model'; then
             pass "S04E08 wizard: rule is stated at the prompt, before the choice"
         else
             fail "S04E08 wizard: rule is stated at the prompt, before the choice" "tail=$(printf '%s' "$ob_text" | tail -15)"
@@ -782,8 +789,8 @@ KCEOF2
             script -qec "$BIN --setup" "$oc_log" < "$oc_answers" >/dev/null 2>&1
         set -e
         local oc_text; oc_text=$(tr -d '\r' < "$oc_log" | sed 's/\x1b\[[0-9;?]*[A-Za-z]//g')
-        if printf '%s' "$oc_text" | grep -qF 'Azure default model: gpt-4o-mini' \
-            && ! printf '%s' "$oc_text" | grep -qF "built-in model list"; then
+        if printf '%s' "$oc_text" | grepq -F 'Azure default model: gpt-4o-mini' \
+            && ! printf '%s' "$oc_text" | grepq -F "built-in model list"; then
             pass "S04E08 wizard: registered model gets no custom-name note (registry loaded)"
         else
             fail "S04E08 wizard: registered model gets no custom-name note (registry loaded)" \
@@ -812,8 +819,8 @@ REGJSON
     local ov_out
 
     ov_out=$(ov_run --why-this-model); local ov_rc=$?
-    if [ "$ov_rc" -eq 0 ] && printf '%s' "$ov_out" | grep -qF 'Model: slow-big' \
-        && printf '%s' "$ov_out" | grep -qF 'Reason code: ALLOWLIST_HEAD'; then
+    if [ "$ov_rc" -eq 0 ] && printf '%s' "$ov_out" | grepq -F 'Model: slow-big' \
+        && printf '%s' "$ov_out" | grepq -F 'Reason code: ALLOWLIST_HEAD'; then
         pass "S04E09 why-this-model: no preference, head of list, no credentials needed"
     else
         fail "S04E09 why-this-model: no preference, head of list, no credentials needed" "rc=$ov_rc out=$ov_out"
@@ -823,8 +830,8 @@ REGJSON
     for pair in "latency:fast-small" "cost:fast-small" "quality:slow-big"; do
         ov_axis="${pair%%:*}"; ov_want="${pair##*:}"
         ov_out=$(ov_run --why-this-model --prefer "$ov_axis")
-        if printf '%s' "$ov_out" | grep -qF "Model: $ov_want" \
-            && printf '%s' "$ov_out" | grep -qF 'Reason code: PREFER_AXIS'; then
+        if printf '%s' "$ov_out" | grepq -F "Model: $ov_want" \
+            && printf '%s' "$ov_out" | grepq -F 'Reason code: PREFER_AXIS'; then
             pass "S04E09 prefer $ov_axis picks $ov_want"
         else
             fail "S04E09 prefer $ov_axis picks $ov_want" "out=$ov_out"
@@ -832,17 +839,17 @@ REGJSON
     done
 
     ov_out=$(ov_run --why-this-model --model slow-big --prefer latency)
-    if printf '%s' "$ov_out" | grep -qF 'Model: slow-big' \
-        && printf '%s' "$ov_out" | grep -qF 'Reason code: EXPLICIT' \
-        && printf '%s' "$ov_out" | grep -qF -- '--prefer was ignored'; then
+    if printf '%s' "$ov_out" | grepq -F 'Model: slow-big' \
+        && printf '%s' "$ov_out" | grepq -F 'Reason code: EXPLICIT' \
+        && printf '%s' "$ov_out" | grepq -F -- '--prefer was ignored'; then
         pass "S04E09 --model beats --prefer and says --prefer was ignored"
     else
         fail "S04E09 --model beats --prefer and says --prefer was ignored" "out=$ov_out"
     fi
 
     ov_out=$(ov_run --why-this-model --prefer latency --json)
-    if printf '%s' "$ov_out" | grep -qF '"reason_code": "PREFER_AXIS"' \
-        && printf '%s' "$ov_out" | grep -qF '"model": "fast-small"'; then
+    if printf '%s' "$ov_out" | grepq -F '"reason_code": "PREFER_AXIS"' \
+        && printf '%s' "$ov_out" | grepq -F '"model": "fast-small"'; then
         pass "S04E09 why-this-model --json emits the envelope"
     else
         fail "S04E09 why-this-model --json emits the envelope" "out=$ov_out"
@@ -866,8 +873,8 @@ REGJSON
     local ov_stock; ov_stock=$(mktemp -d)
     ov_out=$(env -i HOME="$ov_stock" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
         AZUREOPENAIMODEL="gpt-4o-mini,gpt-5.4-nano" "$BIN" --why-this-model --prefer latency 2>/dev/null)
-    if printf '%s' "$ov_out" | grep -qF "No 'latency' tier data" \
-        && printf '%s' "$ov_out" | grep -qF 'Model: gpt-4o-mini'; then
+    if printf '%s' "$ov_out" | grepq -F "No 'latency' tier data" \
+        && printf '%s' "$ov_out" | grepq -F 'Model: gpt-4o-mini'; then
         pass "S04E09 stock install: --prefer latency reports it had no tier data"
     else
         fail "S04E09 stock install: --prefer latency reports it had no tier data" "out=$ov_out"
@@ -878,7 +885,7 @@ REGJSON
     local ov_comp
     for shell in bash zsh fish; do
         ov_comp=$(env -i HOME="${TMPDIR:-/tmp}" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" --completions "$shell" 2>/dev/null)
-        if printf '%s' "$ov_comp" | grep -qF -- 'why-this-model' && printf '%s' "$ov_comp" | grep -qF -- 'prefer'; then
+        if printf '%s' "$ov_comp" | grepq -F -- 'why-this-model' && printf '%s' "$ov_comp" | grepq -F -- 'prefer'; then
             pass "S04E09 $shell completions include --prefer and --why-this-model"
         else
             fail "S04E09 $shell completions include --prefer and --why-this-model" "missing; captured ${#ov_comp} chars, starting: $(printf '%s' "$ov_comp" | head -c 160 | tr '\n' ' ')"
@@ -898,7 +905,7 @@ REGJSON
     ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval "$ev_dir/missing.json" 2>&1)
     ev_rc=$?
     set -e
-    if [ "$ev_rc" -eq 2 ] && printf '%s' "$ev_out" | grep -qF 'not found'; then
+    if [ "$ev_rc" -eq 2 ] && printf '%s' "$ev_out" | grepq -F 'not found'; then
         pass "S04E10 eval: missing suite exits 2"
     else
         fail "S04E10 eval: missing suite exits 2" "rc=$ev_rc out=$ev_out"
@@ -909,7 +916,7 @@ REGJSON
     ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval "$ev_dir/bad.json" 2>&1)
     ev_rc=$?
     set -e
-    if [ "$ev_rc" -eq 2 ] && printf '%s' "$ev_out" | grep -qF '"user_prompt" is required'; then
+    if [ "$ev_rc" -eq 2 ] && printf '%s' "$ev_out" | grepq -F '"user_prompt" is required'; then
         pass "S04E10 eval: invalid suite exits 2 and names the problem"
     else
         fail "S04E10 eval: invalid suite exits 2 and names the problem" "rc=$ev_rc out=$ev_out"
@@ -926,7 +933,7 @@ EVSUITE
     ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval "$ev_dir/suite.json" 2>&1)
     ev_rc=$?
     set -e
-    if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'AZUREOPENAIENDPOINT'; then
+    if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grepq -F 'AZUREOPENAIENDPOINT'; then
         pass "S04E10 eval: no credentials exits 1 with a clear message"
     else
         fail "S04E10 eval: no credentials exits 1 with a clear message" "rc=$ev_rc out=$ev_out"
@@ -936,7 +943,7 @@ EVSUITE
     set +e
     ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval hello 2>&1)
     set -e
-    if ! printf '%s' "$ev_out" | grep -qF 'eval:'; then
+    if ! printf '%s' "$ev_out" | grepq -F 'eval:'; then
         pass "S04E10 eval: 'eval hello' is still treated as a prompt"
     else
         fail "S04E10 eval: 'eval hello' is still treated as a prompt" "out=$ev_out"
@@ -944,7 +951,7 @@ EVSUITE
 
     local ev_help
     ev_help=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" --help 2>&1)
-    if printf '%s' "$ev_help" | grep -qF 'hopper eval <suite.json>' && printf '%s' "$ev_help" | grep -qF -- '--fail-under'; then
+    if printf '%s' "$ev_help" | grepq -F 'hopper eval <suite.json>' && printf '%s' "$ev_help" | grepq -F -- '--fail-under'; then
         pass "S04E10 eval: --help documents the subcommand and --fail-under"
     else
         fail "S04E10 eval: --help documents the subcommand and --fail-under" "missing"
@@ -952,15 +959,15 @@ EVSUITE
 
     # ── S04E11 -- The Corpus (built-in corpora; no server needed) ──────
     ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval --list-corpora 2>&1)
-    if printf '%s' "$ev_out" | grep -qF 'smoke' && printf '%s' "$ev_out" | grep -qF 'persona-voice' \
-        && printf '%s' "$ev_out" | grep -qF 'refusal' && printf '%s' "$ev_out" | grep -qF '8 safety'; then
+    if printf '%s' "$ev_out" | grepq -F 'smoke' && printf '%s' "$ev_out" | grepq -F 'persona-voice' \
+        && printf '%s' "$ev_out" | grepq -F 'refusal' && printf '%s' "$ev_out" | grepq -F '8 safety'; then
         pass "S04E11 corpus: --list-corpora lists the three embedded corpora (no credentials)"
     else
         fail "S04E11 corpus: --list-corpora lists the three embedded corpora (no credentials)" "out=$ev_out"
     fi
 
     ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval --list-corpora --json 2>&1)
-    if printf '%s' "$ev_out" | grep -qF '"name": "refusal"' && printf '%s' "$ev_out" | grep -qF '"safety_fixtures": 8'; then
+    if printf '%s' "$ev_out" | grepq -F '"name": "refusal"' && printf '%s' "$ev_out" | grepq -F '"safety_fixtures": 8'; then
         pass "S04E11 corpus: --list-corpora --json emits the envelope"
     else
         fail "S04E11 corpus: --list-corpora --json emits the envelope" "out=$ev_out"
@@ -970,7 +977,7 @@ EVSUITE
     ev_out=$(env -i HOME="$ev_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" "$BIN" eval --corpus nope 2>&1)
     ev_rc=$?
     set -e
-    if [ "$ev_rc" -ne 0 ] && printf '%s' "$ev_out" | grep -qF 'smoke, persona-voice, refusal'; then
+    if [ "$ev_rc" -ne 0 ] && printf '%s' "$ev_out" | grepq -F 'smoke, persona-voice, refusal'; then
         pass "S04E11 corpus: an unknown corpus is rejected with the valid names"
     else
         fail "S04E11 corpus: an unknown corpus is rejected with the valid names" "rc=$ev_rc out=$ev_out"
@@ -981,7 +988,7 @@ EVSUITE
     ev_out=$(BIN="$BIN" bash scripts/eval-lint.sh 2>&1)
     ev_rc=$?
     set -e
-    if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grep -qF 'eval-lint: clean'; then
+    if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grepq -F 'eval-lint: clean'; then
         pass "S04E13 eval-lint: every eval file in the repository is clean"
     else
         fail "S04E13 eval-lint: every eval file in the repository is clean" "rc=$ev_rc out=$ev_out"
@@ -995,8 +1002,8 @@ EVSUITE
     ev_out=$(BIN="$BIN" bash scripts/eval-lint.sh "$ev_dir/leaky.json" 2>&1)
     ev_rc=$?
     set -e
-    if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'secret-shape' && printf '%s' "$ev_out" | grep -qF ': email:' \
-        && ! printf '%s' "$ev_out" | grep -qF 'abcdefghijkl' && ! printf '%s' "$ev_out" | grep -qF 'bob@gmail'; then
+    if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grepq -F 'secret-shape' && printf '%s' "$ev_out" | grepq -F ': email:' \
+        && ! printf '%s' "$ev_out" | grepq -F 'abcdefghijkl' && ! printf '%s' "$ev_out" | grepq -F 'bob@gmail'; then
         pass "S04E13 eval-lint: a leaky file fails (exit 1) and the output never prints the matched text"
     else
         fail "S04E13 eval-lint: a leaky file fails (exit 1) and the output never prints the matched text" "rc=$ev_rc out=$ev_out"
@@ -1008,7 +1015,7 @@ EVSUITE
     ev_out=$(BIN="$BIN" bash scripts/eval-lint.sh "$ev_dir/escape.json" 2>&1)
     ev_rc=$?
     set -e
-    if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'non-ascii'; then
+    if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grepq -F 'non-ascii'; then
         pass "S04E13 eval-lint: a JSON unicode escape does not hide a look-alike character"
     else
         fail "S04E13 eval-lint: a JSON unicode escape does not hide a look-alike character" "rc=$ev_rc out=$ev_out"
@@ -1018,7 +1025,7 @@ EVSUITE
     ev_out=$(BIN=/nonexistent/az-ai bash scripts/eval-lint.sh 2>&1)
     ev_rc=$?
     set -e
-    if [ "$ev_rc" -eq 2 ] && printf '%s' "$ev_out" | grep -qF 'no binary'; then
+    if [ "$ev_rc" -eq 2 ] && printf '%s' "$ev_out" | grepq -F 'no binary'; then
         pass "S04E13 eval-lint: a missing binary fails loudly (exit 2), never a silent pass"
     else
         fail "S04E13 eval-lint: a missing binary fails loudly (exit 2), never a silent pass" "rc=$ev_rc out=$ev_out"
@@ -1107,7 +1114,7 @@ EVSUITE
 
     # The shell completions the real binary prints register both names.
     al_comp=$("$BIN" --completions bash 2>&1 || true)
-    if printf '%s' "$al_comp" | grep -qF 'complete -F _hopper_completions hopper az-ai'; then
+    if printf '%s' "$al_comp" | grepq -F 'complete -F _hopper_completions hopper az-ai'; then
         pass "S04E14 completions: the binary registers hopper and az-ai"
     else
         fail "S04E14 completions: the binary registers hopper and az-ai" "out=$al_comp"
@@ -1127,14 +1134,14 @@ EVSUITE
     touch -d '2026-01-01 00:00:00' "$st_dir/azureopenai-cli/A.cs"
     touch -d '2026-06-01 00:00:00' "$st_dir/dist/aot/hopper"
     st_out=$(make -n -C "$st_dir" -f "$al_repo/Makefile" install PREFIX="$st_dir/p" 2>&1 || true)
-    if printf '%s' "$st_out" | grep -qF 'publish-aot'; then
+    if printf '%s' "$st_out" | grepq -F 'publish-aot'; then
         fail "S04E19 make install: an up-to-date binary is NOT rebuilt" "a rebuild was planned although no source is newer than the binary"
     else
         pass "S04E19 make install: an up-to-date binary is NOT rebuilt"
     fi
     touch -d '2026-09-01 00:00:00' "$st_dir/azureopenai-cli/A.cs"        # a source file is now newer than the binary
     st_out=$(make -n -C "$st_dir" -f "$al_repo/Makefile" install PREFIX="$st_dir/p" 2>&1 || true)
-    if printf '%s' "$st_out" | grep -qF 'publish-aot'; then
+    if printf '%s' "$st_out" | grepq -F 'publish-aot'; then
         pass "S04E19 make install: a source file newer than the binary triggers a rebuild"
     else
         fail "S04E19 make install: a source file newer than the binary triggers a rebuild" "$(printf '%s' "$st_out" | head -c 300)"
@@ -1142,12 +1149,46 @@ EVSUITE
     mkdir -p "$st_dir/azureopenai-cli/obj" "$st_dir/azureopenai-cli/bin"; echo x > "$st_dir/azureopenai-cli/obj/gen.cs"; echo x > "$st_dir/azureopenai-cli/bin/out.dll"
     touch -d '2026-01-01 00:00:00' "$st_dir/azureopenai-cli/A.cs"; touch -d '2026-12-01 00:00:00' "$st_dir/azureopenai-cli/obj/gen.cs" "$st_dir/azureopenai-cli/bin/out.dll"
     st_out=$(make -n -C "$st_dir" -f "$al_repo/Makefile" install PREFIX="$st_dir/p" 2>&1 || true)
-    if printf '%s' "$st_out" | grep -qF 'publish-aot'; then
+    if printf '%s' "$st_out" | grepq -F 'publish-aot'; then
         fail "S04E19 make install: build output (obj/, bin/) does not count as a source change" "a rebuild was planned because of obj/ or bin/ files"
     else
         pass "S04E19 make install: build output (obj/, bin/) does not count as a source change"
     fi
     rm -rf "$st_dir"
+
+    # ── S04E23 -- The Early Exit: `producer | grep -q` under pipefail fails a match by itself ──
+    # grep -q exits at its first match; a producer still writing is killed by SIGPIPE and pipefail reports the
+    # pipeline as failed. Measured under load: 0.7% at 300 bytes, 5% at 30 KB, 89% at 120 KB, when the match is early.
+    echo "▸ S04E23 grep -q under pipefail"
+    local pq_files="tests/integration_tests.sh scripts/check-color-contract.sh scripts/exec-report-check.sh scripts/pre-push.sh scripts/license-audit.sh scripts/sbom-generate.sh"
+    local pq_hits
+    pq_hits=$(grep -nE '^[^#]*[|][[:space:]]*(LC_ALL=C[[:space:]]+)?e?grep[[:space:]]+-[A-Za-z]*q' $pq_files 2>&1 || true)
+    if [ -z "$pq_hits" ]; then
+        pass "S04E23 pipefail: no pipeline ending in grep -q is left in the suite or the CI gate scripts"
+    else
+        fail "S04E23 pipefail: no pipeline ending in grep -q is left in the suite or the CI gate scripts" "$(printf '%s' "$pq_hits" | head -3)"
+    fi
+
+    local pq_big; pq_big=$( { printf 'NEEDLE\n'; head -c 120000 /dev/zero | tr '\0' 'x' | fold -w 80; } )
+    local pq_fail=0 pq_i
+    for pq_i in $(seq 1 300); do
+        printf '%s' "$pq_big" | grepq -F NEEDLE || pq_fail=$((pq_fail + 1))
+    done
+    if [ "$pq_fail" -eq 0 ]; then
+        pass "S04E23 grepq: an early match in 120 KB of output never fails the pipeline (300 of 300)"
+    else
+        fail "S04E23 grepq: an early match in 120 KB of output never fails the pipeline (300 of 300)" "$pq_fail of 300 failed"
+    fi
+
+    local pq_out pq_rc
+    pq_out=$(printf 'alpha\nbeta\n' | grepq -F beta; echo "rc=$?")
+    if [ "$pq_out" = "rc=0" ]; then pass "S04E23 grepq: a match is exit 0 and prints nothing"; else fail "S04E23 grepq: a match is exit 0 and prints nothing" "$pq_out"; fi
+    pq_out=$(printf 'alpha\nbeta\n' | grepq -F gamma; echo "rc=$?")
+    if [ "$pq_out" = "rc=1" ]; then pass "S04E23 grepq: no match is exit 1"; else fail "S04E23 grepq: no match is exit 1" "$pq_out"; fi
+    pq_out=$(printf '' | grepq -F x; echo "rc=$?")
+    if [ "$pq_out" = "rc=1" ]; then pass "S04E23 grepq: empty input is no match"; else fail "S04E23 grepq: empty input is no match" "$pq_out"; fi
+    pq_out=$(printf 'Alpha\n' | grepq -Fi alpha; echo "rc=$?")
+    if [ "$pq_out" = "rc=0" ]; then pass "S04E23 grepq: flags pass through (-i)"; else fail "S04E23 grepq: flags pass through (-i)" "$pq_out"; fi
 
     # ── S04SP10 -- The Housekeeping: a script the build needs must not be hidden by .gitignore ──
     # `.gitignore` carries `scripts/*` (it hides agent scratch files), so a NEW script is ignored until
@@ -1167,7 +1208,7 @@ EVSUITE
     ig_new
     ( cd "$ig_dir" && echo 'echo new' > scripts/new.sh && printf 'test:\n\tbash scripts/new.sh\n' > Makefile && git add .gitignore Makefile scripts/known.sh ) >/dev/null 2>&1
     ig_out=$(ig_run)
-    if printf '%s' "$ig_out" | grep -qF 'rc=1' && printf '%s' "$ig_out" | grep -qF '!scripts/new.sh' && printf '%s' "$ig_out" | grep -qF 'Makefile'; then
+    if printf '%s' "$ig_out" | grepq -F 'rc=1' && printf '%s' "$ig_out" | grepq -F '!scripts/new.sh' && printf '%s' "$ig_out" | grepq -F 'Makefile'; then
         pass "S04SP10 ignored-script: an ignored script the Makefile calls fails, and says how to fix it"
     else
         fail "S04SP10 ignored-script: an ignored script the Makefile calls fails, and says how to fix it" "$ig_out"
@@ -1175,7 +1216,7 @@ EVSUITE
 
     ( cd "$ig_dir" && echo '!scripts/new.sh' >> .gitignore )
     ig_out=$(ig_run)
-    if printf '%s' "$ig_out" | grep -qF 'rc=0'; then
+    if printf '%s' "$ig_out" | grepq -F 'rc=0'; then
         pass "S04SP10 ignored-script: whitelisting the script clears the failure"
     else
         fail "S04SP10 ignored-script: whitelisting the script clears the failure" "$ig_out"
@@ -1185,7 +1226,7 @@ EVSUITE
     ig_new
     ( cd "$ig_dir" && echo 'echo scratch' > scripts/scratch.sh && printf 'test:\n\tbash scripts/known.sh\n' > Makefile && git add .gitignore Makefile scripts/known.sh ) >/dev/null 2>&1
     ig_out=$(ig_run)
-    if printf '%s' "$ig_out" | grep -qF 'rc=0'; then
+    if printf '%s' "$ig_out" | grepq -F 'rc=0'; then
         pass "S04SP10 ignored-script: an unreferenced scratch script is left alone (no noise)"
     else
         fail "S04SP10 ignored-script: an unreferenced scratch script is left alone (no noise)" "$ig_out"
@@ -1195,7 +1236,7 @@ EVSUITE
     ig_new
     ( cd "$ig_dir" && echo 'echo doc' > scripts/doc-only.sh && mkdir docs && echo 'see scripts/doc-only.sh' > docs/notes.md && git add .gitignore docs/notes.md scripts/known.sh ) >/dev/null 2>&1
     ig_out=$(ig_run)
-    if printf '%s' "$ig_out" | grep -qF 'rc=0'; then
+    if printf '%s' "$ig_out" | grepq -F 'rc=0'; then
         pass "S04SP10 ignored-script: a mention in docs is not evidence the build needs it"
     else
         fail "S04SP10 ignored-script: a mention in docs is not evidence the build needs it" "$ig_out"
@@ -1206,7 +1247,7 @@ EVSUITE
     ( cd "$ig_dir" && echo 'echo ci' > scripts/ci-step.sh && printf 'jobs:\n  x:\n    steps:\n      - run: bash scripts/ci-step.sh\n' > .github/workflows.yml \
         && git add .gitignore .github/workflows.yml scripts/known.sh ) >/dev/null 2>&1
     ig_out=$(ig_run)
-    if printf '%s' "$ig_out" | grep -qF 'rc=1' && printf '%s' "$ig_out" | grep -qF '.github/workflows.yml'; then
+    if printf '%s' "$ig_out" | grepq -F 'rc=1' && printf '%s' "$ig_out" | grepq -F '.github/workflows.yml'; then
         pass "S04SP10 ignored-script: a reference from a workflow file counts"
     else
         fail "S04SP10 ignored-script: a reference from a workflow file counts" "$ig_out"
@@ -1214,7 +1255,7 @@ EVSUITE
     rm -rf "$ig_dir"
 
     ig_out=$(bash "$ig_check" 2>&1; echo "rc=$?") || true
-    if printf '%s' "$ig_out" | grep -qF 'rc=0'; then
+    if printf '%s' "$ig_out" | grepq -F 'rc=0'; then
         pass "S04SP10 ignored-script: this repository is clean"
     else
         fail "S04SP10 ignored-script: this repository is clean" "$ig_out"
@@ -1233,36 +1274,36 @@ EVSUITE
         skip "S04SP11 mcp proxy" "python3 not available"
     else
         px_out=$(env -u MCP_ALLOW -u MCP_DENY python3 "$px_proxy" $px_up 2>&1 </dev/null; echo "rc=$?") || true
-        if printf '%s' "$px_out" | grep -qF 'rc=2' && printf '%s' "$px_out" | grep -qF 'refusing to start with no policy'; then
+        if printf '%s' "$px_out" | grepq -F 'rc=2' && printf '%s' "$px_out" | grepq -F 'refusing to start with no policy'; then
             pass "S04SP11 mcp proxy: with no policy it refuses to start (never defaults open)"
         else
             fail "S04SP11 mcp proxy: with no policy it refuses to start (never defaults open)" "$px_out"
         fi
 
         px_out=$(MCP_ALLOW="get_datetime,queue_status" "$px_bin" mcp tools "python3 $px_proxy $px_up" 2>&1 || true)
-        if printf '%s' "$px_out" | grep -qF 'tools (2)' && printf '%s' "$px_out" | grep -qF 'get_datetime' \
-            && printf '%s' "$px_out" | grep -qF 'queue_status' && ! printf '%s' "$px_out" | grep -qF 'read_file'; then
+        if printf '%s' "$px_out" | grepq -F 'tools (2)' && printf '%s' "$px_out" | grepq -F 'get_datetime' \
+            && printf '%s' "$px_out" | grepq -F 'queue_status' && ! printf '%s' "$px_out" | grepq -F 'read_file'; then
             pass "S04SP11 mcp proxy: only the allowed tools are visible to the client"
         else
             fail "S04SP11 mcp proxy: only the allowed tools are visible to the client" "$px_out"
         fi
 
         px_out=$(MCP_ALLOW='*' MCP_DENY='queue_*,delegate_*,web_*' "$px_bin" mcp tools "python3 $px_proxy $px_up" 2>&1 || true)
-        if printf '%s' "$px_out" | grep -qF 'tools (3)' && ! printf '%s' "$px_out" | grep -qE 'queue_|delegate_|web_fetch'; then
+        if printf '%s' "$px_out" | grepq -F 'tools (3)' && ! printf '%s' "$px_out" | grepq -E 'queue_|delegate_|web_fetch'; then
             pass "S04SP11 mcp proxy: a deny pattern beats an allow-everything pattern"
         else
             fail "S04SP11 mcp proxy: a deny pattern beats an allow-everything pattern" "$px_out"
         fi
 
         px_out=$(MCP_ALLOW="get_datetime" "$px_bin" mcp call "python3 $px_proxy $px_up" read_file '{"path":"/etc/hostname"}' 2>&1 || true)
-        if printf '%s' "$px_out" | grep -qF 'not permitted by read-only-proxy'; then
+        if printf '%s' "$px_out" | grepq -F 'not permitted by read-only-proxy'; then
             pass "S04SP11 mcp proxy: a call to a hidden tool is refused before it reaches the server"
         else
             fail "S04SP11 mcp proxy: a call to a hidden tool is refused before it reaches the server" "$px_out"
         fi
 
         px_out=$(MCP_ALLOW="get_datetime" "$px_bin" mcp call "python3 $px_proxy $px_up" get_datetime '{}' 2>&1 || true)
-        if printf '%s' "$px_out" | grep -qE '20[0-9]{2}-[0-9]{2}-[0-9]{2}'; then
+        if printf '%s' "$px_out" | grepq -E '20[0-9]{2}-[0-9]{2}-[0-9]{2}'; then
             pass "S04SP11 mcp proxy: an allowed call goes through to the real server"
         else
             fail "S04SP11 mcp proxy: an allowed call goes through to the real server" "$px_out"
@@ -1297,7 +1338,7 @@ EVSUITE
     set +e
     mf_out=$("$BIN" mcp tools "$mf_srv_cmd" --mcp-allow '*' --mcp-deny read_file 2>&1)
     set -e
-    if ! printf '%s' "$mf_out" | grep -qF 'read_file' && printf '%s' "$mf_out" | grep -qF 'get_datetime'; then
+    if ! printf '%s' "$mf_out" | grepq -F 'read_file' && printf '%s' "$mf_out" | grepq -F 'get_datetime'; then
         pass "S04E22 mcp filter: deny wins over an allow that matches the same tool"
     else
         fail "S04E22 mcp filter: deny wins over an allow that matches the same tool" "$mf_out"
@@ -1306,7 +1347,7 @@ EVSUITE
     set +e
     mf_out=$("$BIN" mcp tools "$mf_srv_cmd" --mcp-deny web_fech 2>&1)
     set -e
-    if printf '%s' "$mf_out" | grep -qF "[warn] --mcp-deny 'web_fech' matched no tool" && printf '%s' "$mf_out" | grep -qF 'web_fetch'; then
+    if printf '%s' "$mf_out" | grepq -F "[warn] --mcp-deny 'web_fech' matched no tool" && printf '%s' "$mf_out" | grepq -F 'web_fetch'; then
         pass "S04E22 mcp filter: a deny pattern that matches nothing warns (and the tool is still exposed)"
     else
         fail "S04E22 mcp filter: a deny pattern that matches nothing warns (and the tool is still exposed)" "$mf_out"
@@ -1470,14 +1511,14 @@ MCPSTUB
             skip "S04SP12 http mcp bridge" "stand-in server did not start"
         else
             hb_out=$(MCP_BRIDGE_TOKEN_FILE="$hb_dir/tok" "$hb_bin" mcp tools "python3 $hb_bridge $hb_url" 2>&1 || true)
-            if printf '%s' "$hb_out" | grep -qF 'echo'; then
+            if printf '%s' "$hb_out" | grepq -F 'echo'; then
                 pass "S04SP12 http bridge: hopper lists an HTTP server's tools through the bridge"
             else
                 fail "S04SP12 http bridge: hopper lists an HTTP server's tools through the bridge" "$hb_out"
             fi
 
             hb_out=$(MCP_BRIDGE_TOKEN_FILE="$hb_dir/tok" "$hb_bin" mcp call "python3 $hb_bridge $hb_url" echo '{"text":"hello"}' 2>&1 || true)
-            if printf '%s' "$hb_out" | grep -qF 'echo:hello'; then
+            if printf '%s' "$hb_out" | grepq -F 'echo:hello'; then
                 pass "S04SP12 http bridge: a tool call round-trips through the bridge"
             else
                 fail "S04SP12 http bridge: a tool call round-trips through the bridge" "$hb_out"
@@ -1486,7 +1527,7 @@ MCPSTUB
             hb_ok=0
             for _ in 1 2 3 4 5 6; do
                 hb_out=$(MCP_BRIDGE_TOKEN_FILE="$hb_dir/tok" "$hb_bin" mcp call "python3 $hb_bridge $hb_url" echo '{"text":"x"}' 2>&1 || true)
-                printf '%s' "$hb_out" | grep -qF 'echo:x' && hb_ok=$((hb_ok + 1))
+                printf '%s' "$hb_out" | grepq -F 'echo:x' && hb_ok=$((hb_ok + 1))
             done
             if [ "$hb_ok" -eq 6 ] && [ "$(hb_count)" = "0" ]; then
                 pass "S04SP12 http bridge: six runs against a server that admits two sessions leak none (per-request mode)"
@@ -1511,14 +1552,14 @@ MCPSTUB
             # a bridge that prints one. (A mutation that did exactly that survived the first version of this test.)
             hb_out=$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' \
                 | MCP_BRIDGE_TOKEN_FILE="$hb_dir/bad.tok" python3 "$hb_bridge" "$hb_url" 2>&1 || true)
-            if printf '%s' "$hb_out" | grep -qF 'HTTP 401' && ! printf '%s' "$hb_out" | grep -qF "$(cat "$hb_dir/bad.tok")" && ! printf '%s' "$hb_out" | grep -qF "$hb_token"; then
+            if printf '%s' "$hb_out" | grepq -F 'HTTP 401' && ! printf '%s' "$hb_out" | grepq -F "$(cat "$hb_dir/bad.tok")" && ! printf '%s' "$hb_out" | grepq -F "$hb_token"; then
                 pass "S04SP12 http bridge: a wrong token is refused (HTTP 401) and no token appears in the output"
             else
                 fail "S04SP12 http bridge: a wrong token is refused (HTTP 401) and no token appears in the output" "$hb_out"
             fi
 
             hb_out=$(python3 "$hb_bridge" 2>&1 </dev/null; echo "rc=$?") || true
-            if printf '%s' "$hb_out" | grep -qF 'rc=2' && printf '%s' "$hb_out" | grep -qF 'usage'; then
+            if printf '%s' "$hb_out" | grepq -F 'rc=2' && printf '%s' "$hb_out" | grepq -F 'usage'; then
                 pass "S04SP12 http bridge: with no URL it prints usage and exits 2"
             else
                 fail "S04SP12 http bridge: with no URL it prints usage and exits 2" "$hb_out"
@@ -1585,7 +1626,7 @@ ERPY
                 out=$(er_run "$@" 2>"$er_dir/err"); rc=$?
                 set -e
                 err=$(cat "$er_dir/err")
-                if [ "$rc" = "$want_rc" ] && [ "$out" = "$want_out" ] && { [ -z "$want_err" ] || printf '%s' "$err" | grep -qF -- "$want_err"; }; then
+                if [ "$rc" = "$want_rc" ] && [ "$out" = "$want_out" ] && { [ -z "$want_err" ] || printf '%s' "$err" | grepq -F -- "$want_err"; }; then
                     pass "$name"
                 else
                     fail "$name" "rc=$rc (want $want_rc) stdout='$out' stderr='$(printf '%s' "$err" | head -c 200)'"
@@ -1664,8 +1705,8 @@ EVPY
             ev_out=$(ev_run eval "$ev_dir/suite.json" --model fake-model)
             ev_rc=$?
             set -e
-            if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grep -qF 'Result: PASS' \
-                && printf '%s' "$ev_out" | grep -qF 'Score: 100%'; then
+            if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grepq -F 'Result: PASS' \
+                && printf '%s' "$ev_out" | grepq -F 'Score: 100%'; then
                 pass "S04E10 eval: end to end passes against a fake model (rc 0)"
             else
                 fail "S04E10 eval: end to end passes against a fake model (rc 0)" "rc=$ev_rc out=$ev_out"
@@ -1674,9 +1715,9 @@ EVPY
             # What reached the wire: 3 requests, temperature 0, system+user roles, safety clause present.
             local ev_reqs; ev_reqs=$(wc -l < "$ev_dir/req.log" | tr -d ' ')
             if [ "$ev_reqs" = "3" ] \
-                && head -1 "$ev_dir/req.log" | grep -qF '"temperature":0' \
-                && head -1 "$ev_dir/req.log" | grep -qF 'exfiltrate secrets' \
-                && head -1 "$ev_dir/req.log" | grep -qF '"role":"system"'; then
+                && head -1 "$ev_dir/req.log" | grepq -F '"temperature":0' \
+                && head -1 "$ev_dir/req.log" | grepq -F 'exfiltrate secrets' \
+                && head -1 "$ev_dir/req.log" | grepq -F '"role":"system"'; then
                 pass "S04E10 eval: system prompt, safety clause and temperature 0 reached the wire"
             else
                 fail "S04E10 eval: system prompt, safety clause and temperature 0 reached the wire" \
@@ -1686,14 +1727,14 @@ EVPY
             : > "$ev_dir/req.log"
             ev_out=$(ev_run eval "$ev_dir/suite.json" --model fake-model --filter capital)
             ev_reqs=$(wc -l < "$ev_dir/req.log" | tr -d ' ')
-            if [ "$ev_reqs" = "1" ] && printf '%s' "$ev_out" | grep -qF 'capital'; then
+            if [ "$ev_reqs" = "1" ] && printf '%s' "$ev_out" | grepq -F 'capital'; then
                 pass "S04E10 eval: --filter runs only the matching fixture"
             else
                 fail "S04E10 eval: --filter runs only the matching fixture" "requests=$ev_reqs out=$ev_out"
             fi
 
             ev_out=$(ev_run eval "$ev_dir/suite.json" --model fake-model --json)
-            if printf '%s' "$ev_out" | grep -qF '"result": "pass"' && printf '%s' "$ev_out" | grep -qF '"score_percent": 100'; then
+            if printf '%s' "$ev_out" | grepq -F '"result": "pass"' && printf '%s' "$ev_out" | grepq -F '"score_percent": 100'; then
                 pass "S04E10 eval: --json emits the envelope"
             else
                 fail "S04E10 eval: --json emits the envelope" "out=$ev_out"
@@ -1707,7 +1748,7 @@ EVFAIL
             ev_out=$(ev_run eval "$ev_dir/failing.json" --model fake-model)
             ev_rc=$?
             set -e
-            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'Result: FAIL'; then
+            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grepq -F 'Result: FAIL'; then
                 pass "S04E10 eval: a failing suite exits 1"
             else
                 fail "S04E10 eval: a failing suite exits 1" "rc=$ev_rc out=$ev_out"
@@ -1720,8 +1761,8 @@ EVFAIL
             ev_rc=$?
             set -e
             ev_reqs=$(wc -l < "$ev_dir/req.log" | tr -d ' ')
-            if [ "$ev_rc" -eq 0 ] && [ "$ev_reqs" = "7" ] && printf '%s' "$ev_out" | grep -qF 'Suite: smoke (7 fixtures' \
-                && printf '%s' "$ev_out" | grep -qF 'Result: PASS'; then
+            if [ "$ev_rc" -eq 0 ] && [ "$ev_reqs" = "7" ] && printf '%s' "$ev_out" | grepq -F 'Suite: smoke (7 fixtures' \
+                && printf '%s' "$ev_out" | grepq -F 'Result: PASS'; then
                 pass "S04E11 corpus: the embedded smoke corpus passes end to end (7 requests)"
             else
                 fail "S04E11 corpus: the embedded smoke corpus passes end to end (7 requests)" "rc=$ev_rc requests=$ev_reqs out=$ev_out"
@@ -1732,8 +1773,8 @@ EVFAIL
             ev_out=$(ev_run eval --corpus refusal --model fake-model)
             ev_rc=$?
             set -e
-            if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grep -qF 'Suite: refusal (8 fixtures' \
-                && printf '%s' "$ev_out" | grep -qF '[safety]'; then
+            if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grepq -F 'Suite: refusal (8 fixtures' \
+                && printf '%s' "$ev_out" | grepq -F '[safety]'; then
                 pass "S04E11 corpus: the refusal corpus passes against a model that refuses"
             else
                 fail "S04E11 corpus: the refusal corpus passes against a model that refuses" "rc=$ev_rc out=$ev_out"
@@ -1750,7 +1791,7 @@ EVFAIL
                 AZURE_FOUNDRY_MODELS="fake-model" "$ev_abs" eval --corpus persona-voice --model fake-model 2>&1)
             ev_rc=$?
             set -e
-            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'Personas: built-in defaults'; then
+            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grepq -F 'Personas: built-in defaults'; then
                 pass "S04E11 corpus: persona-voice fails a model with no voice and reports built-in personas"
             else
                 fail "S04E11 corpus: persona-voice fails a model with no voice and reports built-in personas" "rc=$ev_rc out=$ev_out"
@@ -1765,7 +1806,7 @@ EVFAIL
                 AZURE_FOUNDRY_ENDPOINT="http://127.0.0.1:$ev_port" AZURE_FOUNDRY_KEY="fake-key-0123456789" \
                 AZURE_FOUNDRY_MODELS="fake-model" "$ev_abs" --telemetry --model fake-model "What is the capital of France?" 2>&1 >/dev/null)
             set -e
-            if printf '%s' "$ev_ctl" | grep -qF '"dispatch_path"' && ! printf '%s' "$ev_ctl" | grep -qF 'capital of France'; then
+            if printf '%s' "$ev_ctl" | grepq -F '"dispatch_path"' && ! printf '%s' "$ev_ctl" | grepq -F 'capital of France'; then
                 pass "S04E13 telemetry control: a normal run emits telemetry events and none carry the prompt text"
             else
                 fail "S04E13 telemetry control: a normal run emits telemetry events and none carry the prompt text" "stderr=$(printf '%s' "$ev_ctl" | head -c 400)"
@@ -1782,11 +1823,11 @@ EVFAIL
             ev_rc=$?
             set -e
             if [ "$ev_rc" -eq 0 ] \
-                && ! printf '%s' "$ev_out" | grep -qF 'capital of France' \
-                && ! printf '%s' "$ev_out" | grep -qF 'HyperText Transfer Protocol' \
-                && ! printf '%s' "$ev_out" | grep -qF 'Reply with a JSON object' \
-                && ! printf '%s' "$ev_out" | grep -qF 'dummy-key-0123456789' \
-                && ! printf '%s' "$ev_out" | grep -qF 'fake-key-0123456789'; then
+                && ! printf '%s' "$ev_out" | grepq -F 'capital of France' \
+                && ! printf '%s' "$ev_out" | grepq -F 'HyperText Transfer Protocol' \
+                && ! printf '%s' "$ev_out" | grepq -F 'Reply with a JSON object' \
+                && ! printf '%s' "$ev_out" | grepq -F 'dummy-key-0123456789' \
+                && ! printf '%s' "$ev_out" | grepq -F 'fake-key-0123456789'; then
                 pass "S04E13 telemetry: an eval run with telemetry on emits no prompt, output or key text"
             else
                 fail "S04E13 telemetry: an eval run with telemetry on emits no prompt, output or key text" "rc=$ev_rc out=$(printf '%s' "$ev_out" | head -c 600)"
@@ -1810,7 +1851,7 @@ EVFAIL
             ev_out=$(gate_run POLICY="$ev_dir/policy_ok.json" EVAL_GATE_REQUIRED=true)
             ev_rc=$?
             set -e
-            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'Refusing to report green without running'; then
+            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grepq -F 'Refusing to report green without running'; then
                 pass "S04E12 gate: a required gate with no credentials FAILS (never green)"
             else
                 fail "S04E12 gate: a required gate with no credentials FAILS (never green)" "rc=$ev_rc out=$ev_out"
@@ -1821,7 +1862,7 @@ EVFAIL
             ev_out=$(gate_run POLICY="$ev_dir/policy_ok.json")
             ev_rc=$?
             set -e
-            if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grep -qF 'SKIPPED' && printf '%s' "$ev_out" | grep -qF 'This is not a pass'; then
+            if [ "$ev_rc" -eq 0 ] && printf '%s' "$ev_out" | grepq -F 'SKIPPED' && printf '%s' "$ev_out" | grepq -F 'This is not a pass'; then
                 pass "S04E12 gate: an optional gate with no credentials SKIPS visibly (not a pass)"
             else
                 fail "S04E12 gate: an optional gate with no credentials SKIPS visibly (not a pass)" "rc=$ev_rc out=$ev_out"
@@ -1834,7 +1875,7 @@ EVFAIL
             ev_rc=$?
             set -e
             ev_reqs=$(wc -l < "$ev_dir/req.log" | tr -d ' ')
-            if [ "$ev_rc" -eq 0 ] && [ "$ev_reqs" = "30" ] && printf '%s' "$ev_out" | grep -qF 'eval-gate: OK'; then
+            if [ "$ev_rc" -eq 0 ] && [ "$ev_reqs" = "30" ] && printf '%s' "$ev_out" | grepq -F 'eval-gate: OK'; then
                 pass "S04E12 gate: smoke and refusal pass with --repeat 2 (30 requests: 7x2 + 8x2)"
             else
                 fail "S04E12 gate: smoke and refusal pass with --repeat 2 (30 requests: 7x2 + 8x2)" "rc=$ev_rc requests=$ev_reqs out=$ev_out"
@@ -1845,7 +1886,7 @@ EVFAIL
             ev_out=$(gate_run POLICY="$ev_dir/policy_voice.json" $(gate_creds))
             ev_rc=$?
             set -e
-            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'did not pass'; then
+            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grepq -F 'did not pass'; then
                 pass "S04E12 gate: persona-voice against a model with no voice fails the gate"
             else
                 fail "S04E12 gate: persona-voice against a model with no voice fails the gate" "rc=$ev_rc out=$ev_out"
@@ -1862,7 +1903,7 @@ EVFAIL
             ev_rc2=$?
             set -e
             if [ "$ev_rc" -eq 0 ] && [ -f "$ev_dir/baselines/fake-model.smoke.json" ] && [ "$ev_rc2" -eq 0 ] \
-                && printf '%s' "$ev_out2" | grep -qF '0 regression(s)'; then
+                && printf '%s' "$ev_out2" | grepq -F '0 regression(s)'; then
                 pass "S04E12 gate: baselines are recorded and the next run compares with 0 regressions"
             else
                 fail "S04E12 gate: baselines are recorded and the next run compares with 0 regressions" \
@@ -1882,7 +1923,7 @@ PYB
             ev_out=$(gate_run POLICY="$ev_dir/policy_voice.json" $(gate_creds))
             ev_rc=$?
             set -e
-            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grep -qF 'regression against baseline'; then
+            if [ "$ev_rc" -eq 1 ] && printf '%s' "$ev_out" | grepq -F 'regression against baseline'; then
                 pass "S04E12 gate: fixtures that passed in the baseline and now fail are regressions"
             else
                 fail "S04E12 gate: fixtures that passed in the baseline and now fail are regressions" "rc=$ev_rc out=$ev_out"
@@ -1905,7 +1946,7 @@ PYB
     rot_out=$(echo "" | "$BIN" --rotate-creds openai 2>&1)
     rot_rc=$?
     set -e
-    if [ "$rot_rc" -eq 3 ] && printf '%s' "$rot_out" | grep -qF '[ERROR]'; then
+    if [ "$rot_rc" -eq 3 ] && printf '%s' "$rot_out" | grepq -F '[ERROR]'; then
         pass "S03E25 rotate: non-TTY refuses with [ERROR] (rc=3)"
     else
         fail "S03E25 rotate: non-TTY refuses with [ERROR]" "rc=$rot_rc out=$rot_out"
@@ -1980,7 +2021,7 @@ ROTEOF
             DOTNET_ROOT="${DOTNET_ROOT:-}" \
             "$BIN" --doctor 2>&1 || true)
         set -e
-        if printf '%s' "$doc_out" | grep -qF 'sk-new-rotation-test'; then
+        if printf '%s' "$doc_out" | grepq -F 'sk-new-rotation-test'; then
             fail "S03E25 rotate: --doctor does not echo the rotated key" \
                 "leaked output: $doc_out"
         else
@@ -2028,7 +2069,7 @@ ROTEOF
     local f
     local missing=""
     for f in '"event_id"' '"ts"' '"model"' '"provider"' '"dispatch_path"' '"latency_ms_bucket"' '"outcome"' '"error_class"'; do
-        if ! printf '%s' "$tel_event" | grep -qF "$f"; then
+        if ! printf '%s' "$tel_event" | grepq -F "$f"; then
             missing="$missing $f"
         fi
     done
@@ -2039,13 +2080,13 @@ ROTEOF
     fi
 
     # Privacy guarantee: bogus key value MUST NOT appear in the event line.
-    if printf '%s' "$tel_event" | grep -qF 'sk-not-a-real-key'; then
+    if printf '%s' "$tel_event" | grepq -F 'sk-not-a-real-key'; then
         fail "S03E13 telemetry: event must not leak API key" "leaked: $tel_event"
     else
         pass "S03E13 telemetry: event does not leak API key"
     fi
     # Endpoint hostname likewise must not appear in the event payload.
-    if printf '%s' "$tel_event" | grep -qF 'invalid.example.invalid'; then
+    if printf '%s' "$tel_event" | grepq -F 'invalid.example.invalid'; then
         fail "S03E13 telemetry: event must not leak endpoint" "leaked: $tel_event"
     else
         pass "S03E13 telemetry: event does not leak endpoint"
@@ -2060,7 +2101,7 @@ ROTEOF
         AZUREOPENAIMODEL="gpt-4o-mini" \
         "$BIN" --raw "S03E13 telemetry probe" 2>&1 1>/dev/null)
     set -e
-    if printf '%s\n' "$tel_stderr_off" | grep -q '^{"event_id":'; then
+    if printf '%s\n' "$tel_stderr_off" | grepq '^{"event_id":'; then
         fail "S03E13 telemetry: default off (env unset) emits no event" "leaked: $tel_stderr_off"
     else
         pass "S03E13 telemetry: default off (env unset) emits no event"
@@ -2077,7 +2118,7 @@ ROTEOF
         AZUREOPENAIMODEL="gpt-4o-mini" \
         "$BIN" --raw "S03E13 telemetry probe" 2>&1 1>/dev/null)
     set -e
-    if printf '%s\n' "$tel_zero" | grep -q '^{"event_id":'; then
+    if printf '%s\n' "$tel_zero" | grepq '^{"event_id":'; then
         fail "S03E13 telemetry: AZ_AI_TELEMETRY=0 must not enable" "leaked: $tel_zero"
     else
         pass "S03E13 telemetry: AZ_AI_TELEMETRY=0 does not enable (strict-equality '1')"
@@ -2123,7 +2164,7 @@ ROTEOF
         AZUREOPENAIMODEL="gpt-4o-mini" \
         "$BIN" --doctor 2>&1 || true)
     set -e
-    if printf '%s' "$doc_out" | grep -Eq 'Bearer [A-Za-z0-9._-]+|sk-[A-Za-z0-9]{8,}'; then
+    if printf '%s' "$doc_out" | grepq -E 'Bearer [A-Za-z0-9._-]+|sk-[A-Za-z0-9]{8,}'; then
         fail "S03E15 doctor: secret-shape leak" "found Bearer/sk- pattern in output"
     else
         pass "S03E15 doctor: never emits Bearer/sk- secret shape"
@@ -2170,7 +2211,7 @@ ROTEOF
     local off_doctor_rc=$?
     set -e
     if [ "$off_doctor_rc" -ne 0 ] && \
-       printf '%s' "$off_doctor_out" | grep -q 'blocked-offline'; then
+       printf '%s' "$off_doctor_out" | grepq 'blocked-offline'; then
         pass "S03E26 offline: --offline --doctor reports blocked-offline (rc=$off_doctor_rc)"
     else
         fail "S03E26 offline: --offline --doctor blocked-offline" \
@@ -2189,7 +2230,7 @@ ROTEOF
     local off_env_rc=$?
     set -e
     if [ "$off_env_rc" -ne 0 ] && \
-       printf '%s' "$off_env_out" | grep -q 'blocked-offline'; then
+       printf '%s' "$off_env_out" | grepq 'blocked-offline'; then
         pass "S03E26 offline: AZ_AI_OFFLINE=1 env (no flag) gates same as --offline"
     else
         fail "S03E26 offline: AZ_AI_OFFLINE=1 env" \
@@ -2227,7 +2268,7 @@ ROTEOF
         AZUREOPENAIMODEL="gpt-4o-mini" \
         "$BIN" --doctor 2>&1)
     set -e
-    if printf '%s' "$off_lax_out" | grep -q 'blocked-offline'; then
+    if printf '%s' "$off_lax_out" | grepq 'blocked-offline'; then
         fail "S03E26 offline: AZ_AI_OFFLINE=true must NOT enable offline" \
             "lax env activated offline gate (strict-equality '1' is required)"
     else
@@ -2236,7 +2277,7 @@ ROTEOF
 
     # 7. Secret-shape leak guard: offline error path must not emit the
     #    AZUREOPENAIAPI value or any sk-... token.
-    if printf '%s' "$off_doctor_out" | grep -Eq 'Bearer [A-Za-z0-9._-]+|sk-[A-Za-z0-9]{8,}'; then
+    if printf '%s' "$off_doctor_out" | grepq -E 'Bearer [A-Za-z0-9._-]+|sk-[A-Za-z0-9]{8,}'; then
         fail "S03E26 offline: secret-shape leak in offline path" \
             "found Bearer/sk- pattern in --offline --doctor output"
     else
@@ -2276,7 +2317,7 @@ ROTEOF
     local cg_tool_rc=$?
     set -e
     if [ "$cg_tool_rc" -eq 2 ] && \
-       printf '%s' "$cg_tool_out" | grep -q 'does not support tool_calls'; then
+       printf '%s' "$cg_tool_out" | grepq 'does not support tool_calls'; then
         pass "S03E18 capability gate: tool-call gate fires on groq:llama-3.1-8b-instant (exit 2)"
     else
         fail "S03E18 capability gate: tool-call refusal" \
@@ -2299,7 +2340,7 @@ ROTEOF
     local cg_ovr_rc=$?
     set -e
     if [ "$cg_ovr_rc" -ne 2 ] && \
-       ! printf '%s' "$cg_ovr_out" | grep -q 'does not support tool_calls'; then
+       ! printf '%s' "$cg_ovr_out" | grepq 'does not support tool_calls'; then
         pass "S03E18 capability gate: AZ_AI_CAPABILITY_OVERRIDES flips tool_calls past gate"
     else
         fail "S03E18 capability gate: override path" \
@@ -2307,7 +2348,7 @@ ROTEOF
     fi
 
     # 4. Error message names the override env var so the user can self-rescue.
-    if printf '%s' "$cg_tool_out" | grep -q 'AZ_AI_CAPABILITY_OVERRIDES'; then
+    if printf '%s' "$cg_tool_out" | grepq 'AZ_AI_CAPABILITY_OVERRIDES'; then
         pass "S03E18 capability gate: error message names AZ_AI_CAPABILITY_OVERRIDES"
     else
         fail "S03E18 capability gate: actionable hint" \
@@ -2315,7 +2356,7 @@ ROTEOF
     fi
 
     # 5. Capability-gate refusal must NOT leak the API key.
-    if printf '%s' "$cg_tool_out" | grep -Eq 'Bearer [A-Za-z0-9._-]+|sk-not-real'; then
+    if printf '%s' "$cg_tool_out" | grepq -E 'Bearer [A-Za-z0-9._-]+|sk-not-real'; then
         fail "S03E18 capability gate: secret-shape leak" "key value appears in refusal output"
     else
         pass "S03E18 capability gate: refusal emits no Bearer/sk- key value"
@@ -2362,8 +2403,8 @@ SWEOF
     sw_show_rc=$?
     set -e
     if [ "$sw_show_rc" -eq 0 ] && \
-       printf '%s' "$sw_show_out" | grep -qF 'Switch resolution (S03E20):' && \
-       printf '%s' "$sw_show_out" | grep -qE '^\s*source:\s+'; then
+       printf '%s' "$sw_show_out" | grepq -F 'Switch resolution (S03E20):' && \
+       printf '%s' "$sw_show_out" | grepq -E '^\s*source:\s+'; then
         pass "S03E20 switch: --config show emits Switch resolution + source field"
     else
         fail "S03E20 switch: --config show source field" "rc=$sw_show_rc out=$(printf '%s' "$sw_show_out" | head -c 320)"
@@ -2379,7 +2420,7 @@ SWEOF
         AZ_PROVIDER="groq" \
         "$BIN" --provider azure --config show 2>&1)
     set -e
-    if printf '%s' "$sw_cli_out" | grep -qE 'provider source:\s+cli'; then
+    if printf '%s' "$sw_cli_out" | grepq -E 'provider source:\s+cli'; then
         pass "S03E20 switch: --provider beats AZ_PROVIDER (provider source = cli)"
     else
         fail "S03E20 switch: --provider precedence" "out=$(printf '%s' "$sw_cli_out" | head -c 320)"
@@ -2394,8 +2435,8 @@ SWEOF
         AZUREOPENAIMODEL="gpt-4o-mini" \
         "$BIN" --profile work --config show 2>&1)
     set -e
-    if printf '%s' "$sw_prof_out" | grep -qF 'profile:work:provider' && \
-       printf '%s' "$sw_prof_out" | grep -qF 'profile:work:model'; then
+    if printf '%s' "$sw_prof_out" | grepq -F 'profile:work:provider' && \
+       printf '%s' "$sw_prof_out" | grepq -F 'profile:work:model'; then
         pass "S03E20 switch: --profile chains to profile provider + model"
     else
         fail "S03E20 switch: --profile chain" "out=$(printf '%s' "$sw_prof_out" | head -c 320)"
@@ -2412,10 +2453,10 @@ SWEOF
     sw_miss_rc=$?
     set -e
     if [ "$sw_miss_rc" -ne 0 ] && \
-       printf '%s' "$sw_miss_out" | grep -qF "'production'" && \
-       printf '%s' "$sw_miss_out" | grep -qF 'Available profiles:' && \
-       printf '%s' "$sw_miss_out" | grep -q 'work' && \
-       printf '%s' "$sw_miss_out" | grep -q 'ci'; then
+       printf '%s' "$sw_miss_out" | grepq -F "'production'" && \
+       printf '%s' "$sw_miss_out" | grepq -F 'Available profiles:' && \
+       printf '%s' "$sw_miss_out" | grepq 'work' && \
+       printf '%s' "$sw_miss_out" | grepq 'ci'; then
         pass "S03E20 switch: missing profile lists available names"
     else
         fail "S03E20 switch: missing profile message" "rc=$sw_miss_rc out=$(printf '%s' "$sw_miss_out" | head -c 320)"
@@ -2424,8 +2465,8 @@ SWEOF
     # 5. --provider, --profile, --model appear in --help.
     local sw_help_out
     sw_help_out=$("$BIN" --help 2>&1)
-    if printf '%s' "$sw_help_out" | grep -qFe '--provider <name>' && \
-       printf '%s' "$sw_help_out" | grep -qFe '--profile <name>'; then
+    if printf '%s' "$sw_help_out" | grepq -Fe '--provider <name>' && \
+       printf '%s' "$sw_help_out" | grepq -Fe '--profile <name>'; then
         pass "S03E20 switch: --help documents --provider and --profile"
     else
         fail "S03E20 switch: --help doc" "help missing --provider/--profile; captured ${#sw_help_out} chars, starting: $(printf '%s' "$sw_help_out" | head -c 160 | tr '\n' ' ')"
@@ -2441,8 +2482,8 @@ SWEOF
         AZ_PROFILE="ci" \
         "$BIN" --config show 2>&1)
     set -e
-    if printf '%s' "$sw_env_out" | grep -qF 'profile:ci:provider' && \
-       printf '%s' "$sw_env_out" | grep -qF 'env:AZ_PROFILE'; then
+    if printf '%s' "$sw_env_out" | grepq -F 'profile:ci:provider' && \
+       printf '%s' "$sw_env_out" | grepq -F 'env:AZ_PROFILE'; then
         pass "S03E20 switch: AZ_PROFILE env resolves to profile.provider"
     else
         fail "S03E20 switch: AZ_PROFILE env chain" "out=$(printf '%s' "$sw_env_out" | head -c 320)"
@@ -2468,7 +2509,7 @@ SWEOF
                 AZUREOPENAIENDPOINT="https://x.cognitiveservices.azure.com/" \
                 AZUREOPENAIAPI="not-a-real-key" \
                 "$BIN" --config show 2>&1 || true)
-    if printf '%s' "$def1_out" | grep -qE 'provider source:[[:space:]]+default:azure(\b|$)'; then
+    if printf '%s' "$def1_out" | grepq -E 'provider source:[[:space:]]+default:azure(\b|$)'; then
         pass "S03E22 default: rung 1 (azure endpoint+api → default:azure)"
     else
         fail "S03E22 default: rung 1 azure" "out=$(printf '%s' "$def1_out" | head -c 320)"
@@ -2480,7 +2521,7 @@ SWEOF
                 XDG_CONFIG_HOME="$def_home/.config" \
                 AZ_AI_GROQ_ENDPOINT="https://api.groq.com/openai/v1" \
                 "$BIN" --config show 2>&1 || true)
-    if printf '%s' "$def2_out" | grep -qE 'provider source:[[:space:]]+default:groq(\b|$)'; then
+    if printf '%s' "$def2_out" | grepq -E 'provider source:[[:space:]]+default:groq(\b|$)'; then
         pass "S03E22 default: rung 2 (single preset endpoint → default:groq)"
     else
         fail "S03E22 default: rung 2 single preset" "out=$(printf '%s' "$def2_out" | head -c 320)"
@@ -2494,12 +2535,12 @@ SWEOF
                 AZ_AI_GROQ_ENDPOINT="https://api.groq.com/openai/v1" \
                 AZ_AI_CLOUDFLARE_ENDPOINT="https://api.cloudflare.com/client/v4/accounts/x/ai/v1" \
                 "$BIN" --config show 2>&1 || true)
-    if printf '%s' "$def5_out" | grep -qE 'provider source:[[:space:]]+default:cloudflare(\b|$)'; then
+    if printf '%s' "$def5_out" | grepq -E 'provider source:[[:space:]]+default:cloudflare(\b|$)'; then
         pass "S03E22 default: rung 5 tie-break picks alphabetical first (cloudflare)"
     else
         fail "S03E22 default: rung 5 tie-break" "out=$(printf '%s' "$def5_out" | head -c 320)"
     fi
-    if printf '%s' "$def5_out" | grep -qF 'multiple-presets-no-cli-no-profile-no-env-pin'; then
+    if printf '%s' "$def5_out" | grepq -F 'multiple-presets-no-cli-no-profile-no-env-pin'; then
         pass "S03E22 default: rung 5 emits multi-preset warning"
     else
         fail "S03E22 default: rung 5 warning" "out=$(printf '%s' "$def5_out" | head -c 320)"
@@ -2513,7 +2554,7 @@ SWEOF
                     AZ_AI_GROQ_ENDPOINT="https://api.groq.com/openai/v1" \
                     AZ_AI_CLOUDFLARE_ENDPOINT="https://api.cloudflare.com/client/v4/accounts/x/ai/v1" \
                     "$BIN" --config show 2>&1 || true)
-    if printf '%s' "$def_pin_out" | grep -qE 'provider source:[[:space:]]+env:AZ_PROVIDER(\b|$)'; then
+    if printf '%s' "$def_pin_out" | grepq -E 'provider source:[[:space:]]+env:AZ_PROVIDER(\b|$)'; then
         pass "S03E22 default: AZ_PROVIDER pre-empts heuristic"
     else
         fail "S03E22 default: AZ_PROVIDER pre-empts" "out=$(printf '%s' "$def_pin_out" | head -c 320)"
@@ -2525,7 +2566,7 @@ SWEOF
     def6_out=$(env -i HOME="$def_home" PATH="$PATH" \
                 XDG_CONFIG_HOME="$def_home/.config" \
                 "$BIN" --config show 2>&1 || true)
-    if printf '%s' "$def6_out" | grep -qE 'provider source:[[:space:]]+default:azure:fallback(\b|$)'; then
+    if printf '%s' "$def6_out" | grepq -E 'provider source:[[:space:]]+default:azure:fallback(\b|$)'; then
         pass "S03E22 default: rung 6 fallback label when no signals"
     else
         fail "S03E22 default: rung 6 fallback" "out=$(printf '%s' "$def6_out" | head -c 320)"
@@ -2547,8 +2588,8 @@ SWEOF
         AZ_AI_COMPAT_MODELS="llamacpp:llamacpp" \
         "$BIN" --doctor 2>&1 || true)
     set -e
-    if printf '%s' "$lc_doc_out" | grep -q 'compat:llamacpp' && \
-       printf '%s' "$lc_doc_out" | grep -q 'localhost:8080'; then
+    if printf '%s' "$lc_doc_out" | grepq 'compat:llamacpp' && \
+       printf '%s' "$lc_doc_out" | grepq 'localhost:8080'; then
         pass "S03E17 server: --doctor lists compat:llamacpp probe row with default endpoint"
     else
         fail "S03E17 server: --doctor llamacpp probe" \
@@ -2563,7 +2604,7 @@ SWEOF
         AZ_AI_COMPAT_MODELS="llamacpp:llamacpp" \
         "$BIN" --doctor --json 2>&1 || true)
     set -e
-    if printf '%s' "$lc_json_out" | grep -q 'compat:llamacpp'; then
+    if printf '%s' "$lc_json_out" | grepq 'compat:llamacpp'; then
         pass "S03E17 server: --doctor --json emits compat:llamacpp row"
     else
         fail "S03E17 server: --doctor --json llamacpp" \
@@ -2587,7 +2628,7 @@ SWEOF
     lc_gate_rc=$?
     set -e
     if [ "$lc_gate_rc" -ne 0 ] && \
-       printf '%s' "$lc_gate_out" | grep -q 'AZ_AI_CAPABILITY_OVERRIDES'; then
+       printf '%s' "$lc_gate_out" | grepq 'AZ_AI_CAPABILITY_OVERRIDES'; then
         pass "S03E17 server: capability gate refuses tool-calls on llamacpp (rc=$lc_gate_rc)"
     else
         fail "S03E17 server: capability gate llamacpp tool-calls" \
@@ -2608,7 +2649,7 @@ SWEOF
     lc_block_rc=$?
     set -e
     if [ "$lc_block_rc" -ne 0 ] && \
-       printf '%s' "$lc_block_out" | grep -q 'AZ_AI_LOCAL_PROVIDERS'; then
+       printf '%s' "$lc_block_out" | grepq 'AZ_AI_LOCAL_PROVIDERS'; then
         pass "S03E17 server: loopback gate refuses llamacpp without AZ_AI_LOCAL_PROVIDERS=1 (rc=$lc_block_rc)"
     else
         fail "S03E17 server: loopback gate llamacpp" \
@@ -2619,7 +2660,7 @@ SWEOF
     echo "▸ S03E22 fallback chain (--fallback opt-in)"
 
     # 1. --help mentions --fallback (discoverable).
-    if "$BIN" --help 2>&1 | grep -q -- "--fallback"; then
+    if "$BIN" --help 2>&1 | grepq -- "--fallback"; then
         pass "S03E22 fallback: --help mentions --fallback"
     else
         fail "S03E22 fallback: --help missing --fallback" "help text didn't mention the flag"
@@ -2630,8 +2671,8 @@ SWEOF
     fb_unknown_out=$("$BIN" --fallback bogus -- "hi" 2>&1 1>/dev/null || true)
     fb_unknown_rc=$("$BIN" --fallback bogus -- "hi" >/dev/null 2>&1; echo $?)
     if [ "$fb_unknown_rc" = "2" ] && \
-       printf '%s' "$fb_unknown_out" | grep -qi "unknown fallback provider" && \
-       printf '%s' "$fb_unknown_out" | grep -q "openai"; then
+       printf '%s' "$fb_unknown_out" | grepq -i "unknown fallback provider" && \
+       printf '%s' "$fb_unknown_out" | grepq "openai"; then
         pass "S03E22 fallback: unknown preset exits 2 + lists known"
     else
         fail "S03E22 fallback: unknown preset" "rc=$fb_unknown_rc out=$(printf '%s' "$fb_unknown_out" | head -c 240)"
@@ -2640,7 +2681,7 @@ SWEOF
     # 3. depth >3 -> exit 2 + "exceeds max" message.
     fb_depth_out=$("$BIN" --fallback openai,groq,together,cloudflare -- "hi" 2>&1 1>/dev/null || true)
     fb_depth_rc=$("$BIN" --fallback openai,groq,together,cloudflare -- "hi" >/dev/null 2>&1; echo $?)
-    if [ "$fb_depth_rc" = "2" ] && printf '%s' "$fb_depth_out" | grep -qi "exceeds the maximum"; then
+    if [ "$fb_depth_rc" = "2" ] && printf '%s' "$fb_depth_out" | grepq -i "exceeds the maximum"; then
         pass "S03E22 fallback: depth>3 exits 2 with max-depth message"
     else
         fail "S03E22 fallback: depth>3" "rc=$fb_depth_rc out=$(printf '%s' "$fb_depth_out" | head -c 240)"
@@ -2649,7 +2690,7 @@ SWEOF
     # 4. duplicate preset -> exit 2 + "duplicate" message.
     fb_dup_out=$("$BIN" --fallback openai,openai -- "hi" 2>&1 1>/dev/null || true)
     fb_dup_rc=$("$BIN" --fallback openai,openai -- "hi" >/dev/null 2>&1; echo $?)
-    if [ "$fb_dup_rc" = "2" ] && printf '%s' "$fb_dup_out" | grep -qi "more than once"; then
+    if [ "$fb_dup_rc" = "2" ] && printf '%s' "$fb_dup_out" | grepq -i "more than once"; then
         pass "S03E22 fallback: duplicate preset exits 2"
     else
         fail "S03E22 fallback: duplicate" "rc=$fb_dup_rc out=$(printf '%s' "$fb_dup_out" | head -c 240)"
@@ -2658,7 +2699,7 @@ SWEOF
     # 5. --fallback without value -> Fail() exits 2 with helpful message.
     fb_noval_out=$("$BIN" --fallback 2>&1 1>/dev/null || true)
     fb_noval_rc=$("$BIN" --fallback >/dev/null 2>&1; echo $?)
-    if [ "$fb_noval_rc" != "0" ] && printf '%s' "$fb_noval_out" | grep -q "requires a comma-separated"; then
+    if [ "$fb_noval_rc" != "0" ] && printf '%s' "$fb_noval_out" | grepq "requires a comma-separated"; then
         pass "S03E22 fallback: missing value exits non-zero (rc=$fb_noval_rc)"
     else
         fail "S03E22 fallback: missing value" "rc=$fb_noval_rc out=$(printf '%s' "$fb_noval_out" | head -c 240)"
@@ -2708,8 +2749,8 @@ PMP_GOOD
     #    (validation passes; both personas surface).
     local pmp_list_out
     pmp_list_out=$(cd "$pmp_dir" && env HOME="$test_home" "$pmp_bin" --personas 2>&1; true)
-    if printf '%s' "$pmp_list_out" | grep -q "coder" && \
-       printf '%s' "$pmp_list_out" | grep -q "reviewer"; then
+    if printf '%s' "$pmp_list_out" | grepq "coder" && \
+       printf '%s' "$pmp_list_out" | grepq "reviewer"; then
         pass "S03E23 persona pin: --personas lists persona with pinned provider"
     else
         fail "S03E23 persona pin: --personas list" \
@@ -2735,8 +2776,8 @@ PMP_BAD
     pmp_bad_rc=$?
     set -e
     if [ "$pmp_bad_rc" != "0" ] && \
-       printf '%s' "$pmp_bad_out" | grep -q "anthropic" && \
-       printf '%s' "$pmp_bad_out" | grep -qi "known providers"; then
+       printf '%s' "$pmp_bad_out" | grepq "anthropic" && \
+       printf '%s' "$pmp_bad_out" | grepq -i "known providers"; then
         pass "S03E23 persona pin: unknown provider rejected at load (rc=$pmp_bad_rc)"
     else
         fail "S03E23 persona pin: unknown provider" \
@@ -2745,7 +2786,7 @@ PMP_BAD
 
     # 3. Bad config error names the offending persona so the operator can
     #    grep the file straight to it.
-    if printf '%s' "$pmp_bad_out" | grep -q "kramer"; then
+    if printf '%s' "$pmp_bad_out" | grepq "kramer"; then
         pass "S03E23 persona pin: error names the offending persona"
     else
         fail "S03E23 persona pin: error missing persona name" \
