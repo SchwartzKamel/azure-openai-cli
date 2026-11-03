@@ -103,6 +103,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Fixed
+- **fix(build):** S04E19 *The Stale Install* -- `make install` reinstalled the previous Native AOT
+  build whenever `dist/aot/hopper` already existed, so after pulling or editing source it
+  copied an old binary under a new timestamp and reported success. The binary now depends on
+  every file under `azureopenai-cli/` (build output excluded), so make rebuilds exactly when
+  something that can change it is newer. (`Makefile`, s04e19-the-stale-install)
 - **fix(mcp):** S04E18 *The Clean Exit* -- hopper killed an MCP server process the moment it
   finished with it, so a server (or an HTTP bridge) never saw its input close and could not
   release a session, lock or temp file. A host that caps sessions failed on the ninth run (HTTP

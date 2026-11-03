@@ -1088,6 +1088,9 @@ EVSUITE
         fail "S04E14 make install: installs hopper and links az-ai to it" "$(ls -l "$al_dir/mk/prefix/bin" 2>&1 | tr '\n' ' ')"
     fi
     # An older install left a regular az-ai file; upgrading must replace it with the link.
+    # mkdir -p: if the install above failed the directory does not exist, and under set -e the write below would
+    # abort the whole suite instead of letting the cases after it report.
+    mkdir -p "$al_dir/mk/prefix/bin"
     rm -f "$al_dir/mk/prefix/bin/az-ai"; printf '#!/bin/sh\necho old\n' > "$al_dir/mk/prefix/bin/az-ai"; chmod +x "$al_dir/mk/prefix/bin/az-ai"
     make -C "$al_dir/mk" -f "$al_repo/Makefile" install PREFIX="$al_dir/mk/prefix" >/dev/null 2>&1 || true
     if [ "$(readlink "$al_dir/mk/prefix/bin/az-ai")" = "hopper" ]; then
@@ -1110,6 +1113,41 @@ EVSUITE
         fail "S04E14 completions: the binary registers hopper and az-ai" "out=$al_comp"
     fi
     rm -rf "$al_dir"
+
+    # ── S04E19 -- make install must not reinstall a stale binary ──
+    # `install` depended on dist/aot/hopper only as a file that has to exist, so after a source change it copied
+    # the old build (new timestamp, old contents) without a word. Found when a "newest" install still let
+    # `env rm FILE` through. A dry run shows what make WOULD do, so no real AOT build is needed here: the planned
+    # step is `make publish-aot` (its own recursive make cannot run in this throwaway directory, which is fine).
+    echo "▸ S04E19 make install rebuilds a stale binary"
+    st_dir=$(mktemp -d "${TMPDIR:-/tmp}/make-stale.XXXXXX")
+    mkdir -p "$st_dir/dist/aot" "$st_dir/azureopenai-cli"
+    printf '#!/bin/sh\necho stand-in\n' > "$st_dir/dist/aot/hopper"; chmod +x "$st_dir/dist/aot/hopper"
+    echo 'class A {}' > "$st_dir/azureopenai-cli/A.cs"
+    touch -d '2026-01-01 00:00:00' "$st_dir/azureopenai-cli/A.cs"
+    touch -d '2026-06-01 00:00:00' "$st_dir/dist/aot/hopper"
+    st_out=$(make -n -C "$st_dir" -f "$al_repo/Makefile" install PREFIX="$st_dir/p" 2>&1 || true)
+    if printf '%s' "$st_out" | grep -qF 'publish-aot'; then
+        fail "S04E19 make install: an up-to-date binary is NOT rebuilt" "a rebuild was planned although no source is newer than the binary"
+    else
+        pass "S04E19 make install: an up-to-date binary is NOT rebuilt"
+    fi
+    touch -d '2026-09-01 00:00:00' "$st_dir/azureopenai-cli/A.cs"        # a source file is now newer than the binary
+    st_out=$(make -n -C "$st_dir" -f "$al_repo/Makefile" install PREFIX="$st_dir/p" 2>&1 || true)
+    if printf '%s' "$st_out" | grep -qF 'publish-aot'; then
+        pass "S04E19 make install: a source file newer than the binary triggers a rebuild"
+    else
+        fail "S04E19 make install: a source file newer than the binary triggers a rebuild" "$(printf '%s' "$st_out" | head -c 300)"
+    fi
+    mkdir -p "$st_dir/azureopenai-cli/obj" "$st_dir/azureopenai-cli/bin"; echo x > "$st_dir/azureopenai-cli/obj/gen.cs"; echo x > "$st_dir/azureopenai-cli/bin/out.dll"
+    touch -d '2026-01-01 00:00:00' "$st_dir/azureopenai-cli/A.cs"; touch -d '2026-12-01 00:00:00' "$st_dir/azureopenai-cli/obj/gen.cs" "$st_dir/azureopenai-cli/bin/out.dll"
+    st_out=$(make -n -C "$st_dir" -f "$al_repo/Makefile" install PREFIX="$st_dir/p" 2>&1 || true)
+    if printf '%s' "$st_out" | grep -qF 'publish-aot'; then
+        fail "S04E19 make install: build output (obj/, bin/) does not count as a source change" "a rebuild was planned because of obj/ or bin/ files"
+    else
+        pass "S04E19 make install: build output (obj/, bin/) does not count as a source change"
+    fi
+    rm -rf "$st_dir"
 
     # ── S04SP10 -- The Housekeeping: a script the build needs must not be hidden by .gitignore ──
     # `.gitignore` carries `scripts/*` (it hides agent scratch files), so a NEW script is ignored until
