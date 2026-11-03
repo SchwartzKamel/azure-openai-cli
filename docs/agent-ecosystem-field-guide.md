@@ -25,9 +25,9 @@ resource with three chat deployments, supplied through the normal environment va
 Hopper needs a deployment it can reach. On Azure, the model decides which parameters are accepted:
 
 - Two of the three deployments tested (`gpt-5-nano`, `gpt-5.2-chat`) **reject hopper's default
-  `temperature`** with HTTP 400 `unsupported_value`. `--temperature 1` works. `gpt-5.4-mini` accepts the default.
-- The registry does not know these models, so hopper cannot omit the parameter for you. This is tracked
-  as `kramer-2026-11-K-5`.
+  `temperature`** with HTTP 400 `unsupported_value`; only `gpt-5.4-mini` accepts it. Hopper now handles this itself
+  (S04E20): on that exact error it retries once without the setting, says so on stderr, and remembers the model for the
+  rest of the run. Before then, `--temperature 1` was the workaround.
 - A reasoning model needs a realistic `--max-tokens`: the hidden reasoning counts against it. With
   `--max-tokens 16` or `64` on `gpt-5-nano`, hopper printed **nothing and exited 0**; `1500` returned the
   answer. An empty reply with a success exit code is a silent failure, tracked as `kramer-2026-11-K-6`.

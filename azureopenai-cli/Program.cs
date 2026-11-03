@@ -3559,6 +3559,15 @@ internal class Program
     /// </summary>
     internal static IChatClient? BuildChatClient(string endpoint, string apiKey, string model, bool jsonMode)
     {
+        var client = BuildChatClientCore(endpoint, apiKey, model, jsonMode);
+        // S04E20: a model that refuses a temperature setting retries once without it. Wrapped here, once, because every
+        // path (one-shot, agent, Ralph, the queue, eval, the doctor probe) builds its client through this method.
+        return client is null ? null : new AzureOpenAI_CLI.Resilience.TemperatureTolerantChatClient(client, model);
+    }
+
+    /// <summary>The routing described above; <see cref="BuildChatClient"/> adds the temperature fallback around it.</summary>
+    private static IChatClient? BuildChatClientCore(string endpoint, string apiKey, string model, bool jsonMode)
+    {
         // Check if this model should route to Foundry/GitHub Models
         var foundryEndpoint = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_ENDPOINT");
         var foundryKey = Environment.GetEnvironmentVariable("AZURE_FOUNDRY_KEY");

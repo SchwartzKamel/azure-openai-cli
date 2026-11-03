@@ -62,7 +62,7 @@ for a drop-in starter. The full schema:
 |---|---|---|---|
 | `models` | `{ alias: deployment }` | `{}` | Alias → Azure deployment name. Used by `--model <alias>`. Alias is arbitrary; deployment must match the name in your Azure OpenAI resource. |
 | `default_model` | string | `null` | Which alias in `models` to use when `--model` and `AZUREOPENAIMODEL` are both unset. |
-| `defaults.temperature` | float | model default | `0.0`-`2.0`. |
+| `defaults.temperature` | float | model default | `0.0`-`2.0`. A model that accepts only its default (reasoning and "chat-latest" deployments) is retried once without it, with a note on stderr. |
 | `defaults.max_tokens` | int | model default | Caps completion length. gpt-5/o1/o3 enforce this as `max_completion_tokens` on the wire. |
 | `defaults.timeout_seconds` | int | `90` | Request timeout. |
 | `defaults.system_prompt` | string | none | Prepended to every request. Override per-call with `--system-prompt`. |
