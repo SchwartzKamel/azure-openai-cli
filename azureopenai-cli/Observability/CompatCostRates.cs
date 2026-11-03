@@ -120,6 +120,13 @@ internal static class CompatCostRates
     }
 
     /// <summary>
+    /// True when <paramref name="preset"/> is priced per model (so a model missing from its table is
+    /// unpriced, not an unknown preset).
+    /// </summary>
+    public static bool HasModelTable(string? preset)
+        => !string.IsNullOrWhiteSpace(preset) && ModelRates.ContainsKey(preset.Trim());
+
+    /// <summary>
     /// Enumerate known compat preset names in stable, case-insensitive order.
     /// Used by the estimator to render an actionable "Known: ..." list when
     /// an unknown preset is requested.

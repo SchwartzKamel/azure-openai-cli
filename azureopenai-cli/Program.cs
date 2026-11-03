@@ -3212,7 +3212,13 @@ internal class Program
             return ErrorAndExit("No prompt provided (provide as argument, --task-file, or stdin)", 1, jsonMode: opts.Json);
         }
 
-        var result = Observability.CostEstimator.Estimate(model, prompt, opts.EstimateOutputMax);
+        // S04E28: a model routed to an OpenAI-compatible preset (AZ_AI_COMPAT_MODELS) is priced by that
+        // preset's table -- per model for copilot -- not by the Azure deployment table, which does not know
+        // it. Before this, --estimate failed with "Unknown model" for every routed model.
+        var (estProvider, estDispatchPath) = ResolveDispatchInfo(model);
+        var result = estDispatchPath == "compat-allowlist"
+            ? Observability.CostEstimator.EstimateForCompatPreset(estProvider, model, prompt, opts.EstimateOutputMax)
+            : Observability.CostEstimator.Estimate(model, prompt, opts.EstimateOutputMax);
         if (result is null)
         {
             var known = string.Join(", ", Observability.CostHook.KnownModels());
