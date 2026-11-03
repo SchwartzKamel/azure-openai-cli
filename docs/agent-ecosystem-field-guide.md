@@ -16,6 +16,7 @@ resource with three chat deployments, supplied through the normal environment va
 | Natural-language ops questions over an MCP server | **Works, but filter the tools** | Correct, source-checked answers in 19 s; the server also listed two destructive tools |
 | A first draft of a commit message | **Useful, incomplete** | 1.3 s; accurate on *what*, blind to *why* |
 | The eval harness against a live model | **Works, and found real things** | First live run: smoke 100%, persona-voice 70% with flakes, one safety fixture blocked upstream |
+| An HTTP-only MCP server (scouter's offline analysis) | **Works through a bridge** | 10 graded runs, 2.5 s each; both models right on the code, the smaller one wrong on 3 of 5 hex addresses |
 | Compressing an agent platform's logs | **Not worth it here** | The logs were tiny (one run directory, 20 KB) |
 | Attaching the machine's CI runner to this repo | **Do not** | The repo is public; a fork PR could run code on the host |
 
@@ -129,6 +130,57 @@ That last row is a real product gap. A safety fixture that cannot be verified co
 an Azure deployment with the default content filter this fixture can never be graded, so the live gate would
 stay red. A filtered prompt should be its own outcome, not an error. Tracked as `maestro-2026-11-M-5`.
 
+## Recipe 6: an HTTP-only tool server (scouter's offline analysis)
+
+Scouter is a reverse-engineering workbench with a large tool registry and a small MCP surface. Its offline profile
+(`scouter mcp serve-offline`) exposes three tools for static analysis of an executable image that you own:
+`native_analysis_admit` (controller role, CONFIRM tier), and `native_analysis_open` and `native_analysis_page`
+(SAFE). It is a disassembler behind MCP, not a decompiler, and nothing here touched a live process or the Windows
+probe DLL.
+
+Two facts shape the integration. Scouter's MCP hosts are **authenticated HTTP** on loopback (a bearer token per
+role, an `Mcp-Session-Id`, at most one controller, bounded sessions), and hopper's MCP client **only launches a
+command**. Pointing hopper at the URL fails with an error that does not say why. So a bridge sits between them:
+
+```bash
+# one-time, by a person: the controller admits an image you own (a CONFIRM-tier write into the project directory)
+# then hopper gets only the observer token, and never even sees the admit tool
+MCP_BRIDGE_TOKEN_FILE=observer.tok MCP_DENY=native_analysis_admit \
+  hopper --agent --tools datetime \
+  --mcp-server "scouter=python3 examples/mcp/read-only-proxy.py python3 examples/mcp/http-bridge.py http://127.0.0.1:13340/mcp" \
+  "Read analysis <id>: what does the function at 0x401176 compute, and which function checks a password?"
+```
+
+`examples/mcp/http-bridge.py` relays newline-delimited JSON-RPC to an HTTP MCP server, reading the token from a file so
+nothing secret is in the environment or the command line. It composes with the read-only proxy from Recipe 3.
+
+**The test.** A small ELF program was compiled for the purpose, so the ground truth was known (`objdump` and `nm`):
+a loop summing 1 to n, and a function that `strcmp`s its argument with `hunter2`. One controller call admitted it;
+every later call used the read-only observer token. Each run was graded mechanically on a JSON answer:
+
+| Model | formula | function name | secret string | **hex address** | mean time |
+|---|---|---|---|---|---|
+| `gpt-5.4-mini` | 5/5 | 5/5 | 5/5 | **2/5** | 2.5 s |
+| `gpt-5.2-chat` | 5/5 | 5/5 | 5/5 | **5/5** | 2.7 s |
+
+Both models understood the code. The smaller one failed at **converting a decimal address to hex**, because scouter
+reports addresses as decimal integers (the true `check` was `0x40119e`, and it said `0x4011814`; the tool's output
+never contains that number). When exact addresses matter, use the stronger model, or have the server emit hex.
+
+**Three things that went wrong, and are fixed or recorded:**
+
+- **Eight runs, then HTTP 429.** The host admits 8 observer sessions and every hopper run leaked one, because hopper
+  killed the bridge with SIGKILL before it could close its session. A control experiment (8 of 16 runs, then failure)
+  made it exact. The root cause was in hopper (S04E18), and the bridge now defaults to a per-request session so it
+  leaks nothing even under SIGKILL: 24 of 24 runs against a cap of 8.
+- **A 67 KB result for a ten-line program.** `native_analysis_open` returns the whole record. That is cheap in
+  milliseconds and not in tokens; page through it when the program is larger than a toy.
+- **Scouter lists `native_analysis_admit` to the read-only role,** which then correctly refuses to run it. Hiding what a
+  role cannot call (the proxy does it here) saves the model from trying.
+
+**Suggestions for scouter, from this run** (not changes made to it): emit a `va_hex` string beside every integer
+address; expire idle sessions, so a client that dies cannot hold a slot for ever; filter `tools/list` by role.
+
 ## What not to do
 
 - **Do not attach a self-hosted CI runner to a public repository.** A pull request from a fork can run code on
@@ -136,6 +188,8 @@ stay red. A filtered prompt should be its own outcome, not an error. Tracked as 
 - **Do not point an agent at a mixed tool server unfiltered.** See Recipe 3.
 - **Do not compress logs you have not measured.** The hypothesis that an agent platform's logs were large was
   false; the multi-gigabyte directory was build worktrees.
+- **Do not leave cleanup to a client that may be killed.** Open and close a session within one request, or make sure
+  the client shuts the child down politely. Hopper now does (S04E18).
 - **Do not trust an HTTP 200 from a host you have not looked at.** One GitHub endpoint answered `OK` to every
   request, which looks like success and is not.
 - **Do not generalise from the easy benchmark.** See Recipe 1.
