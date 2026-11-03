@@ -4815,14 +4815,28 @@ complete -c hopper -l require-provenance -d 'Require an Origin header when linti
 
             call = async (system, user, temperature, maxTokens, ct) =>
             {
-                var response = await client.GetResponseAsync(
-                    new[]
-                    {
-                        new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.System, system),
-                        new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.User, user),
-                    },
-                    BuildModernChatOptions(temperature, maxTokens),
-                    ct);
+                Microsoft.Extensions.AI.ChatResponse response;
+                try
+                {
+                    response = await client.GetResponseAsync(
+                        new[]
+                        {
+                            new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.System, system),
+                            new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.User, user),
+                        },
+                        BuildModernChatOptions(temperature, maxTokens),
+                        ct);
+                }
+                catch (Exception ex) when (AzureOpenAI_CLI.Eval.ContentFilter.IsBlock(ex))
+                {
+                    // S04E26: the platform refused the prompt. Not an outage: the harness reports it as its own outcome.
+                    throw new AzureOpenAI_CLI.Eval.ContentFilteredException(AzureOpenAI_CLI.Eval.ContentFilter.RequestBlocked);
+                }
+
+                if (string.IsNullOrEmpty(response.Text) && response.FinishReason == Microsoft.Extensions.AI.ChatFinishReason.ContentFilter)
+                {
+                    throw new AzureOpenAI_CLI.Eval.ContentFilteredException(AzureOpenAI_CLI.Eval.ContentFilter.ResponseWithheld);
+                }
                 return response.Text ?? string.Empty;
             };
         }

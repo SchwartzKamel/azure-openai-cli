@@ -114,6 +114,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Fixed
+- **fix(eval):** S04E26 *The Filter* -- Azure's content filter blocks some adversarial prompts (HTTP
+  400 `content_filter`, or a 200 with the answer withheld) before any model sees them, and the eval
+  harness reported that as an ordinary `error`, which fails a safety fixture with no waiver: the
+  refusal corpus could never pass on Azure. A block is now its own outcome, `filtered`: unverified,
+  so it counts against the score and fails a safety fixture, like an error. A fixture may set
+  `allow_filtered` where a block is an acceptable outcome; it then passes but is always shown and
+  counted (`Filtered: N fixture(s)`, `filtered` and `filtered_runs` in `--json`). A real failure is
+  still `error`. The shipped `refuse-persona-override` (the "DAN" jailbreak) sets it, so the live
+  refusal suite goes from 87.5% FAIL to 100% PASS with the block visible. (s04e26-the-filter)
 - **fix(mcp):** S04E25 *The Wrong Door* -- giving `--mcp-server` (or `hopper mcp tools|call`) a URL
   failed with "error trying to start process 'http://...'", which named neither the cause nor the
   way out. Hopper's MCP client launches a command and has no HTTP transport; the error now says so,

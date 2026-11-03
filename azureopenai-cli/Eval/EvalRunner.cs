@@ -18,7 +18,8 @@ internal sealed record EvalFixtureResult(
     [property: JsonPropertyName("failures")] List<EvalAssertionFailure> Failures,
     [property: JsonPropertyName("error")] string? Error,
     [property: JsonPropertyName("runs")] int Runs = 1,
-    [property: JsonPropertyName("passed_runs")] int PassedRuns = 0)
+    [property: JsonPropertyName("passed_runs")] int PassedRuns = 0,
+    [property: JsonPropertyName("filtered_runs")] int FilteredRuns = 0)
 {
     /// <summary>
     /// True when a fixture passed some runs but not all: the signal that a result is not stable.
@@ -43,7 +44,8 @@ internal sealed record EvalReport(
     [property: JsonPropertyName("persona_source")] string? PersonaSource = null,
     [property: JsonPropertyName("repeat")] int Repeat = 1,
     [property: JsonPropertyName("flaky")] int FlakyCount = 0,
-    [property: JsonPropertyName("baseline")] EvalBaselineComparison? Baseline = null)
+    [property: JsonPropertyName("baseline")] EvalBaselineComparison? Baseline = null,
+    [property: JsonPropertyName("filtered")] int FilteredCount = 0)
 {
     internal bool Passing => Result == EvalStatus.Pass;
 }
@@ -55,6 +57,9 @@ internal static class EvalStatus
     internal const string Fail = "fail";
     internal const string Error = "error";
     internal const string Ungraded = "ungraded";
+
+    /// <summary>The platform's content filter blocked the request or withheld the answer: the model's behaviour is unverified.</summary>
+    internal const string Filtered = "filtered";
 }
 
 /// <summary>Calls the model for one fixture. The seam that keeps the runner testable offline.</summary>
@@ -78,6 +83,10 @@ internal delegate bool PersonaResolver(string name, out string? systemPrompt);
 ///   <item><b>Safety fails closed and ignores --fail-under.</b> A safety fixture that fails, errors,
 ///     or has no deterministic assertion to verify it blocks outright (the design doc: "no
 ///     override, no waiver").</item>
+///   <item><b>A platform block is its own outcome.</b> When the content filter blocks a prompt the model was never asked, so
+///     its behaviour is unverified: the fixture is <c>filtered</c>, counts against the score, and fails a safety fixture,
+///     the same as an error. A fixture may declare <c>allow_filtered</c> where a block is an acceptable outcome; it then
+///     passes, but is always shown and counted so it is never hidden.</item>
 ///   <item><b>Deterministic by default.</b> A fixture with no temperature runs at 0.0.</item>
 /// </list>
 /// </summary>
@@ -166,14 +175,18 @@ internal static class EvalRunner
         var passedRuns = runs.Count(r => r.Status == EvalStatus.Pass);
         if (passedRuns == runs.Count)
         {
-            return Result(EvalStatus.Pass, f.Assertions.Count, f.Assertions.Count, null, null, runs.Count, passedRuns);
+            return Result(EvalStatus.Pass, f.Assertions.Count, f.Assertions.Count, null, null, runs.Count, passedRuns)
+                with
+            { FilteredRuns = runs.Sum(r => r.FilteredRuns) };
         }
 
         // Report the first run that did not pass, so the failure text is real, not a blend.
         var firstBad = runs.First(r => r.Status != EvalStatus.Pass);
         var allErrors = runs.All(r => r.Status == EvalStatus.Error);
-        return Result(allErrors ? EvalStatus.Error : EvalStatus.Fail, firstBad.Passed, firstBad.Total,
-            firstBad.Failures, firstBad.Error, runs.Count, passedRuns);
+        var allFiltered = runs.All(r => r.Status == EvalStatus.Filtered);
+        return Result(allErrors ? EvalStatus.Error : allFiltered ? EvalStatus.Filtered : EvalStatus.Fail, firstBad.Passed, firstBad.Total,
+            firstBad.Failures, firstBad.Error, runs.Count, passedRuns) with
+        { FilteredRuns = runs.Sum(r => r.FilteredRuns) };
     }
 
     private static async Task<EvalFixtureResult> RunOnceAsync(
@@ -196,6 +209,16 @@ internal static class EvalRunner
             catch (OperationCanceledException)
             {
                 throw; // the user cancelled the whole run
+            }
+            catch (ContentFilteredException cfe)
+            {
+                // The platform refused the prompt (or withheld the answer): the model was not asked, so nothing was verified.
+                return f.AllowFiltered
+                    ? result(EvalStatus.Pass, f.Assertions.Count, f.Assertions.Count, null, null, 1, 1) with { FilteredRuns = 1 }
+                    : result(EvalStatus.Filtered, 0, f.Assertions.Count, null,
+                        "blocked: " + Clean(cfe.Message) + "; the model's behaviour was not verified"
+                        + " (set allow_filtered on the fixture if a block is an acceptable outcome)", 1, 0) with
+                    { FilteredRuns = 1 };
             }
             catch (Exception ex)
             {
@@ -226,7 +249,8 @@ internal static class EvalRunner
         var passed = results.Count(r => r.Status == EvalStatus.Pass);
         var ungraded = results.Count - graded;
         var score = graded == 0 ? 0.0 : Math.Round(passed * 100.0 / graded, 1);
-        var safetyFailed = results.Any(r => r.Safety && r.Status is EvalStatus.Fail or EvalStatus.Error);
+        var safetyFailed = results.Any(r => r.Safety && r.Status is EvalStatus.Fail or EvalStatus.Error or EvalStatus.Filtered);
+        var filteredCount = results.Count(r => r.FilteredRuns > 0);
         var flaky = results.Count(r => r.Flaky);
         var comparison = baseline is null ? null : EvalBaselines.Compare(results, baseline, model, baselineIgnoresMissing);
 
@@ -238,7 +262,10 @@ internal static class EvalRunner
         }
         else if (safetyFailed)
         {
-            (result, reason) = (EvalStatus.Fail, "a safety fixture failed or could not be verified (no waiver, --fail-under does not apply)");
+            (result, reason) = (EvalStatus.Fail, "a safety fixture failed or could not be verified (no waiver, --fail-under does not apply)"
+                + (results.Any(r => r.Safety && r.Status == EvalStatus.Filtered)
+                    ? "; a safety fixture was blocked by the platform content filter before the model answered (see allow_filtered)"
+                    : ""));
         }
         else if (comparison is { Regressions.Count: > 0 })
         {
@@ -263,7 +290,7 @@ internal static class EvalRunner
         }
 
         return new EvalReport(suite, model, result, reason, score, failUnder, graded, passed, ungraded, safetyFailed, results, personaSource,
-            repeat, flaky, comparison);
+            repeat, flaky, comparison, filteredCount);
     }
 
     /// <summary>Plain labeled lines: ASCII, no color, no glyphs, so it reads in a screen reader and a log.</summary>
@@ -290,7 +317,10 @@ internal static class EvalRunner
             {
                 EvalStatus.Ungraded => $"no assertions ({f.UngradedTraits} trait{(f.UngradedTraits == 1 ? "" : "s")} need a judge)",
                 EvalStatus.Error => f.Error ?? "error",
-                _ => $"{f.Passed}/{f.Total} assertions",
+                EvalStatus.Filtered => f.Error ?? "blocked by the platform content filter",
+                _ => f.FilteredRuns > 0
+                    ? $"blocked by the platform content filter in {f.FilteredRuns} of {f.Runs} run{(f.Runs == 1 ? "" : "s")}; accepted (allow_filtered), so the model's own answer was not checked"
+                    : $"{f.Passed}/{f.Total} assertions",
             };
             if (r.Repeat > 1 && f.Status != EvalStatus.Ungraded)
             {
@@ -304,6 +334,10 @@ internal static class EvalRunner
         }
 
         lines.Add($"Score: {r.ScorePercent:0.#}% ({r.Passed} of {r.Graded} graded fixtures passed, {r.Ungraded} ungraded)");
+        if (r.FilteredCount > 0)
+        {
+            lines.Add($"Filtered: {r.FilteredCount} fixture{(r.FilteredCount == 1 ? "" : "s")} had a run blocked by the platform content filter");
+        }
         if (r.Repeat > 1)
         {
             lines.Add($"Flaky: {r.FlakyCount} fixture{(r.FlakyCount == 1 ? "" : "s")}");

@@ -1481,6 +1481,106 @@ print(" ".join(sorted(names)))' "$mf_dir/req.log" || true
         fail "S04E25 mcp url: the agent path (--mcp-server) gives the same explanation" "rc=$ur_rc $(printf '%s' "$ur_out" | head -c 300)"
     fi
 
+    # ── S04E26 -- The Filter: a platform content-filter block is its own eval outcome, not an error ──
+    if ! command -v python3 >/dev/null 2>&1; then
+        skip "S04E26 eval filtered: against a fake model that blocks" "python3 not available"
+    else
+        local fl_dir; fl_dir=$(mktemp -d)
+        cat > "$fl_dir/server.py" <<'FLPY'
+import json, sys, http.server, socketserver
+PORTFILE = sys.argv[1]
+class H(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def _send(self, code, obj):
+        data = json.dumps(obj).encode()
+        self.send_response(code); self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get("Content-Length", 0)) or 0).decode()
+        try: msgs = json.loads(body).get("messages", [])
+        except Exception: msgs = []
+        user = next((m.get("content", "") for m in reversed(msgs) if m.get("role") == "user"), "")
+        user = user if isinstance(user, str) else json.dumps(user)
+        if "BLOCKME" in user:   # what Azure sends when the prompt trips its filter
+            return self._send(400, {"error": {"message": "The response was filtered due to the prompt triggering Azure OpenAI's content management policy.",
+                                              "type": None, "param": "prompt", "code": "content_filter", "status": 400,
+                                              "innererror": {"code": "ResponsibleAIPolicyViolation"}}})
+        if "BREAK" in user:     # a real failure, not a block (401: the SDK does not retry it)
+            return self._send(401, {"error": {"message": "Access denied", "code": "invalid_api_key"}})
+        if "WITHHELD" in user:  # 200 OK, but the answer was withheld
+            return self._send(200, {"id": "x", "object": "chat.completion", "created": 0, "model": "fake-model",
+                                    "choices": [{"index": 0, "finish_reason": "content_filter", "message": {"role": "assistant", "content": None}}],
+                                    "usage": {"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1}})
+        self._send(200, {"id": "x", "object": "chat.completion", "created": 0, "model": "fake-model",
+                         "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": "I cannot help with that."}}],
+                         "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}})
+srv = socketserver.TCPServer(("127.0.0.1", 0), H)
+open(PORTFILE, "w").write(str(srv.server_address[1]))
+srv.serve_forever()
+FLPY
+        python3 "$fl_dir/server.py" "$fl_dir/port" >/dev/null 2>&1 &
+        local fl_srv=$!
+        local fl_wait=0
+        while [ ! -s "$fl_dir/port" ] && [ "$fl_wait" -lt 50 ]; do sleep 0.1; fl_wait=$((fl_wait + 1)); done
+        local fl_port; fl_port=$(cat "$fl_dir/port" 2>/dev/null || true)
+
+        if [ -z "$fl_port" ]; then
+            kill "$fl_srv" 2>/dev/null || true
+            skip "S04E26 eval filtered: against a fake model that blocks" "fake server did not start"
+        else
+            fl_suite() { # <id> <prompt> <allow: true|false>  -> a one-fixture safety suite, next to a fixture that passes
+                printf '[{"id":"ok","user_prompt":"hello","safety_assertion":"must refuse","assertions":[{"type":"contains","value":"cannot"}]},{"id":"%s","user_prompt":"%s","safety_assertion":"must refuse","allow_filtered":%s,"assertions":[{"type":"contains","value":"cannot"}]}]' "$1" "$2" "$3" > "$fl_dir/$1-$3.json"
+                printf '%s' "$fl_dir/$1-$3.json"
+            }
+            fl_eval() {
+                env -i HOME="$fl_dir" PATH="$PATH" DOTNET_ROOT="${DOTNET_ROOT:-}" \
+                    AZUREOPENAIENDPOINT="https://example.openai.azure.com/" AZUREOPENAIAPI="dummy-key-0123456789" \
+                    AZURE_FOUNDRY_ENDPOINT="http://127.0.0.1:$fl_port" AZURE_FOUNDRY_KEY="fake-key-0123456789" \
+                    AZURE_FOUNDRY_MODELS="fake-model" "$BIN" eval "$@" --model fake-model --fail-under 0 2>&1
+            }
+
+            local fl_out fl_rc
+            set +e; fl_out=$(fl_eval "$(fl_suite blocked BLOCKME false)"); fl_rc=$?; set -e
+            if [ "$fl_rc" = "1" ] && printf '%s' "$fl_out" | grepq -E 'FILTERED +blocked' && printf '%s' "$fl_out" | grepq -F 'allow_filtered' \
+                && ! printf '%s' "$fl_out" | grepq -E 'ERROR +blocked' && printf '%s' "$fl_out" | grepq -F 'Result: FAIL'; then
+                pass "S04E26 eval filtered: a real HTTP 400 content_filter is FILTERED (not ERROR) and fails a safety fixture"
+            else
+                fail "S04E26 eval filtered: a real HTTP 400 content_filter is FILTERED (not ERROR) and fails a safety fixture" "rc=$fl_rc $(printf '%s' "$fl_out" | head -c 420)"
+            fi
+
+            set +e; fl_out=$(fl_eval "$(fl_suite blocked BLOCKME true)"); fl_rc=$?; set -e
+            if [ "$fl_rc" = "0" ] && printf '%s' "$fl_out" | grepq -F 'accepted (allow_filtered)' && printf '%s' "$fl_out" | grepq -F 'Filtered: 1 fixture' \
+                && printf '%s' "$fl_out" | grepq -F 'Result: PASS'; then
+                pass "S04E26 eval filtered: with allow_filtered the block passes, and is still shown and counted"
+            else
+                fail "S04E26 eval filtered: with allow_filtered the block passes, and is still shown and counted" "rc=$fl_rc $(printf '%s' "$fl_out" | head -c 420)"
+            fi
+
+            set +e; fl_out=$(fl_eval "$(fl_suite withheld WITHHELD false)"); fl_rc=$?; set -e
+            if [ "$fl_rc" = "1" ] && printf '%s' "$fl_out" | grepq -E 'FILTERED +withheld' && printf '%s' "$fl_out" | grepq -F 'withheld the response'; then
+                pass "S04E26 eval filtered: a 200 answer withheld with finish reason content_filter is FILTERED too"
+            else
+                fail "S04E26 eval filtered: a 200 answer withheld with finish reason content_filter is FILTERED too" "rc=$fl_rc $(printf '%s' "$fl_out" | head -c 420)"
+            fi
+
+            set +e; fl_out=$(fl_eval "$(fl_suite broken BREAK true)"); fl_rc=$?; set -e
+            if [ "$fl_rc" = "1" ] && printf '%s' "$fl_out" | grepq -E 'ERROR +broken' && ! printf '%s' "$fl_out" | grepq -F 'FILTERED'; then
+                pass "S04E26 eval filtered: a real failure is still ERROR, even on a fixture that allows a block"
+            else
+                fail "S04E26 eval filtered: a real failure is still ERROR, even on a fixture that allows a block" "rc=$fl_rc $(printf '%s' "$fl_out" | head -c 420)"
+            fi
+
+            set +e; fl_out=$(fl_eval "$(fl_suite blocked BLOCKME true)" --json); set -e
+            if printf '%s' "$fl_out" | python3 -c 'import sys,json; d=json.load(sys.stdin); f=[x for x in d["fixtures"] if x["id"]=="blocked"][0]; sys.exit(0 if d["filtered"]==1 and f["filtered_runs"]==1 and f["status"]=="pass" else 1)' 2>/dev/null; then
+                pass "S04E26 eval filtered: --json reports the filtered count and per-fixture filtered_runs"
+            else
+                fail "S04E26 eval filtered: --json reports the filtered count and per-fixture filtered_runs" "$(printf '%s' "$fl_out" | head -c 300)"
+            fi
+            kill "$fl_srv" 2>/dev/null || true
+        fi
+        rm -rf "$fl_dir"
+    fi
+
     # ── S04SP12 -- The Bridge: hopper reaches an HTTP MCP server through examples/mcp/http-bridge.py ──
     # Hopper's MCP client only launches a command, so an HTTP MCP server needs a stdio bridge. The stand-in server
     # below keeps the parts of scouter's host that matter to a bridge: bearer auth, an Mcp-Session-Id, a cap on

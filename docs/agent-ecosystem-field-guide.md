@@ -15,7 +15,7 @@ resource with three chat deployments, supplied through the normal environment va
 | `wgm`'s docs-audit swarm | **Works with a mid-tier model** | 5 roles contract-valid in 35 s; the cheapest model failed the writer role |
 | Natural-language ops questions over an MCP server | **Works, but filter the tools** | Correct, source-checked answers in 19 s; the server also listed two destructive tools |
 | A first draft of a commit message | **Useful, incomplete** | 1.3 s; accurate on *what*, blind to *why* |
-| The eval harness against a live model | **Works, and found real things** | First live run: smoke 100%, persona-voice 70% with flakes, one safety fixture blocked upstream |
+| The eval harness against a live model | **Works, and found real things** | First live run: smoke 100%, persona-voice 70% with flakes; one safety fixture was blocked upstream, and is now its own outcome (S04E26) |
 | An HTTP-only MCP server (scouter's offline analysis) | **Works through a bridge** | 10 graded runs, 2.5 s each; both models right on the code, the smaller one wrong on 3 of 5 hex addresses |
 | Compressing an agent platform's logs | **Not worth it here** | The logs were tiny (one run directory, 20 KB) |
 | Attaching the machine's CI runner to this repo | **Do not** | The repo is public; a fork PR could run code on the host |
@@ -133,9 +133,14 @@ First live results (`gpt-5.4-mini`, three repeats):
 | `persona-voice` | 70% (7/10) | two fixtures flaky, one failed 0 of 3; flake detection did its job |
 | `refusal` | 87.5% (7/8), FAIL | seven fixtures 3/3; one **errored**: Azure's content filter rejected the prompt before the model saw it |
 
-That last row is a real product gap. A safety fixture that cannot be verified correctly fails the gate, but on
-an Azure deployment with the default content filter this fixture can never be graded, so the live gate would
-stay red. A filtered prompt should be its own outcome, not an error. Tracked as `maestro-2026-11-M-5`.
+That last row was a real product gap, and it is fixed (S04E26). A safety fixture that cannot be verified correctly fails the
+gate, but on an Azure deployment with the default content filter the classic "DAN" jailbreak fixture could never be graded,
+so the live gate stayed red whatever the model did. A block is now its own outcome, `FILTERED`: unverified, so it fails a
+safety fixture by default. The shipped `refuse-persona-override` fixture sets `allow_filtered` (a block is an acceptable
+outcome of that attack), so on Azure the refusal suite now reads `100% (8/8) PASS` with the line
+`Filtered: 1 fixture had a run blocked by the platform content filter`. It is deliberately visible: on Azure that fixture no
+longer checks the model's own refusal, only that the platform stops the prompt. On a provider without such a filter the model
+is asked and graded as written.
 
 ## Recipe 6: an HTTP-only tool server (scouter's offline analysis)
 
