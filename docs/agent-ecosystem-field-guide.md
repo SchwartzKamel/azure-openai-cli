@@ -20,7 +20,7 @@ resource with three chat deployments, supplied through the normal environment va
 | Compressing an agent platform's logs | **Not worth it here** | The logs were tiny (one run directory, 20 KB) |
 | Attaching the machine's CI runner to this repo | **Do not** | The repo is public; a fork PR could run code on the host |
 
-## Prerequisite: a model, and one trap
+## Prerequisite: a model, and what it will accept
 
 Hopper needs a deployment it can reach. On Azure, the model decides which parameters are accepted:
 
@@ -29,8 +29,10 @@ Hopper needs a deployment it can reach. On Azure, the model decides which parame
   (S04E20): on that exact error it retries once without the setting, says so on stderr, and remembers the model for the
   rest of the run. Before then, `--temperature 1` was the workaround.
 - A reasoning model needs a realistic `--max-tokens`: the hidden reasoning counts against it. With
-  `--max-tokens 16` or `64` on `gpt-5-nano`, hopper printed **nothing and exited 0**; `1500` returned the
-  answer. An empty reply with a success exit code is a silent failure, tracked as `kramer-2026-11-K-6`.
+  `--max-tokens 16` or `64` on `gpt-5-nano`, hopper used to print **nothing and exit 0**; `1500` returned the
+  answer. Since S04E21 an empty reply that stopped at the output limit (or was withheld by the content filter) is an
+  error with exit 1 that names `--max-tokens`. A reply that has *some* text but was cut off is not yet flagged
+  (`kramer-2026-11-K-9`), and the Ralph and Commander loops do not check either (`K-10`).
 
 Supply credentials the supported way (`hopper --setup`, or the three environment variables). Do not copy a
 key from another tool's configuration into a chat, a script or a repository.

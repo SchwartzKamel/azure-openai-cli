@@ -1184,10 +1184,16 @@ internal class Program
 
             var chatStart = System.Diagnostics.Stopwatch.StartNew();
 
+            // S04E21: remember whether any text arrived and why the model stopped, so an empty reply is never a silent success.
+            var anyText = false;
+            Microsoft.Extensions.AI.ChatFinishReason? lastFinishReason = null;
+
             await foreach (var update in agent.RunStreamingAsync(prompt, options: runOpts, cancellationToken: cts2.Token))
             {
+                if (update.FinishReason is { } finishReason) lastFinishReason = finishReason;
                 if (!string.IsNullOrEmpty(update.Text))
                 {
+                    anyText = true;
                     if (opts.Jsonl)
                     {
                         Console.Out.WriteLine(FormatJsonlDeltaEvent(update.Text));
@@ -1215,6 +1221,15 @@ internal class Program
             }
 
             chatStart.Stop();
+
+            // A model that stopped without writing anything is a failure the caller must see, not an empty success: the
+            // text expander inserts nothing, the pipeline passes on an empty string, and exit 0 says all is well.
+            var emptyReply = DescribeEmptyReply(anyText, lastFinishReason, opts.MaxTokens);
+            if (emptyReply != null)
+            {
+                telScope.SetOutcome("client_error", "empty_reply");
+                return ErrorAndExit(emptyReply, 1, jsonMode: opts.Json);
+            }
 
             if (opts.Jsonl && responseBuffer != null)
             {
@@ -3265,6 +3280,29 @@ internal class Program
             Console.Error.WriteLine($"[ERROR] {redactedMessage}");
         }
         return exitCode;
+    }
+
+    /// <summary>
+    /// The error to report when a model returned no text, or null when the reply is fine (it had text, or it stopped
+    /// normally). A model that hits its output limit before writing anything is the common case: reasoning models spend
+    /// part of <c>--max-tokens</c> thinking, so a small limit can be used up entirely and the reply is empty with a
+    /// success exit code. A model stopping normally with nothing to say is left alone.
+    /// </summary>
+    internal static string? DescribeEmptyReply(bool anyText, Microsoft.Extensions.AI.ChatFinishReason? finishReason, int? maxTokens)
+    {
+        if (anyText) return null;
+        if (finishReason == Microsoft.Extensions.AI.ChatFinishReason.Length)
+        {
+            var limit = maxTokens is int n ? $"the output limit (--max-tokens {n})" : "the model's output limit";
+            return $"The model returned no text: it stopped at {limit} before writing an answer. "
+                 + "Reasoning models spend part of that limit thinking, so a small limit can use all of it. "
+                 + "Raise --max-tokens (1500 or more is a safe start).";
+        }
+        if (finishReason == Microsoft.Extensions.AI.ChatFinishReason.ContentFilter)
+        {
+            return "The model returned no text: the platform's content filter withheld the response (finish reason: content_filter).";
+        }
+        return null;
     }
 
     /// <summary>
