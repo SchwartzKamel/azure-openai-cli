@@ -102,6 +102,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `setup-secrets` accept either name. Configs you already installed that call
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
+### Fixed
+- **fix(mcp):** S04E18 *The Clean Exit* -- hopper killed an MCP server process the moment it
+  finished with it, so a server (or an HTTP bridge) never saw its input close and could not
+  release a session, lock or temp file. A host that caps sessions failed on the ninth run (HTTP
+  429). Hopper now closes the server's input, waits up to two seconds for it to exit, and only
+  then kills it. A server that ignores the closed input is still killed.
+  (`azureopenai-cli/Mcp/McpStdioClient.cs`, s04e18-the-clean-exit)
+
 ### Security
 - **fix(shell):** S04E17 *The Long Tail* -- the `shell_exec` guard from S04E15 could still be
   walked past. An independent reviewer model found `bash -c 'coproc rm x'`, and measuring its
