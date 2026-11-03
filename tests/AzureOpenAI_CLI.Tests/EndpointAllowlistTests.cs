@@ -23,6 +23,7 @@ namespace AzureOpenAI_CLI.Tests;
 ///   - DNS-rebinding (multi-record stub resolver)
 ///   - Mixed-case + Unicode IDN homoglyph normalization
 /// </summary>
+[Collection("ConsoleCapture")] // mutates process-wide environment variables, so it must not run beside the other classes that do
 public class EndpointAllowlistTests
 {
     private static Uri U(string s) => new Uri(s, UriKind.Absolute);

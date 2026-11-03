@@ -103,6 +103,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Fixed
+- **fix(models):** S04E20 *The Default* -- reasoning and "chat-latest" deployments (for example
+  `gpt-5-nano` and `gpt-5.2-chat`) accept only the default temperature and rejected hopper's
+  default of 0.55 with HTTP 400 on every call, until you knew to pass `--temperature 1`. On that
+  exact error hopper now retries once without the setting, prints one note on stderr, and
+  remembers the model for the rest of the run. Any other 400 still surfaces as an error.
+  (`azureopenai-cli/Resilience/TemperatureTolerantChatClient.cs`, s04e20-the-default)
 - **fix(build):** S04E19 *The Stale Install* -- `make install` reinstalled the previous Native AOT
   build whenever `dist/aot/hopper` already existed, so after pulling or editing source it
   copied an old binary under a new timestamp and reported success. The binary now depends on

@@ -7,6 +7,7 @@ namespace AzureOpenAI_CLI.Tests;
 /// Tests for ADR-005 multi-provider dispatch: ParseFoundryModels,
 /// BuildChatClient routing, and FoundryAuthPolicy.
 /// </summary>
+[Collection("ConsoleCapture")] // mutates process-wide environment variables, so it must not run beside the other classes that do
 public class ProviderDispatchTests : IDisposable
 {
     private readonly Dictionary<string, string?> _savedEnv = new();

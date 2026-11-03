@@ -881,7 +881,7 @@ REGJSON
         if printf '%s' "$ov_comp" | grep -qF -- 'why-this-model' && printf '%s' "$ov_comp" | grep -qF -- 'prefer'; then
             pass "S04E09 $shell completions include --prefer and --why-this-model"
         else
-            fail "S04E09 $shell completions include --prefer and --why-this-model" "missing"
+            fail "S04E09 $shell completions include --prefer and --why-this-model" "missing; captured ${#ov_comp} chars, starting: $(printf '%s' "$ov_comp" | head -c 160 | tr '\n' ' ')"
         fi
     done
 
@@ -2207,7 +2207,7 @@ SWEOF
        printf '%s' "$sw_help_out" | grep -qFe '--profile <name>'; then
         pass "S03E20 switch: --help documents --provider and --profile"
     else
-        fail "S03E20 switch: --help doc" "help missing --provider/--profile"
+        fail "S03E20 switch: --help doc" "help missing --provider/--profile; captured ${#sw_help_out} chars, starting: $(printf '%s' "$sw_help_out" | head -c 160 | tr '\n' ' ')"
     fi
 
     # 6. AZ_PROFILE env routes to the profile's provider when no --profile.
