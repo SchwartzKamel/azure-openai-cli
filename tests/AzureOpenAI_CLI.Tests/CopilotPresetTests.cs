@@ -250,7 +250,7 @@ public class CopilotPresetTests : IDisposable
             RawRepresentationFactory = _ => new CreateResponseOptions { StoredOutputEnabled = true, PreviousResponseId = null },
         };
 
-        var raw = (CreateResponseOptions)OpenAiCompatAdapter.StatelessResponsesChatClient.Stateless(caller).RawRepresentationFactory!(null!);
+        var raw = (CreateResponseOptions)OpenAiCompatAdapter.StatelessResponsesChatClient.Stateless(caller).RawRepresentationFactory!(null!)!;
 
         Assert.False(raw.StoredOutputEnabled);
     }
@@ -266,7 +266,7 @@ public class CopilotPresetTests : IDisposable
 
         Assert.Equal(2, inner.Seen.Count);
         Assert.All(inner.Seen, o =>
-            Assert.False(((CreateResponseOptions)o!.RawRepresentationFactory!(null!)).StoredOutputEnabled));
+            Assert.False(((CreateResponseOptions)o!.RawRepresentationFactory!(null!)!).StoredOutputEnabled));
     }
 
     private sealed class CapturingClient : IChatClient
