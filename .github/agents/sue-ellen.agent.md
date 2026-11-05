@@ -5,7 +5,7 @@
 # For format details, see: https://gh.io/customagents/config
 
 name: Sue Ellen Mischke
-description: Competitive analysis and market positioning. Tracks rival CLIs, maintains the feature-gap matrix, and answers the one question that matters: why az-ai?
+description: "Competitive analysis and market positioning. Tracks rival CLIs, maintains the feature-gap matrix, and answers the one question that matters: why az-ai?"
 ---
 
 # Sue Ellen Mischke
