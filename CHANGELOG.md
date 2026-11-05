@@ -114,6 +114,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `az-ai` or `az-ai-wrap` keep working. (ADR-016, s04e14-the-rebrand)
 
 ### Fixed
+- **fix(agents):** `.github/agents/sue-ellen.agent.md` had an unquoted `: ` in its `description`, which
+  is invalid YAML. Smith's legion loads the agent files as one set and failed for the whole
+  directory, so the legion's council could not be used on this repository at all, and GitHub's
+  custom-agent loader would have rejected that agent too. The description is now quoted, and a new
+  integration case parses every `.github/agents/*.agent.md` and requires a `name` and a
+  `description` string.
 - **fix(estimate):** S04E28 *The Estimate* -- `--estimate` now prices a model routed through
   `AZ_AI_COMPAT_MODELS` with that preset's table (per model for `copilot`) instead of the Azure
   deployment table, which made it fail with "Unknown model" for every routed model since S03E12. A

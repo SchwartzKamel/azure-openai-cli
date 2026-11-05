@@ -1190,6 +1190,38 @@ EVSUITE
     pq_out=$(printf 'Alpha\n' | grepq -Fi alpha; echo "rc=$?")
     if [ "$pq_out" = "rc=0" ]; then pass "S04E23 grepq: flags pass through (-i)"; else fail "S04E23 grepq: flags pass through (-i)" "$pq_out"; fi
 
+    # ── Agent archetypes must parse: smith's legion (and GitHub's custom-agent loader) read .github/agents/*.agent.md ──
+    # One malformed frontmatter line (an unquoted ": " in a description) made smith's loader fail for the WHOLE directory,
+    # which silently disabled the legion's council for this repo.
+    echo "▸ agent archetype frontmatter"
+    if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+        skip "agents frontmatter: every .github/agents/*.agent.md parses" "PyYAML not available"
+    else
+        local ag_out
+        ag_out=$(python3 - <<'AGPY' 2>&1 || true
+import glob, re, sys, yaml
+bad, n = [], 0
+for f in sorted(glob.glob(".github/agents/*.agent.md")):
+    n += 1
+    m = re.match(r"^---\n(.*?)\n---\n", open(f, encoding="utf-8").read(), re.S)
+    if not m: bad.append(f"{f}: no frontmatter block"); continue
+    try:
+        meta = yaml.safe_load(m.group(1))
+    except yaml.YAMLError as e:
+        bad.append(f"{f}: {str(e).splitlines()[0]}"); continue
+    for key in ("name", "description"):
+        if not isinstance(meta, dict) or not isinstance(meta.get(key), str) or not meta[key].strip():
+            bad.append(f"{f}: '{key}' missing or not a string")
+print("BAD " + "; ".join(bad) if bad else f"OK {n}")
+AGPY
+)
+        if printf '%s' "$ag_out" | grepq -E '^OK [0-9]+$'; then
+            pass "agents frontmatter: every .github/agents/*.agent.md parses and has a name and a description ($ag_out)"
+        else
+            fail "agents frontmatter: every .github/agents/*.agent.md parses and has a name and a description" "$(printf '%s' "$ag_out" | head -c 300)"
+        fi
+    fi
+
     # ── S04SP10 -- The Housekeeping: a script the build needs must not be hidden by .gitignore ──
     # `.gitignore` carries `scripts/*` (it hides agent scratch files), so a NEW script is ignored until
     # whitelisted. check-ignored-scripts.sh fails when a tracked build file already references one. Each
