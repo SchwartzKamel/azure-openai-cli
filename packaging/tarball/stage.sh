@@ -7,7 +7,7 @@
 # Where <rid> is a .NET runtime identifier, e.g.:
 #   linux-x64, linux-arm64, osx-x64, osx-arm64, win-x64
 #
-# Produces dist/az-ai-<version>-<rid>.tar.gz (or .zip on win-*)
+# Produces dist/hopper-<version>-<rid>.tar.gz (or .zip on win-*)
 # containing the AOT-published binary alongside LICENSE, NOTICE,
 # THIRD_PARTY_NOTICES.md, and README.md so every distributed artifact
 # carries the full legal/attribution bundle.
@@ -58,18 +58,18 @@ for doc in LICENSE NOTICE THIRD_PARTY_NOTICES.md README.md; do
     [[ -f "$doc" ]] || die "missing '$doc' at repo root — every distributed artifact must include it"
 done
 
-# The binary is `hopper` (AssemblyName). The old command name `az-ai` ships beside it, as a
-# hard link where the archive format allows one (tar) and as a copy where it does not (zip), so
-# the Homebrew formula, the Scoop manifest (and its autoupdate) and every script that calls
-# `az-ai` keep working until the manifests are moved to the new name (FR-024, ADR-016 stage 2).
-# The archive and directory names below stay `az-ai-<version>-<rid>` for the same reason: the
-# release workflow globs them and the manifests download them by that name.
+# The binary is `hopper` (AssemblyName). The old command name `az-ai` ships beside it so every
+# script, Espanso snippet and shell alias that calls it keeps working (FR-024, ADR-016): on unix it
+# is a hard link to the binary (no extra bytes in the tarball); on Windows it is a two-line
+# `az-ai.cmd` shim that forwards to hopper.exe (a zip cannot hard-link, and a second copy of the
+# binary would double the download). The archive and its top-level directory are named
+# `hopper-<version>-<rid>` (ADR-016 stage 2); scripts/verify-archive.py checks all of this.
 BIN_NAME="hopper"
 ALIAS_NAME="az-ai"
 [[ "$RID" == win-* ]] && BIN_EXT=".exe" || BIN_EXT=""
 
 PUBLISH_DIR="$REPO_ROOT/artifacts/publish/$RID"
-STAGE_DIR="$REPO_ROOT/artifacts/stage/az-ai-$VERSION-$RID"
+STAGE_DIR="$REPO_ROOT/artifacts/stage/hopper-$VERSION-$RID"
 DIST_DIR="$REPO_ROOT/dist"
 
 mkdir -p "$PUBLISH_DIR" "$DIST_DIR"
@@ -88,12 +88,17 @@ PUBLISHED_BIN="$PUBLISH_DIR/${BIN_NAME}${BIN_EXT}"
 
 echo ">> Staging artifact tree at $STAGE_DIR"
 cp "$PUBLISHED_BIN" "$STAGE_DIR/"
-ln "$STAGE_DIR/${BIN_NAME}${BIN_EXT}" "$STAGE_DIR/${ALIAS_NAME}${BIN_EXT}" 2>/dev/null \
-    || cp "$STAGE_DIR/${BIN_NAME}${BIN_EXT}" "$STAGE_DIR/${ALIAS_NAME}${BIN_EXT}"
+if [[ "$RID" == win-* ]]; then
+    # CRLF, no BOM: forwards every argument and propagates hopper's exit code.
+    printf '@echo off\r\n"%%~dp0%s%s" %%*\r\nexit /b %%errorlevel%%\r\n' "$BIN_NAME" "$BIN_EXT" > "$STAGE_DIR/${ALIAS_NAME}.cmd"
+else
+    ln "$STAGE_DIR/${BIN_NAME}" "$STAGE_DIR/${ALIAS_NAME}" 2>/dev/null \
+        || cp "$STAGE_DIR/${BIN_NAME}" "$STAGE_DIR/${ALIAS_NAME}"
+fi
 cp LICENSE NOTICE THIRD_PARTY_NOTICES.md README.md "$STAGE_DIR/"
 
 if [[ "$RID" == win-* ]]; then
-    OUT="$DIST_DIR/az-ai-$VERSION-$RID.zip"
+    OUT="$DIST_DIR/hopper-$VERSION-$RID.zip"
     echo ">> Creating $OUT"
     rm -f "$OUT"
     # windows-latest ships no Info-ZIP `zip` (and neither does the bundled
@@ -101,7 +106,7 @@ if [[ "$RID" == win-* ]]; then
     # docs/launch/v2-release-attempt-1-diagnostic.md §Failure #1. PowerShell's
     # Compress-Archive is always present on windows-latest. Point it at the
     # stage dir (NOT stage/*) so the archive preserves the top-level
-    # `az-ai-<ver>-<rid>/` directory — matches the tar.gz layout enforced
+    # `hopper-<ver>-<rid>/` directory — matches the tar.gz layout enforced
     # by `zip -r <basename>` on the unix side and by the release job body.
     if command -v cygpath >/dev/null 2>&1; then
         # Git Bash on windows-latest: translate POSIX → Windows paths so
@@ -118,7 +123,7 @@ if [[ "$RID" == win-* ]]; then
     powershell.exe -NoProfile -NonInteractive -Command \
         "Compress-Archive -Path '$STAGE_WIN' -DestinationPath '$OUT_WIN' -Force"
 else
-    OUT="$DIST_DIR/az-ai-$VERSION-$RID.tar.gz"
+    OUT="$DIST_DIR/hopper-$VERSION-$RID.tar.gz"
     echo ">> Creating $OUT"
     rm -f "$OUT"
     tar -C "$(dirname "$STAGE_DIR")" -czf "$OUT" "$(basename "$STAGE_DIR")"

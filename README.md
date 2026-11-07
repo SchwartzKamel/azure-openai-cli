@@ -551,16 +551,18 @@ all 2 provider(s) healthy
 
 ### Pre-built binaries
 
-Download for your platform from [Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases). Filenames follow the `az-ai-<version>-<rid>` scheme (v2.3.0 shown):
+Download for your platform from [Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases). Filenames follow the `hopper-<version>-<rid>` scheme (v2.4.0 shown):
 
 | Platform | Artifact |
 |----------|----------|
-| Linux x64 (glibc) | `az-ai-2.2.0-linux-x64.tar.gz` |
-| Linux x64 (musl / Alpine) | `az-ai-2.2.0-linux-musl-x64.tar.gz` |
-| macOS (Apple Silicon) | `az-ai-2.2.0-osx-arm64.tar.gz` |
-| Windows x64 | `az-ai-2.2.0-win-x64.zip` |
+| Linux x64 (glibc) | `hopper-2.4.0-linux-x64.tar.gz` |
+| Linux x64 (musl / Alpine) | `hopper-2.4.0-linux-musl-x64.tar.gz` |
+| Linux ARM64 | `hopper-2.4.0-linux-arm64.tar.gz` |
+| macOS (Apple Silicon) | `hopper-2.4.0-osx-arm64.tar.gz` |
+| Windows x64 | `hopper-2.4.0-win-x64.zip` |
+| Windows ARM64 | `hopper-2.4.0-win-arm64.zip` |
 
-The archive names keep the old `az-ai-` prefix for now, because the Homebrew and Scoop manifests download them by that name. Inside each archive is `hopper` (the command) and `az-ai` (the old name; the same binary).
+Releases up to v2.3.0 named their archives `az-ai-<version>-<rid>`; from v2.4.0 the prefix is `hopper`. Each archive extracts to `hopper-<version>-<rid>/` and holds `hopper` (the command) and `az-ai` (the old name, so existing scripts keep working: a hard link on Linux and macOS, a small `az-ai.cmd` shim on Windows), plus the license bundle. Every archive is checked before it is published, and the release attaches a SHA-256 manifest and a CycloneDX SBOM.
 
 > **Note:** `osx-x64` (Intel macOS) was dropped from the release matrix in **v2.0.4** after sustained runner instability. Intel-Mac users should run the Docker image or build from source until the leg is reinstated -- see [docs/runbooks/macos-runner-triage.md](docs/runbooks/macos-runner-triage.md) for the triage plan and current status. `linux-arm64` and `win-arm64` are also not built in v2; track the ADR in [docs/adr/](docs/adr/) for plans to reintroduce them.
 
