@@ -13,6 +13,15 @@ Current pinned release: **v2.0.6** (GitHub Releases artifacts).
 Versioned-pin scaffolding (`@2.0.0` syntax for Homebrew / Scoop / Nix) lands
 at the v2.0.1 boundary per [`docs/v2-cutover-decision.md` §G6](../docs/v2-cutover-decision.md).
 
+> **ADR-016 stage 2 (S04E29):** from v2.4.0 the release archives are `hopper-<version>-<rid>.(tar.gz|zip)`, each
+> extracting to `hopper-<version>-<rid>/` with the `hopper` binary, the `az-ai` alias (a hard link on Linux and macOS,
+> a small `az-ai.cmd` shim on Windows), and the legal bundle. Every archive is checked by `scripts/verify-archive.py`
+> before it is attested or uploaded, and `.github/workflows/packaging-rehearsal.yml` builds and checks all six RIDs on
+> any pull request that touches packaging. The manifests below still describe the `az-ai-<version>-<rid>` archives of
+> releases up to 2.3.0; they move to the new names in a separate hash-sync change **after** v2.4.0 is published, so no
+> manifest ever points at an asset that does not exist yet. The "tag-time ritual" below uses `az-ai-` in its download
+> URLs for releases up to 2.3.0 and `hopper-` from 2.4.0.
+
 The upstream binary name inside each archive is `az-ai`
 (`az-ai.exe` on Windows). Every manifest installs as `az-ai` so users get
 a single, consistent command across platforms.
@@ -334,6 +343,13 @@ and opens a PR against `main` with the manifests updated.
 
 On every tagged release:
 
+- [ ] Cut the release in `CHANGELOG.md`: rename `## [Unreleased]` to `## [X.Y.Z] -- date` and start a fresh
+      `[Unreleased]`. The release body is built from that exact section by `scripts/release-notes.sh`; with no such
+      section the release job fails and nothing is published.
+- [ ] Bump `<Version>` in `azureopenai-cli/AzureOpenAI_CLI.csproj`. The archives take their name from it, and
+      `scripts/verify-archive.py` fails the build job if the version in the name is not the tag.
+- [ ] Run the rehearsal on the release branch (`gh workflow run packaging-rehearsal.yml --ref <branch>`), or merge a
+      pull request that touches packaging, which runs it automatically. It stages and verifies all six RIDs.
 - [ ] Run `packaging/tarball/stage.sh <rid>` for each target RID to build
       the tarballs (binary + LICENSE + NOTICE + THIRD_PARTY_NOTICES.md +
       README.md).

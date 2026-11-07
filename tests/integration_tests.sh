@@ -1190,6 +1190,210 @@ EVSUITE
     pq_out=$(printf 'Alpha\n' | grepq -Fi alpha; echo "rc=$?")
     if [ "$pq_out" = "rc=0" ]; then pass "S04E23 grepq: flags pass through (-i)"; else fail "S04E23 grepq: flags pass through (-i)" "$pq_out"; fi
 
+    # ── S04E29 -- The Rename Ships: release archives are named hopper-*, verified before publish, and the pipeline agrees with itself ──
+    # Nothing used to test stage.sh, release.yml or the release body, so the first time they ran was on a public tag. These
+    # cases build synthetic archives (good and deliberately broken) and hold the scripts and workflows to each other.
+    echo "▸ S04E29 packaging"
+    if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+        skip "S04E29 packaging: verify-archive, release notes and body, pipeline consistency" "PyYAML not available"
+    else
+        local pk_dir; pk_dir=$(mktemp -d)
+        pk_verify() { # <kind> <what it proves> <expected rc> <text the output must contain> [extra verify-archive args]
+            local kind="$1" what="$2" want_rc="$3" want_text="$4"; shift 4
+            local line path rid out rc
+            line=$(python3 tests/helpers/make-archive.py "$pk_dir" "$kind"); path=${line% *}; rid=${line##* }
+            set +e; out=$(python3 scripts/verify-archive.py "$path" "$rid" "$@" 2>&1); rc=$?; set -e
+            if [ "$rc" = "$want_rc" ] && printf '%s' "$out" | grepq -F -- "$want_text"; then
+                pass "S04E29 verify-archive: $what"
+            else
+                fail "S04E29 verify-archive: $what" "rc=$rc (want $want_rc) $(printf '%s' "$out" | head -c 240)"
+            fi
+        }
+        pk_verify good-tar "a correct tar.gz passes" 0 "verify-archive: OK"
+        pk_verify zip-good "a correct Windows zip (hopper.exe plus the az-ai.cmd shim) passes" 0 "verify-archive: OK"
+        pk_verify good-tar "a matching --version passes" 0 "verify-archive: OK" --version 2.4.0
+        pk_verify good-tar "a --version that differs from the name (csproj not bumped) fails" 1 "expected 9.9.9" --version 9.9.9
+        pk_verify bad-name "an archive still named az-ai-* fails" 1 "is not hopper-"
+        pk_verify bad-topdir "a top-level directory not named after the archive fails" 1 "top-level directory"
+        pk_verify two-tops "a second top-level directory fails" 1 "top-level directory"
+        pk_verify escape "a member that escapes the directory (zip-slip) fails" 1 "escapes the archive directory"
+        pk_verify no-alias "a missing az-ai alias fails" 1 "missing 'az-ai'"
+        pk_verify no-license "a missing LICENSE fails" 1 "missing 'LICENSE'"
+        pk_verify extra-file "an unexpected extra file (debug symbols) fails" 1 "unexpected file 'hopper.dbg'"
+        pk_verify alias-differs "an az-ai that is a different program fails" 1 "not identical"
+        pk_verify alias-links-elsewhere "an az-ai hard-linked to the wrong member fails" 1 "links to"
+        pk_verify not-executable "a binary without the executable bit fails" 1 "not executable"
+        pk_verify empty-binary "an empty binary fails" 1 "is empty"
+        pk_verify not-an-archive "a file that is not an archive fails cleanly" 1 "cannot read the archive"
+        pk_verify zip-exe-copy "a Windows zip carrying a second az-ai.exe copy instead of the shim fails" 1 "missing 'az-ai.cmd'"
+        pk_verify zip-shim-no-forward "a Windows shim that does not forward its arguments fails" 1 "does not forward"
+        pk_verify zip-shim-huge "a Windows 'shim' that is really a big file fails" 1 "not a small shim"
+        pk_verify run-ok "--run: hopper and az-ai both start and report the version" 0 "ran hopper and az-ai" --run
+        pk_verify run-exit1 "--run: a binary that exits non-zero fails" 1 "exited 1" --run
+        pk_verify run-wrong-version "--run: a binary that reports another version fails" 1 "did not report" --run
+
+        # ---- release notes: exactly one version's section, and fail closed ----
+        cat > "$pk_dir/CHANGELOG.md" <<'PKCL'
+# Changelog
+
+## [Unreleased]
+### Added
+- unreleased thing
+
+## [2.4.0] -- 2026-11-05
+### Added
+- the hopper rename ships
+
+### Fixed
+- a fix
+
+## [2.4.0-rc1] -- 2026-11-01
+- rc note
+
+## [2.3.0] -- 2026-05-13
+- old note
+## [2.2.0] -- 2026-04-30
+PKCL
+        local pk_out pk_rc
+        set +e; pk_out=$(CHANGELOG="$pk_dir/CHANGELOG.md" bash scripts/release-notes.sh 2.4.0 2>&1); pk_rc=$?; set -e
+        if [ "$pk_rc" = "0" ] && printf '%s' "$pk_out" | grepq -F 'the hopper rename ships' && printf '%s' "$pk_out" | grepq -F 'a fix' \
+            && ! printf '%s' "$pk_out" | grepq -F 'unreleased thing' && ! printf '%s' "$pk_out" | grepq -F 'rc note' && ! printf '%s' "$pk_out" | grepq -F 'old note'; then
+            pass "S04E29 release-notes: prints exactly the requested version's section"
+        else
+            fail "S04E29 release-notes: prints exactly the requested version's section" "rc=$pk_rc $(printf '%s' "$pk_out" | head -c 200)"
+        fi
+        set +e; pk_out=$(CHANGELOG="$pk_dir/CHANGELOG.md" bash scripts/release-notes.sh v2.4.0 2>&1); pk_rc=$?; set -e
+        if [ "$pk_rc" = "0" ] && printf '%s' "$pk_out" | grepq -F 'the hopper rename ships'; then
+            pass "S04E29 release-notes: a leading v is accepted"
+        else
+            fail "S04E29 release-notes: a leading v is accepted" "rc=$pk_rc $pk_out"
+        fi
+        set +e; pk_out=$(CHANGELOG="$pk_dir/CHANGELOG.md" bash scripts/release-notes.sh 2.4.0-rc1 2>&1); pk_rc=$?; set -e
+        if [ "$pk_rc" = "0" ] && printf '%s' "$pk_out" | grepq -F 'rc note' && ! printf '%s' "$pk_out" | grepq -F 'the hopper rename ships'; then
+            pass "S04E29 release-notes: 2.4.0 does not match the 2.4.0-rc1 heading, and vice versa"
+        else
+            fail "S04E29 release-notes: 2.4.0 does not match the 2.4.0-rc1 heading, and vice versa" "rc=$pk_rc $pk_out"
+        fi
+        set +e; pk_out=$(CHANGELOG="$pk_dir/CHANGELOG.md" bash scripts/release-notes.sh 9.9.9 2>&1); pk_rc=$?; set -e
+        if [ "$pk_rc" = "1" ] && printf '%s' "$pk_out" | grepq -F "no '## [9.9.9]' section" && ! printf '%s' "$pk_out" | grepq -F 'unreleased thing'; then
+            pass "S04E29 release-notes: a version with no section fails and does NOT fall back to [Unreleased]"
+        else
+            fail "S04E29 release-notes: a version with no section fails and does NOT fall back to [Unreleased]" "rc=$pk_rc $pk_out"
+        fi
+        set +e; pk_out=$(CHANGELOG="$pk_dir/CHANGELOG.md" bash scripts/release-notes.sh 2.2.0 2>&1); pk_rc=$?; set -e
+        if [ "$pk_rc" = "1" ] && printf '%s' "$pk_out" | grepq -F 'is empty'; then
+            pass "S04E29 release-notes: an empty section fails"
+        else
+            fail "S04E29 release-notes: an empty section fails" "rc=$pk_rc $pk_out"
+        fi
+        set +e; pk_out=$(bash scripts/release-notes.sh not-a-version 2>&1); pk_rc=$?; set -e
+        if [ "$pk_rc" = "2" ]; then pass "S04E29 release-notes: something that is not a version is a usage error (exit 2)"; else fail "S04E29 release-notes: something that is not a version is a usage error (exit 2)" "rc=$pk_rc $pk_out"; fi
+
+        # ---- release body: real file names, held to the release matrix ----
+        printf 'abc123  hopper-2.4.0-linux-x64.tar.gz\n' > "$pk_dir/digests.txt"
+        local pk_body
+        set +e; pk_body=$(CHANGELOG="$pk_dir/CHANGELOG.md" bash scripts/release-body.sh v2.4.0 SchwartzKamel/hopper SchwartzKamel "$pk_dir/digests.txt" 2>&1); pk_rc=$?; set -e
+        local pk_expected
+        pk_expected=$(python3 - <<'PKPY'
+import yaml
+d = yaml.safe_load(open(".github/workflows/release.yml"))
+for i in d["jobs"]["build-binaries"]["strategy"]["matrix"]["include"]:
+    print(f"hopper-2.4.0-{i['rid']}.{i['ext']}")
+PKPY
+)
+        local pk_missing=""
+        for f in $pk_expected; do printf '%s' "$pk_body" | grepq -F "\`$f\`" || pk_missing="$pk_missing $f"; done
+        if [ "$pk_rc" = "0" ] && [ -z "$pk_missing" ] && [ "$(printf '%s\n' "$pk_expected" | wc -l | tr -d ' ')" = "6" ]; then
+            pass "S04E29 release-body: lists exactly the files the release matrix produces (6), named as stage.sh names them"
+        else
+            fail "S04E29 release-body: lists exactly the files the release matrix produces (6), named as stage.sh names them" "rc=$pk_rc missing:[$pk_missing]"
+        fi
+        if ! printf '%s' "$pk_body" | grepq -E 'az-ai-v?2\.' && ! printf '%s' "$pk_body" | grepq -F 'hopper-v2.4.0' && ! printf '%s' "$pk_body" | grepq -F 'az-ai-2.4.0'; then
+            pass "S04E29 release-body: no az-ai-* archive name, and no 'v' inside a file name (the archives carry 2.4.0)"
+        else
+            fail "S04E29 release-body: no az-ai-* archive name, and no 'v' inside a file name (the archives carry 2.4.0)" "$(printf '%s' "$pk_body" | grep -E 'az-ai-|hopper-v' | head -3)"
+        fi
+        if printf '%s' "$pk_body" | grepq -F 'docker pull ghcr.io/schwartzkamel/hopper:2.4.0' && printf '%s' "$pk_body" | grepq -F 'abc123  hopper-2.4.0-linux-x64.tar.gz' \
+            && printf '%s' "$pk_body" | grepq -F 'the hopper rename ships' && printf '%s' "$pk_body" | grepq -F -- '--owner SchwartzKamel'; then
+            pass "S04E29 release-body: lowercase image with the bare version, the digests, the notes and the attestation command"
+        else
+            fail "S04E29 release-body: lowercase image with the bare version, the digests, the notes and the attestation command" "$(printf '%s' "$pk_body" | head -c 300)"
+        fi
+        if ! printf '%s' "$pk_body" | grepq -E 'brew install|scoop install'; then
+            pass "S04E29 release-body: does not tell people to install from a Homebrew tap or Scoop bucket that does not exist"
+        else
+            fail "S04E29 release-body: does not tell people to install from a Homebrew tap or Scoop bucket that does not exist" "$(printf '%s' "$pk_body" | grep -E 'brew|scoop' | head -2)"
+        fi
+        set +e; pk_out=$(CHANGELOG="$pk_dir/CHANGELOG.md" bash scripts/release-body.sh main SchwartzKamel/hopper SchwartzKamel "$pk_dir/digests.txt" 2>&1); pk_rc=$?; set -e
+        if [ "$pk_rc" = "2" ]; then pass "S04E29 release-body: a branch name is refused (only a vX.Y.Z tag can be released)"; else fail "S04E29 release-body: a branch name is refused (only a vX.Y.Z tag can be released)" "rc=$pk_rc $pk_out"; fi
+        set +e; pk_out=$(CHANGELOG="$pk_dir/CHANGELOG.md" bash scripts/release-body.sh 2.4.0 SchwartzKamel/hopper SchwartzKamel "$pk_dir/digests.txt" 2>&1); pk_rc=$?; set -e
+        if [ "$pk_rc" = "2" ] && ! printf '%s' "$pk_out" | grepq -F '## Docker'; then
+            pass "S04E29 release-body: a version without its leading v is not a tag and is refused (the body script checks the tag itself)"
+        else
+            fail "S04E29 release-body: a version without its leading v is not a tag and is refused (the body script checks the tag itself)" "rc=$pk_rc $(printf '%s' "$pk_out" | head -c 160)"
+        fi
+        set +e; pk_out=$(CHANGELOG="$pk_dir/CHANGELOG.md" bash scripts/release-body.sh v9.9.9 SchwartzKamel/hopper SchwartzKamel "$pk_dir/digests.txt" 2>&1); pk_rc=$?; set -e
+        if [ "$pk_rc" = "1" ] && ! printf '%s' "$pk_out" | grepq -F '## Docker'; then
+            pass "S04E29 release-body: a tag whose CHANGELOG section was never cut fails and prints no body"
+        else
+            fail "S04E29 release-body: a tag whose CHANGELOG section was never cut fails and prints no body" "rc=$pk_rc $(printf '%s' "$pk_out" | head -c 200)"
+        fi
+
+        # ---- the pipeline agrees with itself ----
+        pk_out=$(python3 - <<'PKPY'
+import yaml
+def mat(f, job):
+    d = yaml.safe_load(open(f))
+    return sorted((i["rid"], i["os"], i["ext"], bool(i["run"])) for i in d["jobs"][job]["strategy"]["matrix"]["include"])
+a = mat(".github/workflows/release.yml", "build-binaries")
+b = mat(".github/workflows/packaging-rehearsal.yml", "rehearse")
+print("SAME %d" % len(a) if a == b else "DIFFERENT %s vs %s" % (a, b))
+PKPY
+)
+        if printf '%s' "$pk_out" | grepq -E '^SAME 6$'; then
+            pass "S04E29 pipeline: the rehearsal workflow builds exactly the release workflow's six legs"
+        else
+            fail "S04E29 pipeline: the rehearsal workflow builds exactly the release workflow's six legs" "$pk_out"
+        fi
+        local pk_rids pk_bad=""
+        pk_rids=$(python3 -c 'import yaml; [print(i["rid"]) for i in yaml.safe_load(open(".github/workflows/release.yml"))["jobs"]["build-binaries"]["strategy"]["matrix"]["include"]]')
+        for r in $pk_rids; do grepq -F -- "$r" <(grep -E '^\s+linux-x64\|' packaging/tarball/stage.sh) || pk_bad="$pk_bad $r"; done
+        if [ -z "$pk_bad" ]; then pass "S04E29 pipeline: stage.sh accepts every runtime identifier in the release matrix"; else fail "S04E29 pipeline: stage.sh accepts every runtime identifier in the release matrix" "not accepted:$pk_bad"; fi
+        if grepq -F 'hopper-$VERSION-$RID' packaging/tarball/stage.sh && ! grepq -E 'az-ai-\$VERSION|az-ai-<version>' packaging/tarball/stage.sh \
+            && ! grepq -E 'az-ai-' .github/workflows/release.yml && grepq -F 'pattern: hopper-*' .github/workflows/release.yml; then
+            pass "S04E29 pipeline: stage.sh and release.yml both speak hopper-<version>-<rid>, with no az-ai-* archive name left"
+        else
+            fail "S04E29 pipeline: stage.sh and release.yml both speak hopper-<version>-<rid>, with no az-ai-* archive name left" "$(grep -nE 'az-ai-' packaging/tarball/stage.sh .github/workflows/release.yml | head -3)"
+        fi
+        pk_out=$(python3 - <<'PKPY'
+import yaml
+d = yaml.safe_load(open(".github/workflows/release.yml"))
+problems = []
+steps = d["jobs"]["build-binaries"]["steps"]
+def find(pred):
+    return next((i for i, st in enumerate(steps) if pred(st)), None)
+v = find(lambda st: "verify-archive.py" in (st.get("run") or "") and "$FILE" in (st.get("run") or ""))
+a = find(lambda st: "attest-build-provenance" in (st.get("uses") or ""))
+u = find(lambda st: "upload-artifact" in (st.get("uses") or ""))
+if v is None: problems.append("build-binaries has no step that RUNS verify-archive.py")
+elif a is not None and not v < a: problems.append("verify-archive.py runs after the attestation")
+elif u is not None and not v < u: problems.append("verify-archive.py runs after the upload")
+rel = d["jobs"]["release"]["steps"]
+b = next((st for st in rel if "release-body.sh" in (st.get("run") or "") and "release-body.md" in (st.get("run") or "")), None)
+c = next((st for st in rel if "action-gh-release" in (st.get("uses") or "")), None)
+if b is None: problems.append("the release job does not build its body with scripts/release-body.sh")
+if c is None or c.get("with", {}).get("body_path") != "release-body.md": problems.append("the release is not created from release-body.md")
+print("OK" if not problems else "PROBLEMS " + "; ".join(problems))
+PKPY
+)
+        if printf '%s' "$pk_out" | grepq -E '^OK$'; then
+            pass "S04E29 pipeline: the build job RUNS verify-archive.py before attesting and uploading, and the release is created from the tested body script"
+        else
+            fail "S04E29 pipeline: the build job RUNS verify-archive.py before attesting and uploading, and the release is created from the tested body script" "$pk_out"
+        fi
+        rm -rf "$pk_dir"
+    fi
+
     # ── Agent archetypes must parse: smith's legion (and GitHub's custom-agent loader) read .github/agents/*.agent.md ──
     # One malformed frontmatter line (an unquoted ": " in a description) made smith's loader fail for the WHOLE directory,
     # which silently disabled the legion's council for this repo.

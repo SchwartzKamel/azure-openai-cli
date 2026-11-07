@@ -97,6 +97,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   backlog.
 
 ### Changed
+- **ci(release):** S04E29 *The Rename Ships* -- ADR-016 stage 2. Release archives are now
+  `hopper-<version>-<rid>.(tar.gz|zip)` (releases up to v2.3.0 used `az-ai-<version>-<rid>`), each holding
+  `hopper` plus the `az-ai` alias: a hard link on Linux and macOS, and on Windows a two-line `az-ai.cmd`
+  shim instead of a second 7 MB copy. Every archive is verified (`scripts/verify-archive.py`: name, layout,
+  contents, no path escapes, and a real run of `hopper --version` and `az-ai --version`) before it is attested
+  or uploaded, and the version in its name must equal the tag. A new `packaging-rehearsal.yml` builds and
+  verifies all six runtime identifiers on any pull request that touches packaging. The release notes are the
+  CHANGELOG section for exactly the tagged version (`scripts/release-notes.sh`; it fails rather than use
+  `[Unreleased]`), and the release body (`scripts/release-body.sh`) is fixed: file names no longer carry the
+  tag's `v` (the published assets never did), the `docker pull` example is lowercase, and it no longer tells
+  users to install from a Homebrew tap and Scoop bucket that do not exist. `actionlint` on `release.yml` goes
+  from 15 findings to 0. The manifests follow in a hash-sync after the release. (s04e29-the-rename-ships)
 - **feat(rebrand):** S04E14 *The Rebrand* -- the project is now **hopper**
   (formerly `az-ai`, the Azure OpenAI CLI). The binary is `hopper`, and `az-ai`
   stays as an alias: `make install` links it, release archives contain both, and

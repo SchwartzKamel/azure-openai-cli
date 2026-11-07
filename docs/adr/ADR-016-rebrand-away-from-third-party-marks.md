@@ -100,3 +100,25 @@ gates clear:
   six-round review, the evidence, and the name shortlist.
 - `docs/legal/trademark-policy.md`, sections 0 and 3.
 - `scripts/brand-inventory.sh`: reproducible baseline.
+
+## Update 2026-11-05: sequencing Stages 2 and 3, and G3
+
+G3 is given for both remaining stages (the maintainer, 2026-11-05). The order is **Stage 2, then the v2.4.0 release,
+then the manifest hash-sync, then Stage 3 (the repository rename)**.
+
+I first proposed renaming the repository *before* the release, so that the whole v2.4.0 release, including its
+container image, would live under the new name. A deliberation by smith's legion (planner, reviewer and oracle, one
+round) recommended the opposite order and made the better argument, and it is adopted:
+
+- Renaming alongside a release combines two migrations (archive and manifest names, and the container path) in one
+  event, which complicates recovery if either goes wrong. The release is the riskier, less reversible step, so it should
+  not carry a second variable.
+- The image path is derived from the repository name at publish time, so v2.4.0's image stays under the old path and
+  later releases move to the new one. With one user the cost is small; the old path's support window should be stated
+  when Stage 3 happens.
+- Manifests must keep pointing at known-good assets until the v2.4.0 assets are published and verified, so they change
+  in the hash-sync, never before.
+
+The council was shallow on this repository's specifics (it told us to audit a `go.mod` that a .NET project does not
+have, and read G3 as still pending), so it was treated as one signal and the rest was checked directly. Stage 3 also
+needs smith's own configuration updated: its project entry names this repository by its GitHub slug.
