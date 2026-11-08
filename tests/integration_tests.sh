@@ -1190,6 +1190,48 @@ EVSUITE
     pq_out=$(printf 'Alpha\n' | grepq -Fi alpha; echo "rc=$?")
     if [ "$pq_out" = "rc=0" ]; then pass "S04E23 grepq: flags pass through (-i)"; else fail "S04E23 grepq: flags pass through (-i)" "$pq_out"; fi
 
+    # ── S04E34 -- The New Image Path: instructions that verify releases must work for every release ──
+    # After the rename, attestations for releases up to v2.4.0 still name the old repository, so `gh attestation verify --repo
+    # SchwartzKamel/hopper` FAILS for them; `--owner` works for all. A mechanical rename sweep once rewrote seven such instructions.
+    echo "▸ S04E34 verification instructions"
+    local vf_bad
+    vf_bad=$(python3 - <<'VFPY'
+import re, subprocess
+files = subprocess.run(["git", "ls-files", "*.md", "*.yml", "*.yaml", "*.sh"], capture_output=True, text=True).stdout.split()
+skip = re.compile(r"^(docs/(exec-reports|adr|proposals|launch|audits|diary)/|CHANGELOG\.md|docs/findings-backlog\.md|docs/release-notes|tests/)")
+bad = []
+for f in files:
+    if skip.match(f):
+        continue
+    try: lines = open(f, encoding="utf-8").read().split("\n")
+    except Exception: continue
+    active = False
+    for n, line in enumerate(lines, 1):
+        if "gh attestation verify" in line and not line.lstrip().startswith("#"):
+            active = True
+        if active and re.search(r"--repo[ =]SchwartzKamel/hopper\b", line):
+            bad.append(f"{f}:{n}")
+        if active and not line.rstrip().endswith("\\"):
+            active = False
+print("OK" if not bad else "BAD " + " ".join(bad[:6]))
+VFPY
+)
+    if printf '%s' "$vf_bad" | grepq -E '^OK$'; then
+        pass "S04E34 docs: no instruction verifies an attestation with --repo SchwartzKamel/hopper (it fails for every release up to v2.4.0; --owner works)"
+    else
+        fail "S04E34 docs: no instruction verifies an attestation with --repo SchwartzKamel/hopper (it fails for every release up to v2.4.0; --owner works)" "$vf_bad"
+    fi
+    if grepq -F 'gh attestation verify' SECURITY.md && grepq -F -- '--owner SchwartzKamel' SECURITY.md && grepq -F 'Attestations for every release up to v2.4.0 name the repository' docs/verifying-releases.md; then
+        pass "S04E34 docs: SECURITY.md and the verifying guide give --owner and explain why not --repo"
+    else
+        fail "S04E34 docs: SECURITY.md and the verifying guide give --owner and explain why not --repo" "missing"
+    fi
+    if grepq -F 'ghcr.io/schwartzkamel/hopper:latest' README.md && ! grepq -F 'docker pull ghcr.io/schwartzkamel/azure-openai-cli' README.md; then
+        pass "S04E34 docs: the README's docker commands use the current image path"
+    else
+        fail "S04E34 docs: the README's docker commands use the current image path" "$(grep -n 'docker pull' README.md | head -2)"
+    fi
+
     # ── S04E33 -- The Mirror: copy the published image to the new registry path by digest, never rebuild ──
     # After the rename, ghcr.io/schwartzkamel/hopper had no images. Re-running the release would rebuild the archives and break every
     # checksum and attestation, so scripts/mirror-image.sh copies the existing image. A stub `docker` serves the registry and treats

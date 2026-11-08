@@ -23,7 +23,8 @@ Companion docs:
 
 | Image                                                          | Line | Status            |
 |----------------------------------------------------------------|------|-------------------|
-| `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`              | v2   | Active.           |
+| `ghcr.io/schwartzkamel/hopper`                                 | v2   | Active (v2.4.0 onward; v2.4.0 was copied here by digest). |
+| `ghcr.io/schwartzkamel/azure-openai-cli/az-ai-v2`              | v2   | Frozen at its last release; kept available. |
 | `ghcr.io/schwartzkamel/azure-openai-cli` (unsuffixed, v1 image)| v1   | Maintenance-only. |
 
 The rules below are written for the v2 image. The v1 image follows

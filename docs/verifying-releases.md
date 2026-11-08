@@ -35,7 +35,7 @@ Every GitHub Release from v1.8.0 onward publishes:
 |---------------------------------------------|-----------------------|-------------------------------------------------------|
 | `azure-openai-cli-<rid>.tar.gz` / `.zip`    | Platform binary       | SLSA v1 build-provenance attestation (keyless Sigstore) |
 | `azure-openai-cli-<rid>.sbom.json`          | CycloneDX 1.7 JSON    | Uploaded alongside signed binary                      |
-| `ghcr.io/schwartzkamel/azure-openai-cli:<tag>` | OCI container image | SLSA v1 build-provenance attestation pushed to registry |
+| `ghcr.io/schwartzkamel/hopper:<tag>` (v2.4.0 and earlier also at `ghcr.io/schwartzkamel/azure-openai-cli:<tag>`) | OCI container image | SLSA v1 build-provenance attestation pushed to registry |
 
 Attestations are produced by
 [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
@@ -107,8 +107,11 @@ Expected output for v1.8.1:
 
 ```bash
 gh attestation verify azure-openai-cli-linux-x64.tar.gz \
-  --repo SchwartzKamel/hopper
+  --owner SchwartzKamel
 ```
+
+Use `--owner SchwartzKamel`, not `--repo`. Attestations for every release up to v2.4.0 name the repository as it was before the
+rename (`SchwartzKamel/azure-openai-cli`), so `--repo SchwartzKamel/hopper` fails for them, while `--owner` verifies old and new releases alike.
 
 Expected output (abbreviated):
 
@@ -208,7 +211,7 @@ for rid in linux-x64 linux-musl-x64 osx-x64 osx-arm64; do
     --repo SchwartzKamel/hopper \
     --pattern "azure-openai-cli-${rid}.tar.gz" --clobber
   gh attestation verify "azure-openai-cli-${rid}.tar.gz" \
-    --repo SchwartzKamel/hopper \
+    --owner SchwartzKamel \
     || { echo "FAIL: ${rid}"; exit 1; }
 done
 
@@ -216,7 +219,7 @@ gh release download v1.8.1 \
   --repo SchwartzKamel/hopper \
   --pattern 'azure-openai-cli-win-x64.zip' --clobber
 gh attestation verify azure-openai-cli-win-x64.zip \
-  --repo SchwartzKamel/hopper
+  --owner SchwartzKamel
 ```
 
 ---

@@ -145,11 +145,11 @@ Every published image gets a build-provenance attestation via
 ```bash
 # v1
 gh attestation verify oci://ghcr.io/schwartzkamel/azure-openai-cli:1.8.1 \
-  --repo SchwartzKamel/hopper
+  --owner SchwartzKamel
 
 # v2
 gh attestation verify oci://ghcr.io/schwartzkamel/azure-openai-cli/az-ai:2.0.5 \
-  --repo SchwartzKamel/hopper
+  --owner SchwartzKamel
 ```
 
 See [`docs/verifying-releases.md`](../verifying-releases.md) for the full
@@ -238,3 +238,17 @@ newer tag.
 
 *One policy. Two images. Five tag shapes. All documented. Don't pin to
 `:latest` in production.* -- Jerry
+
+## Update 2026-11-08: the image path follows the repository name
+
+The repository was renamed to `SchwartzKamel/hopper` (ADR-016 stage 3). The registry path follows the repository name at publish time, so
+releases from the next one onward are published to `ghcr.io/schwartzkamel/hopper`.
+
+- **v2.4.0 is available at both paths, as the same image.** It was copied to the new path by digest (`scripts/mirror-image.sh`, run through the
+  `mirror-image` workflow), not rebuilt: all four tags (`2.4.0`, `2.4`, `2`, `latest`) have the identical digest on both paths. Nothing was re-attested:
+  this repository did not build the image, and the original build's attestation follows the image by digest, so
+  `gh attestation verify oci://ghcr.io/schwartzkamel/hopper:2.4.0 --owner SchwartzKamel` verifies it.
+- **The old path is frozen at v2.4.0 and stays available** at least until the next major version, the same review point as the `az-ai` command alias.
+  No new tag will be pushed to it, so `latest` there will stop moving; use the new path.
+- **Older images stay where they are.** Tags such as `1.8.1` and `2.0.5` exist only at the old paths, and the references to them in this document
+  and in the migration documents are deliberately unchanged.

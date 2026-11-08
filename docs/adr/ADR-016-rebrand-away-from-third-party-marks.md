@@ -132,5 +132,7 @@ needs smith's own configuration updated: its project entry names this repository
   were each checked), and GitHub Actions runs under the new name.
 - **Not moved by the rename:** the container image path (`ghcr.io/schwartzkamel/azure-openai-cli` through v2.4.0; the next release publishes
   under `ghcr.io/schwartzkamel/hopper`) and existing attestations, which name the old repository (verify with `--owner`).
-- **Outstanding:** smith's configuration still names the old slug (a file in smith's own configuration, updated by its owner), and the `az-ai` alias
-  keeps its sunset review at the next major version.
+- **Since resolved:** the image path and the provenance guidance. v2.4.0's image was copied to `ghcr.io/schwartzkamel/hopper` by digest (S04E33, S04E34; the
+  same bytes, public, original attestation verifies by digest), the old path is frozen at v2.4.0 and stays available at least until the next major version, and
+  verification instructions use `--owner`. Smith's configuration was updated to the new slug by the maintainer's instruction.
+- **Outstanding:** the `az-ai` alias and the frozen old image path both have their review at the next major version.
