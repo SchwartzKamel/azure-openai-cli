@@ -9,18 +9,20 @@ conventions. Manifests are versioned in-repo; the release pipeline is
 expected to update SHA256 digests and version strings as part of each tag.
 Hand-edited drift will be caught at release review.
 
-Current pinned release: **v2.0.6** (GitHub Releases artifacts).
+Current pinned release: **v2.4.0** (GitHub Releases artifacts); the `az-ai@<version>` pins are the earlier releases.
 Versioned-pin scaffolding (`@2.0.0` syntax for Homebrew / Scoop / Nix) lands
 at the v2.0.1 boundary per [`docs/v2-cutover-decision.md` §G6](../docs/v2-cutover-decision.md).
 
-> **ADR-016 stage 2 (S04E29):** from v2.4.0 the release archives are `hopper-<version>-<rid>.(tar.gz|zip)`, each
-> extracting to `hopper-<version>-<rid>/` with the `hopper` binary, the `az-ai` alias (a hard link on Linux and macOS,
-> a small `az-ai.cmd` shim on Windows), and the legal bundle. Every archive is checked by `scripts/verify-archive.py`
-> before it is attested or uploaded, and `.github/workflows/packaging-rehearsal.yml` builds and checks all six RIDs on
-> any pull request that touches packaging. The manifests below still describe the `az-ai-<version>-<rid>` archives of
-> releases up to 2.3.0; they move to the new names in a separate hash-sync change **after** v2.4.0 is published, so no
-> manifest ever points at an asset that does not exist yet. The "tag-time ritual" below uses `az-ai-` in its download
-> URLs for releases up to 2.3.0 and `hopper-` from 2.4.0.
+> **ADR-016 stage 2 (S04E29, S04E30):** from v2.4.0 the release archives are `hopper-<version>-<rid>.(tar.gz|zip)`, each
+> extracting to `hopper-<version>-<rid>/` with the `hopper` binary, the `az-ai` alias (a hard link on Linux and macOS, a
+> small `az-ai.cmd` shim on Windows), and the legal bundle. Every archive is checked by `scripts/verify-archive.py` before it
+> is attested or uploaded, and `.github/workflows/packaging-rehearsal.yml` builds and checks all six RIDs on any pull request
+> that touches packaging. The manifests (`hopper.rb`, `hopper.json`, `nix/flake.nix`) are hash-synced to v2.4.0 and install
+> `hopper` with `az-ai` as an alias; `scripts/check-manifests.py` compares every pin with the release's published
+> `digests.txt` (the same workflow runs it), so a manifest can never point at an asset that does not exist or carry a
+> hand-copied hash. The earlier `az-ai@<version>` pins describe the older archive names and are left as they were. The
+> Homebrew formula was verified by a real install; the Scoop manifest and the Nix flake could not be run (no Scoop or Nix on
+> the build machine), so they are checked only for their pins.
 
 The upstream binary name inside each archive is `az-ai`
 (`az-ai.exe` on Windows). Every manifest installs as `az-ai` so users get
@@ -38,8 +40,8 @@ a single, consistent command across platforms.
 
 | Channel   | File                                         | Platforms                               | Status                  |
 |-----------|----------------------------------------------|-----------------------------------------|-------------------------|
-| Homebrew  | `homebrew/Formula/az-ai.rb` (+ `@<ver>.rb`)  | macOS arm64/x64, Linux x64              | Tap not yet created     |
-| Scoop     | `scoop/az-ai.json` (+ `versions/*.json`)     | Windows x64                             | Bucket not yet created  |
+| Homebrew  | `homebrew/Formula/hopper.rb` (+ `az-ai@<ver>.rb` pins) | macOS arm64, Linux x64/arm64 | Tap not yet created     |
+| Scoop     | `scoop/hopper.json` (+ `versions/*.json` pins) | Windows x64/arm64                       | Bucket not yet created  |
 | Nix       | `nix/flake.nix` (tracking + pinned attrs)    | Linux x64, macOS x64, macOS arm64       | Flake ready             |
 | Tarball   | `tarball/stage.sh`                           | Any .NET RID (linux/osx/win)            | Used by release CI      |
 
@@ -56,21 +58,21 @@ and to `sources` in `nix/flake.nix`.
 Until the tap repo exists, install directly from the formula file:
 
 ```sh
-brew install --formula ./packaging/homebrew/Formula/az-ai.rb
+brew install --formula ./packaging/homebrew/Formula/hopper.rb
 ```
 
 ### Install (once the tap is live)
 
 ```sh
 brew tap SchwartzKamel/tap
-brew install az-ai
+brew install hopper
 ```
 
 ### Publish (owner action -- Lippman TBD)
 
 1. Create the tap repository: `SchwartzKamel/homebrew-tap`
    (Homebrew resolves `SchwartzKamel/tap` → `SchwartzKamel/homebrew-tap`.)
-2. Copy `packaging/homebrew/Formula/az-ai.rb` into the tap's `Formula/`
+2. Copy `packaging/homebrew/Formula/hopper.rb` into the tap's `Formula/`
    directory on each release.
 3. The release workflow should open a PR against the tap repo bumping
    `version`, the three `url` lines, and the three `sha256` lines.
@@ -79,8 +81,8 @@ brew install az-ai
 ### Verify locally
 
 ```sh
-brew audit --strict ./packaging/homebrew/Formula/az-ai.rb
-brew install --build-from-source --formula ./packaging/homebrew/Formula/az-ai.rb
+brew audit --strict ./packaging/homebrew/Formula/hopper.rb
+brew install --build-from-source --formula ./packaging/homebrew/Formula/hopper.rb
 az-ai --version --short   # expect: 2.0.0
 ```
 
@@ -91,20 +93,20 @@ az-ai --version --short   # expect: 2.0.0
 ### Install (today, pre-bucket)
 
 ```powershell
-scoop install ./packaging/scoop/az-ai.json
+scoop install ./packaging/scoop/hopper.json
 ```
 
 ### Install (once the bucket is live)
 
 ```powershell
 scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-bucket
-scoop install az-ai
+scoop install hopper
 ```
 
 ### Publish (owner action -- Lippman TBD)
 
 1. Create the bucket repository: `SchwartzKamel/scoop-bucket`.
-2. Copy `packaging/scoop/az-ai.json` to the bucket's `bucket/az-ai.json`.
+2. Copy `packaging/scoop/hopper.json` to the bucket's `bucket/hopper.json`.
 3. Run `scoop checkver az-ai -u` in the bucket checkout after each release
    to auto-bump `version` / `hash` from the `checkver` + `autoupdate`
    blocks already baked into the manifest.
@@ -114,7 +116,7 @@ scoop install az-ai
 ### Verify locally
 
 ```powershell
-scoop install ./packaging/scoop/az-ai.json
+scoop install ./packaging/scoop/hopper.json
 az-ai --version --short   # expect: 2.0.0
 ```
 
@@ -162,18 +164,18 @@ needing to install from a raw URL.
 ### Homebrew -- pinnable sibling formulae
 
 Every tagged release gets a frozen sibling formula alongside the tracking
-`az-ai.rb`:
+`hopper.rb`:
 
 ```text
 packaging/homebrew/Formula/
-├── az-ai.rb                  # tracks latest (currently v2.0.1)
+├── hopper.rb                 # tracks latest (currently v2.4.0); Aliases/az-ai points here
 └── az-ai@2.0.0.rb         # frozen pin -- keg_only, class AzAiAT200
 ```
 
 Install:
 
 ```sh
-brew install az-ai          # latest
+brew install hopper          # latest
 brew install az-ai@2.0.0    # pinned
 ```
 
@@ -192,7 +194,7 @@ bucket convention:
 
 ```text
 packaging/scoop/
-├── az-ai.json                       # tracks latest
+├── hopper.json                      # tracks latest (currently v2.4.0)
 └── versions/
     └── az-ai@2.0.0.json          # frozen pin
 ```
@@ -200,7 +202,7 @@ packaging/scoop/
 Install:
 
 ```powershell
-scoop install schwartzkamel/az-ai          # latest
+scoop install schwartzkamel/hopper          # latest
 scoop install schwartzkamel/az-ai@2.0.0    # pinned
 ```
 
@@ -265,8 +267,8 @@ sed -i.bak \
     -e "0,/TODO_FILL_AT_RELEASE_TIME/s//${OSX_ARM64_SHA}/" \
     -e "0,/TODO_FILL_AT_RELEASE_TIME/s//${OSX_X64_SHA}/" \
     -e "0,/TODO_FILL_AT_RELEASE_TIME/s//${LINUX_X64_SHA}/" \
-    packaging/homebrew/Formula/az-ai.rb
-! grep -q TODO_FILL_AT_RELEASE_TIME packaging/homebrew/Formula/az-ai.rb
+    packaging/homebrew/Formula/hopper.rb
+! grep -q TODO_FILL_AT_RELEASE_TIME packaging/homebrew/Formula/hopper.rb
 ```
 
 Or (once the tap exists, preferred):
@@ -281,9 +283,9 @@ brew bump-formula-pr --tap=SchwartzKamel/tap \
 ### Step 2b -- Scoop
 
 ```sh
-sed -i "s/TODO_FILL_AT_RELEASE_TIME/${WIN_X64_SHA}/" packaging/scoop/az-ai.json
-jq . packaging/scoop/az-ai.json > /dev/null
-! grep -q TODO_FILL_AT_RELEASE_TIME packaging/scoop/az-ai.json
+sed -i "s/TODO_FILL_AT_RELEASE_TIME/${WIN_X64_SHA}/" packaging/scoop/hopper.json
+jq . packaging/scoop/hopper.json > /dev/null
+! grep -q TODO_FILL_AT_RELEASE_TIME packaging/scoop/hopper.json
 ```
 
 Once the bucket repo is live, `scoop checkver az-ai -u` run inside the
@@ -313,7 +315,7 @@ pinnable sibling so the version remains installable forever:
 - Homebrew: `cp az-ai.rb az-ai@${VERSION}.rb`, rename the class
   (`AzAi` → `AzAiAT${VERSION//./}`), strip `checkver`-style drift,
   and add `keg_only :versioned_formula`.
-- Scoop: `cp scoop/az-ai.json scoop/versions/az-ai@${VERSION}.json`,
+- Scoop: `cp scoop/hopper.json scoop/versions/az-ai@${VERSION}.json`,
   strip `checkver` / `autoupdate`.
 - Nix: add a `"${VERSION}" = { linux-x64 = "sha256-..."; ... };` entry to
   `pinnedHashes` in `flake.nix`.
@@ -354,6 +356,8 @@ On every tagged release:
       the tarballs (binary + LICENSE + NOTICE + THIRD_PARTY_NOTICES.md +
       README.md).
 - [ ] Update `version` in all three tracking manifests.
+- [ ] After the release is published, regenerate the pins from its `digests.txt` and run `python3 scripts/check-manifests.py`
+      (it fetches the digests itself). A manifest bumped before its release exists fails the check, by design.
 - [ ] Fill SHA256s via the Step-2a/2b/2c commands above (replaces all
       `TODO_FILL_AT_RELEASE_TIME` / `lib.fakeHash` placeholders).
 - [ ] Add a new versioned-pin sibling for the previous release per Step 3.

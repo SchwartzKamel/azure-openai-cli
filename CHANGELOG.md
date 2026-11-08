@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **ci(packaging):** S04E30 *The Hash Sync* -- the Homebrew, Scoop and Nix manifests now install `hopper` (with
+  `az-ai` as an alias) from the v2.4.0 archives, with digests taken from the release's published `digests.txt`.
+  The unversioned manifests they replace were pinned to `az-ai-2.0.6-*` file names that never existed (the real
+  v2.0.6 assets are `az-ai-v2-2.0.6-*`), so "latest" had pointed at missing files since v2.0.6. New
+  `scripts/check-manifests.py` compares every pin with the release's `digests.txt` (URL shape, one version, the file
+  exists, the sha256 matches; Nix SRI is decoded) and runs in the packaging rehearsal workflow. The Scoop manifest
+  gains the `extract_dir` it lacked and autoupdates from `digests.txt` instead of per-file `.sha256` files that are
+  never published. The Homebrew formula was verified by a real install; the Scoop manifest and the Nix flake could not
+  be run here. (s04e30-the-hash-sync)
+
 ## [2.4.0] -- 2026-11-05
 
 **hopper 2.4.0.** The project formerly called `az-ai` (Azure OpenAI CLI) is now **hopper**

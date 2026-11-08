@@ -40,14 +40,14 @@ Once the bucket is live:
 
 ```powershell
 scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-az-ai
-scoop install schwartzkamel/az-ai            # latest
+scoop install schwartzkamel/hopper            # latest
 scoop install schwartzkamel/az-ai@2.0.4      # pinned
 ```
 
 Before the bucket is live, install straight from the manifest:
 
 ```powershell
-scoop install ./packaging/scoop/az-ai.json
+scoop install ./packaging/scoop/hopper.json
 ```
 
 ## Publish (ops action)
@@ -57,16 +57,16 @@ Full step-by-step runbook: **[`docs/runbooks/packaging-publish.md`](../../docs/r
 Short version:
 
 1. Ensure `SchwartzKamel/scoop-az-ai` exists.
-2. Copy `packaging/scoop/az-ai.json` to the bucket's `bucket/az-ai.json`
+2. Copy `packaging/scoop/hopper.json` to the bucket's `bucket/hopper.json`
    (Scoop resolves `bucket/<name>.json` by default).
 3. Mirror `packaging/scoop/versions/*.json` to `bucket/versions/*.json`.
-4. `scoop install schwartzkamel/az-ai` on a fresh Windows box
+4. `scoop install schwartzkamel/hopper` on a fresh Windows box
    before announcing (Puddy gate).
 
 ## Verify locally (pre-publish)
 
 ```powershell
-scoop install ./packaging/scoop/az-ai.json
+scoop install ./packaging/scoop/hopper.json
 az-ai --version --short
 ```
 

@@ -22,6 +22,7 @@ scripts/*
 !scripts/verify-archive.py
 !scripts/release-notes.sh
 !scripts/release-body.sh
+!scripts/check-manifests.py
 !scripts/eval-lint.sh
 !scripts/check-ignored-scripts.sh
 !scripts/lint-espanso-yml.sh

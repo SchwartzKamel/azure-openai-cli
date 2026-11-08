@@ -1,0 +1,54 @@
+{
+    "_comment_hash": "SHA256 digests below are from the v2.4.0 GitHub Release (digests.txt). scripts/check-manifests.py compares them with the published file. Do not invent or hand-copy digests.",
+    "_comment_bin": "The archive extracts to hopper-<version>-<rid>/ (hence extract_dir) and holds hopper.exe plus az-ai.cmd. Both names are shimmed here, so az-ai.cmd is not needed.",
+    "_comment_notice": "Scoop has no doc directory concept, so the archive places NOTICE + THIRD_PARTY_NOTICES.md + LICENSE next to the binary.",
+    "version": "2.4.0",
+    "description": "AOT command-line agent for Azure OpenAI, built on the Microsoft Agent Framework",
+    "homepage": "https://github.com/SchwartzKamel/azure-openai-cli",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.4.0/hopper-2.4.0-win-x64.zip",
+            "hash": "1abe590bd1c8680da78a92705081c60e167d071ddd216669a47cfecf33f1c233",
+            "extract_dir": "hopper-2.4.0-win-x64"
+        },
+        "arm64": {
+            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.4.0/hopper-2.4.0-win-arm64.zip",
+            "hash": "e36540f7fad3f0e57a1b66a74b4e58784254e4bbe19f5c0b1d46cca5eb18bda5",
+            "extract_dir": "hopper-2.4.0-win-arm64"
+        }
+    },
+    "bin": [
+        "hopper.exe",
+        [
+            "hopper.exe",
+            "az-ai"
+        ]
+    ],
+    "post_install": [
+        "Write-Host 'hopper installed (the old name az-ai works too). Third-party notices bundled next to the binary:'",
+        "Write-Host \"  $dir\\NOTICE\"",
+        "Write-Host \"  $dir\\THIRD_PARTY_NOTICES.md\"",
+        "Write-Host \"  $dir\\LICENSE\""
+    ],
+    "checkver": {
+        "github": "https://github.com/SchwartzKamel/azure-openai-cli",
+        "regex": "releases/tag/v(\\d+\\.\\d+\\.\\d+)"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v$version/hopper-$version-win-x64.zip",
+                "extract_dir": "hopper-$version-win-x64"
+            },
+            "arm64": {
+                "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v$version/hopper-$version-win-arm64.zip",
+                "extract_dir": "hopper-$version-win-arm64"
+            }
+        },
+        "hash": {
+            "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v$version/digests.txt",
+            "regex": "$sha256\\s+$basename"
+        }
+    }
+}

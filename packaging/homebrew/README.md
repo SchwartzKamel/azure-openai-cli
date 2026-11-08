@@ -42,7 +42,7 @@ brew install schwartzkamel/az-ai/az-ai@2.0.4    # pinned
 Before the tap is live, install straight from the file:
 
 ```sh
-brew install --formula ./packaging/homebrew/Formula/az-ai.rb
+brew install --formula ./packaging/homebrew/Formula/hopper.rb
 ```
 
 ## Intel Macs (osx-x64 dropped in v2.0.4)
@@ -58,7 +58,7 @@ arch -arm64e brew install schwartzkamel/az-ai/az-ai   # uses osx-arm64 tarball
 ```
 
 This path is a stop-gap. If and when osx-x64 tarballs return to the
-release matrix, add an `on_intel` block back to `Formula/az-ai.rb` and
+release matrix, add an `on_intel` block back to `Formula/hopper.rb` and
 drop this note.
 
 ## Publish (ops action)
@@ -79,8 +79,8 @@ Short version:
 ## Verify locally (pre-publish)
 
 ```sh
-brew audit --strict ./packaging/homebrew/Formula/az-ai.rb
-brew install --build-from-source --formula ./packaging/homebrew/Formula/az-ai.rb
+brew audit --strict ./packaging/homebrew/Formula/hopper.rb
+brew install --build-from-source --formula ./packaging/homebrew/Formula/hopper.rb
 az-ai --version --short
 ```
 

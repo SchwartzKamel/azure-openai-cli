@@ -6,14 +6,13 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      version = "2.0.6";
+      version = "2.4.0";
       baseUrlFor = v: "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${v}";
 
-      # Tarball prefix: releases ≤2.0.6 shipped as "az-ai-v2-<ver>-<rid>",
-      # future releases ship as "az-ai-<ver>-<rid>" after the v1/v2
-      # consolidation. The binary inside the tarball follows the same
-      # convention (az-ai-v2 vs az-ai).
-      tarballPrefixFor = v: if builtins.elem v [ "2.0.0" "2.0.1" "2.0.2" "2.0.4" "2.0.6" ] then "az-ai-v2" else "az-ai";
+      # Tarball prefix: releases <=2.0.6 shipped as "az-ai-v2-<ver>-<rid>"; from 2.4.0 (ADR-016 stage 2) they ship
+      # as "hopper-<ver>-<rid>". The binary inside the tarball follows the same convention (az-ai-v2 vs hopper).
+      # Releases 2.1.0 to 2.3.0 shipped as "az-ai-<ver>-<rid>" but have no pin in this flake.
+      tarballPrefixFor = v: if builtins.elem v [ "2.0.0" "2.0.1" "2.0.2" "2.0.4" "2.0.6" ] then "az-ai-v2" else "hopper";
 
       # Build the per-system sources attrset for a given release version.
       # All frozen versioned-pin derivations go through this helper so the
@@ -42,12 +41,12 @@
         # "aarch64-darwin" and pull the osx-arm64 binary), or the OCI image.
       };
 
-      # Hash table for the tracking (latest) release, filled from the
-      # v2.0.6 GitHub Release (published 2026-04-22).
-      # SRI digests (sha256-<base64>) per Nix convention.
+      # Hash table for the tracking (latest) release, computed from the v2.4.0 GitHub Release's digests.txt.
+      # SRI digests (sha256-<base64>) per Nix convention. scripts/check-manifests.py compares these with the
+      # published digests; do not hand-copy them.
       latestHashes = {
-        linux-x64 = "sha256-cy5CJyQ3m0DT79/DTUVc8hpWcF/a7kbsN4iXveMILDE=";
-        osx-arm64 = "sha256-V5SkFcBKEr8mrONch7xwddxVIF/F8QH1ic9/5krhPHQ=";
+        linux-x64 = "sha256-bq6RgHg66UPEjYRECM7zcZnyQNpp9N31Y2tBwcKpYgQ=";
+        osx-arm64 = "sha256-J7IU9JG6p0kbUFoCLEIMhPRW9/YUczIBL7jbouu0DcI=";
       };
 
       # Frozen hash tables for pinnable releases. These should only ever be
@@ -125,9 +124,12 @@
       supportedSystems = builtins.attrNames sources;
 
       mkAzAi = { pkgs, system, v, srcMeta }:
-        let binInTarball = tarballPrefixFor v;
+        let
+          binInTarball = tarballPrefixFor v;
+          # "hopper" for 2.4.0 and later (which also gets an az-ai link), "az-ai" for the frozen pins.
+          cmd = if binInTarball == "hopper" then "hopper" else "az-ai";
         in pkgs.stdenv.mkDerivation {
-          pname = "az-ai";
+          pname = cmd;
           version = v;
 
           src = pkgs.fetchurl {
@@ -150,11 +152,12 @@
           dontBuild = true;
           dontConfigure = true;
 
-          # Old releases (≤2.0.6) have binary named "az-ai-v2"; new releases
-          # have "az-ai". Always install as "az-ai" on PATH.
+          # Old releases (<=2.0.6) have a binary named "az-ai-v2" and install as "az-ai"; 2.4.0 and later have
+          # "hopper" and also get an "az-ai" link, so existing scripts keep working.
           installPhase = ''
             runHook preInstall
-            install -Dm755 ${binInTarball} "$out/bin/az-ai"
+            install -Dm755 ${binInTarball} "$out/bin/${cmd}"
+            ${if cmd == "hopper" then "ln -s hopper \"$out/bin/az-ai\"" else ""}
             runHook postInstall
           '';
 
@@ -163,9 +166,9 @@
           # Lippman's release-notes claim that all distributed artifacts
           # ship NOTICE.
           postInstall = ''
-            install -Dm644 LICENSE              $out/share/licenses/az-ai/LICENSE
-            install -Dm644 NOTICE               $out/share/licenses/az-ai/NOTICE
-            install -Dm644 THIRD_PARTY_NOTICES.md $out/share/licenses/az-ai/THIRD_PARTY_NOTICES.md
+            install -Dm644 LICENSE              $out/share/licenses/${cmd}/LICENSE
+            install -Dm644 NOTICE               $out/share/licenses/${cmd}/NOTICE
+            install -Dm644 THIRD_PARTY_NOTICES.md $out/share/licenses/${cmd}/THIRD_PARTY_NOTICES.md
           '';
 
           meta = with pkgs.lib; {
@@ -173,7 +176,7 @@
             homepage = "https://github.com/SchwartzKamel/azure-openai-cli";
             license = licenses.mit;
             platforms = supportedSystems;
-            mainProgram = "az-ai";
+            mainProgram = cmd;
           };
         };
     in
@@ -203,12 +206,13 @@
       {
         packages = {
           default = az-ai;
+          hopper = az-ai;
           az-ai = az-ai;
         } // pinnedPackages;
 
         apps.default = {
           type = "app";
-          program = "${az-ai}/bin/az-ai";
+          program = "${az-ai}/bin/hopper";
         };
       });
 }
