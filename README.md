@@ -588,9 +588,13 @@ release but the install itself has not yet been exercised on Windows.
 Secondary option -- native AOT is recommended for latency-sensitive use.
 
 ```bash
-docker pull ghcr.io/schwartzkamel/azure-openai-cli:latest
-docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli:latest "Hello world"
+docker pull ghcr.io/schwartzkamel/hopper:latest
+docker run --rm --env-file .env ghcr.io/schwartzkamel/hopper:latest "Hello world"
 ```
+
+Images up to and including v2.4.0 were first published under `ghcr.io/schwartzkamel/azure-openai-cli`, before the repository was renamed.
+v2.4.0 is also available at `ghcr.io/schwartzkamel/hopper` (the same image, copied by digest, not rebuilt), and every later release is published
+there only. The old path stays available, frozen at v2.4.0, at least until the next major version.
 
 ## Documentation
 

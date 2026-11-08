@@ -96,7 +96,7 @@ Verify with:
 
 ```bash
 gh attestation verify az-ai-v2-2.0.4-linux-musl-x64.tar.gz \
-    --repo SchwartzKamel/hopper
+    --owner SchwartzKamel
 ```
 
 This is the primary integrity guarantee for release artifacts. The

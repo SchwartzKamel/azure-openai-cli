@@ -97,5 +97,5 @@ COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md /licenses/
 USER appuser
 
 # Credentials injected at runtime, never baked in:
-#   docker run --rm --env-file .env ghcr.io/schwartzkamel/azure-openai-cli "your prompt"
+#   docker run --rm --env-file .env ghcr.io/schwartzkamel/hopper "your prompt"
 ENTRYPOINT ["/app/hopper"]

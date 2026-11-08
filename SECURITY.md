@@ -1136,8 +1136,10 @@ Release artifacts (binaries and GHCR container image) are published with
 Verify a downloaded binary with:
 
 ```bash
-gh attestation verify <artifact> --repo SchwartzKamel/hopper
+gh attestation verify <artifact> --owner SchwartzKamel
 ```
+
+Use `--owner SchwartzKamel`, not `--repo`. Attestations for every release up to v2.4.0 name the repository as it was before the rename (`SchwartzKamel/azure-openai-cli`), so `--repo SchwartzKamel/hopper` fails for them, while `--owner` verifies old and new releases alike.
 
 SBOMs (CycloneDX JSON) are attached to each release alongside the binaries.
 

@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **fix(docs):** S04E34 *The New Image Path* -- v2.4.0's container image is now also at
+  `ghcr.io/schwartzkamel/hopper` (the same digest as at the old path, public, and its original attestation
+  verifies by digest). The README, Dockerfile, verification guide, release runbook and tag policy name the current
+  path; the old `ghcr.io/schwartzkamel/azure-openai-cli` is frozen at v2.4.0 and stays available at least until the
+  next major version. Fixed seven `gh attestation verify ... --repo SchwartzKamel/hopper` instructions (introduced by
+  the S04E31 address sweep): `--repo` with the new name fails for every release up to v2.4.0, so they now say
+  `--owner SchwartzKamel`, which verifies old and new releases alike, and a test guards it. The published v2.4.0
+  release body is corrected (image path and package managers); its notes and all assets are unchanged.
+  (s04e34-the-new-image-path)
 - **ci(release):** S04E33 *The Mirror* -- after the repository rename the image path
   `ghcr.io/schwartzkamel/hopper` had no images, because the path follows the repository name at publish time. A new
   manual `mirror-image` workflow and `scripts/mirror-image.sh` copy an already-published image to the current path by

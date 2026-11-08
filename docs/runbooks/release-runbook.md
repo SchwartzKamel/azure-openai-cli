@@ -11,7 +11,7 @@ PR to sync this doc.
 **Post-v2.0.4 reality check:**
 
 - Active ship path is **v2** (`azureopenai-cli/`, binary `az-ai`,
-  GHCR image `ghcr.io/schwartzkamel/azure-openai-cli/az-ai`).
+  GHCR image `ghcr.io/schwartzkamel/hopper`).
 - Release matrix is **4 legs**: `linux-x64`, `linux-musl-x64`,
   `osx-arm64`, `win-x64`. `osx-x64` was cut in v2.0.4; see
   [`docs/runbooks/macos-runner-triage.md`](macos-runner-triage.md) §5.
@@ -164,7 +164,7 @@ The `v2.*` tag path exercises three jobs in `release.yml`:
    - `osx-arm64` (macos-14)
    - `win-x64` (windows-latest, PowerShell `Compress-Archive`)
 2. **`docker-publish-v2`** -- builds `Dockerfile.v2`, pushes to
-   `ghcr.io/schwartzkamel/azure-openai-cli/az-ai:<version>` (plus
+   `ghcr.io/schwartzkamel/hopper:<version>` (plus
    `latest` on non-pre-releases), attests image provenance to Sigstore
    (logged to Rekor).
 3. **`release-v2`** -- gated on both above; downloads all artifacts,
@@ -277,14 +277,14 @@ gh release view "$TAG" --json assets --jq '.assets[].name' | sort
 
 # 7b. Binary attestations -- SLSA provenance verified against the repo.
 gh attestation verify \
-  --repo SchwartzKamel/hopper \
+  --owner SchwartzKamel \
   "az-ai-${VERSION}-linux-x64.tar.gz"
 
 # 7c. Container image + attestation.
-docker pull "ghcr.io/schwartzkamel/azure-openai-cli/az-ai:${VERSION}"
+docker pull "ghcr.io/schwartzkamel/hopper:${VERSION}"
 gh attestation verify \
-  --repo SchwartzKamel/hopper \
-  "oci://ghcr.io/schwartzkamel/azure-openai-cli/az-ai:${VERSION}"
+  --owner SchwartzKamel \
+  "oci://ghcr.io/schwartzkamel/hopper:${VERSION}"
 
 # 7d. Runtime smoke on the primary RID.
 ./az-ai --version --short   # must print exactly "${VERSION}\n"
@@ -387,8 +387,8 @@ PREV=2.0.4
 
 # Retag `latest` to point at the previous known-good image.
 docker buildx imagetools create \
-  --tag ghcr.io/schwartzkamel/azure-openai-cli/az-ai:latest \
-  ghcr.io/schwartzkamel/azure-openai-cli/az-ai:${PREV}
+  --tag ghcr.io/schwartzkamel/hopper:latest \
+  ghcr.io/schwartzkamel/hopper:${PREV}
 
 # The ${VERSION} tag stays where it is (digest-pinned, attested);
 # we do not delete GHCR tags that have attestations -- that would
