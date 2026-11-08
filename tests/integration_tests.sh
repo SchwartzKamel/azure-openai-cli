@@ -1190,6 +1190,142 @@ EVSUITE
     pq_out=$(printf 'Alpha\n' | grepq -Fi alpha; echo "rc=$?")
     if [ "$pq_out" = "rc=0" ]; then pass "S04E23 grepq: flags pass through (-i)"; else fail "S04E23 grepq: flags pass through (-i)" "$pq_out"; fi
 
+    # ── S04E33 -- The Mirror: copy the published image to the new registry path by digest, never rebuild ──
+    # After the rename, ghcr.io/schwartzkamel/hopper had no images. Re-running the release would rebuild the archives and break every
+    # checksum and attestation, so scripts/mirror-image.sh copies the existing image. A stub `docker` serves the registry and treats
+    # anything but `buildx imagetools inspect|create` as a violation, so these cases prove it copies by digest and never builds or pushes.
+    echo "▸ S04E33 image mirror"
+    local mi_dir; mi_dir=$(mktemp -d)
+    mkdir -p "$mi_dir/bin"
+    cat > "$mi_dir/bin/docker" <<'MISTUB'
+#!/usr/bin/env bash
+# stub registry: $STUB_DIR/registry.txt holds "image:tag digest"; $STUB_DIR/calls.log records every call
+echo "docker $*" >> "$STUB_DIR/calls.log"
+if [ "$1 $2 $3" = "buildx imagetools inspect" ]; then
+    awk -v r="$4" '$1 == r { print $2; found = 1 } END { exit found ? 0 : 1 }' "$STUB_DIR/registry.txt"
+    exit $?
+fi
+if [ "$1 $2 $3" = "buildx imagetools create" ]; then
+    [ -n "${STUB_FAIL_CREATE:-}" ] && exit 1
+    shift 3; tags=(); src=""
+    while [ $# -gt 0 ]; do
+        if [ "$1" = "--tag" ]; then tags+=("$2"); shift 2; else src="$1"; shift; fi
+    done
+    digest="${src##*@}"
+    [ -n "${STUB_CORRUPT:-}" ] && digest="sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    for t in "${tags[@]}"; do echo "$t $digest" >> "$STUB_DIR/registry.txt"; done
+    exit 0
+fi
+echo "UNEXPECTED docker $*" >> "$STUB_DIR/violations.log"
+exit 99
+MISTUB
+    chmod +x "$mi_dir/bin/docker"
+    local mi_a="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" mi_b="sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    local mi_src="ghcr.io/o/old" mi_dst="ghcr.io/o/new" mi_out mi_rc
+    mi_run() { # <registry contents> <env assignments...> -- <script args...>
+        local reg="$1"; shift
+        : > "$mi_dir/calls.log"; : > "$mi_dir/violations.log"; printf '%b' "$reg" > "$mi_dir/registry.txt"
+        local envs=(); while [ "$1" != "--" ]; do envs+=("$1"); shift; done; shift
+        set +e; mi_out=$(env STUB_DIR="$mi_dir" PATH="$mi_dir/bin:$PATH" "${envs[@]}" bash scripts/mirror-image.sh "$@" 2>&1); mi_rc=$?; set -e
+    }
+    mi_reg_has() { awk -v r="$1" -v d="$2" '$1 == r && $2 == d { f = 1 } END { exit f ? 0 : 1 }' "$mi_dir/registry.txt"; }
+
+    mi_run "$mi_src:2.4.0 $mi_a\n$mi_src:2.4 $mi_a\n$mi_src:2 $mi_a\n$mi_src:latest $mi_a\n" X=1 -- 2.4.0 "$mi_src" "$mi_dst"
+    if [ "$mi_rc" = "0" ] && mi_reg_has "$mi_dst:2.4.0" "$mi_a" && mi_reg_has "$mi_dst:2.4" "$mi_a" && mi_reg_has "$mi_dst:2" "$mi_a" && mi_reg_has "$mi_dst:latest" "$mi_a"; then
+        pass "S04E33 mirror-image: the version and the tags the source points at it (2.4, 2, latest) are copied, all at the source's digest"
+    else
+        fail "S04E33 mirror-image: the version and the tags the source points at it (2.4, 2, latest) are copied, all at the source's digest" "rc=$mi_rc $(cat "$mi_dir/registry.txt" | tail -4 | tr '\n' ';') $(printf '%s' "$mi_out" | tail -2 | head -c 160)"
+    fi
+    if [ "$(grep -c 'imagetools create' "$mi_dir/calls.log")" = "1" ] && grep -q "@$mi_a" "$mi_dir/calls.log" && [ ! -s "$mi_dir/violations.log" ]; then
+        pass "S04E33 mirror-image: exactly one imagetools create, from <source>@<digest>; no build, no push, no other docker command"
+    else
+        fail "S04E33 mirror-image: exactly one imagetools create, from <source>@<digest>; no build, no push, no other docker command" "$(cat "$mi_dir/calls.log" "$mi_dir/violations.log" | tail -4 | head -c 300)"
+    fi
+
+    mi_run "$mi_src:2.3.0 $mi_a\n$mi_src:2.3 $mi_a\n$mi_src:2 $mi_b\n$mi_src:latest $mi_b\n" X=1 -- 2.3.0 "$mi_src" "$mi_dst"
+    if [ "$mi_rc" = "0" ] && mi_reg_has "$mi_dst:2.3.0" "$mi_a" && mi_reg_has "$mi_dst:2.3" "$mi_a" && ! mi_reg_has "$mi_dst:latest" "$mi_b" && ! mi_reg_has "$mi_dst:latest" "$mi_a" && ! mi_reg_has "$mi_dst:2" "$mi_b"; then
+        pass "S04E33 mirror-image: mirroring an OLD version does not move latest or the major tag (they point elsewhere in the source)"
+    else
+        fail "S04E33 mirror-image: mirroring an OLD version does not move latest or the major tag (they point elsewhere in the source)" "$(grep "$mi_dst" "$mi_dir/registry.txt" | tr '\n' ';')"
+    fi
+
+    mi_run "$mi_src:2.4.0 $mi_a\n$mi_src:2.4 $mi_a\n" X=1 -- 2.4.0 "$mi_src" "$mi_dst"
+    if [ "$mi_rc" = "0" ] && mi_reg_has "$mi_dst:2.4" "$mi_a" && ! grep -q "$mi_dst:latest" "$mi_dir/registry.txt" && ! grep -q "$mi_dst:2 " "$mi_dir/registry.txt"; then
+        pass "S04E33 mirror-image: a tag the source does not have is not invented"
+    else
+        fail "S04E33 mirror-image: a tag the source does not have is not invented" "$(grep "$mi_dst" "$mi_dir/registry.txt" | tr '\n' ';')"
+    fi
+
+    mi_run "$mi_src:2.3.0 $mi_a\n" X=1 -- 2.4.0 "$mi_src" "$mi_dst"
+    if [ "$mi_rc" = "1" ] && printf '%s' "$mi_out" | grepq -F 'does not exist' && ! grep -q 'imagetools create' "$mi_dir/calls.log"; then
+        pass "S04E33 mirror-image: a version the source does not have fails before anything is copied"
+    else
+        fail "S04E33 mirror-image: a version the source does not have fails before anything is copied" "rc=$mi_rc $(printf '%s' "$mi_out" | head -c 160)"
+    fi
+
+    mi_run "$mi_src:2.4.0 $mi_a\n" STUB_CORRUPT=1 -- 2.4.0 "$mi_src" "$mi_dst"
+    if [ "$mi_rc" = "1" ] && printf '%s' "$mi_out" | grepq -F 'after the copy'; then
+        pass "S04E33 mirror-image: a destination whose digest differs after the copy FAILS (the mirror must be the published image)"
+    else
+        fail "S04E33 mirror-image: a destination whose digest differs after the copy FAILS (the mirror must be the published image)" "rc=$mi_rc $(printf '%s' "$mi_out" | tail -2 | head -c 200)"
+    fi
+
+    mi_run "$mi_src:2.4.0 $mi_a\n" STUB_FAIL_CREATE=1 -- 2.4.0 "$mi_src" "$mi_dst"
+    if [ "$mi_rc" != "0" ]; then pass "S04E33 mirror-image: a failed copy is a failure"; else fail "S04E33 mirror-image: a failed copy is a failure" "rc=$mi_rc"; fi
+
+    local mi_bad
+    for mi_bad in v2.4.0 2.4 latest "" 2.4.0.1; do
+        mi_run "$mi_src:2.4.0 $mi_a\n" X=1 -- "$mi_bad" "$mi_src" "$mi_dst"
+        if [ "$mi_rc" = "1" ] && printf '%s' "$mi_out" | grepq -F 'usage' && [ ! -s "$mi_dir/calls.log" ]; then
+            pass "S04E33 mirror-image: '${mi_bad:-<empty>}' is not an X.Y.Z version: refused before any registry call"
+        else
+            fail "S04E33 mirror-image: '${mi_bad:-<empty>}' is not an X.Y.Z version: refused before any registry call" "rc=$mi_rc calls=$(cat "$mi_dir/calls.log" | head -c 100)"
+        fi
+    done
+
+    mi_run "$mi_src:2.4.0 $mi_a\n" X=1 -- 2.4.0 "$mi_src" "$mi_src"
+    if [ "$mi_rc" = "1" ] && printf '%s' "$mi_out" | grepq -F 'same image'; then pass "S04E33 mirror-image: copying an image onto itself is refused"; else fail "S04E33 mirror-image: copying an image onto itself is refused" "rc=$mi_rc $mi_out"; fi
+
+    mi_run "$mi_src:2.4.0 $mi_a\n" X=1 -- 2.4.0 "$mi_src"
+    if [ "$mi_rc" = "1" ] && printf '%s' "$mi_out" | grepq -F 'no target image'; then
+        pass "S04E33 mirror-image: with no target and no GITHUB_REPOSITORY there is nothing to mirror to"
+    else
+        fail "S04E33 mirror-image: with no target and no GITHUB_REPOSITORY there is nothing to mirror to" "rc=$mi_rc $mi_out"
+    fi
+    mi_run "$mi_src:2.4.0 $mi_a\n" GITHUB_REPOSITORY=SchwartzKamel/Hopper -- 2.4.0 "$mi_src"
+    if [ "$mi_rc" = "0" ] && mi_reg_has "ghcr.io/schwartzkamel/hopper:2.4.0" "$mi_a"; then
+        pass "S04E33 mirror-image: the default target is the repository path, lowercased (image references must be lowercase)"
+    else
+        fail "S04E33 mirror-image: the default target is the repository path, lowercased (image references must be lowercase)" "rc=$mi_rc $(tail -2 "$mi_dir/registry.txt" | tr '\n' ';')"
+    fi
+
+    local mi_wf
+    mi_wf=$(python3 - <<'MIPY'
+import re, yaml
+raw = open(".github/workflows/mirror-image.yml").read()
+d = yaml.safe_load(raw)
+job = d["jobs"]["mirror"]
+steps = job["steps"]
+runs = " ".join((st.get("run") or "") for st in steps)
+uses = [st.get("uses") or "" for st in steps if st.get("uses")]
+problems = []
+if job["permissions"].get("packages") != "write": problems.append("job lacks packages: write")
+if "scripts/mirror-image.sh" not in runs: problems.append("no step runs scripts/mirror-image.sh")
+# only what the STEPS do counts (a comment may explain why there is no attestation)
+if re.search(r"docker (build|push|tag)|buildx build", runs) or any(re.search(r"build-push-action|attest", u) for u in uses): problems.append("a step builds, pushes or attests (the workflow must only copy)")
+for u in uses:
+    if not re.search(r"@[0-9a-f]{40}\b", u): problems.append("action not pinned to a commit: " + u)
+if "inputs.version" not in raw: problems.append("version input not used")
+print("OK" if not problems else "PROBLEMS " + "; ".join(problems))
+MIPY
+)
+    if printf '%s' "$mi_wf" | grepq -E '^OK$'; then
+        pass "S04E33 pipeline: mirror-image.yml has packages: write, runs the tested script, pins its actions, and never builds, pushes or attests"
+    else
+        fail "S04E33 pipeline: mirror-image.yml has packages: write, runs the tested script, pins its actions, and never builds, pushes or attests" "$mi_wf"
+    fi
+    rm -rf "$mi_dir"
+
     # ── S04E32 -- The Tap: the manifests are mirrored to the Homebrew tap and Scoop bucket, and only if they match the release ──
     # No tap or bucket existed, so no `brew install hopper` or `scoop install hopper` could work. scripts/publish-taps.sh mirrors the
     # manifests into them. It is tested against local bare repositories and a synthetic packaging directory, never the real ones.

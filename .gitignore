@@ -24,6 +24,7 @@ scripts/*
 !scripts/release-body.sh
 !scripts/check-manifests.py
 !scripts/publish-taps.sh
+!scripts/mirror-image.sh
 !scripts/eval-lint.sh
 !scripts/check-ignored-scripts.sh
 !scripts/lint-espanso-yml.sh

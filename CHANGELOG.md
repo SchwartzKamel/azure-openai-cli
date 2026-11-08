@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **ci(release):** S04E33 *The Mirror* -- after the repository rename the image path
+  `ghcr.io/schwartzkamel/hopper` had no images, because the path follows the repository name at publish time. A new
+  manual `mirror-image` workflow and `scripts/mirror-image.sh` copy an already-published image to the current path by
+  digest: nothing is rebuilt (re-running the release would change the archives and break every published checksum and
+  attestation), the destination digest is read back and must equal the source's, a tag is copied only when the source
+  has it at the same digest (so an old version never moves `latest`), and no new provenance is created for an image
+  this repository did not build. (s04e33-the-mirror)
 - **feat(packaging):** S04E32 *The Tap* -- the Homebrew tap (`SchwartzKamel/homebrew-tap`) and the Scoop bucket
   (`SchwartzKamel/scoop-bucket`) now exist: `brew install schwartzkamel/tap/hopper`, or `scoop bucket add
   schwartzkamel https://github.com/SchwartzKamel/scoop-bucket` then `scoop install schwartzkamel/hopper`. They are
