@@ -1190,6 +1190,104 @@ EVSUITE
     pq_out=$(printf 'Alpha\n' | grepq -Fi alpha; echo "rc=$?")
     if [ "$pq_out" = "rc=0" ]; then pass "S04E23 grepq: flags pass through (-i)"; else fail "S04E23 grepq: flags pass through (-i)" "$pq_out"; fi
 
+    # ── S04E30 -- The Hash Sync: manifests pin only what the release published, byte for byte ──
+    # The Homebrew, Scoop and Nix manifests were last synced at v2.0.6, five releases ago, and nothing compared them with the
+    # published assets. scripts/check-manifests.py does, and these cases build good and deliberately broken manifests for it.
+    echo "▸ S04E30 manifests"
+    if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+        skip "S04E30 manifests: check-manifests and the shape of the new manifests" "PyYAML not available"
+    else
+        local mf30_dir; mf30_dir=$(mktemp -d)
+        mf30_case() { # <kind> <what it proves> <expected rc> <text the output must contain>
+            local kind="$1" what="$2" want_rc="$3" want_text="$4" out rc
+            python3 tests/helpers/make-manifests.py "$mf30_dir/$kind" "$kind"
+            set +e; out=$(python3 scripts/check-manifests.py --digests "$mf30_dir/$kind/digests.txt" "$mf30_dir/$kind/hopper.rb" "$mf30_dir/$kind/hopper.json" "$mf30_dir/$kind/flake.nix" 2>&1); rc=$?; set -e
+            if [ "$rc" = "$want_rc" ] && printf '%s' "$out" | grepq -F -- "$want_text"; then
+                pass "S04E30 check-manifests: $what"
+            else
+                fail "S04E30 check-manifests: $what" "rc=$rc (want $want_rc) $(printf '%s' "$out" | head -c 260)"
+            fi
+        }
+        mf30_case good "correct Homebrew, Scoop and Nix manifests pass (7 pins)" 0 "OK 7 pin(s) in 3 manifest(s)"
+        mf30_case brew-bad-hash "a Homebrew sha256 that is not the published one fails" 1 "does not match the published"
+        mf30_case scoop-bad-hash "a Scoop hash that is not the published one fails" 1 "does not match the published"
+        mf30_case nix-bad-hash "a Nix SRI that decodes to another digest fails" 1 "does not match the published"
+        mf30_case nix-bad-sri "a malformed Nix SRI fails (it is not silently skipped)" 1 "does not match the published"
+        mf30_case brew-missing-asset "a manifest that pins an asset the release does not have fails" 1 "points at an asset that does not exist"
+        mf30_case digests-missing-asset "a release whose digests lack an asset a manifest pins fails" 1 "points at an asset that does not exist"
+        mf30_case brew-mixed-versions "a manifest mixing two versions fails (and only that rule objects: every asset is published)" 1 "pins mix versions"
+        mf30_case brew-wrong-ext "an archive with the wrong extension for its platform fails (and only that rule objects)" 1 "should be .tar.gz for linux-x64"
+        mf30_case brew-wrong-tag "an asset under another tag than its own name fails" 1 "sits under tag v9.9.8, not v9.9.9"
+        mf30_case brew-az-ai-prefix "a URL still naming az-ai-* fails" 1 "url is not .../download/v<ver>/hopper-<ver>-<rid>"
+        mf30_case scoop-bad-version "a Scoop version that differs from its URL fails" 1 "manifest version 9.9.8 but the url says 9.9.9"
+        mf30_case scoop-bad-extract-dir "a Scoop extract_dir that is not the archive's directory fails" 1 "extract_dir"
+        mf30_case brew-empty "a manifest with no pins fails: nothing to check is not a pass" 1 "no pinned archives found"
+        mf30_case nix-no-block "a Nix flake with no latestHashes fails" 1 "no pinned archives found"
+
+        local mf30_out mf30_rc
+        set +e; mf30_out=$(python3 scripts/check-manifests.py --digests "$mf30_dir/good/digests.txt" "$mf30_dir/does-not-exist.rb" 2>&1); mf30_rc=$?; set -e
+        if [ "$mf30_rc" = "2" ] && printf '%s' "$mf30_out" | grepq -F 'cannot read'; then
+            pass "S04E30 check-manifests: a manifest file that does not exist is a usage error (exit 2)"
+        else
+            fail "S04E30 check-manifests: a manifest file that does not exist is a usage error (exit 2)" "rc=$mf30_rc $mf30_out"
+        fi
+        set +e; mf30_out=$(python3 scripts/check-manifests.py --digests 2>&1); mf30_rc=$?; set -e
+        if [ "$mf30_rc" = "2" ]; then pass "S04E30 check-manifests: --digests with no file is a usage error (exit 2)"; else fail "S04E30 check-manifests: --digests with no file is a usage error (exit 2)" "rc=$mf30_rc"; fi
+
+        # ---- the shape of the real manifests ----
+        if [ -s packaging/homebrew/Formula/hopper.rb ] && [ -s packaging/scoop/hopper.json ] && [ -s packaging/nix/flake.nix ] \
+            && [ ! -e packaging/homebrew/Formula/az-ai.rb ] && [ ! -e packaging/scoop/az-ai.json ]; then
+            pass "S04E30 manifests: hopper.rb, hopper.json and flake.nix exist, and the superseded unversioned az-ai.rb and az-ai.json are gone"
+        else
+            fail "S04E30 manifests: hopper.rb, hopper.json and flake.nix exist, and the superseded unversioned az-ai.rb and az-ai.json are gone" "$(ls packaging/homebrew/Formula packaging/scoop | tr '\n' ' ')"
+        fi
+        if [ -L packaging/homebrew/Aliases/az-ai ] && [ "$(readlink packaging/homebrew/Aliases/az-ai)" = "../Formula/hopper.rb" ] && [ -f "packaging/homebrew/Aliases/$(readlink packaging/homebrew/Aliases/az-ai)" ]; then
+            pass "S04E30 manifests: the Homebrew alias az-ai resolves to the hopper formula"
+        else
+            fail "S04E30 manifests: the Homebrew alias az-ai resolves to the hopper formula" "$(ls -l packaging/homebrew/Aliases 2>&1 | tail -1)"
+        fi
+        if grepq -F 'bin.install "hopper"' packaging/homebrew/Formula/hopper.rb && grepq -F 'bin.install_symlink "hopper" => "az-ai"' packaging/homebrew/Formula/hopper.rb \
+            && grepq -F 'az-ai --version --short' packaging/homebrew/Formula/hopper.rb && ! grepq -E '^  version "' packaging/homebrew/Formula/hopper.rb; then
+            pass "S04E30 manifests: the formula installs hopper and an az-ai link, tests both, and has no redundant version line (brew audit)"
+        else
+            fail "S04E30 manifests: the formula installs hopper and an az-ai link, tests both, and has no redundant version line (brew audit)" "see packaging/homebrew/Formula/hopper.rb"
+        fi
+        mf30_out=$(python3 - <<'MFPY'
+import json
+d = json.load(open("packaging/scoop/hopper.json"))
+p = []
+if d["bin"] != ["hopper.exe", ["hopper.exe", "az-ai"]]: p.append("bin does not shim both names")
+for a in ("64bit", "arm64"):
+    if a not in d["architecture"] or "extract_dir" not in d["architecture"][a]: p.append(a + " has no extract_dir")
+    if a not in d["autoupdate"]["architecture"] or "extract_dir" not in d["autoupdate"]["architecture"][a]: p.append(a + " autoupdate has no extract_dir")
+h = d["autoupdate"].get("hash", {})
+if not str(h.get("url", "")).endswith("/digests.txt"): p.append("autoupdate hash does not read the release's digests.txt")
+if "$sha256" not in h.get("regex", ""): p.append("autoupdate hash regex has no $sha256")
+print("OK" if not p else "PROBLEMS " + "; ".join(p))
+MFPY
+)
+        if printf '%s' "$mf30_out" | grepq -E '^OK$'; then
+            pass "S04E30 manifests: Scoop shims both names, extracts the archive's directory, and autoupdates from digests.txt (which exists), not from per-file .sha256 files (which do not)"
+        else
+            fail "S04E30 manifests: Scoop shims both names, extracts the archive's directory, and autoupdates from digests.txt (which exists), not from per-file .sha256 files (which do not)" "$mf30_out"
+        fi
+        mf30_out=$(python3 - <<'MFPY'
+import yaml
+d = yaml.safe_load(open(".github/workflows/packaging-rehearsal.yml"))
+j = d["jobs"].get("manifests")
+ok = bool(j) and any("check-manifests.py" in (st.get("run") or "") for st in j["steps"])
+paths = d[True]["pull_request"]["paths"] if True in d else d["on"]["pull_request"]["paths"]
+print("OK" if ok and "scripts/check-manifests.py" in paths else "PROBLEMS manifests job or path filter missing")
+MFPY
+)
+        if printf '%s' "$mf30_out" | grepq -E '^OK$'; then
+            pass "S04E30 pipeline: the rehearsal workflow RUNS check-manifests.py (and re-runs when the script changes)"
+        else
+            fail "S04E30 pipeline: the rehearsal workflow RUNS check-manifests.py (and re-runs when the script changes)" "$mf30_out"
+        fi
+        rm -rf "$mf30_dir"
+    fi
+
     # ── S04E29 -- The Rename Ships: release archives are named hopper-*, verified before publish, and the pipeline agrees with itself ──
     # Nothing used to test stage.sh, release.yml or the release body, so the first time they ran was on a public tag. These
     # cases build synthetic archives (good and deliberately broken) and hold the scripts and workflows to each other.

@@ -15,6 +15,7 @@ on:
       - 'scripts/verify-archive.py'
       - 'scripts/release-body.sh'
       - 'scripts/release-notes.sh'
+      - 'scripts/check-manifests.py'
       - 'azureopenai-cli/AzureOpenAI_CLI.csproj'
   # Run it by hand before cutting a release:  gh workflow run packaging-rehearsal.yml --ref <branch>
   workflow_dispatch: {}
@@ -87,3 +88,14 @@ jobs:
           ARGS=()
           if [[ "$RUN_IT" == "true" ]]; then ARGS+=(--run); fi
           "$PY" scripts/verify-archive.py "$FILE" "$RID" "${ARGS[@]}"
+
+  # A manifest must never pin an archive that is not published, nor a digest that is not the published one. This
+  # compares every pin in the current manifests with the release's own digests.txt (fetched from GitHub), so it fails
+  # on a manifest bumped before its release exists, and on a hand-copied hash.
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Check manifests against the published digests
+        run: python3 scripts/check-manifests.py
