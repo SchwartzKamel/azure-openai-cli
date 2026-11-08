@@ -81,6 +81,16 @@ I had proposed renaming the repository first. All three legion members recommend
 that order is recorded in an ADR-016 addendum: Stage 2, release, manifest hash-sync, then Stage 3. The council was also shallow on
 this repository (it asked for a `go.mod` audit in a .NET project), so it was one signal, verified rather than followed.
 
+### Act VIII -- The rehearsal's first catch
+
+The pull request's rehearsal ran six legs for the first time. Five passed, including both Windows legs (the PowerShell zip and the
+`.cmd` shim, which I could not run locally) and linux-arm64. The sixth, `osx-arm64`, was cancelled in the same second it started, with no
+steps: `The configuration 'macos-14-arm64-us-default' is not supported`. GitHub no longer provides the `macos-14` label, and the release
+workflow's own `osx-arm64` leg used it. Because the `release` job needs every build leg, **the v2.4.0 tag would have failed after the tag
+was already public, publishing nothing.** That is the failure the rehearsal was built to move onto a pull request, and on its first run
+it did. The leg moves to `macos-15` (pinned rather than floating on `macos-latest`, which is now macOS 26, since a binary built on the
+newest image can inherit a higher minimum macOS version), in a separate commit so the catch stays visible.
+
 ## What shipped
 
 - `stage.sh` (the new archive and directory names, the Windows shim), `release.yml` (globs, the verify step, the body script, a
@@ -99,7 +109,7 @@ this repository (it asked for a `go.mod` audit in a .NET project), so it was one
 
 ## Lessons from this episode
 
-1. **If you cannot test the step, test the means of testing it.** Three small scripts made an untestable release testable.
+1. **If you cannot test the step, test the means of testing it.** Three small scripts and a rehearsal made an untestable release testable, and the rehearsal caught a runner label that would have failed the public tag on its first run.
 2. **Check what the pipeline already published.** The file-name bug, the lowercase bug and the nonexistent tap were all there.
 3. **A test that greps for text is weak.** A comment satisfied it; parsing the workflow did not.
 4. **Look for the input that tells two checks apart.** A redundant check hides its own removal.

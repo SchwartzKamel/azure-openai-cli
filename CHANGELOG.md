@@ -120,7 +120,9 @@ a GitHub Copilot provider preset, and many fixes. The full list follows.
   `[Unreleased]`), and the release body (`scripts/release-body.sh`) is fixed: file names no longer carry the
   tag's `v` (the published assets never did), the `docker pull` example is lowercase, and it no longer tells
   users to install from a Homebrew tap and Scoop bucket that do not exist. `actionlint` on `release.yml` goes
-  from 15 findings to 0. The manifests follow in a hash-sync after the release. (s04e29-the-rename-ships)
+  from 15 findings to 0. The `osx-arm64` release leg moves from the retired `macos-14` runner label to `macos-15`
+  (the rehearsal found that it would have failed the tag). The manifests follow in a hash-sync after the release.
+  (s04e29-the-rename-ships)
 - **feat(rebrand):** S04E14 *The Rebrand* -- the project is now **hopper**
   (formerly `az-ai`, the Azure OpenAI CLI). The binary is `hopper`, and `az-ai`
   stays as an alias: `make install` links it, release archives contain both, and

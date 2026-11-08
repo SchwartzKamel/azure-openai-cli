@@ -42,7 +42,7 @@ jobs:
             ext: tar.gz
             run: false
           - rid: osx-arm64
-            os: macos-14
+            os: macos-15
             ext: tar.gz
             run: true
           - rid: win-x64
