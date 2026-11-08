@@ -1190,6 +1190,121 @@ EVSUITE
     pq_out=$(printf 'Alpha\n' | grepq -Fi alpha; echo "rc=$?")
     if [ "$pq_out" = "rc=0" ]; then pass "S04E23 grepq: flags pass through (-i)"; else fail "S04E23 grepq: flags pass through (-i)" "$pq_out"; fi
 
+    # ── S04E32 -- The Tap: the manifests are mirrored to the Homebrew tap and Scoop bucket, and only if they match the release ──
+    # No tap or bucket existed, so no `brew install hopper` or `scoop install hopper` could work. scripts/publish-taps.sh mirrors the
+    # manifests into them. It is tested against local bare repositories and a synthetic packaging directory, never the real ones.
+    echo "▸ S04E32 tap and bucket"
+    if ! python3 -c 'import yaml' >/dev/null 2>&1 || ! git init -q --bare -b main "$(mktemp -u)" >/dev/null 2>&1; then
+        skip "S04E32 publish-taps: mirror the manifests into the tap and bucket" "PyYAML or git init -b not available"
+    else
+        local tp_dir; tp_dir=$(mktemp -d)
+        tp_setup() { # <kind of manifests> -> builds $tp_dir/pk (packaging), $tp_dir/good (fixture + digests) and two empty bare repos
+            local kind="$1"
+            rm -rf "$tp_dir/pk" "$tp_dir/fx" "$tp_dir/tap.git" "$tp_dir/bucket.git" "$tp_dir/t" "$tp_dir/b"
+            python3 tests/helpers/make-manifests.py "$tp_dir/fx" "$kind"
+            mkdir -p "$tp_dir/pk/homebrew/Formula" "$tp_dir/pk/homebrew/Aliases" "$tp_dir/pk/scoop/versions" "$tp_dir/pk/nix"
+            cp "$tp_dir/fx/hopper.rb" "$tp_dir/pk/homebrew/Formula/hopper.rb"
+            printf 'pin\n' > "$tp_dir/pk/homebrew/Formula/az-ai@1.0.0.rb"
+            ln -s ../Formula/hopper.rb "$tp_dir/pk/homebrew/Aliases/az-ai"
+            cp "$tp_dir/fx/hopper.json" "$tp_dir/pk/scoop/hopper.json"
+            printf '{}\n' > "$tp_dir/pk/scoop/versions/az-ai@1.0.0.json"
+            cp "$tp_dir/fx/flake.nix" "$tp_dir/pk/nix/flake.nix"
+            cp packaging/homebrew/tap-README.md "$tp_dir/pk/homebrew/tap-README.md"
+            cp packaging/scoop/bucket-README.md "$tp_dir/pk/scoop/bucket-README.md"
+            git init -q --bare -b main "$tp_dir/tap.git"; git init -q --bare -b main "$tp_dir/bucket.git"
+        }
+        tp_run() { # <extra args...> -> output, with the exit code in tp_rc
+            set +e
+            tp_out=$(PACKAGING_DIR="$tp_dir/pk" TAP_REPO="file://$tp_dir/tap.git" BUCKET_REPO="file://$tp_dir/bucket.git" \
+                CHECK_ARGS="--digests $tp_dir/fx/digests.txt" bash scripts/publish-taps.sh "$@" 2>&1)
+            tp_rc=$?
+            set -e
+        }
+        local tp_out tp_rc
+
+        tp_setup good; tp_run
+        git clone -q "file://$tp_dir/tap.git" "$tp_dir/t" 2>/dev/null; git clone -q "file://$tp_dir/bucket.git" "$tp_dir/b" 2>/dev/null
+        if [ "$tp_rc" = "0" ] && [ -f "$tp_dir/t/Formula/hopper.rb" ] && [ -f "$tp_dir/t/README.md" ] && [ -f "$tp_dir/t/LICENSE" ] \
+            && [ -f "$tp_dir/b/bucket/hopper.json" ] && [ -f "$tp_dir/b/README.md" ] && [ -f "$tp_dir/b/LICENSE" ]; then
+            pass "S04E32 publish-taps: a first publish fills both empty repositories (formula, README, LICENSE; manifest, README, LICENSE)"
+        else
+            fail "S04E32 publish-taps: a first publish fills both empty repositories (formula, README, LICENSE; manifest, README, LICENSE)" "rc=$tp_rc $(printf '%s' "$tp_out" | tail -3 | head -c 300)"
+        fi
+        if [ -L "$tp_dir/t/Aliases/az-ai" ] && [ "$(readlink "$tp_dir/t/Aliases/az-ai")" = "../Formula/hopper.rb" ]; then
+            pass "S04E32 publish-taps: the Homebrew az-ai alias arrives as a symlink to the hopper formula (not a copy)"
+        else
+            fail "S04E32 publish-taps: the Homebrew az-ai alias arrives as a symlink to the hopper formula (not a copy)" "$(ls -l "$tp_dir/t/Aliases" 2>&1 | tail -1)"
+        fi
+        if [ -f "$tp_dir/t/Formula/az-ai@1.0.0.rb" ] && [ -f "$tp_dir/b/bucket/az-ai@1.0.0.json" ]; then
+            pass "S04E32 publish-taps: the frozen az-ai@<version> pins are mirrored too"
+        else
+            fail "S04E32 publish-taps: the frozen az-ai@<version> pins are mirrored too" "$(ls "$tp_dir/t/Formula" "$tp_dir/b/bucket" 2>&1 | tr '\n' ' ')"
+        fi
+        if [ "$(git -C "$tp_dir/t" log -1 --format=%s)" = "hopper 9.9.9" ] && [ "$(git -C "$tp_dir/b" log -1 --format=%s)" = "hopper 9.9.9" ]; then
+            pass "S04E32 publish-taps: each mirror commit is named for the version it carries (hopper 9.9.9)"
+        else
+            fail "S04E32 publish-taps: each mirror commit is named for the version it carries (hopper 9.9.9)" "$(git -C "$tp_dir/t" log -1 --format=%s)"
+        fi
+
+        tp_run
+        git -C "$tp_dir/t" pull -q 2>/dev/null; git -C "$tp_dir/b" pull -q 2>/dev/null
+        if [ "$tp_rc" = "0" ] && [ "$(git -C "$tp_dir/t" log --oneline | wc -l | tr -d ' ')" = "1" ] && [ "$(git -C "$tp_dir/b" log --oneline | wc -l | tr -d ' ')" = "1" ] \
+            && printf '%s' "$tp_out" | grepq -F 'already up to date'; then
+            pass "S04E32 publish-taps: running it again with nothing changed publishes nothing (still one commit in each)"
+        else
+            fail "S04E32 publish-taps: running it again with nothing changed publishes nothing (still one commit in each)" "rc=$tp_rc $(printf '%s' "$tp_out" | tail -2 | head -c 200)"
+        fi
+
+        rm -f "$tp_dir/pk/homebrew/Formula/az-ai@1.0.0.rb" "$tp_dir/pk/scoop/versions/az-ai@1.0.0.json"
+        tp_run
+        git -C "$tp_dir/t" pull -q 2>/dev/null; git -C "$tp_dir/b" pull -q 2>/dev/null
+        if [ ! -e "$tp_dir/t/Formula/az-ai@1.0.0.rb" ] && [ ! -e "$tp_dir/b/bucket/az-ai@1.0.0.json" ] && [ -f "$tp_dir/t/Formula/hopper.rb" ]; then
+            pass "S04E32 publish-taps: the mirrors are exact: a file removed from packaging/ is removed from the tap and the bucket"
+        else
+            fail "S04E32 publish-taps: the mirrors are exact: a file removed from packaging/ is removed from the tap and the bucket" "$(ls "$tp_dir/t/Formula" "$tp_dir/b/bucket" 2>&1 | tr '\n' ' ')"
+        fi
+
+        tp_setup good; echo "# changed" >> "$tp_dir/pk/homebrew/tap-README.md"; tp_run --dry-run
+        if [ "$tp_rc" = "0" ] && printf '%s' "$tp_out" | grepq -F "dry run, would commit 'hopper 9.9.9'" && [ -z "$(git -C "$tp_dir/tap.git" for-each-ref 2>/dev/null)" ] \
+            && [ -z "$(git -C "$tp_dir/bucket.git" for-each-ref 2>/dev/null)" ]; then
+            pass "S04E32 publish-taps: --dry-run shows what would be committed and pushes nothing"
+        else
+            fail "S04E32 publish-taps: --dry-run shows what would be committed and pushes nothing" "rc=$tp_rc refs: $(git -C "$tp_dir/tap.git" for-each-ref 2>&1 | head -c 100)"
+        fi
+
+        tp_setup brew-bad-hash; tp_run
+        if [ "$tp_rc" != "0" ] && printf '%s' "$tp_out" | grepq -F 'nothing was published' && [ -z "$(git -C "$tp_dir/tap.git" for-each-ref 2>/dev/null)" ] \
+            && [ -z "$(git -C "$tp_dir/bucket.git" for-each-ref 2>/dev/null)" ]; then
+            pass "S04E32 publish-taps: a manifest whose hash is not the published one STOPS the publish: nothing reaches either repository"
+        else
+            fail "S04E32 publish-taps: a manifest whose hash is not the published one STOPS the publish: nothing reaches either repository" "rc=$tp_rc refs: $(git -C "$tp_dir/tap.git" for-each-ref 2>&1 | head -c 100) $(printf '%s' "$tp_out" | tail -2 | head -c 160)"
+        fi
+
+        tp_setup good; rm -f "$tp_dir/pk/homebrew/tap-README.md"; tp_run
+        if [ "$tp_rc" != "0" ]; then
+            pass "S04E32 publish-taps: a missing README (an incomplete mirror) fails instead of publishing half"
+        else
+            fail "S04E32 publish-taps: a missing README (an incomplete mirror) fails instead of publishing half" "rc=$tp_rc"
+        fi
+
+        tp_setup good; set +e; tp_out=$(PACKAGING_DIR="$tp_dir/pk" TAP_REPO="file://$tp_dir/does-not-exist.git" BUCKET_REPO="file://$tp_dir/bucket.git" CHECK_ARGS="--digests $tp_dir/fx/digests.txt" bash scripts/publish-taps.sh 2>&1); tp_rc=$?; set -e
+        if [ "$tp_rc" != "0" ] && printf '%s' "$tp_out" | grepq -F 'cannot clone'; then
+            pass "S04E32 publish-taps: an unreachable repository fails with 'cannot clone'"
+        else
+            fail "S04E32 publish-taps: an unreachable repository fails with 'cannot clone'" "rc=$tp_rc $(printf '%s' "$tp_out" | tail -2 | head -c 200)"
+        fi
+        # Two phases: when the SECOND repository cannot be reached, the first must not have been published alone.
+        tp_setup good; set +e; tp_out=$(PACKAGING_DIR="$tp_dir/pk" TAP_REPO="file://$tp_dir/tap.git" BUCKET_REPO="file://$tp_dir/does-not-exist.git" CHECK_ARGS="--digests $tp_dir/fx/digests.txt" bash scripts/publish-taps.sh 2>&1); tp_rc=$?; set -e
+        if [ "$tp_rc" != "0" ] && printf '%s' "$tp_out" | grepq -F 'cannot clone' && [ -z "$(git -C "$tp_dir/tap.git" for-each-ref 2>/dev/null)" ]; then
+            pass "S04E32 publish-taps: if the bucket cannot be reached, the tap is NOT published alone (prepare both, then push both)"
+        else
+            fail "S04E32 publish-taps: if the bucket cannot be reached, the tap is NOT published alone (prepare both, then push both)" "rc=$tp_rc tap refs: $(git -C "$tp_dir/tap.git" for-each-ref 2>&1 | head -c 100)"
+        fi
+        set +e; tp_out=$(bash scripts/publish-taps.sh --bogus 2>&1); tp_rc=$?; set -e
+        if [ "$tp_rc" = "2" ]; then pass "S04E32 publish-taps: an unknown argument is a usage error (exit 2)"; else fail "S04E32 publish-taps: an unknown argument is a usage error (exit 2)" "rc=$tp_rc"; fi
+        rm -rf "$tp_dir"
+    fi
+
     # ── S04E30 -- The Hash Sync: manifests pin only what the release published, byte for byte ──
     # The Homebrew, Scoop and Nix manifests were last synced at v2.0.6, five releases ago, and nothing compared them with the
     # published assets. scripts/check-manifests.py does, and these cases build good and deliberately broken manifests for it.
@@ -1417,10 +1532,18 @@ PKPY
         else
             fail "S04E29 release-body: lowercase image with the bare version, the digests, the notes and the attestation command" "$(printf '%s' "$pk_body" | head -c 300)"
         fi
-        if ! printf '%s' "$pk_body" | grepq -E 'brew install|scoop install'; then
-            pass "S04E29 release-body: does not tell people to install from a Homebrew tap or Scoop bucket that does not exist"
+        if printf '%s' "$pk_body" | grepq -F 'brew install schwartzkamel/tap/hopper' \
+            && printf '%s' "$pk_body" | grepq -F 'scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-bucket' \
+            && printf '%s' "$pk_body" | grepq -F 'scoop install schwartzkamel/hopper' \
+            && printf '%s' "$pk_body" | grepq -F 'has not yet been exercised on Windows' && printf '%s' "$pk_body" | grepq -F 'has not yet been run'; then
+            pass "S04E29 release-body: names the real tap and bucket commands, and says plainly that Scoop and Nix have not been run"
         else
-            fail "S04E29 release-body: does not tell people to install from a Homebrew tap or Scoop bucket that does not exist" "$(printf '%s' "$pk_body" | grep -E 'brew|scoop' | head -2)"
+            fail "S04E29 release-body: names the real tap and bucket commands, and says plainly that Scoop and Nix have not been run" "$(printf '%s' "$pk_body" | sed -n '/## Package managers/,/## SHA/p' | head -c 400)"
+        fi
+        if ! printf '%s' "$pk_body" | grepq -E 'install .*az-ai|az-ai-[0-9]'; then
+            pass "S04E29 release-body: no install command names the old az-ai package"
+        else
+            fail "S04E29 release-body: no install command names the old az-ai package" "$(printf '%s' "$pk_body" | grep -E 'install .*az-ai' | head -2)"
         fi
         set +e; pk_out=$(CHANGELOG="$pk_dir/CHANGELOG.md" bash scripts/release-body.sh main SchwartzKamel/hopper SchwartzKamel "$pk_dir/digests.txt" 2>&1); pk_rc=$?; set -e
         if [ "$pk_rc" = "2" ]; then pass "S04E29 release-body: a branch name is refused (only a vX.Y.Z tag can be released)"; else fail "S04E29 release-body: a branch name is refused (only a vX.Y.Z tag can be released)" "rc=$pk_rc $pk_out"; fi

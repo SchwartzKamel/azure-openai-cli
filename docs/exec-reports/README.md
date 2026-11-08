@@ -14,7 +14,7 @@ because the [cast itself is](../../AGENTS.md).
 | **S01** | The Pilot Years                          | Aired (back-fill pending)        | --        |
 | **S02** | Production & Polish (v2 era)             | In production (24-arc + specials) | --        |
 | **S03** | Local & Multi-Provider                   | Aired (30 episodes; index back-fill pending) | [s03-blueprint.md](s03-blueprint.md) |
-| **S04** | Model Intelligence                       | In production (E01-E31 + 12 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
+| **S04** | Model Intelligence                       | In production (E01-E32 + 12 specials aired) | [s04-blueprint.md](s04-blueprint.md) |
 | **S05** | Protocols & Plugins (incl. MCP)          | Pre-production                  | [s05-blueprint.md](s05-blueprint.md) |
 | **S06** | Dogfooding (`az-ai` is the main tool)    | Pre-production (showrunner override) | [s06-blueprint.md](s06-blueprint.md) |
 | **S07+** | Roadmap pad (Enterprise, Multimodal, ...) | Slate                            | [seasons-roadmap.md](seasons-roadmap.md) |
@@ -108,6 +108,7 @@ range recorded in each report. E06 is the mid-season cast-balance audit.
 | S04E29   | *The Rename Ships*     | [s04e29-the-rename-ships.md](s04e29-the-rename-ships.md) | CI + packaging | Release archives are `hopper-<version>-<rid>`, verified (and run) before publish and rehearsed on the PR; the release body and notes are tested scripts that stop telling users things that are false |
 | S04E30   | *The Hash Sync*        | [s04e30-the-hash-sync.md](s04e30-the-hash-sync.md) | packaging | Homebrew, Scoop and Nix manifests moved to `hopper` and checked against the release's own digests (the old 'latest' pointed at names that never existed); Homebrew verified by a real install |
 | S04E31   | *The New Address*      | [s04e31-the-new-address.md](s04e31-the-new-address.md) | docs + packaging | The repository is now `SchwartzKamel/hopper` (ADR-016 stage 3); the old name redirects (checked, web/API/assets/git); 51 living files name the new address; the image path and attestations still remember the old one |
+| S04E32   | *The Tap*              | [s04e32-the-tap.md](s04e32-the-tap.md) | packaging | The Homebrew tap and Scoop bucket now exist and are mirrors of `packaging/`, published by a script that refuses a wrong pin and publishes both or neither; `brew install schwartzkamel/tap/hopper` verified from GitHub |
 | S04SP1   | *The Reruns*           | [s04sp1-the-reruns.md](s04sp1-the-reruns.md) | `eecfd74` | Release matrix retag after v2.2.0 |
 | S04SP2   | *The Stenographer*     | [s04sp2-the-stenographer.md](s04sp2-the-stenographer.md) | docs-only | Paperwork audit; artifact contract locked for v2.3.0 |
 | S04SP3   | *The Pre-Push*         | [s04sp3-the-pre-push.md](s04sp3-the-pre-push.md) | `1c8c787` | Pre-push docs-lint after ten consecutive red runs |

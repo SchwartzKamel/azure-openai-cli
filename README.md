@@ -566,6 +566,23 @@ Releases up to v2.3.0 named their archives `az-ai-<version>-<rid>`; from v2.4.0 
 
 > **Note:** `osx-x64` (Intel macOS) was dropped from the release matrix in **v2.0.4** after sustained runner instability. Intel-Mac users should run the Docker image or build from source until the leg is reinstated -- see [docs/runbooks/macos-runner-triage.md](docs/runbooks/macos-runner-triage.md) for the triage plan and current status. `linux-arm64` and `win-arm64` are also not built in v2; track the ADR in [docs/adr/](docs/adr/) for plans to reintroduce them.
 
+### Homebrew and Scoop
+
+```bash
+# macOS (Apple Silicon) and Linux (x64, ARM64)
+brew install schwartzkamel/tap/hopper
+```
+
+```powershell
+# Windows
+scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-bucket
+scoop install schwartzkamel/hopper
+```
+
+Both install `hopper` and an `az-ai` link to it (the old command name, so existing scripts keep working), and both verify the
+archive's checksum. The Homebrew install has been tested from the tap; the Scoop manifest's URLs and hashes are checked against the
+release but the install itself has not yet been exercised on Windows.
+
 ### Docker (GHCR)
 
 Secondary option -- native AOT is recommended for latency-sensitive use.

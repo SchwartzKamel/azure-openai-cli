@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **feat(packaging):** S04E32 *The Tap* -- the Homebrew tap (`SchwartzKamel/homebrew-tap`) and the Scoop bucket
+  (`SchwartzKamel/scoop-bucket`) now exist: `brew install schwartzkamel/tap/hopper`, or `scoop bucket add
+  schwartzkamel https://github.com/SchwartzKamel/scoop-bucket` then `scoop install schwartzkamel/hopper`. They are
+  mirrors of `packaging/`, written by the new `scripts/publish-taps.sh`, which first re-runs the manifest check and
+  refuses to publish a pin that is not the release's published digest, replaces the managed directories wholesale, is a
+  no-op when nothing changed, and publishes both repositories or neither. The Homebrew install was verified from
+  GitHub; the Scoop manifest has not been exercised on Windows. The release body now names these commands, and says
+  so where Scoop and Nix have not been run. (s04e32-the-tap)
 - **docs(repo):** S04E31 *The New Address* -- the GitHub repository is now `SchwartzKamel/hopper` (ADR-016
   stage 3). The old address keeps working: the web, API and release-asset URLs and the old git remote all
   redirect. 51 living files (the issue templates, `SECURITY.md`, the Dockerfile's OCI labels, the packaging

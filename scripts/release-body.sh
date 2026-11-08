@@ -60,9 +60,13 @@ SBOMs (CycloneDX JSON) are attached alongside each archive. Each archive was che
 
 ## Package managers
 
-- Nix: \`nix run github:${REPO}?dir=packaging/nix\`
-- The Homebrew formula and the Scoop manifest are in \`packaging/\`. A published Homebrew tap and Scoop bucket
-  do not exist yet, so there is no package-manager install command to give for them.
+- Homebrew (macOS Apple Silicon, Linux): \`brew install schwartzkamel/tap/hopper\`. It installs \`hopper\` and an
+  \`az-ai\` link, and Homebrew verifies the archive's SHA-256.
+- Scoop (Windows): \`scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-bucket\`, then
+  \`scoop install schwartzkamel/hopper\`. The manifest's URLs and hashes are checked against this release's digests;
+  the install itself has not yet been exercised on Windows.
+- Nix: \`nix run github:${REPO}?dir=packaging/nix\`. The flake carries this release's digests but has not yet been run
+  on a Nix machine.
 
 ## SHA-256 Checksums
 
