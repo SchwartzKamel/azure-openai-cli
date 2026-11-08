@@ -1226,7 +1226,8 @@ MISTUB
         local reg="$1"; shift
         : > "$mi_dir/calls.log"; : > "$mi_dir/violations.log"; printf '%b' "$reg" > "$mi_dir/registry.txt"
         local envs=(); while [ "$1" != "--" ]; do envs+=("$1"); shift; done; shift
-        set +e; mi_out=$(env STUB_DIR="$mi_dir" PATH="$mi_dir/bin:$PATH" "${envs[@]}" bash scripts/mirror-image.sh "$@" 2>&1); mi_rc=$?; set -e
+        # Control the environment: GitHub Actions always sets GITHUB_REPOSITORY, which the script would use as the default target.
+        set +e; mi_out=$(env -u GITHUB_REPOSITORY STUB_DIR="$mi_dir" PATH="$mi_dir/bin:$PATH" "${envs[@]}" bash scripts/mirror-image.sh "$@" 2>&1); mi_rc=$?; set -e
     }
     mi_reg_has() { awk -v r="$1" -v d="$2" '$1 == r && $2 == d { f = 1 } END { exit f ? 0 : 1 }' "$mi_dir/registry.txt"; }
 
