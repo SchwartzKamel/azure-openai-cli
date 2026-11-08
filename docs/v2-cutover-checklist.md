@@ -112,8 +112,8 @@ All work happens on branch `release/2.0.0` cut from `main`.
 
 | # | Action | Owner | Validation |
 |---|--------|-------|------------|
-| 24 | [`packaging/homebrew/Formula/az-ai.rb`](../packaging/homebrew/Formula/az-ai.rb): bump `version "2.0.0"`, update all three `url` + `sha256` entries, update `test do assert_match "2.0.0"` | Bob | `brew audit --new-formula packaging/homebrew/Formula/az-ai.rb` locally |
-| 25 | [`packaging/scoop/az-ai.json`](../packaging/scoop/az-ai.json): bump `version`, update `url` + `hash` for win-x64 zip | Bob | Scoop manifest JSON schema validation |
+| 24 | [`packaging/homebrew/Formula/az-ai.rb`](../packaging/homebrew/Formula/az-ai@2.0.0.rb) (now the `az-ai@2.0.0.rb` pin): bump `version "2.0.0"`, update all three `url` + `sha256` entries, update `test do assert_match "2.0.0"` | Bob | `brew audit --new-formula packaging/homebrew/Formula/az-ai.rb` locally |
+| 25 | [`packaging/scoop/az-ai.json`](../packaging/scoop/versions/az-ai@2.0.0.json) (now the `az-ai@2.0.0.json` pin): bump `version`, update `url` + `hash` for win-x64 zip | Bob | Scoop manifest JSON schema validation |
 | 26 | [`packaging/nix/flake.nix`](../packaging/nix/flake.nix): bump `version`, update all `sha256` entries; add `linux-aarch64` if the release pipeline emits it this cycle | Bob | `nix flake check` |
 | 27 | Open upstream PRs to homebrew-core / scoop-extras *after* the GitHub Release is published and tarball SHAs are pinned to the signed attestation | Bob | PR links posted to release PR |
 

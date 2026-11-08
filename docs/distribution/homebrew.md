@@ -28,7 +28,7 @@ Two paths exist for shipping a Homebrew formula:
 ## Draft formula
 
 The draft lives at `packaging/homebrew/azure-openai-cli.rb` (not yet
-committed; see `packaging/homebrew/Formula/az-ai.rb` for the current
+committed; see `packaging/homebrew/Formula/hopper.rb` for the current
 v2-line formula).
 Inline preview:
 

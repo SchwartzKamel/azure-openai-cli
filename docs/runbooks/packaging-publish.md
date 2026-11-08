@@ -176,7 +176,7 @@ Scoop's default resolution rules.
 cd /path/to/azure-openai-cli
 git checkout v2.0.4
 
-cp packaging/scoop/az-ai.json           /tmp/scoop-az-ai/bucket/az-ai.json
+cp packaging/scoop/hopper.json           /tmp/scoop-az-ai/bucket/az-ai.json
 rsync -av --delete packaging/scoop/versions/ /tmp/scoop-az-ai/bucket/versions/
 
 cd /tmp/scoop-az-ai
@@ -185,7 +185,7 @@ git -c commit.gpgsign=false commit -m "manifest: mirror az-ai @ v2.0.4 from azur
 git push origin main
 ```
 
-**Rename note.** The in-repo file is `packaging/scoop/az-ai.json`
+**Rename note.** The in-repo file is `packaging/scoop/hopper.json`
 (historical name), but Scoop resolves the **filename** as the package
 name -- so it lands as `bucket/az-ai.json` in the bucket. The
 `versions/az-ai@<version>.json` files already match their resolved
@@ -249,7 +249,7 @@ done
 ### 4.2 Compare against the formula
 
 ```sh
-grep -E '^\s*sha256 ' packaging/homebrew/Formula/az-ai.rb
+grep -E '^\s*sha256 ' packaging/homebrew/Formula/hopper.rb
 grep -E '^\s*sha256 ' packaging/homebrew/Formula/az-ai@${VERSION}.rb
 ```
 
@@ -260,7 +260,7 @@ the publish, file a fix-forward tag, and re-run §2.
 ### 4.3 Compare against the Scoop manifest
 
 ```sh
-jq -r '.architecture."64bit".hash' packaging/scoop/az-ai.json
+jq -r '.architecture."64bit".hash' packaging/scoop/hopper.json
 jq -r '.architecture."64bit".hash' packaging/scoop/versions/az-ai@${VERSION}.json
 ```
 
@@ -319,7 +319,7 @@ name. Sacamano will chase that separately.
 | `brew audit` warns about `keg_only`                  | Expected for pinned `@<version>` formulae                         | Ignore -- that's the whole point |
 | `scoop checkver -u` mutates a pinned `versions/*`    | Ran `checkver` inside `versions/`                                 | Revert; only run against `bucket/az-ai.json` |
 | Intel-Mac user reports "bad CPU type in executable"  | Rosetta 2 not installed                                           | §2.4 |
-| Tap tracking formula reports stale version           | `packaging/homebrew/Formula/az-ai.rb` not bumped at tag time      | Run the tag-time ritual in `packaging/README.md` |
+| Tap tracking formula reports stale version           | `packaging/homebrew/Formula/hopper.rb` not bumped at tag time      | Run the tag-time ritual in `packaging/README.md` |
 
 ---
 

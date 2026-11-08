@@ -301,13 +301,13 @@ gh attestation verify \
 After the release publishes, pull the tarball digests from the Release
 assets and update:
 
-- `packaging/homebrew/Formula/az-ai.rb` (rolling formula, always
+- `packaging/homebrew/Formula/hopper.rb` (rolling formula, always
   points at latest)
 - `packaging/homebrew/Formula/az-ai@${VERSION}.rb` (new sibling
   formula, pinned to this release -- copy from the previous `@X.Y.Z`
   formula and update `url`, `sha256`, and `version`)
 - `packaging/nix/flake.nix` (SRI-format SHA-256, `sha256-<base64>`)
-- `packaging/scoop/az-ai.json` (straight hex SHA-256, `win-x64` only)
+- `packaging/scoop/hopper.json` (straight hex SHA-256, `win-x64` only)
 
 ```bash
 VERSION=2.0.5
