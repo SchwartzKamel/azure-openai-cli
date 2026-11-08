@@ -165,9 +165,9 @@ then mirrors them to the external tap/bucket repos.
 
 | Consumer                | Path                                               | Which RIDs it ships                        | Where it pulls from        |
 |-------------------------|----------------------------------------------------|--------------------------------------------|----------------------------|
-| Homebrew                | `packaging/homebrew/Formula/az-ai.rb` (+ `@X.Y.Z`) | `osx-arm64`, `linux-x64`                   | GitHub Release tarballs    |
+| Homebrew                | `packaging/homebrew/Formula/hopper.rb` (+ `@X.Y.Z`) | `osx-arm64`, `linux-x64`                   | GitHub Release tarballs    |
 | Nix flake               | `packaging/nix/flake.nix`                          | `linux-x64`, `linux-musl-x64`, `osx-arm64` | GitHub Release tarballs    |
-| Scoop                   | `packaging/scoop/az-ai.json` (+ `versions/`)       | `win-x64`                                  | GitHub Release zip         |
+| Scoop                   | `packaging/scoop/hopper.json` (+ `versions/`)       | `win-x64`                                  | GitHub Release zip         |
 | Docker                  | (not in `packaging/`; driven by `release.yml`)     | amd64 (+ arm64 where avail.)               | GHCR directly              |
 | Homebrew tap (external) | `SchwartzKamel/homebrew-az-ai`                     | mirrors `packaging/homebrew`               | Bob's publish flow         |
 | Scoop bucket (external) | `SchwartzKamel/scoop-az-ai`                        | mirrors `packaging/scoop`                  | Bob's publish flow         |

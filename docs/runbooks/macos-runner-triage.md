@@ -184,8 +184,8 @@ Companion edits when cutting a RID:
   verify loops.
 - `Makefile` -- leave the local-dev `publish-<rid>` target; contributors
   still want it. Add a note that it's local-dev only.
-- `packaging/homebrew/Formula/az-ai.rb`, `packaging/nix/flake.nix`,
-  `packaging/scoop/az-ai.json` -- drop the RID's hash block.
+- `packaging/homebrew/Formula/hopper.rb`, `packaging/nix/flake.nix`,
+  `packaging/scoop/hopper.json` -- drop the RID's hash block.
 - This runbook -- update §1 table and move the cut RID to the
   strikethrough row.
 

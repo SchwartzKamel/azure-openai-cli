@@ -59,8 +59,8 @@ in 2026.
 The current main-line release is **v1.9.1** (`AzureOpenAI_CLI`,
 aliased to `azure-openai-cli`). The v2 line ships as `az-ai` and
 already has its own packaging under
-[`/packaging/homebrew/Formula/az-ai.rb`](../../packaging/homebrew/Formula/az-ai.rb),
-[`/packaging/scoop/az-ai.json`](../../packaging/scoop/az-ai.json), and
+[`/packaging/homebrew/Formula/hopper.rb`](../../packaging/homebrew/Formula/hopper.rb),
+[`/packaging/scoop/hopper.json`](../../packaging/scoop/hopper.json), and
 [`/packaging/nix/flake.nix`](../../packaging/nix/flake.nix). The two
 sets coexist intentionally during the dual-binary transition; collapse
 is a follow-up episode after v2 GA.

@@ -59,6 +59,14 @@ The first mutation pass left two: the file-extension rule and the mixed-versions
 tripped the missing-asset rule first, which hid them. The fixtures now put the "wrong" asset in the digests with a matching hash, so only the
 rule under test can object. Then both were caught.
 
+### Act VII -- A gate my preflight does not have
+
+The pull request's `docs-lint` failed: two Markdown links in `docs/v2-cutover-checklist.md` pointed at the two manifests I had deleted. CI's
+broken-link check lives only inline in the workflow, so none of my local gates run it, and the gap only showed when a file that docs link to
+was removed. The two links are retargeted to the v2.0.0 pins (what those files were when that checklist was written), the living runbooks
+that named the old files now name the new ones, and I ran CI's own check locally (extracted from the workflow) before pushing. The gap
+itself is `wilhelm-2026-11-W-6`.
+
 ## What shipped
 
 - `hopper.rb` (with `Aliases/az-ai`), `hopper.json` and the updated `nix/flake.nix`; the superseded unversioned `az-ai.rb` and `az-ai.json`
@@ -82,6 +90,7 @@ rule under test can object. Then both were caught.
 3. **Do the real install, then try to break it.** The negative control is what shows the checksum is actually enforced.
 4. **A fixture that trips two rules hides one.** Each broken input must be wrong in exactly one way.
 5. **Say what you could not run.** Two of three manifests were checked as data only.
+6. **A local preflight is only as good as the checks it copies.** The link check existed only in CI.
 
 ## Metrics
 
