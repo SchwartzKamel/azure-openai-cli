@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/SchwartzKamel/azure-openai-cli/scripts/provider-deps.schema.json",
+  "$id": "https://github.com/SchwartzKamel/hopper/scripts/provider-deps.schema.json",
   "title": "provider-deps mapping",
   "description": "Schema for scripts/provider-deps.json. Validated by scripts/provider-cve-report.sh before joining Trivy output against the map. Tooling only; AOT-irrelevant.",
   "type": "object",

@@ -217,7 +217,7 @@ pointer to the diagnostic.
 
 ### 7.1 v2.0.6 -- 2026-04-22
 
-Tag: [`v2.0.6`](https://github.com/SchwartzKamel/azure-openai-cli/releases/tag/v2.0.6).
+Tag: [`v2.0.6`](https://github.com/SchwartzKamel/hopper/releases/tag/v2.0.6).
 Clean-lockstep release -- filenames match the tag version (C-1 drift
 resolved).
 

@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Before filing**, consider [GitHub Discussions](https://github.com/SchwartzKamel/azure-openai-cli/discussions)
+        **Before filing**, consider [GitHub Discussions](https://github.com/SchwartzKamel/hopper/discussions)
         for open-ended questions — you'll typically get faster answers, and
         others can benefit from the thread.
 

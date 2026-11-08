@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **docs(repo):** S04E31 *The New Address* -- the GitHub repository is now `SchwartzKamel/hopper` (ADR-016
+  stage 3). The old address keeps working: the web, API and release-asset URLs and the old git remote all
+  redirect. 51 living files (the issue templates, `SECURITY.md`, the Dockerfile's OCI labels, the packaging
+  manifests and docs, the runbooks) now name the new address. The container image path is unchanged until the
+  next release (`ghcr.io/schwartzkamel/azure-openai-cli` through v2.4.0, then `ghcr.io/schwartzkamel/hopper`), and
+  attestations for releases up to v2.4.0 name the old repository, so verify them with `--owner SchwartzKamel`.
+  (s04e31-the-new-address)
 - **ci(packaging):** S04E30 *The Hash Sync* -- the Homebrew, Scoop and Nix manifests now install `hopper` (with
   `az-ai` as an alias) from the v2.4.0 archives, with digests taken from the release's published `digests.txt`.
   The unversioned manifests they replace were pinned to `az-ai-2.0.6-*` file names that never existed (the real

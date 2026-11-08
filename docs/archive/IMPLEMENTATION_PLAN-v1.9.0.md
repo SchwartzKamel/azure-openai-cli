@@ -117,7 +117,7 @@ Looking for a way to contribute? These are great starting points:
 
 ### How to Pick Up Work
 
-1. Check the [open issues](https://github.com/SchwartzKamel/azure-openai-cli/issues) for anything labeled `good first issue` or `help wanted`
+1. Check the [open issues](https://github.com/SchwartzKamel/hopper/issues) for anything labeled `good first issue` or `help wanted`
 2. Read the relevant [feature proposal](docs/proposals/) for context
 3. Follow the [Contributing Guide](CONTRIBUTING.md) for setup and PR process
 4. Ask questions in the issue thread -- we're happy to help
@@ -236,7 +236,7 @@ Post-AOT, the install story is still `curl | tar` or `make install`. Unacceptabl
 **Acceptance criteria:**
 - `brew install SchwartzKamel/tap/az-ai` works on macOS x64 + arm64
 - Scoop manifest in a `scoop-bucket` branch or tap; `scoop install az-ai` works on win-x64
-- `nix run github:SchwartzKamel/azure-openai-cli` produces runnable binary on Linux x64
+- `nix run github:SchwartzKamel/hopper` produces runnable binary on Linux x64
 - All three pinned to v1.9.0 release artifacts with SHA256 verification
 - CI job verifies the Homebrew formula lints (`brew audit --strict --online`)
 

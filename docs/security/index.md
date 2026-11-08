@@ -56,8 +56,8 @@ raising").
 | Date       | Scope                                                                 | Severity headline                                                       | Report                                                                          | Resolution commit |
 |------------|-----------------------------------------------------------------------|-------------------------------------------------------------------------|---------------------------------------------------------------------------------|-------------------|
 | 2026-04-22 | v2.0.4 docs + security posture (SECURITY.md, `docs/security/**`, `docs/audits/**`) | 5 High (indexing, version drift, secret-redaction doc gap, v2 DelegateTaskTool drift, HTTPS-only claim) | [`docs/audits/docs-audit-2026-04-22-newman.md`](../audits/docs-audit-2026-04-22-newman.md) | *this change + follow-ups (see §5)* |
-| 2026-04-22 | v2.0.2 AOT binary, live-endpoint red team (errors, `--raw`, Ralph)    | 3 High (error-surface leak, `--raw` stderr noise, Ralph exit code)      | [`docs/audits/fdr-v2-dogfood-2026-04-22.md`](../audits/fdr-v2-dogfood-2026-04-22.md) | [`4842b6a`](https://github.com/SchwartzKamel/azure-openai-cli/commit/4842b6a) |
-| 2025-07-25 | v1.8.0 release pipeline, supply-chain posture, workflow permissions   | 🔴 RED -- release pipeline failed, no binaries/attestations published    | [`docs/audits/security-v1.8-post-release.md`](../audits/security-v1.8-post-release.md) | [`e188837`](https://github.com/SchwartzKamel/azure-openai-cli/commit/e188837) (audit) → fix landed in v1.8.1 re-release |
+| 2026-04-22 | v2.0.2 AOT binary, live-endpoint red team (errors, `--raw`, Ralph)    | 3 High (error-surface leak, `--raw` stderr noise, Ralph exit code)      | [`docs/audits/fdr-v2-dogfood-2026-04-22.md`](../audits/fdr-v2-dogfood-2026-04-22.md) | [`4842b6a`](https://github.com/SchwartzKamel/hopper/commit/4842b6a) |
+| 2025-07-25 | v1.8.0 release pipeline, supply-chain posture, workflow permissions   | 🔴 RED -- release pipeline failed, no binaries/attestations published    | [`docs/audits/security-v1.8-post-release.md`](../audits/security-v1.8-post-release.md) | [`e188837`](https://github.com/SchwartzKamel/hopper/commit/e188837) (audit) → fix landed in v1.8.1 re-release |
 
 ### Historical v1 Newman audits
 
@@ -75,8 +75,8 @@ a specific release tag.
 
 | Release tag | Date       | Auditor | Verdict                                     | Report                                                                    | Sign-off commit |
 |-------------|------------|---------|---------------------------------------------|---------------------------------------------------------------------------|-----------------|
-| v2.0.0      | 2025-04-20 | Newman  | CLEAR for cutover (0 🔴, 8 🟡 non-blocking) | [`docs/security-review-v2.md`](../security-review-v2.md)                  | [`3c35ecf`](https://github.com/SchwartzKamel/azure-openai-cli/commit/3c35ecf) |
-| v2.0.0 (post-Phase-5) | 2025-04-20 | Newman | Cleared with 1 follow-up (refusal clause port) | [`docs/security/reaudit-v2-phase5.md`](./reaudit-v2-phase5.md)        | [`6830c2e`](https://github.com/SchwartzKamel/azure-openai-cli/commit/6830c2e) (refusal clause), [`7675284`](https://github.com/SchwartzKamel/azure-openai-cli/commit/7675284) (report) |
+| v2.0.0      | 2025-04-20 | Newman  | CLEAR for cutover (0 🔴, 8 🟡 non-blocking) | [`docs/security-review-v2.md`](../security-review-v2.md)                  | [`3c35ecf`](https://github.com/SchwartzKamel/hopper/commit/3c35ecf) |
+| v2.0.0 (post-Phase-5) | 2025-04-20 | Newman | Cleared with 1 follow-up (refusal clause port) | [`docs/security/reaudit-v2-phase5.md`](./reaudit-v2-phase5.md)        | [`6830c2e`](https://github.com/SchwartzKamel/hopper/commit/6830c2e) (refusal clause), [`7675284`](https://github.com/SchwartzKamel/hopper/commit/7675284) (report) |
 | v1.8.0      | 2025-07-25 | Newman  | 🔴 RED (pipeline failure, no artifacts)     | [`docs/audits/security-v1.8-post-release.md`](../audits/security-v1.8-post-release.md) | v1.8.1 re-release (pipeline fix) |
 
 **Methodology baseline.** Newman reviews check:

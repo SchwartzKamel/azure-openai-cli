@@ -30,13 +30,13 @@ Key fields:
   "version": "1.9.1",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v1.9.1/azure-openai-cli-win-x64.zip",
+      "url": "https://github.com/SchwartzKamel/hopper/releases/download/v1.9.1/azure-openai-cli-win-x64.zip",
       "hash": "TODO_FILL_AT_RELEASE_TIME"
     }
   },
   "bin": [["AzureOpenAI_CLI.exe", "azure-openai-cli"]],
-  "checkver": { "github": "https://github.com/SchwartzKamel/azure-openai-cli", "regex": "releases/tag/v(1\\.\\d+\\.\\d+)" },
-  "autoupdate": { "architecture": { "64bit": { "url": "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v$version/azure-openai-cli-win-x64.zip" }, "hash": { "url": "$url.sha256" } } }
+  "checkver": { "github": "https://github.com/SchwartzKamel/hopper", "regex": "releases/tag/v(1\\.\\d+\\.\\d+)" },
+  "autoupdate": { "architecture": { "64bit": { "url": "https://github.com/SchwartzKamel/hopper/releases/download/v$version/azure-openai-cli-win-x64.zip" }, "hash": { "url": "$url.sha256" } } }
 }
 ```
 

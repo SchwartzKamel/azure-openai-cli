@@ -7,7 +7,7 @@
   outputs = { self, nixpkgs, flake-utils }:
     let
       version = "2.4.0";
-      baseUrlFor = v: "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${v}";
+      baseUrlFor = v: "https://github.com/SchwartzKamel/hopper/releases/download/v${v}";
 
       # Tarball prefix: releases <=2.0.6 shipped as "az-ai-v2-<ver>-<rid>"; from 2.4.0 (ADR-016 stage 2) they ship
       # as "hopper-<ver>-<rid>". The binary inside the tarball follows the same convention (az-ai-v2 vs hopper).
@@ -173,7 +173,7 @@
 
           meta = with pkgs.lib; {
             description = "Azure OpenAI CLI — AOT agent with Microsoft Agent Framework, personas/squads, cost estimator";
-            homepage = "https://github.com/SchwartzKamel/azure-openai-cli";
+            homepage = "https://github.com/SchwartzKamel/hopper";
             license = licenses.mit;
             platforms = supportedSystems;
             mainProgram = cmd;
@@ -191,7 +191,7 @@
         };
 
         # Versioned-pin derivations. Consumers pin via:
-        #   inputs.az-ai.url = "github:SchwartzKamel/azure-openai-cli?dir=packaging/nix";
+        #   inputs.az-ai.url = "github:SchwartzKamel/hopper?dir=packaging/nix";
         #   environment.systemPackages = [ inputs.az-ai.packages.${pkgs.system}."az-ai_2_0_0" ];
         pinnedPackages = nixpkgs.lib.mapAttrs' (v: hashes:
           nixpkgs.lib.nameValuePair

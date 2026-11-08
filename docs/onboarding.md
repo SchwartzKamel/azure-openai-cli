@@ -42,7 +42,7 @@ the Docker prompt.
 ### 1. Clone and orient (2 min)
 
 ```bash
-git clone https://github.com/SchwartzKamel/azure-openai-cli.git
+git clone https://github.com/SchwartzKamel/hopper.git
 cd azure-openai-cli
 ls
 ```

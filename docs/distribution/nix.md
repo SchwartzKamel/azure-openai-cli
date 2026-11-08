@@ -11,7 +11,7 @@ Three escalating paths:
 1. **In-repo flake** (this episode) -- `flake.nix` lives under
    `packaging/nix/azure-openai-cli/` (planned; not yet committed).
    Users consume it directly via
-   `github:SchwartzKamel/azure-openai-cli?dir=packaging/nix/azure-openai-cli`.
+   `github:SchwartzKamel/hopper?dir=packaging/nix/azure-openai-cli`.
    Zero infrastructure outside this repo. Good for early adopters.
 2. **Dedicated flake repo** (`SchwartzKamel/nix-azure-openai-cli`) --
    if it simplifies semver-tagged inputs. Optional; only worth it if
@@ -79,7 +79,7 @@ nix hash to-sri --type sha256 <hex>
 
 # Or prefetch directly:
 nix-prefetch-url --type sha256 \
-  https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v1.9.1/azure-openai-cli-linux-x64.tar.gz
+  https://github.com/SchwartzKamel/hopper/releases/download/v1.9.1/azure-openai-cli-linux-x64.tar.gz
 ```
 
 Paste the SRI string into the matching `latestHashes.<rid>` slot, then:
@@ -94,14 +94,14 @@ nix build .#default --no-link
 
 ```sh
 # Run directly (no install)
-nix run "github:SchwartzKamel/azure-openai-cli?dir=packaging/nix/azure-openai-cli" -- --version
+nix run "github:SchwartzKamel/hopper?dir=packaging/nix/azure-openai-cli" -- --version
 
 # Add to a system flake
-# inputs.azure-openai-cli.url = "github:SchwartzKamel/azure-openai-cli?dir=packaging/nix/azure-openai-cli";
+# inputs.azure-openai-cli.url = "github:SchwartzKamel/hopper?dir=packaging/nix/azure-openai-cli";
 # environment.systemPackages = [ inputs.azure-openai-cli.packages.${pkgs.system}.default ];
 
 # Profile install (impure but quick)
-nix profile install "github:SchwartzKamel/azure-openai-cli?dir=packaging/nix/azure-openai-cli"
+nix profile install "github:SchwartzKamel/hopper?dir=packaging/nix/azure-openai-cli"
 azure-openai-cli --version       # expect: 1.9.1
 
 # Uninstall

@@ -25,7 +25,7 @@
 
 **One-liner (≤140 char):** `azure-openai-cli` is an OSS single-binary CLI for Azure OpenAI, built on Microsoft Agent Framework, shipped NativeAOT at 12.91 MB.
 
-**Short paragraph (≤75 words):** `hopper` (formerly `az-ai`; the repository is `azure-openai-cli`) is an indie OSS command-line tool for Azure OpenAI. It streams, it runs tool-calling agents, it starts in under 6 ms, and it ships as a single NativeAOT binary with no runtime dependency. v2 rebuilt the internals on Microsoft Agent Framework without breaking a single v1 flag. Source: [github.com/SchwartzKamel/azure-openai-cli](https://github.com/SchwartzKamel/azure-openai-cli).
+**Short paragraph (≤75 words):** `hopper` (formerly `az-ai`; the repository is `azure-openai-cli`) is an indie OSS command-line tool for Azure OpenAI. It streams, it runs tool-calling agents, it starts in under 6 ms, and it ships as a single NativeAOT binary with no runtime dependency. v2 rebuilt the internals on Microsoft Agent Framework without breaking a single v1 flag. Source: [github.com/SchwartzKamel/hopper](https://github.com/SchwartzKamel/hopper).
 
 **Long blurb (≤150 words):** `azure-openai-cli` is an OSS CLI for Azure OpenAI that treats the terminal as a first-class surface. v1 was a Python script wrapping the OpenAI SDK; v2 is a NativeAOT-compiled .NET single binary built on Microsoft Agent Framework, with OpenTelemetry, structured logging, and a persona memory store. It runs on Linux, macOS (arm64), and Windows, on metal or under WSL, and integrates with Espanso and AHK for text-expander-driven workflows. The v2 rewrite honored a hard 1.5× size gate (shipped at 1.456× v1), kept every v1 flag alive through a dual-tree window, and passes 1510 tests across the combined suite. It is maintained by a small team; no commercial backer, no VC, no SaaS. The project is available under the terms in [`LICENSE`](../LICENSE).
 
@@ -61,7 +61,7 @@ Accessibility notes: [quiet green room, lights-up during demo, …]
 
 ### 150-word bio
 
-> [Speaker] maintains `azure-openai-cli`, an indie OSS command-line tool for Azure OpenAI. They work at the intersection of terminal ergonomics, AOT-compiled .NET, and agent frameworks -- shipping a single NativeAOT binary under 13 MB that streams tokens, runs tool-calling agents, and starts in milliseconds. In a past life they [one-line career hook -- keep it honest; no title inflation]. They talk about shipping polish-over-hype OSS, AOT trim warnings you *shouldn't* silence, and what happens when a Markdown persona file meets a real chaos drill. They live in [city] with [spouse / dog / houseplant]. Find the project at [github.com/SchwartzKamel/azure-openai-cli](https://github.com/SchwartzKamel/azure-openai-cli).
+> [Speaker] maintains `azure-openai-cli`, an indie OSS command-line tool for Azure OpenAI. They work at the intersection of terminal ergonomics, AOT-compiled .NET, and agent frameworks -- shipping a single NativeAOT binary under 13 MB that streams tokens, runs tool-calling agents, and starts in milliseconds. In a past life they [one-line career hook -- keep it honest; no title inflation]. They talk about shipping polish-over-hype OSS, AOT trim warnings you *shouldn't* silence, and what happens when a Markdown persona file meets a real chaos drill. They live in [city] with [spouse / dog / houseplant]. Find the project at [github.com/SchwartzKamel/hopper](https://github.com/SchwartzKamel/hopper).
 
 ### 300-word bio (keynote length)
 
@@ -71,7 +71,7 @@ Accessibility notes: [quiet green room, lights-up during demo, …]
 >
 > [Speaker] has spoken at [conferences] and written for [outlets]. They are not an Azure employee, not a consultant, and hold no financial relationship with Microsoft or any Azure partner -- see the COI disclosure in this bureau. They prefer small, rehearsed demos on fresh machines over live-coding adventures, and they believe the terminal is a product surface that deserves the same care as a web UI.
 >
-> Outside the project they [one or two lines -- hobbies, family, city -- keep it human]. The project is at [github.com/SchwartzKamel/azure-openai-cli](https://github.com/SchwartzKamel/azure-openai-cli), under the license in the repo.
+> Outside the project they [one or two lines -- hobbies, family, city -- keep it human]. The project is at [github.com/SchwartzKamel/hopper](https://github.com/SchwartzKamel/hopper), under the license in the repo.
 
 ---
 

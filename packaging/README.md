@@ -128,10 +128,10 @@ az-ai --version --short   # expect: 2.0.0
 
 ```sh
 # Run directly
-nix run github:SchwartzKamel/azure-openai-cli?dir=packaging/nix -- --version --short
+nix run github:SchwartzKamel/hopper?dir=packaging/nix -- --version --short
 
 # Or add to a flake:
-#   inputs.az-ai.url = "github:SchwartzKamel/azure-openai-cli?dir=packaging/nix";
+#   inputs.az-ai.url = "github:SchwartzKamel/hopper?dir=packaging/nix";
 #   environment.systemPackages = [ inputs.az-ai.packages.${pkgs.system}.default ];
 ```
 
@@ -213,7 +213,7 @@ frozen release, in addition to `packages.default` which tracks the latest:
 
 ```nix
 {
-  inputs.az-ai.url = "github:SchwartzKamel/azure-openai-cli?dir=packaging/nix";
+  inputs.az-ai.url = "github:SchwartzKamel/hopper?dir=packaging/nix";
 
   # Latest:
   environment.systemPackages = [ inputs.az-ai.packages.${pkgs.system}.default ];
@@ -244,7 +244,7 @@ tag and waiting for `.github/workflows/release.yml` to publish the tarballs.
 
 ```sh
 VERSION=2.0.1
-BASE="https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${VERSION}"
+BASE="https://github.com/SchwartzKamel/hopper/releases/download/v${VERSION}"
 
 for rid in linux-x64 osx-x64 osx-arm64; do
     curl -sL "${BASE}/az-ai-${VERSION}-${rid}.tar.gz" \

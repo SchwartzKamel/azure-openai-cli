@@ -292,14 +292,14 @@ Nix:
 
 ```bash
 # pin via flake ref -- adjust <rev> to the v1.9.1 commit hash
-nix profile install github:SchwartzKamel/azure-openai-cli/v1.9.1
+nix profile install github:SchwartzKamel/hopper/v1.9.1
 ```
-<!-- TODO: Bob Sacamano to confirm the actual flake ref / tap name is published at v1.9.1; the versioned Homebrew/Scoop manifests and Nix flake are the 2.0.1 packaging sweep per release-notes-v2.0.0.md §Known limitations. Until then, the "universal" rollback is the GitHub Release tarball: https://github.com/SchwartzKamel/azure-openai-cli/releases/tag/v1.9.1 -->
+<!-- TODO: Bob Sacamano to confirm the actual flake ref / tap name is published at v1.9.1; the versioned Homebrew/Scoop manifests and Nix flake are the 2.0.1 packaging sweep per release-notes-v2.0.0.md §Known limitations. Until then, the "universal" rollback is the GitHub Release tarball: https://github.com/SchwartzKamel/hopper/releases/tag/v1.9.1 -->
 
 Manual / CI (GitHub Release tarball -- always works, zero dependencies):
 
 ```bash
-curl -LO https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v1.9.1/az-ai-linux-x64.tar.gz
+curl -LO https://github.com/SchwartzKamel/hopper/releases/download/v1.9.1/az-ai-linux-x64.tar.gz
 tar xf az-ai-linux-x64.tar.gz
 install -m 0755 az-ai /usr/local/bin/az-ai
 ```
@@ -385,7 +385,7 @@ which az-ai az-ai ; az-ai --version --short ; az-ai --version --short
 brew uninstall azure-openai-cli && brew install schwartzkamel/tap/azure-openai-cli@1.9.1
 scoop uninstall azure-openai-cli && scoop install azure-openai-cli@1.9.1
 docker pull ghcr.io/schwartzkamel/azure-openai-cli:1.9.1
-curl -LO https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v1.9.1/az-ai-linux-x64.tar.gz
+curl -LO https://github.com/SchwartzKamel/hopper/releases/download/v1.9.1/az-ai-linux-x64.tar.gz
 
 # --- kill a stuck ralph loop ---
 pgrep -fa 'az-ai.*--ralph' ; kill -INT <pid>     # 130 exit; Ctrl-C-equivalent

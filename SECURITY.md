@@ -130,7 +130,7 @@ compromise is suspected.
 
 ### Secret Redaction (v2)
 
-Added in v2.0.4 (commit [`4842b6a`](https://github.com/SchwartzKamel/azure-openai-cli/commit/4842b6a),
+Added in v2.0.4 (commit [`4842b6a`](https://github.com/SchwartzKamel/hopper/commit/4842b6a),
 resolving FDR High-severity finding `fdr-v2-err-unwrap` from
 [`docs/audits/fdr-v2-dogfood-2026-04-22.md`](docs/audits/fdr-v2-dogfood-2026-04-22.md)).
 
@@ -1136,7 +1136,7 @@ Release artifacts (binaries and GHCR container image) are published with
 Verify a downloaded binary with:
 
 ```bash
-gh attestation verify <artifact> --repo SchwartzKamel/azure-openai-cli
+gh attestation verify <artifact> --repo SchwartzKamel/hopper
 ```
 
 SBOMs (CycloneDX JSON) are attached to each release alongside the binaries.

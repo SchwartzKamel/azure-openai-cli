@@ -96,7 +96,7 @@ Verify with:
 
 ```bash
 gh attestation verify az-ai-v2-2.0.4-linux-musl-x64.tar.gz \
-    --repo SchwartzKamel/azure-openai-cli
+    --repo SchwartzKamel/hopper
 ```
 
 This is the primary integrity guarantee for release artifacts. The

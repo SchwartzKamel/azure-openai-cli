@@ -1,6 +1,6 @@
 # hopper Espanso + AutoHotkey Kit (WSL edition)
 
-Turnkey text-expansion kit for [`hopper`](https://github.com/SchwartzKamel/azure-openai-cli)
+Turnkey text-expansion kit for [`hopper`](https://github.com/SchwartzKamel/hopper)
 on a **WSL-on-Windows** setup. Every snippet is paste-ready, uses `--raw`, routes
 spinner noise to `/dev/null` / `NUL`, and sends user input over **stdin** (never
 shell-interpolated args).

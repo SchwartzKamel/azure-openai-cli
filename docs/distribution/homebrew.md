@@ -35,20 +35,20 @@ Inline preview:
 ```ruby
 class AzureOpenaiCli < Formula
   desc "Azure OpenAI CLI -- AOT single-binary agent for terminal and text-expander workflows"
-  homepage "https://github.com/SchwartzKamel/azure-openai-cli"
+  homepage "https://github.com/SchwartzKamel/hopper"
   license "MIT"
   version "1.9.1"
 
   on_macos do
     on_arm do
-      url "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v#{version}/azure-openai-cli-osx-arm64.tar.gz"
+      url "https://github.com/SchwartzKamel/hopper/releases/download/v#{version}/azure-openai-cli-osx-arm64.tar.gz"
       sha256 "TODO_FILL_AT_RELEASE_TIME"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v#{version}/azure-openai-cli-linux-x64.tar.gz"
+      url "https://github.com/SchwartzKamel/hopper/releases/download/v#{version}/azure-openai-cli-linux-x64.tar.gz"
       sha256 "TODO_FILL_AT_RELEASE_TIME"
     end
   end
@@ -81,7 +81,7 @@ Tag-time computation:
 
 ```sh
 VERSION=1.9.1
-BASE="https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${VERSION}"
+BASE="https://github.com/SchwartzKamel/hopper/releases/download/v${VERSION}"
 
 curl -sL "${BASE}/azure-openai-cli-osx-arm64.tar.gz" | sha256sum
 curl -sL "${BASE}/azure-openai-cli-linux-x64.tar.gz" | sha256sum

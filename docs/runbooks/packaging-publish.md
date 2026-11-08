@@ -62,7 +62,7 @@ gh repo create SchwartzKamel/scoop-az-ai --public \
 
 - Push access to both repos above (maintainer only).
 - `gh` CLI authenticated as a user with push rights (`gh auth status`).
-- Local clone of `SchwartzKamel/azure-openai-cli` at the tag currently
+- Local clone of `SchwartzKamel/hopper` at the tag currently
   being published (e.g. `git checkout v2.0.4`).
 
 ### Secrets/tokens
@@ -92,7 +92,7 @@ See §1. Initialize with an empty `Formula/` directory:
 gh repo clone SchwartzKamel/homebrew-az-ai /tmp/homebrew-az-ai
 cd /tmp/homebrew-az-ai
 mkdir -p Formula
-printf "# homebrew-az-ai\n\nHomebrew tap for [az-ai](https://github.com/SchwartzKamel/azure-openai-cli).\n\n\`\`\`sh\nbrew tap schwartzkamel/az-ai\nbrew install schwartzkamel/az-ai/az-ai\n\`\`\`\n" > README.md
+printf "# homebrew-az-ai\n\nHomebrew tap for [az-ai](https://github.com/SchwartzKamel/hopper).\n\n\`\`\`sh\nbrew tap schwartzkamel/az-ai\nbrew install schwartzkamel/az-ai/az-ai\n\`\`\`\n" > README.md
 git add . && git -c commit.gpgsign=false commit -m "chore: initialize tap"
 git push origin main
 ```
@@ -161,7 +161,7 @@ issues, route to `docs/runbooks/macos-runner-triage.md` §5.
 gh repo clone SchwartzKamel/scoop-az-ai /tmp/scoop-az-ai
 cd /tmp/scoop-az-ai
 mkdir -p bucket bucket/versions
-printf "# scoop-az-ai\n\nScoop bucket for [az-ai](https://github.com/SchwartzKamel/azure-openai-cli).\n\n\`\`\`powershell\nscoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-az-ai\nscoop install schwartzkamel/az-ai\n\`\`\`\n" > README.md
+printf "# scoop-az-ai\n\nScoop bucket for [az-ai](https://github.com/SchwartzKamel/hopper).\n\n\`\`\`powershell\nscoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-az-ai\nscoop install schwartzkamel/az-ai\n\`\`\`\n" > README.md
 git add . && git -c commit.gpgsign=false commit -m "chore: initialize bucket"
 git push origin main
 ```
@@ -228,7 +228,7 @@ GitHub Release's `digests.txt` artifact, produced by the
 
 ```sh
 VERSION=2.0.4   # replace with the version being published
-BASE="https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v${VERSION}"
+BASE="https://github.com/SchwartzKamel/hopper/releases/download/v${VERSION}"
 
 # Compute digests live from the published artifacts:
 for asset in \

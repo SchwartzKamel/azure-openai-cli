@@ -40,8 +40,8 @@ echo "${labels}"
 
 for kv in \
     '"org.opencontainers.image.licenses":"MIT"' \
-    '"org.opencontainers.image.source":"https://github.com/SchwartzKamel/azure-openai-cli"' \
-    '"org.opencontainers.image.documentation":"https://github.com/SchwartzKamel/azure-openai-cli/blob/main/docs/licensing-audit.md"'
+    '"org.opencontainers.image.source":"https://github.com/SchwartzKamel/hopper"' \
+    '"org.opencontainers.image.documentation":"https://github.com/SchwartzKamel/hopper/blob/main/docs/licensing-audit.md"'
 do
     if ! grep -qF "${kv}" <<<"${labels}"; then
         echo "[FAIL] expected label fragment not present: ${kv}"

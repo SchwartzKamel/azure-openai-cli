@@ -1,6 +1,6 @@
 class Hopper < Formula
   desc "AOT command-line agent for Azure OpenAI, built on the Microsoft Agent Framework"
-  homepage "https://github.com/SchwartzKamel/azure-openai-cli"
+  homepage "https://github.com/SchwartzKamel/hopper"
   license "MIT"
 
   # SHA256s below are the digests of the v2.4.0 GitHub Release archives. scripts/check-manifests.py compares
@@ -10,7 +10,7 @@ class Hopper < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.4.0/hopper-2.4.0-osx-arm64.tar.gz"
+      url "https://github.com/SchwartzKamel/hopper/releases/download/v2.4.0/hopper-2.4.0-osx-arm64.tar.gz"
       sha256 "27b214f491baa7491b505a022c420c84f456f7f6147332012fb8dba2ebb40dc2"
     end
     # NOTE: macOS Intel (osx-x64) was dropped from the release pipeline in v2.0.4 (runner pool backlog).
@@ -20,11 +20,11 @@ class Hopper < Formula
 
   on_linux do
     on_intel do
-      url "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.4.0/hopper-2.4.0-linux-x64.tar.gz"
+      url "https://github.com/SchwartzKamel/hopper/releases/download/v2.4.0/hopper-2.4.0-linux-x64.tar.gz"
       sha256 "6eae9180783ae943c48d844408cef37199f240da69f4ddf5636b41c1c2a96204"
     end
     on_arm do
-      url "https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v2.4.0/hopper-2.4.0-linux-arm64.tar.gz"
+      url "https://github.com/SchwartzKamel/hopper/releases/download/v2.4.0/hopper-2.4.0-linux-arm64.tar.gz"
       sha256 "211b89a93782d5b3e604226ddcb7a4ab60ced07c4786c55cc7cea829720111ce"
     end
     # NOTE: linux-musl-x64 is published to the GitHub Release but Homebrew does not model musl;

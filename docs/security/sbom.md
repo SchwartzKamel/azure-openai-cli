@@ -35,7 +35,7 @@ package hash.
 
 | Who | Where |
 |---|---|
-| Release consumers | [GitHub Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases) → pick your tag → download `*.sbom.json` next to the binary |
+| Release consumers | [GitHub Releases](https://github.com/SchwartzKamel/hopper/releases) → pick your tag → download `*.sbom.json` next to the binary |
 | Auditors | `gh release download <tag> --pattern '*.sbom.json'` -- or pull the release `artifacts/*.sbom.json` via the API |
 | Local developers | `cd azureopenai-cli-v2 && dotnet tool restore && dotnet dotnet-CycloneDX AzureOpenAI_CLI_V2.csproj -o . -f sbom.json --output-format Json` |
 | CI (non-release) | Trivy runs on every PR (`.github/workflows/ci.yml:119`) and reports CVEs at build time; it does not publish the SBOM outside the CI log |

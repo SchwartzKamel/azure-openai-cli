@@ -12,7 +12,7 @@
 
 ### ビルド済みバイナリ（推奨）
 
-[Releases ページ](https://github.com/SchwartzKamel/azure-openai-cli/releases)から
+[Releases ページ](https://github.com/SchwartzKamel/hopper/releases)から
 お使いのプラットフォーム向けのバイナリをダウンロードしてください。
 
 ```bash
@@ -33,7 +33,7 @@ chmod +x ~/.local/bin/hopper
 ### ソースからビルド（.NET 10 SDK が必要）
 
 ```bash
-git clone https://github.com/SchwartzKamel/azure-openai-cli
+git clone https://github.com/SchwartzKamel/hopper
 cd azure-openai-cli
 make setup && make install
 ```

@@ -63,8 +63,8 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine@sha256:f8a0978d56136514d1
 
 # OCI image metadata.
 LABEL org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/SchwartzKamel/azure-openai-cli" \
-      org.opencontainers.image.documentation="https://github.com/SchwartzKamel/azure-openai-cli/blob/main/docs/licensing-audit.md" \
+      org.opencontainers.image.source="https://github.com/SchwartzKamel/hopper" \
+      org.opencontainers.image.documentation="https://github.com/SchwartzKamel/hopper/blob/main/docs/licensing-audit.md" \
       org.opencontainers.image.title="hopper" \
       org.opencontainers.image.description="hopper (formerly az-ai / Azure OpenAI CLI) — pipe a prompt in, hop to any model, get plain text back. AOT agent with Microsoft Agent Framework, personas/squads, cost estimator"
 

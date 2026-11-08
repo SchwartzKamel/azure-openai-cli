@@ -82,7 +82,7 @@ hits the public Sigstore transparency log and works for anonymous users, but
 mkdir -p ~/verify-azure-openai-cli && cd ~/verify-azure-openai-cli
 
 gh release download v1.8.1 \
-  --repo SchwartzKamel/azure-openai-cli \
+  --repo SchwartzKamel/hopper \
   --pattern 'azure-openai-cli-linux-x64.tar.gz' \
   --pattern 'azure-openai-cli-linux-x64.sbom.json'
 ```
@@ -107,7 +107,7 @@ Expected output for v1.8.1:
 
 ```bash
 gh attestation verify azure-openai-cli-linux-x64.tar.gz \
-  --repo SchwartzKamel/azure-openai-cli
+  --repo SchwartzKamel/hopper
 ```
 
 Expected output (abbreviated):
@@ -119,16 +119,16 @@ Loaded 1 attestation from GitHub API
 The following policy criteria will be enforced:
 - Predicate type must match:................ https://slsa.dev/provenance/v1
 - Source Repository Owner URI must match:... https://github.com/SchwartzKamel
-- Source Repository URI must match:......... https://github.com/SchwartzKamel/azure-openai-cli
-- Subject Alternative Name must match regex: (?i)^https://github.com/SchwartzKamel/azure-openai-cli/
+- Source Repository URI must match:......... https://github.com/SchwartzKamel/hopper
+- Subject Alternative Name must match regex: (?i)^https://github.com/SchwartzKamel/hopper/
 - OIDC Issuer must match:................... https://token.actions.githubusercontent.com
 
 ✓ Verification succeeded!
 
 - Attestation #1
-  - Build repo:..... SchwartzKamel/azure-openai-cli
+  - Build repo:..... SchwartzKamel/hopper
   - Build workflow:. .github/workflows/release.yml@refs/tags/v1.8.1
-  - Signer repo:.... SchwartzKamel/azure-openai-cli
+  - Signer repo:.... SchwartzKamel/hopper
   - Signer workflow: .github/workflows/release.yml@refs/tags/v1.8.1
 ```
 
@@ -157,7 +157,7 @@ Loaded 1 attestation from GitHub API
 ✓ Verification succeeded!
 
 - Attestation #1
-  - Build repo:..... SchwartzKamel/azure-openai-cli
+  - Build repo:..... SchwartzKamel/hopper
   - Build workflow:. .github/workflows/release.yml@refs/tags/v1.8.1
 ```
 
@@ -205,18 +205,18 @@ Scanner) to track CVEs in the bundled libraries.
 ```bash
 for rid in linux-x64 linux-musl-x64 osx-x64 osx-arm64; do
   gh release download v1.8.1 \
-    --repo SchwartzKamel/azure-openai-cli \
+    --repo SchwartzKamel/hopper \
     --pattern "azure-openai-cli-${rid}.tar.gz" --clobber
   gh attestation verify "azure-openai-cli-${rid}.tar.gz" \
-    --repo SchwartzKamel/azure-openai-cli \
+    --repo SchwartzKamel/hopper \
     || { echo "FAIL: ${rid}"; exit 1; }
 done
 
 gh release download v1.8.1 \
-  --repo SchwartzKamel/azure-openai-cli \
+  --repo SchwartzKamel/hopper \
   --pattern 'azure-openai-cli-win-x64.zip' --clobber
 gh attestation verify azure-openai-cli-win-x64.zip \
-  --repo SchwartzKamel/azure-openai-cli
+  --repo SchwartzKamel/hopper
 ```
 
 ---

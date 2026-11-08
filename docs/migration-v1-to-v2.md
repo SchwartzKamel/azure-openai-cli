@@ -136,7 +136,7 @@ scoop uninstall azure-openai-cli
 scoop install azure-openai-cli@1.9.1
 
 # Manual install -- download the 1.9.1 release asset:
-#   https://github.com/SchwartzKamel/azure-openai-cli/releases/tag/v1.9.1
+#   https://github.com/SchwartzKamel/hopper/releases/tag/v1.9.1
 ```
 
 The v1.x branch continues to receive critical security fixes. No new features

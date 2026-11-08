@@ -142,7 +142,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 | A small feature idea or usage question | [Feature request issue](.github/ISSUE_TEMPLATE/feature_request.yml) or [Question](.github/ISSUE_TEMPLATE/question.yml) |
 | A substantial feature (new flag surface, new provider, new subsystem) | A proposal under [`docs/proposals/`](docs/proposals/) as `FR-XXX-short-slug.md` -- match the format of an existing entry (e.g. [FR-014](docs/proposals/FR-014-local-preferences-and-multi-provider.md)) and add your row to [`docs/proposals/README.md`](docs/proposals/README.md) |
 | A new agent archetype | A markdown file in [`.github/agents/`](.github/agents/); see [`AGENTS.md`](AGENTS.md) for the fleet rationale and existing cast |
-| A security vulnerability | **Do not open a public issue.** Use [GitHub Security Advisories](https://github.com/SchwartzKamel/azure-openai-cli/security/advisories/new); see [`SECURITY.md`](SECURITY.md) |
+| A security vulnerability | **Do not open a public issue.** Use [GitHub Security Advisories](https://github.com/SchwartzKamel/hopper/security/advisories/new); see [`SECURITY.md`](SECURITY.md) |
 
 Big features go through a proposal first so Costanza (PM) and Mr. Pitt
 (program) can slot them against the roadmap before you burn a weekend on
@@ -189,7 +189,7 @@ we don't mind.
   exact error. That's already a useful bug report.
 - Design question before you code? Open a
   [Question issue](.github/ISSUE_TEMPLATE/question.yml) or start a
-  [Discussion](https://github.com/SchwartzKamel/azure-openai-cli/discussions).
+  [Discussion](https://github.com/SchwartzKamel/hopper/discussions).
 - Maintainer AWOL on your PR? Tag them on the PR. Silence is never the
   intended signal.
 

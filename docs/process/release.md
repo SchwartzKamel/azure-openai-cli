@@ -222,8 +222,8 @@ Download the artifact for your local platform and verify the SHA256:
 
 ```bash
 # Example: Linux x64
-curl -LO https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v<X.Y.Z>/az-ai-<X.Y.Z>-linux-x64.tar.gz
-curl -LO https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v<X.Y.Z>/digests.txt
+curl -LO https://github.com/SchwartzKamel/hopper/releases/download/v<X.Y.Z>/az-ai-<X.Y.Z>-linux-x64.tar.gz
+curl -LO https://github.com/SchwartzKamel/hopper/releases/download/v<X.Y.Z>/digests.txt
 sha256sum az-ai-<X.Y.Z>-linux-x64.tar.gz
 grep linux-x64 digests.txt
 ```
@@ -244,7 +244,7 @@ notes can be edited on GitHub without re-tagging.
 
 ```bash
 # Linux x64 example
-curl -LO https://github.com/SchwartzKamel/azure-openai-cli/releases/download/v<X.Y.Z>/az-ai-<X.Y.Z>-linux-x64.tar.gz
+curl -LO https://github.com/SchwartzKamel/hopper/releases/download/v<X.Y.Z>/az-ai-<X.Y.Z>-linux-x64.tar.gz
 tar xzf az-ai-<X.Y.Z>-linux-x64.tar.gz
 ./az-ai --doctor
 ./az-ai --version --short

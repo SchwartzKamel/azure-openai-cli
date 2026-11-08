@@ -13,7 +13,7 @@ preference defaults so you don't have to pass `--model`, `--temperature`,
 
 ```bash
 # Copy the sample into your home directory
-curl -sSL https://raw.githubusercontent.com/SchwartzKamel/azure-openai-cli/main/docs/examples/azureopenai-cli.sample.json \
+curl -sSL https://raw.githubusercontent.com/SchwartzKamel/hopper/main/docs/examples/azureopenai-cli.sample.json \
   -o ~/.azureopenai-cli.json
 
 # Or use the CLI
