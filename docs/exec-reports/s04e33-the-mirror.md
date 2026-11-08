@@ -70,6 +70,9 @@ which explains why there is no attestation. It now inspects only what the steps 
 3. **Do not attest what you did not build.** Say where it came from instead.
 4. **Stub the registry, and make the stub strict.** Anything unexpected is a logged violation.
 5. **A test of a workflow should read steps, not text.** The comment that explains an omission is not the omission.
+6. **A test must control every variable the code reads.** The pull request's first CI run failed because one case assumed `GITHUB_REPOSITORY` was
+   unset and GitHub Actions always sets it; the same class as the credentials file that made a test pass only on this machine. It was reproduced locally
+   by setting the variable, fixed with `env -u`, and the whole suite was then run with CI-like variables.
 
 ## Metrics
 
