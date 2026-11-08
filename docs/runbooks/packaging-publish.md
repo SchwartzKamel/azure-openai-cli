@@ -7,12 +7,24 @@ takes the canonical, in-repo packaging manifests and mirrors them into
 the external tap + bucket repos so end-users can `brew install` and
 `scoop install` without cloning this repo first.
 
-**Scope.** This runbook is version-agnostic. Currently the formulae
-and manifests in `packaging/` are pinned to **v2.0.4**; **v2.0.5** is
-queued as a fix-forward (rolling the `stage.sh` VERSION drift called
-out in C-1 of `docs/audits/docs-audit-2026-04-22-lippman.md`). The
-steps below apply to whichever version Lippman has most recently
-signed off -- do not hard-code a version into muscle memory.
+**Current state (S04E32).** The tap and the bucket exist and are published at the current release:
+[`SchwartzKamel/homebrew-tap`](https://github.com/SchwartzKamel/homebrew-tap) (`brew install schwartzkamel/tap/hopper`) and
+[`SchwartzKamel/scoop-bucket`](https://github.com/SchwartzKamel/scoop-bucket)
+(`scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-bucket`, then `scoop install schwartzkamel/hopper`).
+They are mirrors of `packaging/`, written by `scripts/publish-taps.sh`.
+
+## Quick path: after each release
+
+1. Publish the release, then hash-sync the manifests to it (see [`packaging/README.md`](../../packaging/README.md)).
+2. `python3 scripts/check-manifests.py` -- every pin must match the release's published `digests.txt`.
+3. `scripts/publish-taps.sh --dry-run` -- shows what would change in the tap and the bucket and pushes nothing.
+4. `scripts/publish-taps.sh` -- checks the manifests again (it refuses to publish if any pin is wrong), prepares both
+   repositories, and only then pushes both. Running it twice changes nothing.
+5. Install it as a user would: `brew install schwartzkamel/tap/hopper` and `hopper --version`.
+
+The sections below are the manual procedure, kept for reference and for recovery if the script cannot be used.
+
+**Scope.** The manual steps are version-agnostic: apply them to whichever version has most recently been signed off.
 
 **Out of scope.** Creating formulae/manifests, bumping versions,
 filling SHA256s. Those happen as part of the tag-time ritual in
@@ -23,16 +35,9 @@ starts from the moment the in-repo manifests are green.
 
 ## 0. Reality check -- execution vs documentation
 
-> **This runbook documents the process. Actual publishing requires
-> push access to external `SchwartzKamel/homebrew-az-ai` and
-> `SchwartzKamel/scoop-az-ai` repos. If those repos do not exist
-> yet, they must be created manually (GitHub UI or `gh repo create`)
-> before this runbook runs.**
-
-Until those repos exist, the install instructions in the top-level
-`README.md` continue to point at the in-repo manifests (install from
-a local path). Do **not** advertise `brew tap …` / `scoop bucket
-add …` in user-facing docs before §6 is green.
+> The tap and bucket repositories now exist (created in S04E32), so the user-facing documentation and the release body
+> advertise them. Publishing still needs push access to `SchwartzKamel/homebrew-tap` and `SchwartzKamel/scoop-bucket`,
+> and it is done by hand: there is no CI automation (see the note on tokens below).
 
 ---
 
@@ -42,20 +47,18 @@ add …` in user-facing docs before §6 is green.
 
 | Repo                                   | Purpose              | Short name for user |
 |----------------------------------------|----------------------|---------------------|
-| `SchwartzKamel/homebrew-az-ai`         | Homebrew tap         | `schwartzkamel/az-ai` |
-| `SchwartzKamel/scoop-az-ai`            | Scoop bucket         | `schwartzkamel`     |
+| `SchwartzKamel/homebrew-tap`           | Homebrew tap         | `schwartzkamel/tap` |
+| `SchwartzKamel/scoop-bucket`           | Scoop bucket         | `schwartzkamel`     |
 
-Homebrew's naming convention requires the `homebrew-` prefix --
-`brew tap schwartzkamel/az-ai` resolves to
-`github.com/SchwartzKamel/homebrew-az-ai` automatically.
-
-Create them (one-time, from the maintainer's workstation):
+Homebrew's naming convention requires the `homebrew-` prefix -- `brew tap schwartzkamel/tap` resolves to
+`github.com/SchwartzKamel/homebrew-tap` automatically, and `brew install schwartzkamel/tap/hopper` taps it on the fly.
+The names are generic on purpose, so they survive a future rename of the tool. They were created with:
 
 ```sh
-gh repo create SchwartzKamel/homebrew-az-ai --public \
-    --description "Homebrew tap for az-ai (Azure OpenAI CLI)"
-gh repo create SchwartzKamel/scoop-az-ai --public \
-    --description "Scoop bucket for az-ai (Azure OpenAI CLI)"
+gh repo create SchwartzKamel/homebrew-tap --public \
+    --description "Homebrew tap for hopper (a mirror: the formulas live in SchwartzKamel/hopper)"
+gh repo create SchwartzKamel/scoop-bucket --public \
+    --description "Scoop bucket for hopper (a mirror: the manifests live in SchwartzKamel/hopper)"
 ```
 
 ### Access
@@ -70,7 +73,7 @@ gh repo create SchwartzKamel/scoop-az-ai --public \
 **None required for manual publishing.** Push uses the maintainer's
 own credentials via `gh`/`git`. If this is ever automated from CI
 (future work), a fine-grained PAT scoped to **contents:write** on
-just `homebrew-az-ai` + `scoop-az-ai` should be stored as
+just `homebrew-tap` + `scoop-bucket` should be stored as
 `PACKAGING_PUBLISH_TOKEN` -- never reuse `GITHUB_TOKEN` from
 `release.yml`, which is scoped to this repo only.
 
@@ -89,10 +92,10 @@ just `homebrew-az-ai` + `scoop-az-ai` should be stored as
 See §1. Initialize with an empty `Formula/` directory:
 
 ```sh
-gh repo clone SchwartzKamel/homebrew-az-ai /tmp/homebrew-az-ai
-cd /tmp/homebrew-az-ai
+gh repo clone SchwartzKamel/homebrew-tap /tmp/homebrew-tap
+cd /tmp/homebrew-tap
 mkdir -p Formula
-printf "# homebrew-az-ai\n\nHomebrew tap for [az-ai](https://github.com/SchwartzKamel/hopper).\n\n\`\`\`sh\nbrew tap schwartzkamel/az-ai\nbrew install schwartzkamel/az-ai/az-ai\n\`\`\`\n" > README.md
+printf "# homebrew-tap\n\nHomebrew tap for [hopper](https://github.com/SchwartzKamel/hopper).\n\n\`\`\`sh\nbrew install schwartzkamel/tap/hopper\n\`\`\`\n" > README.md
 git add . && git -c commit.gpgsign=false commit -m "chore: initialize tap"
 git push origin main
 ```
@@ -105,9 +108,9 @@ From an up-to-date `azure-openai-cli` checkout at the release tag:
 cd /path/to/azure-openai-cli
 git checkout v2.0.4   # or whatever tag is currently being published
 
-rsync -av --delete packaging/homebrew/Formula/ /tmp/homebrew-az-ai/Formula/
+rsync -av --delete packaging/homebrew/Formula/ /tmp/homebrew-tap/Formula/
 
-cd /tmp/homebrew-az-ai
+cd /tmp/homebrew-tap
 git add Formula/
 git -c commit.gpgsign=false commit -m "formula: mirror az-ai @ v2.0.4 from azure-openai-cli"
 git push origin main
@@ -124,17 +127,17 @@ Brewfiles that pin that version.
 On a fresh Mac (or Linux box, or clean CI runner):
 
 ```sh
-brew untap schwartzkamel/az-ai 2>/dev/null || true
-brew tap schwartzkamel/az-ai
-brew audit --strict --online schwartzkamel/az-ai/az-ai
-brew install schwartzkamel/az-ai/az-ai
+brew untap schwartzkamel/tap 2>/dev/null || true
+brew tap schwartzkamel/tap
+brew audit --strict --online schwartzkamel/tap/hopper
+brew install schwartzkamel/tap/hopper
 az-ai --version --short   # expect 2.0.2 at v2.0.4 (filename drift), 2.0.5 at v2.0.5
 ```
 
 Also verify the pinned alias installs:
 
 ```sh
-brew install schwartzkamel/az-ai/az-ai@2.0.4
+brew install schwartzkamel/tap/az-ai@2.0.4
 ```
 
 ### 2.4 Intel Mac (Rosetta 2) fallback
@@ -143,8 +146,8 @@ v2.0.4 dropped osx-x64. Document for Intel-Mac users:
 
 ```sh
 softwareupdate --install-rosetta --agree-to-license
-arch -arm64e brew tap schwartzkamel/az-ai
-arch -arm64e brew install schwartzkamel/az-ai/az-ai
+arch -arm64e brew tap schwartzkamel/tap
+arch -arm64e brew install schwartzkamel/tap/hopper
 ```
 
 The `osx-arm64` bottle runs under Rosetta 2 on Intel. This is a
@@ -158,10 +161,10 @@ issues, route to `docs/runbooks/macos-runner-triage.md` §5.
 ### 3.1 Create the bucket repo (skip if it already exists)
 
 ```sh
-gh repo clone SchwartzKamel/scoop-az-ai /tmp/scoop-az-ai
-cd /tmp/scoop-az-ai
+gh repo clone SchwartzKamel/scoop-bucket /tmp/scoop-bucket
+cd /tmp/scoop-bucket
 mkdir -p bucket bucket/versions
-printf "# scoop-az-ai\n\nScoop bucket for [az-ai](https://github.com/SchwartzKamel/hopper).\n\n\`\`\`powershell\nscoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-az-ai\nscoop install schwartzkamel/az-ai\n\`\`\`\n" > README.md
+printf "# scoop-bucket\n\nScoop bucket for [hopper](https://github.com/SchwartzKamel/hopper).\n\n\`\`\`powershell\nscoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-bucket\nscoop install schwartzkamel/hopper\n\`\`\`\n" > README.md
 git add . && git -c commit.gpgsign=false commit -m "chore: initialize bucket"
 git push origin main
 ```
@@ -176,10 +179,10 @@ Scoop's default resolution rules.
 cd /path/to/azure-openai-cli
 git checkout v2.0.4
 
-cp packaging/scoop/hopper.json           /tmp/scoop-az-ai/bucket/az-ai.json
-rsync -av --delete packaging/scoop/versions/ /tmp/scoop-az-ai/bucket/versions/
+cp packaging/scoop/hopper.json           /tmp/scoop-bucket/bucket/az-ai.json
+rsync -av --delete packaging/scoop/versions/ /tmp/scoop-bucket/bucket/versions/
 
-cd /tmp/scoop-az-ai
+cd /tmp/scoop-bucket
 git add bucket/
 git -c commit.gpgsign=false commit -m "manifest: mirror az-ai @ v2.0.4 from azure-openai-cli"
 git push origin main
@@ -206,8 +209,8 @@ On a Windows host (or sandbox VM):
 
 ```powershell
 scoop bucket rm schwartzkamel -ErrorAction SilentlyContinue
-scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-az-ai
-scoop install schwartzkamel/az-ai
+scoop bucket add schwartzkamel https://github.com/SchwartzKamel/scoop-bucket
+scoop install schwartzkamel/hopper
 az-ai --version --short   # expect 2.0.2 at v2.0.4 (filename drift)
 
 scoop uninstall az-ai
@@ -325,9 +328,9 @@ name. Sacamano will chase that separately.
 
 ## 7. Status
 
-- `SchwartzKamel/homebrew-az-ai` -- **not yet created** (blocked on
+- `SchwartzKamel/homebrew-tap` -- **not yet created** (blocked on
   maintainer action per §0)
-- `SchwartzKamel/scoop-az-ai` -- **not yet created** (blocked on
+- `SchwartzKamel/scoop-bucket` -- **not yet created** (blocked on
   maintainer action per §0)
 
 Once both repos exist and §2-§5 have been exercised once end-to-end

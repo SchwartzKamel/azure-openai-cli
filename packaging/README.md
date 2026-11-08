@@ -23,6 +23,10 @@ at the v2.0.1 boundary per [`docs/v2-cutover-decision.md` §G6](../docs/v2-cutov
 > hand-copied hash. The earlier `az-ai@<version>` pins describe the older archive names and are left as they were. The
 > Homebrew formula was verified by a real install; the Scoop manifest and the Nix flake could not be run (no Scoop or Nix on
 > the build machine), so they are checked only for their pins.
+>
+> **Tap and bucket (S04E32).** The Homebrew tap (`SchwartzKamel/homebrew-tap`: `brew install schwartzkamel/tap/hopper`) and the
+> Scoop bucket (`SchwartzKamel/scoop-bucket`) exist and are mirrors of this directory, written by `scripts/publish-taps.sh`. The
+> tap was verified by installing `hopper` from it, from GitHub, as a user would.
 
 The upstream binary name inside each archive is `az-ai`
 (`az-ai.exe` on Windows). Every manifest installs as `az-ai` so users get
@@ -358,6 +362,8 @@ On every tagged release:
 - [ ] Update `version` in all three tracking manifests.
 - [ ] After the release is published, regenerate the pins from its `digests.txt` and run `python3 scripts/check-manifests.py`
       (it fetches the digests itself). A manifest bumped before its release exists fails the check, by design.
+- [ ] Mirror the manifests into the tap and the bucket: `scripts/publish-taps.sh --dry-run`, then `scripts/publish-taps.sh`
+      (it re-runs the manifest check and refuses to publish a wrong pin). Then `brew install schwartzkamel/tap/hopper`.
 - [ ] Fill SHA256s via the Step-2a/2b/2c commands above (replaces all
       `TODO_FILL_AT_RELEASE_TIME` / `lib.fakeHash` placeholders).
 - [ ] Add a new versioned-pin sibling for the previous release per Step 3.
