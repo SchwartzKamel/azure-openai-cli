@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] -- 2026-11-05
+
+**hopper 2.4.0.** The project formerly called `az-ai` (Azure OpenAI CLI) is now **hopper**
+(ADR-016; stage 2 ships with this release). The command is `hopper`, and `az-ai` keeps working as an
+alias. Configuration (`~/.config/az-ai`), the `AZUREOPENAI*` and `AZ_AI_*` environment variables and the
+container image path are unchanged. Release archives are now named `hopper-<version>-<rid>`.
+
+Since 2.3.0 the CLI has also gained an agent-interop surface (an MCP client and server with `--mcp-allow`,
+`--mcp-deny` and `--mcp-strict`, JSON plugins, prompt patterns, `--jsonl` output and a built-in work queue),
+`hopper eval` for scoring prompts against a model, a much stronger `shell_exec` guard and secret redaction,
+a GitHub Copilot provider preset, and many fixes. The full list follows.
+
 ### Added
 - **feat(providers):** S04E24 *The Copilot* -- a `copilot` OpenAI-compat preset for GitHub Copilot
   (`https://api.githubcopilot.com`). The token comes from `COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN` or
