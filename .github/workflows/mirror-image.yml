@@ -1,0 +1,46 @@
+name: Mirror image
+
+# Copies an already-published container image to this repository's CURRENT registry path, by digest, without rebuilding
+# anything. The image path follows the repository name at publish time, so after the rename to SchwartzKamel/hopper the new
+# path (ghcr.io/schwartzkamel/hopper) was empty while the pre-rename releases live under ghcr.io/schwartzkamel/azure-openai-cli.
+# Re-running release.yml for the tag would rebuild the archives and break every published checksum and attestation, so this
+# is a separate, narrow workflow. See scripts/mirror-image.sh for what it guarantees.
+#
+#   gh workflow run mirror-image.yml -f version=2.4.0
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version to mirror (X.Y.Z, no leading v)'
+        required: true
+        type: string
+      source:
+        description: 'Image to copy from'
+        required: false
+        default: 'ghcr.io/schwartzkamel/azure-openai-cli'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mirror the image by digest
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE: ${{ inputs.source }}
+        run: bash scripts/mirror-image.sh "$VERSION" "$SOURCE"
