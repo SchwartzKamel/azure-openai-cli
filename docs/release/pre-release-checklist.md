@@ -36,7 +36,7 @@ page references them.
 export VERSION=2.0.6                      # example; no 'v' prefix
 export TAG=v${VERSION}
 export DATE=$(date -u +%Y-%m-%d)          # UTC, ISO 8601
-export REPO=SchwartzKamel/azure-openai-cli
+export REPO=SchwartzKamel/hopper
 ```
 
 ---

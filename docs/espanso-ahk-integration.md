@@ -72,7 +72,7 @@ You need the `hopper` binary accessible from your shell. Two options:
 
 **Option A: Native binary (recommended for text expansion -- fastest startup)**
 
-Download from [GitHub Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases), extract, and place on your `PATH`:
+Download from [GitHub Releases](https://github.com/SchwartzKamel/hopper/releases), extract, and place on your `PATH`:
 
 ```bash
 # Linux (the archive holds `hopper` and `az-ai`, its old name; same binary)
@@ -282,7 +282,7 @@ You should see a short AI response with no spinner, no decorations, no trailing 
 ```yaml
 # ~/.config/espanso/match/ai.yml
 # Azure OpenAI CLI text expansion triggers
-# Docs: https://github.com/SchwartzKamel/azure-openai-cli
+# Docs: https://github.com/SchwartzKamel/hopper
 
 matches:
 

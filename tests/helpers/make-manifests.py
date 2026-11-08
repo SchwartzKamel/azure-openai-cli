@@ -12,7 +12,7 @@ import os
 import sys
 
 V = "9.9.9"
-REPO = "SchwartzKamel/azure-openai-cli"
+REPO = "SchwartzKamel/hopper"
 RIDS = ["linux-x64", "linux-musl-x64", "linux-arm64", "osx-arm64", "win-x64", "win-arm64"]
 
 

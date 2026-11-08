@@ -564,7 +564,7 @@ When something is broken and this doc did not save you:
 1. Run `hopper --doctor` (S03E15 *The Probe*) and copy its output. It
    will tell you a lot in one screenful, never emits credential
    values, and exits 1 when something is unhealthy.
-2. Search [the issue tracker](https://github.com/SchwartzKamel/azure-openai-cli/issues).
+2. Search [the issue tracker](https://github.com/SchwartzKamel/hopper/issues).
    Onboarding-shaped pain is common; you are likely not the first.
 3. If the issue is new, file one. Include:
    - OS + version (`uname -a` / `sw_vers` / `winver`).

@@ -13,7 +13,7 @@
 ### Binarios precompilados (recomendado)
 
 Descarga el binario para tu plataforma desde la
-[página de Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases).
+[página de Releases](https://github.com/SchwartzKamel/hopper/releases).
 
 ```bash
 # Ejemplo para Linux x64 (reemplaza el número de versión con el más reciente)
@@ -33,7 +33,7 @@ chmod +x ~/.local/bin/hopper
 ### Compilar desde el código fuente (requiere .NET 10 SDK)
 
 ```bash
-git clone https://github.com/SchwartzKamel/azure-openai-cli
+git clone https://github.com/SchwartzKamel/hopper
 cd azure-openai-cli
 make setup && make install
 ```

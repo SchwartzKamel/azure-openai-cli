@@ -77,7 +77,7 @@ Every art file, every vendor order, and every merchandise listing passes Jackie 
 2. Does the art use any third-party trademark (Microsoft, OpenAI, Azure, Docker, .NET, etc.)? **Default: remove it.** Approved exceptions require written sponsor-agreement language.
 3. Is the typeface embedded or outlined? Webfont licenses don't cover print.
 4. Is the color choice likely to be confused with a trademarked competitor's palette? (Jackie has veto.)
-5. Does the piece include a URL? If yes, that URL must still resolve in 24 months. Prefer `github.com/SchwartzKamel/azure-openai-cli` over vanity domains.
+5. Does the piece include a URL? If yes, that URL must still resolve in 24 months. Prefer `github.com/SchwartzKamel/hopper` over vanity domains.
 
 See also [`docs/licensing-audit.md`](../licensing-audit.md).
 

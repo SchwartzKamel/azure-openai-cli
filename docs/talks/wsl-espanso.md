@@ -50,7 +50,7 @@
 > Framework without breaking a v1 flag. [Speaker] talks about terminal
 > ergonomics, AOT trim warnings you shouldn't silence, and what happens
 > when a Markdown persona file meets a chaos drill. Project at
-> [github.com/SchwartzKamel/azure-openai-cli](https://github.com/SchwartzKamel/azure-openai-cli).
+> [github.com/SchwartzKamel/hopper](https://github.com/SchwartzKamel/hopper).
 
 **Word count: 99.**
 

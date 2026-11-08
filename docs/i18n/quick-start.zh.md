@@ -11,7 +11,7 @@
 
 ### 使用预编译二进制文件（推荐）
 
-从 [Releases 页面](https://github.com/SchwartzKamel/azure-openai-cli/releases)
+从 [Releases 页面](https://github.com/SchwartzKamel/hopper/releases)
 下载适合您平台的二进制文件。
 
 ```bash
@@ -32,7 +32,7 @@ chmod +x ~/.local/bin/hopper
 ### 从源代码编译（需要 .NET 10 SDK）
 
 ```bash
-git clone https://github.com/SchwartzKamel/azure-openai-cli
+git clone https://github.com/SchwartzKamel/hopper
 cd azure-openai-cli
 make setup && make install
 ```

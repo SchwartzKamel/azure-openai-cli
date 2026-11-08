@@ -145,11 +145,11 @@ Every published image gets a build-provenance attestation via
 ```bash
 # v1
 gh attestation verify oci://ghcr.io/schwartzkamel/azure-openai-cli:1.8.1 \
-  --repo SchwartzKamel/azure-openai-cli
+  --repo SchwartzKamel/hopper
 
 # v2
 gh attestation verify oci://ghcr.io/schwartzkamel/azure-openai-cli/az-ai:2.0.5 \
-  --repo SchwartzKamel/azure-openai-cli
+  --repo SchwartzKamel/hopper
 ```
 
 See [`docs/verifying-releases.md`](../verifying-releases.md) for the full

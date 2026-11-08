@@ -12,7 +12,7 @@
 
 ### 사전 빌드된 바이너리 사용 (권장)
 
-[Releases 페이지](https://github.com/SchwartzKamel/azure-openai-cli/releases)에서
+[Releases 페이지](https://github.com/SchwartzKamel/hopper/releases)에서
 사용 중인 플랫폼에 맞는 바이너리를 다운로드하세요.
 
 ```bash
@@ -33,7 +33,7 @@ chmod +x ~/.local/bin/hopper
 ### 소스 코드에서 빌드 (.NET 10 SDK 필요)
 
 ```bash
-git clone https://github.com/SchwartzKamel/azure-openai-cli
+git clone https://github.com/SchwartzKamel/hopper
 cd azure-openai-cli
 make setup && make install
 ```

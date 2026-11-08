@@ -42,7 +42,7 @@ Instances of abusive, harassing, or otherwise unacceptable behavior may be repor
 
 * **Preferred -- GitHub Security Advisories:** open a private advisory via the
   repository's **Security → Report a vulnerability** flow
-  (<https://github.com/SchwartzKamel/azure-openai-cli/security/advisories/new>).
+  (<https://github.com/SchwartzKamel/hopper/security/advisories/new>).
   This is the same private channel documented in
   [`SECURITY.md`](SECURITY.md) §8 "Reporting Vulnerabilities"; it is visible
   only to repository maintainers. Prefix the title with `[conduct]` so it is

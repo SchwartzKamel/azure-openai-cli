@@ -9,7 +9,7 @@ body:
         Thanks for filing a bug report. Clear reproduction steps
         make the difference between a fix this week and a fix next quarter.
 
-        Please search [existing issues](https://github.com/SchwartzKamel/azure-openai-cli/issues?q=is%3Aissue)
+        Please search [existing issues](https://github.com/SchwartzKamel/hopper/issues?q=is%3Aissue)
         before filing.
 
   - type: textarea

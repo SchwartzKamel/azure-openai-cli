@@ -183,7 +183,7 @@ The `v2.*` tag path exercises three jobs in `release.yml`:
 ### 5.1 Rerun failed legs only
 
 ```bash
-gh run rerun "$RUN_ID" --failed --repo SchwartzKamel/azure-openai-cli
+gh run rerun "$RUN_ID" --failed --repo SchwartzKamel/hopper
 ```
 
 `--failed` preserves green legs (their artifacts are already uploaded
@@ -277,13 +277,13 @@ gh release view "$TAG" --json assets --jq '.assets[].name' | sort
 
 # 7b. Binary attestations -- SLSA provenance verified against the repo.
 gh attestation verify \
-  --repo SchwartzKamel/azure-openai-cli \
+  --repo SchwartzKamel/hopper \
   "az-ai-${VERSION}-linux-x64.tar.gz"
 
 # 7c. Container image + attestation.
 docker pull "ghcr.io/schwartzkamel/azure-openai-cli/az-ai:${VERSION}"
 gh attestation verify \
-  --repo SchwartzKamel/azure-openai-cli \
+  --repo SchwartzKamel/hopper \
   "oci://ghcr.io/schwartzkamel/azure-openai-cli/az-ai:${VERSION}"
 
 # 7d. Runtime smoke on the primary RID.
@@ -339,7 +339,7 @@ Co-authored-by: Copilot <copilot@github.com>"
 git push origin main
 ```
 
-The [`v2.0.4` hash-sync commit](https://github.com/SchwartzKamel/azure-openai-cli/commit/1884a8f)
+The [`v2.0.4` hash-sync commit](https://github.com/SchwartzKamel/hopper/commit/1884a8f)
 is the canonical template.
 
 ---

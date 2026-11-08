@@ -33,7 +33,7 @@ thing to a "planned feature" this project has.
 
 ## 3. In-flight work -- GitHub Issues
 
-[Open issues](https://github.com/SchwartzKamel/azure-openai-cli/issues)
+[Open issues](https://github.com/SchwartzKamel/hopper/issues)
 filtered by **milestone** and **label** are the most granular view of
 what's being actively worked on this cycle. Relevant labels:
 

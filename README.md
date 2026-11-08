@@ -4,12 +4,12 @@
 >
 > **Renamed.** `hopper` is the new name of `az-ai`, the *Azure OpenAI CLI*. The `az-ai` command still works and is installed next to `hopper`; your settings in `~/.config/az-ai/` and the `AZUREOPENAI*` variables are unchanged. Why, and what changes when: [ADR-016](docs/adr/ADR-016-rebrand-away-from-third-party-marks.md).
 
-[![CI](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/ci.yml)
-[![Release](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/release.yml/badge.svg)](https://github.com/SchwartzKamel/azure-openai-cli/actions/workflows/release.yml)
+[![CI](https://github.com/SchwartzKamel/hopper/actions/workflows/ci.yml/badge.svg)](https://github.com/SchwartzKamel/hopper/actions/workflows/ci.yml)
+[![Release](https://github.com/SchwartzKamel/hopper/actions/workflows/release.yml/badge.svg)](https://github.com/SchwartzKamel/hopper/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macOS%20%7C%20windows-informational)](#install)
-[![GHCR](https://img.shields.io/badge/ghcr.io-azure--openai--cli-2496ED?logo=docker)](https://github.com/SchwartzKamel/azure-openai-cli/pkgs/container/azure-openai-cli)
+[![GHCR](https://img.shields.io/badge/ghcr.io-azure--openai--cli-2496ED?logo=docker)](https://github.com/SchwartzKamel/hopper/pkgs/container/azure-openai-cli)
 
 ## Why
 
@@ -103,7 +103,7 @@ Recommendations:
 ## Quickstart
 
 ```bash
-git clone https://github.com/SchwartzKamel/azure-openai-cli && cd azure-openai-cli
+git clone https://github.com/SchwartzKamel/hopper && cd azure-openai-cli
 make setup && make install        # installs ~/.local/bin/hopper (and an az-ai alias)
 cp azureopenai-cli/.env.example .env && $EDITOR .env   # add Azure creds (template is shared across v1/v2)
 hopper --raw "Summarize this file in 5 words: $(cat README.md)"
@@ -551,7 +551,7 @@ all 2 provider(s) healthy
 
 ### Pre-built binaries
 
-Download for your platform from [Releases](https://github.com/SchwartzKamel/azure-openai-cli/releases). Filenames follow the `hopper-<version>-<rid>` scheme (v2.4.0 shown):
+Download for your platform from [Releases](https://github.com/SchwartzKamel/hopper/releases). Filenames follow the `hopper-<version>-<rid>` scheme (v2.4.0 shown):
 
 | Platform | Artifact |
 |----------|----------|

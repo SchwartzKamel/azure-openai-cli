@@ -19,7 +19,7 @@ up a runner in the first place, or picks one up and dies.
 | Leg           | Runner label | Workflow file            | Status |
 |---------------|--------------|--------------------------|--------|
 | `osx-arm64`   | `macos-14`   | `release.yml` line ~231  | ✅ shipped |
-| ~~`osx-x64`~~ | ~~`macos-13`~~ | --                      | ❌ cut in v2.0.4 ([commit `afa95fd`](https://github.com/SchwartzKamel/azure-openai-cli/commit/afa95fd)) |
+| ~~`osx-x64`~~ | ~~`macos-13`~~ | --                      | ❌ cut in v2.0.4 ([commit `afa95fd`](https://github.com/SchwartzKamel/hopper/commit/afa95fd)) |
 
 > **Source of truth:** `.github/workflows/release.yml` `build-binaries-v2.strategy.matrix`.
 > If you are reading this more than ~6 months after 2026-04-22, re-check
@@ -93,7 +93,7 @@ before the cut. It is **transient** and **not our code**.
    # workflow_dispatch needs the workflow_dispatch trigger to exist at
    # the *ref's* commit, not HEAD. On a tag cut before that trigger was
    # added you get HTTP 422. This is the "workflow_dispatch trap."
-   gh run rerun <run-id> --failed --repo SchwartzKamel/azure-openai-cli
+   gh run rerun <run-id> --failed --repo SchwartzKamel/hopper
    ```
 
    `--failed` reschedules only cancelled/failed legs and preserves the
@@ -154,7 +154,7 @@ The canonical example is **`osx-x64` / `macos-13`**. Timeline:
   `workflow_dispatch` 422 trap on recovery. Documented in
   `docs/launch/v2.0.2-publish-handoff.md`.
 - **v2.0.3 (2026-04-22):** `macos-13` queued **~9 hours**. Same backlog.
-- **v2.0.4 (2026-04-22):** **cut.** [`afa95fd`](https://github.com/SchwartzKamel/azure-openai-cli/commit/afa95fd)
+- **v2.0.4 (2026-04-22):** **cut.** [`afa95fd`](https://github.com/SchwartzKamel/hopper/commit/afa95fd)
   removed `osx-x64` from `build-binaries-v2.strategy.matrix`. Release
   went green on the first try. Intel-Mac users get Rosetta 2 from the
   `osx-arm64` artifact or `linux/amd64` from the GHCR image.

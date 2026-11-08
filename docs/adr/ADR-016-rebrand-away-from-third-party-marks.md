@@ -122,3 +122,15 @@ round) recommended the opposite order and made the better argument, and it is ad
 The council was shallow on this repository's specifics (it told us to audit a `go.mod` that a .NET project does not
 have, and read G3 as still pending), so it was treated as one signal and the rest was checked directly. Stage 3 also
 needs smith's own configuration updated: its project entry names this repository by its GitHub slug.
+
+## Update 2026-11-08: Stages 2 and 3 are done
+
+- **Stage 2:** v2.4.0 was published with `hopper-<version>-<rid>` archives (each verified before upload, then audited after: checksums, provenance, a
+  real run, the container image), and the Homebrew, Scoop and Nix manifests were hash-synced to it and are checked against the release's own
+  digests.
+- **Stage 3:** the repository is now `SchwartzKamel/hopper`, renamed last, as decided. The old address redirects (web, API, release assets and git
+  were each checked), and GitHub Actions runs under the new name.
+- **Not moved by the rename:** the container image path (`ghcr.io/schwartzkamel/azure-openai-cli` through v2.4.0; the next release publishes
+  under `ghcr.io/schwartzkamel/hopper`) and existing attestations, which name the old repository (verify with `--owner`).
+- **Outstanding:** smith's configuration still names the old slug (a file in smith's own configuration, updated by its owner), and the `az-ai` alias
+  keeps its sunset review at the next major version.

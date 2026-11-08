@@ -42,4 +42,4 @@ land their first PR.
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) -- how to set up, test, and send a PR
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) -- how we treat each other
-- [GitHub Discussions](https://github.com/SchwartzKamel/azure-openai-cli/discussions) -- questions, ideas, show-and-tell
+- [GitHub Discussions](https://github.com/SchwartzKamel/hopper/discussions) -- questions, ideas, show-and-tell
